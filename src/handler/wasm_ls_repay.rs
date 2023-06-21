@@ -1,0 +1,46 @@
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, NaiveDateTime, Utc};
+use sqlx::Transaction;
+use std::str::FromStr;
+
+use crate::{
+    configuration::{AppState, State},
+    error::Error,
+    model::LS_Repayment,
+    types::LS_Repayment_Type, dao::DataBase,
+};
+
+pub async fn parse_and_insert(
+    app_state: &AppState<State>,
+    item: LS_Repayment_Type,
+    transaction: &mut Transaction<'_, DataBase>,
+) -> Result<(), Error> {
+    let sec: i64 = item.at.parse()?;
+    let at_sec = sec / 1_000_000_000;
+    let at = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(at_sec, 0), Utc);
+
+    let ls_repay = LS_Repayment {
+        LS_repayment_height: item.height.parse()?,
+        LS_repayment_idx: None,
+        LS_contract_id: item.to,
+        LS_symbol: item.payment_symbol.to_owned(),
+        LS_amnt_stable: app_state
+            .in_stabe(&item.payment_symbol, &item.payment_amount)
+            .await?,
+        LS_timestamp: at,
+        LS_loan_close: item.loan_close.parse()?,
+        LS_prev_margin_stable: BigDecimal::from_str(&item.prev_margin_interest)?,
+        LS_prev_interest_stable: BigDecimal::from_str(&item.prev_loan_interest)?,
+        LS_current_margin_stable: BigDecimal::from_str(&item.curr_margin_interest)?,
+        LS_current_interest_stable: BigDecimal::from_str(&item.curr_loan_interest)?,
+        LS_principal_stable: BigDecimal::from_str(&item.principal)?,
+    };
+
+    app_state
+        .database
+        .ls_repayment
+        .insert(ls_repay, transaction)
+        .await?;
+
+    Ok(())
+}

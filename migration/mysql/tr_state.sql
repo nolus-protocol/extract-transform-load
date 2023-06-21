@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS `TR_State` (
+  `TR_timestamp` TIMESTAMP PRIMARY KEY NOT NULL,
+  `TR_amnt_stable`  DECIMAL(39,0) NOT NULL,
+  `TR_amnt_nls`  DECIMAL(39,0) NOT NULL
+);
