@@ -117,7 +117,7 @@ impl State {
     ) -> Result<(), Error> {
         for Currency(coinGeckoId, _address, symbol, _deicmal) in supported_currencies {
             let mp_asset_mapping = &database.mp_asset_mapping;
-            let c = mp_asset_mapping.get_one(symbol.to_lowercase()).await?;
+            let c = mp_asset_mapping.get_one(symbol.to_owned()).await?;
             if c.is_none() {
                 let data = http
                     .get_coingecko_info(coinGeckoId.to_owned())

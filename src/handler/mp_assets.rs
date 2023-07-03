@@ -25,7 +25,7 @@ pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
             .ok_or(Error::FieldNotExist(String::from("MP_ASSET")))?;
 
         let item = &data[item];
-        let stable_currency = app_state.config.stable_currency.to_lowercase();
+        let stable_currency = app_state.config.stable_currency.to_owned();
         let value = value
             .get(&stable_currency)
             .ok_or(Error::FieldNotExist(String::from("currency")))?;

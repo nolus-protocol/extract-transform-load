@@ -179,31 +179,30 @@ pub fn parse_wasm_ls_liquidation(
     attributes: Vec<Attributes>,
 ) -> Result<LS_Liquidation_Type, Error> {
     let ls_liquidation = pasrse_data(attributes)?;
-
     let c = LS_Liquidation_Type {
         height: ls_liquidation
             .get("height")
             .ok_or(Error::FieldNotExist(String::from("height")))?
             .to_string(),
-        of: ls_liquidation
-            .get("of")
-            .ok_or(Error::FieldNotExist(String::from("of")))?
+        to: ls_liquidation
+            .get("to")
+            .ok_or(Error::FieldNotExist(String::from("to")))?
             .to_string(),
         liquidation_symbol: ls_liquidation
-            .get("liquidation-symbol")
-            .ok_or(Error::FieldNotExist(String::from("liquidation-symbol")))?
+            .get("amount-symbol")
+            .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
             .to_string(),
         liquidation_amount: ls_liquidation
-            .get("liquidation_amount")
-            .ok_or(Error::FieldNotExist(String::from("liquidation_amount")))?
+            .get("amount-amount")
+            .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
             .to_string(),
         at: ls_liquidation
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
             .to_string(),
         r#type: ls_liquidation
-            .get("type")
-            .ok_or(Error::FieldNotExist(String::from("type")))?
+            .get("cause")
+            .ok_or(Error::FieldNotExist(String::from("cause")))?
             .to_string(),
         prev_margin_interest: ls_liquidation
             .get("prev-margin-interest")
@@ -218,8 +217,8 @@ pub fn parse_wasm_ls_liquidation(
             .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?
             .to_string(),
         curr_loan_interest: ls_liquidation
-            .get("curr_loan_interest")
-            .ok_or(Error::FieldNotExist(String::from("curr_loan_interest")))?
+            .get("curr-loan-interest")
+            .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?
             .to_string(),
         principal: ls_liquidation
             .get("principal")

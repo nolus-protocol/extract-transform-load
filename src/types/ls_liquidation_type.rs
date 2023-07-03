@@ -3,7 +3,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct LS_Liquidation_Type {
     pub height: String,
-    pub of: String,
+    pub to: String,
     #[serde(alias = "liquidation-symbol")]
     pub liquidation_symbol: String,
     #[serde(alias = "liquidation-amount")]

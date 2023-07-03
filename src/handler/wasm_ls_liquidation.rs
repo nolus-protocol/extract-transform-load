@@ -18,11 +18,10 @@ pub async fn parse_and_insert(
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
     let at = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(at_sec, 0), Utc);
-
     let ls_liquidation = LS_Liquidation {
         LS_liquidation_height: item.height.parse()?,
         LS_liquidation_idx: None,
-        LS_contract_id: item.of,
+        LS_contract_id: item.to,
         LS_symbol: item.liquidation_symbol.to_owned(),
         LS_amnt_stable: app_state
             .in_stabe(&item.liquidation_symbol, &item.liquidation_amount)

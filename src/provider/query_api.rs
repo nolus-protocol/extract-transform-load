@@ -29,7 +29,6 @@ impl QueryApi {
     pub async fn lease_state(&self, contract: String) -> Result<Option<LS_State_Type>, Error> {
         let bytes = b"{\"status_query\":[]}";
         let res = self.query_state(bytes, contract).await?;
-
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));
@@ -58,7 +57,7 @@ impl QueryApi {
     ) -> Result<Option<LPP_Price>, Error> {
         let bytes = b"{\"price\": []}";
         let res = self.query_state(bytes, contract).await?;
-        
+
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));
@@ -71,7 +70,6 @@ impl QueryApi {
         let request = format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
         let bytes = request.as_bytes();
         let res = self.query_state(bytes, contract).await?;
-
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));

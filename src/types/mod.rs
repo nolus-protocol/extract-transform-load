@@ -21,6 +21,8 @@ mod query_response;
 mod amount_symbol;
 mod balance;
 mod lpp_price;
+mod amount;
+mod amount_ticker;
 
 pub use abci_response::AbciBody;
 pub use block_response::{BlockBody, EventData, Attributes};
@@ -45,3 +47,5 @@ pub use query_response::QueryBody;
 pub use amount_symbol::AmountSymbol;
 pub use balance::Balance;
 pub use lpp_price::LPP_Price;
+pub use amount::Amount;
+pub use amount_ticker::AmountTicker;

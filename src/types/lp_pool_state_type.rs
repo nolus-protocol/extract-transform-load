@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use super::Amount;
 
 #[derive(Debug, Deserialize)]
 pub struct LP_Pool_State_Type {
@@ -9,7 +10,3 @@ pub struct LP_Pool_State_Type {
 }
 
 
-#[derive(Debug, Deserialize)]
-pub struct Amount {
-    pub amount: String,
-}

@@ -3,7 +3,7 @@ use std::time::Duration;
 use chrono::Utc;
 use futures::TryFutureExt;
 use tokio::time;
-use tracing::{error, Level};
+use tracing::{error, Level, info};
 
 use etl::{
     configuration::{get_configuration, set_configuration, AppState, Config, State},
@@ -18,7 +18,7 @@ async fn main() -> Result<(), Error> {
     let result = app_main().await;
 
     if let Err(err) = &result {
-        error!("{err}");
+        error!("{}", err);
     }
 
     result
@@ -59,7 +59,7 @@ async fn app_main() -> Result<(), Error> {
 
     mp_assets::fetch_insert(app_state.clone()).await?;
     let mut event_manager = Event::new(app_state.clone());
-
+    
     let (_, r, _) = tokio::try_join!(
         event_manager.run(),
         mp_assets::mp_assets_task(app_state.clone()).map_err(|e| e.into()),
@@ -78,6 +78,7 @@ async fn init<'c>() -> Result<(Config, DatabasePool), Error> {
 }
 
 async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error> {
+
     let interval_value: u64 = app_state.config.aggregation_interval.into();
     let interval_value = interval_value * 60 * 60;
     let model = &app_state.database.action_history;
@@ -115,6 +116,9 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
     } else {
         interval_value
     }));
+
+    info!("{:?}", &interval.period());
+
 
     tokio::spawn(async move {
         if tmp_interval == 0 {

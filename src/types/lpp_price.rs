@@ -1,8 +1,8 @@
 use serde::Deserialize;
-use super::AmountSymbol;
+use super::Amount;
 
 #[derive(Debug, Deserialize)]
 pub struct LPP_Price {
-    pub amount: AmountSymbol,
-    pub amount_quote: AmountSymbol
+    pub amount: Amount,
+    pub amount_quote: Amount
 }
