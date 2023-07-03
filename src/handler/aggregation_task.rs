@@ -47,7 +47,7 @@ pub fn aggregation_task(app_state: AppState<State>) -> JoinHandle<Result<(), Err
             Err(_) => DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
         };
 
-        insert_action(&app_state.database.action_history, timestsamp.clone()).await?;
+        insert_action(&app_state.database.action_history, timestsamp).await?;
 
         let joins = vec![
             mp_assets_state::start_task(app_state.clone(), timestsamp),
@@ -58,9 +58,7 @@ pub fn aggregation_task(app_state: AppState<State>) -> JoinHandle<Result<(), Err
         ];
 
         for j in joins {
-            if let Err(error) = j.await? {
-                return Err(error);
-            }
+            j.await??
         }
 
         if let Err(error) = pl_state::start_task(

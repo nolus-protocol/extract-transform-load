@@ -62,8 +62,8 @@ async fn proceed(
     let lpp_price = if let Some(price) = lpp_price? {
         let amount = BigDecimal::from_str(&price.amount.amount)?;
         let quote_amount = BigDecimal::from_str(&price.amount_quote.amount)?;
-        let price = &amount / &quote_amount;
-        price
+        
+        &amount / &quote_amount
     } else {
         BigDecimal::from(0)
     };

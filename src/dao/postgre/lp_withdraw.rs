@@ -25,14 +25,14 @@ impl Table<LP_Withdraw> {
             VALUES($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
         )
-        .bind(&data.LP_withdraw_height)
+        .bind(data.LP_withdraw_height)
         .bind(&data.LP_address_id)
-        .bind(&data.LP_timestamp)
+        .bind(data.LP_timestamp)
         .bind(&data.LP_Pool_id)
         .bind(&data.LP_amnt_stable)
         .bind(&data.LP_amnt_asset)
         .bind(&data.LP_amnt_receipts)
-        .bind(&data.LP_deposit_close)
+        .bind(data.LP_deposit_close)
         .execute(transaction)
         .await
     }
@@ -42,7 +42,7 @@ impl Table<LP_Withdraw> {
         data: &Vec<LP_Withdraw>,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -61,14 +61,14 @@ impl Table<LP_Withdraw> {
         );
 
         query_builder.push_values(data, |mut b, lp| {
-            b.push_bind(&lp.LP_withdraw_height)
+            b.push_bind(lp.LP_withdraw_height)
                 .push_bind(&lp.LP_address_id)
-                .push_bind(&lp.LP_timestamp)
+                .push_bind(lp.LP_timestamp)
                 .push_bind(&lp.LP_Pool_id)
                 .push_bind(&lp.LP_amnt_stable)
                 .push_bind(&lp.LP_amnt_asset)
                 .push_bind(&lp.LP_amnt_receipts)
-                .push_bind(&lp.LP_deposit_close);
+                .push_bind(lp.LP_deposit_close);
         });
 
         let query = query_builder.build();

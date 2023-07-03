@@ -12,7 +12,7 @@ impl Table<Action_History> {
         "#,
         )
         .bind(&data.action_type)
-        .bind(&data.created_at)
+        .bind(data.created_at)
         .execute(&self.pool)
         .await
     }

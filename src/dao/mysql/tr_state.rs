@@ -12,7 +12,7 @@ impl Table<TR_State> {
             VALUES(?, ?, ?)
         "#,
         )
-        .bind(&data.TR_timestamp)
+        .bind(data.TR_timestamp)
         .bind(&data.TR_amnt_stable)
         .bind(&data.TR_amnt_nls)
         .execute(&self.pool)
@@ -20,7 +20,7 @@ impl Table<TR_State> {
     }
 
     pub async fn insert_many(&self, data: &Vec<TR_State>) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -34,7 +34,7 @@ impl Table<TR_State> {
         );
 
         query_builder.push_values(data, |mut b, data| {
-            b.push_bind(&data.TR_timestamp)
+            b.push_bind(data.TR_timestamp)
                 .push_bind(&data.TR_amnt_stable)
                 .push_bind(&data.TR_amnt_nls);
         });

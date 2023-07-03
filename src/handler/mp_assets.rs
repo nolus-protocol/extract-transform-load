@@ -42,7 +42,7 @@ pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
 
     let action_history = Action_History {
         action_type: Actions::MpAssetAction.to_string(),
-        created_at: timestamp.clone(),
+        created_at: timestamp,
     };
 
     app_state

@@ -13,6 +13,7 @@ use thiserror::Error;
 use tokio::task::JoinError;
 use tokio_tungstenite::tungstenite::Error as WS_ERROR;
 use url::ParseError as URL_ERROR;
+use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -81,4 +82,7 @@ pub enum Error {
 
     #[error("{0}")]
     DecodeError(#[from] DECODE_ERROR),
+
+    #[error("Tracing error: {0}")]
+    SetGlobalDefaultError(#[from] TRACING_GLOBAL_DEFAULT_ERROR),
 }

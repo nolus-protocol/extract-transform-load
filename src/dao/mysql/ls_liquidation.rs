@@ -26,10 +26,10 @@ impl Table<LS_Liquidation> {
             VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         )
-        .bind(&data.LS_liquidation_height)
+        .bind(data.LS_liquidation_height)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_symbol)
-        .bind(&data.LS_timestamp)
+        .bind(data.LS_timestamp)
         .bind(&data.LS_amnt_stable)
         .bind(&data.LS_transaction_type)
         .bind(&data.LS_prev_margin_stable)
@@ -46,7 +46,7 @@ impl Table<LS_Liquidation> {
         data: &Vec<LS_Liquidation>,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -68,10 +68,10 @@ impl Table<LS_Liquidation> {
         );
 
         query_builder.push_values(data, |mut b, ls| {
-            b.push_bind(&ls.LS_liquidation_height)
+            b.push_bind(ls.LS_liquidation_height)
                 .push_bind(&ls.LS_contract_id)
                 .push_bind(&ls.LS_symbol)
-                .push_bind(&ls.LS_timestamp)
+                .push_bind(ls.LS_timestamp)
                 .push_bind(&ls.LS_amnt_stable)
                 .push_bind(&ls.LS_transaction_type)
                 .push_bind(&ls.LS_prev_margin_stable)

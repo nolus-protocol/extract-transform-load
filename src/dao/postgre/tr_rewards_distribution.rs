@@ -22,9 +22,9 @@ impl Table<TR_Rewards_Distribution> {
             VALUES($1, $2, $3, $4, $5)
         "#,
         )
-        .bind(&data.TR_Rewards_height)
+        .bind(data.TR_Rewards_height)
         .bind(&data.TR_Rewards_Pool_id)
-        .bind(&data.TR_Rewards_timestamp)
+        .bind(data.TR_Rewards_timestamp)
         .bind(&data.TR_Rewards_amnt_stable)
         .bind(&data.TR_Rewards_amnt_nls)
         .execute(transaction)
@@ -36,7 +36,7 @@ impl Table<TR_Rewards_Distribution> {
         data: &Vec<TR_Rewards_Distribution>,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -52,9 +52,9 @@ impl Table<TR_Rewards_Distribution> {
         );
 
         query_builder.push_values(data, |mut b, tr| {
-            b.push_bind(&tr.TR_Rewards_height)
+            b.push_bind(tr.TR_Rewards_height)
                 .push_bind(&tr.TR_Rewards_Pool_id)
-                .push_bind(&tr.TR_Rewards_timestamp)
+                .push_bind(tr.TR_Rewards_timestamp)
                 .push_bind(&tr.TR_Rewards_amnt_stable)
                 .push_bind(&tr.TR_Rewards_amnt_nls);
         });

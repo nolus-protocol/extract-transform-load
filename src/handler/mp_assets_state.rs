@@ -30,9 +30,7 @@ pub async fn fetch_insert(
     let result = join_all(joins).await;
 
     for item in result {
-        if let Err(e) = item {
-            return Err(e);
-        }
+        item?
     }
 
     Ok(())
@@ -75,14 +73,14 @@ async fn parse_and_insert(
         volume += item.1;
     }
 
-    if market_data.market_caps.len() > 0 {
+    if !market_data.market_caps.is_empty() {
         let market_len = market_data.market_caps.len() as f64;
-        market_cap = market_cap / market_len;
+        market_cap /= market_len;
     }
 
-    if market_data.total_volumes.len() > 0 {
+    if !market_data.total_volumes.is_empty() {
         let volume_len = market_data.total_volumes.len() as f64;
-        volume = volume / volume_len;
+        volume /= volume_len;
     }
 
     let mp_asset_state = MP_Asset_State {

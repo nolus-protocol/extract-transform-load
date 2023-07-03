@@ -33,8 +33,8 @@ impl Table<LS_Opening> {
         .bind(&data.LS_contract_id)
         .bind(&data.LS_address_id)
         .bind(&data.LS_asset_symbol)
-        .bind(&data.LS_interest)
-        .bind(&data.LS_timestamp)
+        .bind(data.LS_interest)
+        .bind(data.LS_timestamp)
         .bind(&data.LS_loan_pool_id)
         .bind(&data.LS_loan_amnt_stable)
         .bind(&data.LS_loan_amnt_asset)
@@ -52,7 +52,7 @@ impl Table<LS_Opening> {
         data: &Vec<LS_Opening>,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -79,8 +79,8 @@ impl Table<LS_Opening> {
             b.push_bind(&ls.LS_contract_id)
                 .push_bind(&ls.LS_address_id)
                 .push_bind(&ls.LS_asset_symbol)
-                .push_bind(&ls.LS_interest)
-                .push_bind(&ls.LS_timestamp)
+                .push_bind(ls.LS_interest)
+                .push_bind(ls.LS_timestamp)
                 .push_bind(&ls.LS_loan_pool_id)
                 .push_bind(&ls.LS_loan_amnt_stable)
                 .push_bind(&ls.LS_loan_amnt_asset)

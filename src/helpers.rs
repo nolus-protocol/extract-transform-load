@@ -54,7 +54,7 @@ pub fn parse_tuple_string(data: String) -> Vec<String> {
     let mut items: Vec<String> = Vec::new();
 
     for c in splited {
-        if let Some(index) = c.find(")") {
+        if let Some(index) = c.find(')') {
             let tuple_data = &c[0..index];
             items.push(tuple_data.to_owned());
         }
@@ -374,7 +374,7 @@ fn pasrse_data(attributes: Vec<Attributes>) -> Result<HashMap<String, String>, E
         data.insert(str_key.to_string(), str_value.to_string());
     }
 
-    return Ok(data);
+    Ok(data)
 }
 
 pub async fn parse_event(

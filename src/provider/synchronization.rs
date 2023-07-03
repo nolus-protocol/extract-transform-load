@@ -8,6 +8,7 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
+use tracing::{info, error};
 use std::process::exit;
 use std::sync::Arc;
 use std::{
@@ -24,7 +25,7 @@ use tokio_tungstenite::{
 };
 use url::Url;
 
-const RUNNING: AtomicBool = AtomicBool::new(false);
+static RUNNING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug)]
 pub struct Synchronization {}
@@ -136,7 +137,7 @@ impl Synchronization {
         }
 
         self.set_running(false);
-        println!("");
+        println!();
 
         Ok(())
     }
@@ -202,7 +203,8 @@ impl Handler {
 
         for mut range in &mut *parts {
             let (start, end) = range;
-            for i in *start..*end {
+            let mut r = *start..*end;
+            if let Some(i) = r.next() {
                 let id = self.get_id();
                 let event = self.app_state.config.block_results_event(i, id);
                 write.send(Message::Text(event)).await?;
@@ -291,10 +293,10 @@ pub fn start_sync(app_state: AppState<State>) {
         let result = sync_manager.run(app_state).await;
         match result {
             Ok(_) => {
-                println!("Synchronization completed")
+                info!("Synchronization completed")
             }
             Err(error) => {
-                eprintln!("Synchronization end with error: {}", error);
+                error!("Synchronization end with error: {}", error);
                 exit(1);
             }
         }

@@ -14,7 +14,7 @@ impl Table<Block> {
             VALUES(?)
             "#,
         )
-        .bind(&block.id)
+        .bind(block.id)
         .execute(transaction)
         .await
     }

@@ -4,6 +4,8 @@ use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
 
+type OptionDecimal = Option<BigDecimal>;
+
 impl Table<LS_Repayment> {
     pub async fn insert(
         &self,
@@ -28,12 +30,12 @@ impl Table<LS_Repayment> {
             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         "#,
         )
-        .bind(&data.LS_repayment_height)
+        .bind(data.LS_repayment_height)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_symbol)
         .bind(&data.LS_amnt_stable)
-        .bind(&data.LS_timestamp)
-        .bind(&data.LS_loan_close)
+        .bind(data.LS_timestamp)
+        .bind(data.LS_loan_close)
         .bind(&data.LS_prev_margin_stable)
         .bind(&data.LS_prev_interest_stable)
         .bind(&data.LS_current_margin_stable)
@@ -48,7 +50,7 @@ impl Table<LS_Repayment> {
         data: &Vec<LS_Repayment>,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -70,12 +72,12 @@ impl Table<LS_Repayment> {
         );
 
         query_builder.push_values(data, |mut b, ls| {
-            b.push_bind(&ls.LS_repayment_height)
+            b.push_bind(ls.LS_repayment_height)
                 .push_bind(&ls.LS_contract_id)
                 .push_bind(&ls.LS_symbol)
                 .push_bind(&ls.LS_amnt_stable)
-                .push_bind(&ls.LS_timestamp)
-                .push_bind(&ls.LS_loan_close)
+                .push_bind(ls.LS_timestamp)
+                .push_bind(ls.LS_loan_close)
                 .push_bind(&ls.LS_prev_margin_stable)
                 .push_bind(&ls.LS_prev_interest_stable)
                 .push_bind(&ls.LS_current_margin_stable)
@@ -95,11 +97,11 @@ impl Table<LS_Repayment> {
     ) -> Result<(BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal), crate::error::Error>
     {
         let value: (
-            Option<BigDecimal>,
-            Option<BigDecimal>,
-            Option<BigDecimal>,
-            Option<BigDecimal>,
-            Option<BigDecimal>,
+            OptionDecimal,
+            OptionDecimal,
+            OptionDecimal,
+            OptionDecimal,
+            OptionDecimal,
         ) = sqlx::query_as(
             r#"
             SELECT 

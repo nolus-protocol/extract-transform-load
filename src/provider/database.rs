@@ -64,7 +64,7 @@ impl<'c> DatabasePool {
             mp_asset_mapping,
             mp_yield: Table::new(pool.clone()),
             pl_state: Table::new(pool.clone()),
-            action_history: Table::new(pool.clone()),
+            action_history: Table::new(pool),
         })
     }
 

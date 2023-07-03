@@ -16,7 +16,7 @@ impl Table<LS_Closing> {
         "#,
         )
         .bind(&data.LS_contract_id)
-        .bind(&data.LS_timestamp)
+        .bind(data.LS_timestamp)
         .execute(transaction)
         .await
     }
@@ -26,7 +26,7 @@ impl Table<LS_Closing> {
         data: &Vec<LS_Closing>,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -38,7 +38,7 @@ impl Table<LS_Closing> {
         );
 
         query_builder.push_values(data, |mut b, ls| {
-            b.push_bind(&ls.LS_contract_id).push_bind(&ls.LS_timestamp);
+            b.push_bind(&ls.LS_contract_id).push_bind(ls.LS_timestamp);
         });
 
         let query = query_builder.build();

@@ -21,7 +21,7 @@ impl Table<LS_State> {
             "#,
         )
         .bind(&data.LS_contract_id)
-        .bind(&data.LS_timestamp)
+        .bind(data.LS_timestamp)
         .bind(&data.LS_amnt_stable)
         .bind(&data.LS_prev_margin_stable)
         .bind(&data.LS_prev_interest_stable)
@@ -60,7 +60,7 @@ impl Table<LS_State> {
     }
 
     pub async fn insert_many(&self, data: &Vec<LS_State>) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -80,7 +80,7 @@ impl Table<LS_State> {
 
         query_builder.push_values(data, |mut b, data| {
             b.push_bind(&data.LS_contract_id)
-                .push_bind(&data.LS_timestamp)
+                .push_bind(data.LS_timestamp)
                 .push_bind(&data.LS_amnt_stable)
                 .push_bind(&data.LS_prev_margin_stable)
                 .push_bind(&data.LS_prev_interest_stable)

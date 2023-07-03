@@ -20,7 +20,7 @@ impl Table<MP_Asset_State> {
             "#,
         )
         .bind(&data.MP_asset_symbol)
-        .bind(&data.MP_timestamp)
+        .bind(data.MP_timestamp)
         .bind(&data.MP_price_open)
         .bind(&data.MP_price_high)
         .bind(&data.MP_price_low)

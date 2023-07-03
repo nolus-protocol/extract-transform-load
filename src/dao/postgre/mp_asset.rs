@@ -12,7 +12,7 @@ impl Table<MP_Asset> {
             "#,
         )
         .bind(&data.MP_asset_symbol)
-        .bind(&data.MP_asset_timestamp)
+        .bind(data.MP_asset_timestamp)
         .bind(&data.MP_price_in_stable)
         .execute(&self.pool)
         .await

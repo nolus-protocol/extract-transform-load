@@ -21,8 +21,8 @@ impl Table<TR_Profit> {
             VALUES(?, ?, ?, ?)
         "#,
         )
-        .bind(&data.TR_Profit_height)
-        .bind(&data.TR_Profit_timestamp)
+        .bind(data.TR_Profit_height)
+        .bind(data.TR_Profit_timestamp)
         .bind(&data.TR_Profit_amnt_stable)
         .bind(&data.TR_Profit_amnt_nls)
         .execute(transaction)
@@ -34,7 +34,7 @@ impl Table<TR_Profit> {
         data: &Vec<TR_Profit>,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -49,8 +49,8 @@ impl Table<TR_Profit> {
         );
 
         query_builder.push_values(data, |mut b, tr| {
-            b.push_bind(&tr.TR_Profit_height)
-                .push_bind(&tr.TR_Profit_timestamp)
+            b.push_bind(tr.TR_Profit_height)
+                .push_bind(tr.TR_Profit_timestamp)
                 .push_bind(&tr.TR_Profit_amnt_stable)
                 .push_bind(&tr.TR_Profit_amnt_nls);
         });

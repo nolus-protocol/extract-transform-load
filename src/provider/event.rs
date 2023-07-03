@@ -12,6 +12,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{error::Error as WS_ERROR, Message},
 };
+use tracing::{error, info};
 use url::Url;
 
 #[derive(Debug)]
@@ -32,13 +33,13 @@ impl Event {
 
             start_sync(app);
             if let Err(e) = self.init().await {
-                eprintln!("WS disconnected with error: {}, try to reconnecting...", e);
+                error!("WS disconnected with error: {}, try to reconnecting...", e);
             }
         }
     }
 
     async fn init(&mut self) -> Result<(), Error> {
-        println!("WS connect successfully");
+        info!("WS connect successfully");
 
         let url = Url::parse(self.app_state.config.websocket_host.as_str())?;
         let (socket, _response) = connect_async(url).await?;

@@ -54,12 +54,12 @@ impl State {
         Self::init_pools(&config.lp_pools, &database).await?;
         Self::init_mp_asset_mapping(&database, &http, &config.supported_currencies).await?;
 
-        return Ok(Self {
+        Ok(Self {
             config,
             database,
             http,
             query_api,
-        });
+        })
     }
 
     async fn init_migrations(database: &DatabasePool) -> Result<(), Error> {
@@ -115,12 +115,12 @@ impl State {
         http: &HTTP,
         supported_currencies: &Vec<Currency>,
     ) -> Result<(), Error> {
-        for Currency(chain, contract, symbol, _deicmal) in supported_currencies {
+        for Currency(coinGeckoId, _address, symbol, _deicmal) in supported_currencies {
             let mp_asset_mapping = &database.mp_asset_mapping;
             let c = mp_asset_mapping.get_one(symbol.to_lowercase()).await?;
             if c.is_none() {
                 let data = http
-                    .get_coingecko_info(chain.to_owned(), contract.to_owned())
+                    .get_coingecko_info(coinGeckoId.to_owned())
                     .await?;
                 let item = MP_Asset_Mapping {
                     MP_asset_symbol: symbol.to_lowercase(),
@@ -160,7 +160,7 @@ impl State {
         stable_price: &BigDecimal,
         value: &str,
     ) -> Result<BigDecimal, Error> {
-        let val = BigDecimal::from_str(&value)?;
+        let val = BigDecimal::from_str(value)?;
         let val = val * stable_price;
         Ok(val)
     }
@@ -247,18 +247,17 @@ impl Config {
         formatter(url.to_string(), &[Formatter::Str(host_url.to_string())])
     }
 
-    pub fn get_coingecko_info_url(&self, chain: String, contract: String) -> String {
+    pub fn get_coingecko_info_url(&self, coingeckoId: String) -> String {
         let url = &self.coingecko_info_url;
         formatter(
             url.to_string(),
             &[
-                Formatter::Str(chain.to_string()),
-                Formatter::Str(encode(contract.as_str()).to_string()),
+                Formatter::Str(encode(coingeckoId.as_str()).to_string()),
             ],
         )
     }
 
-    pub fn get_coingecko_prices_url(&self, ids: &Vec<String>) -> String {
+    pub fn get_coingecko_prices_url(&self, ids: &[String]) -> String {
         let url = &self.coingecko_prices_url;
         let ids = ids.join(",");
         let currency = self.stable_currency.to_owned();
@@ -362,9 +361,9 @@ pub fn set_configuration() -> Result<(), Error> {
 
 fn parse_config_string(config: String) -> Result<(), Error> {
     let params: Vec<Option<(&str, &str)>> = config
-        .split("\n")
+        .split('\n')
         .map(|s| {
-            let element = s.find("=");
+            let element = s.find('=');
             if let Some(e) = element {
                 return Some(s.split_at(e));
             }
@@ -378,17 +377,15 @@ fn parse_config_string(config: String) -> Result<(), Error> {
         })
         .collect();
 
-    for value in params {
-        if let Some((key, value)) = value {
-            let parsed_value = match key {
-                "WEBSOCKET_HOST" => {
-                    let host = env::var("HOST")?;
-                    formatter(value.to_string(), &[Formatter::Str(host)])
-                }
-                _ => value.to_string(),
-            };
-            std::env::set_var(key, parsed_value);
-        }
+    for (key, value) in params.into_iter().flatten() {
+        let parsed_value = match key {
+            "WEBSOCKET_HOST" => {
+                let host = env::var("HOST")?;
+                formatter(value.to_string(), &[Formatter::Str(host)])
+            }
+            _ => value.to_string(),
+        };
+        std::env::set_var(key, parsed_value);
     }
 
     Ok(())
@@ -399,7 +396,7 @@ fn get_supported_currencies() -> Result<Vec<Currency>, Error> {
     let supported_currencies = parse_tuple_string(env::var("SUPPORTED_CURRENCIES")?);
 
     for c in supported_currencies {
-        let items: Vec<&str> = c.split(",").collect();
+        let items: Vec<&str> = c.split(',').collect();
         assert_eq!(items.len(), 4);
         let chain = items[0].to_owned();
         let internal_symbl = items[1].to_owned();
@@ -416,7 +413,7 @@ fn get_lp_pools() -> Result<Vec<(String, String)>, Error> {
     let lp_pools = parse_tuple_string(env::var("LP_POOLS")?);
 
     for c in lp_pools {
-        let items: Vec<&str> = c.split(",").collect();
+        let items: Vec<&str> = c.split(',').collect();
         assert_eq!(items.len(), 2);
         let internal_symbl = items[0].to_owned();
         let symbol = items[1].to_owned();

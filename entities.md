@@ -147,11 +147,11 @@ In case of full liquidation, in addition to the liquidation event, the system is
 | LS_amnt_stable    | Unsigned Int(128)   | in_stable(wasm-ls-liquidation.liquidation-amount)  | The amount of the transaction in stable
 | LS_timestamp      | Timestamp         | wasm-ls-liquidation.at     | Liquidation time
 | LS_transaction_type | Char(1)         | wasm-ls-liquidation.type   | 1 - Interest Overdue Liquidation, and 2 - Liability Exceeded Liquidation
-| LS_prev_margin_stable      | Unsigned Int(128) | wasm-ls-liquidation.prev-margin-interest | The paid margin interest amount for the previous period
-| LS_prev_interest_stable    | Unsigned Int(128) | wasm-ls-liquidation.prev-loan-interest   | The paid loan interest amount for the previous period
-| LS_current_margin_stable   | Unsigned Int(128) | wasm-ls-liquidation.curr-margin-interest | The paid margin interest amount for the current period
-| LS_current_interest_stable | Unsigned Int(128) | wasm-ls-liquidation.curr-loan-interest   | The paid loan interest amount for the current period
-| LS_principal_stable        | Unsigned Int(128) | wasm-ls-liquidation.principal            | The paid principal
+| LS_prev_margin_stable      | Unsigned Int(128) | wasm-ls-liquidation.prev-margin-interest | The paid margin interest amount for the previous period, if 1 - always, if 2 - optional
+| LS_prev_interest_stable    | Unsigned Int(128) | wasm-ls-liquidation.prev-loan-interest   | The paid loan interest amount for the previous period, if 1 - always, if 2 - optional
+| LS_current_margin_stable   | Unsigned Int(128) | wasm-ls-liquidation.curr-margin-interest | The paid margin interest amount for the current period, if 1 - none, if 2 - optional
+| LS_current_interest_stable | Unsigned Int(128) | wasm-ls-liquidation.curr-loan-interest   | The paid loan interest amount for the current period, if 1 - none, if 2 - optional
+| LS_principal_stable        | Unsigned Int(128) | wasm-ls-liquidation.principal            | The paid principal, if 1 - none, if 2 - optional
 
 ### **LS_State** [Primary key = LS_contract_id + LS_timestamp] - include all unclaimed/not closed leases
 ETL generates a record for any lease instance that:

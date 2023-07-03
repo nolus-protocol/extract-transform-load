@@ -23,7 +23,7 @@ impl Table<LP_Pool_State> {
         "#,
         )
         .bind(&data.LP_Pool_id)
-        .bind(&data.LP_Pool_timestamp)
+        .bind(data.LP_Pool_timestamp)
         .bind(&data.LP_Pool_total_value_locked_stable)
         .bind(&data.LP_Pool_total_value_locked_asset)
         .bind(&data.LP_Pool_total_issued_receipts)
@@ -36,7 +36,7 @@ impl Table<LP_Pool_State> {
     }
 
     pub async fn insert_many(&self, data: &Vec<LP_Pool_State>) -> Result<(), Error> {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -57,7 +57,7 @@ impl Table<LP_Pool_State> {
 
         query_builder.push_values(data, |mut b, data| {
             b.push_bind(&data.LP_Pool_id)
-                .push_bind(&data.LP_Pool_timestamp)
+                .push_bind(data.LP_Pool_timestamp)
                 .push_bind(&data.LP_Pool_total_value_locked_stable)
                 .push_bind(&data.LP_Pool_total_value_locked_asset)
                 .push_bind(&data.LP_Pool_total_issued_receipts)

@@ -3,6 +3,7 @@ use std::time::Duration;
 use chrono::Utc;
 use futures::TryFutureExt;
 use tokio::time;
+use tracing::{error, Level};
 
 use etl::{
     configuration::{get_configuration, set_configuration, AppState, Config, State},
@@ -14,6 +15,36 @@ use etl::{
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let result = app_main().await;
+
+    if let Err(err) = &result {
+        error!("{err}");
+    }
+
+    result
+}
+
+async fn app_main() -> Result<(), Error> {
+    let subscriber = tracing_subscriber::fmt()
+        .compact()
+        .with_level(true)
+        .with_max_level({
+            #[cfg(debug_assertions)]
+            {
+                Level::DEBUG
+            }
+
+            #[cfg(not(debug_assertions))]
+            {
+                Level::INFO
+            }
+        })
+        .with_file(true)
+        .with_line_number(true)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)?;
+
     let (config, database) = match init().await {
         Ok((config, database)) => (config, database),
         Err(e) => return Err(Error::ConfigurationError(e.to_string())),
@@ -29,17 +60,14 @@ async fn main() -> Result<(), Error> {
     mp_assets::fetch_insert(app_state.clone()).await?;
     let mut event_manager = Event::new(app_state.clone());
 
-    let tasks = tokio::try_join!(
+    let (_, r, _) = tokio::try_join!(
         event_manager.run(),
         mp_assets::mp_assets_task(app_state.clone()).map_err(|e| e.into()),
         start_aggregation_tasks(app_state.clone())
-    );
+    )?;
 
-    if let Err(error) = tasks {
-        return Err(error);
-    }
 
-    Ok(())
+   r
 }
 
 async fn init<'c>() -> Result<(Config, DatabasePool), Error> {
@@ -71,10 +99,10 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
     let now = Utc::now();
     let ms_now = now.timestamp_millis();
 
-    let diff_in_sec = ((ms_now - dt_ms) / 1000).try_into().unwrap_or(0);
+    let diff_in_sec = (ms_now - dt_ms) / 1000;
     let diff_value: i64 = diff_in_sec;
 
-    let tmp_interval: u64 = if diff_value > 0 as i64 {
+    let tmp_interval: u64 = if diff_value > 0_i64 {
         (interval_value as i64 - diff_value).try_into().unwrap_or(0)
     } else {
         interval_value
@@ -91,9 +119,7 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
     tokio::spawn(async move {
         if tmp_interval == 0 {
             let result = aggregation_task(app_state.clone()).await?;
-            if let Err(error) = result {
-                return Err(error);
-            };
+            result?;
             init = true;
         }
         interval.tick().await;
@@ -101,9 +127,7 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
             interval.tick().await;
 
             let result = aggregation_task(app_state.clone()).await?;
-            if let Err(error) = result {
-                return Err(error);
-            };
+            result?;
 
             if !init {
                 init = true;
