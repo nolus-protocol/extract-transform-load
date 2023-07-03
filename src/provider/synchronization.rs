@@ -12,7 +12,6 @@ use tracing::{info, error};
 use std::process::exit;
 use std::sync::Arc;
 use std::{
-    io::{stdout, Write},
     sync::atomic::{AtomicBool, AtomicI64, Ordering},
 };
 use tokio::net::TcpStream;
@@ -197,9 +196,8 @@ impl Handler {
         parts: &mut Vec<(i64, i64)>,
         write: &mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
         counter: Arc<AtomicI64>,
-        total: i64,
+        _total: i64,
     ) -> Result<bool, Error> {
-        let mut stdout = stdout();
 
         for mut range in &mut *parts {
             let (start, end) = range;
@@ -208,11 +206,8 @@ impl Handler {
                 let id = self.get_id();
                 let event = self.app_state.config.block_results_event(i, id);
                 write.send(Message::Text(event)).await?;
-                let c = counter.load(Ordering::SeqCst);
                 counter.fetch_add(1, Ordering::SeqCst);
-                print!("\rBlocks synchronized: {}/{}", c + 1, total);
-                stdout.flush()?;
-
+      
                 range.0 += 1;
                 return Ok(true);
             }

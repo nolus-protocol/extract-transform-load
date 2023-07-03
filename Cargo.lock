@@ -352,7 +352,7 @@ dependencies = [
 name = "etl"
 version = "0.1.0"
 dependencies = [
- "base64 0.13.0",
+ "base64 0.21.2",
  "bigdecimal",
  "chrono",
  "cosmos-sdk-proto",

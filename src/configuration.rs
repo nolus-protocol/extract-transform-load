@@ -123,7 +123,7 @@ impl State {
                     .get_coingecko_info(coinGeckoId.to_owned())
                     .await?;
                 let item = MP_Asset_Mapping {
-                    MP_asset_symbol: symbol.to_lowercase(),
+                    MP_asset_symbol: symbol.to_owned(),
                     MP_asset_symbol_coingecko: data.id.to_owned(),
                 };
                 mp_asset_mapping.insert(item).await?;

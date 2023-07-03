@@ -14,7 +14,8 @@ use crate::{
 
 use crate::types::EventData;
 
-use base64::decode;
+use base64::Engine;
+use base64::engine::general_purpose;
 use chrono::Utc;
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
@@ -77,7 +78,7 @@ pub fn parse_wasm_ls_open(attributes: Vec<Attributes>) -> Result<LS_Opening_Type
             .to_string(),
         currency: ls_open
             .get("currency")
-            .ok_or(Error::FieldNotExist(String::from("currency")))?[1..]
+            .ok_or(Error::FieldNotExist(String::from("currency")))?
             .to_string(),
         air: ls_open
             .get("air")
@@ -98,7 +99,7 @@ pub fn parse_wasm_ls_open(attributes: Vec<Attributes>) -> Result<LS_Opening_Type
             .to_string(),
         downpayment_symbol: ls_open
             .get("downpayment-symbol")
-            .ok_or(Error::FieldNotExist(String::from("downpayment-symbol")))?[1..]
+            .ok_or(Error::FieldNotExist(String::from("downpayment-symbol")))?
             .to_string(),
     };
 
@@ -135,7 +136,7 @@ pub fn parse_wasm_ls_repayment(attributes: Vec<Attributes>) -> Result<LS_Repayme
             .to_string(),
         payment_symbol: ls_repayment
             .get("payment-symbol")
-            .ok_or(Error::FieldNotExist(String::from("height")))?[1..]
+            .ok_or(Error::FieldNotExist(String::from("height")))?
             .to_string(),
         payment_amount: ls_repayment
             .get("payment-amount")
@@ -190,7 +191,7 @@ pub fn parse_wasm_ls_liquidation(
             .to_string(),
         liquidation_symbol: ls_liquidation
             .get("liquidation-symbol")
-            .ok_or(Error::FieldNotExist(String::from("liquidation-symbol")))?[1..]
+            .ok_or(Error::FieldNotExist(String::from("liquidation-symbol")))?
             .to_string(),
         liquidation_amount: ls_liquidation
             .get("liquidation_amount")
@@ -255,7 +256,7 @@ pub fn parse_wasm_lp_deposit(attributes: Vec<Attributes>) -> Result<LP_Deposit_T
             .to_string(),
         deposit_symbol: deposit
             .get("deposit-symbol")
-            .ok_or(Error::FieldNotExist(String::from("deposit-symbol")))?[1..]
+            .ok_or(Error::FieldNotExist(String::from("deposit-symbol")))?
             .to_string(),
         receipts: deposit
             .get("receipts")
@@ -292,7 +293,7 @@ pub fn parse_wasm_lp_withdraw(attributes: Vec<Attributes>) -> Result<LP_Withdraw
             .to_string(),
         withdraw_symbol: lp_withdraw
             .get("withdraw-symbol")
-            .ok_or(Error::FieldNotExist(String::from("withdraw-symbol")))?[1..]
+            .ok_or(Error::FieldNotExist(String::from("withdraw-symbol")))?
             .to_string(),
         receipts: lp_withdraw
             .get("receipts")
@@ -321,7 +322,7 @@ pub fn parse_wasm_tr_profit(attributes: Vec<Attributes>) -> Result<TR_Profit_Typ
             .to_string(),
         profit_symbol: tr_profit
             .get("profit-symbol")
-            .ok_or(Error::FieldNotExist(String::from("profit-symbol")))?[1..]
+            .ok_or(Error::FieldNotExist(String::from("profit-symbol")))?
             .to_string(),
         profit_amount: tr_profit
             .get("profit-amount")
@@ -352,7 +353,7 @@ pub fn parse_wasm_tr_rewards_distribution(
             .to_string(),
         rewards_symbol: tr_rewards_distribution
             .get("rewards-symbol")
-            .ok_or(Error::FieldNotExist(String::from("rewards-symbol")))?[1..]
+            .ok_or(Error::FieldNotExist(String::from("rewards-symbol")))?
             .to_string(),
         rewards_amount: tr_rewards_distribution
             .get("rewards-amount")
@@ -367,9 +368,9 @@ fn pasrse_data(attributes: Vec<Attributes>) -> Result<HashMap<String, String>, E
     let mut data: HashMap<String, String> = HashMap::new();
 
     for attribute in attributes {
-        let key = decode(attribute.key)?;
+        let key = general_purpose::STANDARD.decode(attribute.key)?;
         let str_key = String::from_utf8_lossy(&key);
-        let value = decode(attribute.value)?;
+        let value = general_purpose::STANDARD.decode(attribute.value.unwrap_or(String::from("")))?;
         let str_value = String::from_utf8_lossy(&value);
         data.insert(str_key.to_string(), str_value.to_string());
     }

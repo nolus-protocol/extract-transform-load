@@ -27,5 +27,5 @@ pub struct EventData {
 #[derive(Debug, Deserialize)]
 pub struct Attributes {
     pub key: String,
-    pub value: String,
+    pub value: Option<String>
 }

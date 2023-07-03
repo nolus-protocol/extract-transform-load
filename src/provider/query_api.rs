@@ -3,7 +3,8 @@ use crate::{
     error::Error,
     types::{LP_Pool_State_Type, LS_State_Type, QueryBody, Balance, LPP_Price},
 };
-use base64::decode;
+use base64::engine::general_purpose;
+use base64::Engine;
 use cosmos_sdk_proto::{
     cosmos::{
         bank::v1beta1::{QueryAllBalancesRequest, QueryAllBalancesResponse},
@@ -43,7 +44,6 @@ impl QueryApi {
     ) -> Result<Option<LP_Pool_State_Type>, Error> {
         let bytes = b"{\"lpp_balance\": []}";
         let res = self.query_state(bytes, contract).await?;
-
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));
@@ -154,7 +154,7 @@ impl QueryApi {
     }
 
     fn decode_state(&self, state: &str) -> Result<String, Error> {
-        let data = decode(state)?;
+        let data = general_purpose::STANDARD.decode(state)?;
         let response = QuerySmartContractStateResponse::decode(data.as_ref())?;
         let c = String::from_utf8_lossy(&response.data);
         Ok(c.to_string())
@@ -172,7 +172,7 @@ impl QueryApi {
     }
 
     fn decode_balances(&self, state: &str) -> Result<QueryAllBalancesResponse, Error> {
-        let data = decode(state)?;
+        let data = general_purpose::STANDARD.decode(state)?;
         let response = QueryAllBalancesResponse::decode(data.as_ref())?;
         Ok(response)
     }

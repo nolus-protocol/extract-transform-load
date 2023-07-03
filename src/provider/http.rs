@@ -1,5 +1,4 @@
 use reqwest::get;
-use tracing::info;
 
 use crate::{
     configuration::Config,
@@ -19,9 +18,7 @@ impl HTTP {
 
     pub async fn get_coingecko_info(&self, coinGeckoId: String) -> Result<CoinGeckoInfo, Error> {
         let url = self.config.get_coingecko_info_url(coinGeckoId);
-        info!("{}", &url);
         let json = get(url).await?.json::<CoinGeckoInfo>().await?;
-        dbg!("{}", &json);
         Ok(json)
     }
 
