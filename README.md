@@ -35,7 +35,7 @@ Type=simple
 Restart=always
 User=root
 RestartSec=10
-ExecStart=/home/alexanderm/Projects/rust/etl/target/release/etl
+ExecStart=/etl/target/release/etl
 
 [Install]
 WantedBy=multi-user.target
