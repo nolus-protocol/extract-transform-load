@@ -320,11 +320,11 @@ pub fn parse_wasm_tr_profit(attributes: Vec<Attributes>) -> Result<TR_Profit_Typ
             .ok_or(Error::FieldNotExist(String::from("at")))?
             .to_string(),
         profit_symbol: tr_profit
-            .get("profit-symbol")
+            .get("profit-amount-symbol")
             .ok_or(Error::FieldNotExist(String::from("profit-symbol")))?
             .to_string(),
         profit_amount: tr_profit
-            .get("profit-amount")
+            .get("profit-amount-amount")
             .ok_or(Error::FieldNotExist(String::from("profit-amount")))?
             .to_string(),
     };

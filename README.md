@@ -29,6 +29,15 @@ TREASURY_CONTRACT=nolus14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0k0p
 PATH: /lib/systemd/system/etl.service
 sudo systemctl enable etl
 
+### BUILD
+
+```
+cargo 1.66.0 or higher
+
+cargo build --release
+```
+
+
 ### DAEMON
 
 ```
