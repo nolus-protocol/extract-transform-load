@@ -23,6 +23,7 @@ mod balance;
 mod lpp_price;
 mod amount;
 mod amount_ticker;
+mod block;
 
 pub use abci_response::AbciBody;
 pub use block_response::{BlockBody, EventData, Attributes};
@@ -49,3 +50,4 @@ pub use balance::Balance;
 pub use lpp_price::LPP_Price;
 pub use amount::Amount;
 pub use amount_ticker::AmountTicker;
+pub use block::BlockValue;

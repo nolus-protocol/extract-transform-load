@@ -19,6 +19,7 @@ impl<T> AppState<T> {
     pub fn new(state: T) -> AppState<T> {
         AppState(Arc::new(state))
     }
+
 }
 
 impl<T> Clone for AppState<T> {

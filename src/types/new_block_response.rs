@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use super::EventData;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct NewBlockBody {
@@ -23,7 +23,7 @@ pub struct NewBlockData {
 #[derive(Debug, Deserialize)]
 pub struct Block {
     pub block: Header,
-    pub result_begin_block: ResultBeginBlock
+    pub result_begin_block: ResultBeginBlock,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,5 +38,5 @@ pub struct NewBlockHeaderData {
 
 #[derive(Debug, Deserialize)]
 pub struct ResultBeginBlock {
-    pub events: Option<Vec<EventData>>
+    pub events: Option<Vec<EventData>>,
 }

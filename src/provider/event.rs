@@ -1,17 +1,16 @@
 use super::synchronization::start_sync;
+use crate::configuration::{AppState, State};
 use crate::error::Error;
-use crate::helpers::parse_event;
-use crate::model::Block;
-use crate::types::{NewBlockBody, NewBlockData};
-use crate::{
-    configuration::{AppState, State},
-    helpers::MessageType,
-};
+use crate::helpers;
+use crate::types::BlockValue;
+use futures::stream::SplitSink;
 use futures::{SinkExt, StreamExt};
+use tokio::net::TcpStream;
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{error::Error as WS_ERROR, Message},
 };
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tracing::{error, info};
 use url::Url;
 
@@ -51,7 +50,7 @@ impl Event {
         write.send(Message::Text(new_block_event)).await?;
 
         loop {
-            self.parse_message(read.next().await).await?;
+            self.parse_message(read.next().await, &mut write).await?;
         }
     }
 
@@ -61,14 +60,18 @@ impl Event {
         id
     }
 
-    async fn parse_message(&self, message: Option<Result<Message, WS_ERROR>>) -> Result<(), Error> {
+    async fn parse_message(
+        &self,
+        message: Option<Result<Message, WS_ERROR>>,
+        write: &mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    ) -> Result<(), Error> {
         if let Some(message) = message {
             let message = message;
             match message {
                 Ok(msg_obj) => {
                     match msg_obj {
                         Message::Text(msg_obj) => {
-                            self.to_json(msg_obj).await?;
+                            self.to_json(msg_obj, write).await?;
                         }
                         Message::Binary(_)
                         | Message::Ping(_)
@@ -83,41 +86,28 @@ impl Event {
         Ok(())
     }
 
-    async fn to_json(&self, message: String) -> Result<(), Error> {
-        let item = serde_json::from_str::<NewBlockBody>(&message)?;
+    async fn to_json(
+        &self,
+        message: String,
+        write: &mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    ) -> Result<(), Error> {
+        let item = serde_json::from_str::<BlockValue>(&message)?;
 
-        if let Some(block) = item.result.data {
-            self.check_message(block).await?;
-        }
-
-        Ok(())
-    }
-
-    async fn check_message(&self, data: NewBlockData) -> Result<(), Error> {
-        let msg_type = data.r#type.parse::<MessageType>()?;
-        match msg_type {
-            MessageType::NewEvent => self.insert_block(data).await?,
-        }
-        Ok(())
-    }
-
-    async fn insert_block(&self, data: NewBlockData) -> Result<(), Error> {
-        let mut tx = self.app_state.database.pool.begin().await?;
-
-        if let Some(events) = data.value.result_begin_block.events {
-            for event in events {
-                parse_event(self.app_state.clone(), event, &mut tx).await?;
+        match item {
+            BlockValue::Block(block) => {
+                helpers::insert_block(self.app_state.clone(), block).await?;
+            }
+            BlockValue::NewBlock(block) => {
+                if let Some(item) = block.result.data {
+                    let height = item.value.block.header.height;
+                    let event = self
+                        .app_state
+                        .config
+                        .block_results_event(height.parse()?, 0);
+                    write.send(Message::Text(event)).await?;
+                }
             }
         }
-
-        let height = data.value.block.header.height.parse::<i64>()?;
-        self.app_state
-            .database
-            .block
-            .insert(Block { id: height }, &mut tx)
-            .await?;
-
-        tx.commit().await?;
 
         Ok(())
     }

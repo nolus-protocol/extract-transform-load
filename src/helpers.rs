@@ -4,6 +4,7 @@ use crate::handler::{
     wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close, wasm_ls_liquidation, wasm_ls_open,
     wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards,
 };
+use crate::model::Block;
 use crate::{
     error::Error,
     types::{
@@ -12,10 +13,10 @@ use crate::{
     },
 };
 
-use crate::types::EventData;
+use crate::types::{EventData, BlockBody};
 
-use base64::Engine;
 use base64::engine::general_purpose;
+use base64::Engine;
 use chrono::Utc;
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
@@ -66,7 +67,7 @@ pub fn parse_tuple_string(data: String) -> Vec<String> {
 
 pub fn parse_wasm_ls_open(attributes: Vec<Attributes>) -> Result<LS_Opening_Type, Error> {
     let ls_open = pasrse_data(attributes)?;
-    
+
     let c = LS_Opening_Type {
         id: ls_open
             .get("id")
@@ -369,7 +370,8 @@ fn pasrse_data(attributes: Vec<Attributes>) -> Result<HashMap<String, String>, E
     for attribute in attributes {
         let key = general_purpose::STANDARD.decode(attribute.key)?;
         let str_key = String::from_utf8_lossy(&key);
-        let value = general_purpose::STANDARD.decode(attribute.value.unwrap_or(String::from("")))?;
+        let value =
+            general_purpose::STANDARD.decode(attribute.value.unwrap_or(String::from("")))?;
         let str_value = String::from_utf8_lossy(&value);
         data.insert(str_key.to_string(), str_value.to_string());
     }
@@ -421,6 +423,35 @@ pub async fn parse_event(
         }
     }
     Ok(())
+}
+
+pub async fn insert_block(app_state: AppState<State>, data: BlockBody) -> Result<bool, Error> {
+    let height = data.result.height.parse::<i64>()?;
+    let block = app_state.database.block.get_one(height).await?;
+
+    if block.is_none() {
+        let mut tx = app_state.database.pool.begin().await?;
+
+        if let Some(items) = data.result.txs_results {
+            for tx_results in items {
+                if let Some(events) = tx_results.events {
+                    for event in events {
+                        parse_event(app_state.clone(), event, &mut tx).await?;
+                    }
+                }
+            }
+        }
+
+        app_state
+            .database
+            .block
+            .insert(Block { id: height }, &mut tx)
+            .await?;
+
+        tx.commit().await?;
+    }
+
+    Ok(true)
 }
 
 #[derive(Debug)]

@@ -1,7 +1,6 @@
 use crate::configuration::{AppState, State};
 use crate::error::Error;
-use crate::helpers::parse_event;
-use crate::model::Block;
+use crate::helpers;
 use crate::types::BlockBody;
 
 use futures::{
@@ -11,9 +10,7 @@ use futures::{
 use tracing::{info, error};
 use std::process::exit;
 use std::sync::Arc;
-use std::{
-    sync::atomic::{AtomicBool, AtomicI64, Ordering},
-};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
@@ -243,36 +240,7 @@ impl Handler {
 
     async fn to_json(&self, message: String) -> Result<bool, Error> {
         let item = serde_json::from_str::<BlockBody>(&message)?;
-        self.insert_block(item).await
-    }
-
-    async fn insert_block(&self, data: BlockBody) -> Result<bool, Error> {
-        let height = data.result.height.parse::<i64>()?;
-        let block = self.app_state.database.block.get_one(height).await?;
-
-        if block.is_none() {
-            let mut tx = self.app_state.database.pool.begin().await?;
-
-            if let Some(items) = data.result.txs_results {
-                for tx_results in items {
-                    if let Some(events) = tx_results.events {
-                        for event in events {
-                            parse_event(self.app_state.clone(), event, &mut tx).await?;
-                        }
-                    }
-                }
-            }
-
-            self.app_state
-                .database
-                .block
-                .insert(Block { id: height }, &mut tx)
-                .await?;
-
-            tx.commit().await?;
-        }
-
-        Ok(true)
+        helpers::insert_block(self.app_state.clone(), item).await
     }
 
     fn get_id(&mut self) -> u64 {
