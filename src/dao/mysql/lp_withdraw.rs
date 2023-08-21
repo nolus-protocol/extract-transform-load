@@ -33,7 +33,7 @@ impl Table<LP_Withdraw> {
         .bind(&data.LP_amnt_asset)
         .bind(&data.LP_amnt_receipts)
         .bind(data.LP_deposit_close)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
     pub async fn insert_many(
@@ -71,7 +71,7 @@ impl Table<LP_Withdraw> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
+        query.execute(&mut **transaction).await?;
         Ok(())
     }
 

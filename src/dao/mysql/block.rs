@@ -15,7 +15,7 @@ impl Table<Block> {
             "#,
         )
         .bind(block.id)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
     pub async fn get_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {

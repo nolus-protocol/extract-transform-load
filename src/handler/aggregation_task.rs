@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use std::vec;
 use tokio::task::JoinHandle;
 
@@ -25,9 +25,9 @@ pub fn aggregation_task(app_state: AppState<State>) -> JoinHandle<Result<(), Err
         let last_action_timestamp = match action {
             Ok(action) => match action {
                 Some(item) => item.created_at,
-                None => DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
+                None => Utc::now(),
             },
-            Err(_) => DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
+            Err(_) => Utc::now(),
         };
 
         let prev_action = app_state
@@ -42,9 +42,9 @@ pub fn aggregation_task(app_state: AppState<State>) -> JoinHandle<Result<(), Err
         let prev_action_timestamp = match prev_action {
             Ok(action) => match action {
                 Some(item) => item.created_at,
-                None => DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
+                None => Utc::now(),
             },
-            Err(_) => DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
+            Err(_) => Utc::now(),
         };
 
         insert_action(&app_state.database.action_history, timestsamp).await?;

@@ -44,7 +44,12 @@ async fn parse_and_insert(
     let to = timestsamp.timestamp_millis() / 1000;
     let interval: i64 = app_state.config.aggregation_interval.into();
     let from = to - interval * 60 * 60;
-    let from_date = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(from, 0), Utc);
+
+    let time = NaiveDateTime::from_timestamp_opt(from, 0).ok_or_else(|| Error::DecodeDateTimeError(format!(
+        "MP_ASSETS_STATE date parse {}",
+        from
+    )))?;
+    let from_date = DateTime::<Utc>::from_utc(time, Utc);
 
     let market_data = app_state
         .http

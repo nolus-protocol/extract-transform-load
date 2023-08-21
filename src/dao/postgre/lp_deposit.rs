@@ -31,7 +31,7 @@ impl Table<LP_Deposit> {
         .bind(&data.LP_amnt_stable)
         .bind(&data.LP_amnt_asset)
         .bind(&data.LP_amnt_receipts)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
@@ -69,7 +69,7 @@ impl Table<LP_Deposit> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
+        query.execute(&mut **transaction).await?;
         
         Ok(())
     }

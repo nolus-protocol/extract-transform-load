@@ -25,7 +25,7 @@ impl Table<TR_Profit> {
         .bind(data.TR_Profit_timestamp)
         .bind(&data.TR_Profit_amnt_stable)
         .bind(&data.TR_Profit_amnt_nls)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
@@ -56,7 +56,7 @@ impl Table<TR_Profit> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
+        query.execute(&mut **transaction).await?;
         Ok(())
     }
 

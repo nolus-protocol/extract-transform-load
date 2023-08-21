@@ -26,7 +26,11 @@ pub async fn parse_and_insert(
     let air: i16 = item.air.parse()?;
 
     let at_sec: i64 = item.at.parse()?;
-    let at = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(at_sec, 0), Utc);
+    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| Error::DecodeDateTimeError(format!(
+        "Wasm_LS_Open date parse {}",
+        at_sec
+    )))?;
+    let at = DateTime::<Utc>::from_utc(time, Utc);
 
     let (l_price,) = loan_price;
     let (d_price,) = downpayment_price;

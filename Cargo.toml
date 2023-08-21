@@ -1,18 +1,25 @@
 [package]
 name = "etl"
-version = "1.0.1"
+version = "1.1.0"
 edition = "2021"
 
+[profile.dev]
+debug = 0
+
 [profile.release]
-opt-level = 3
+overflow-checks = true
+lto = "fat"
 
 [dependencies]
+actix-web = { version = "4.3"}
+actix-cors = "0.6"
+
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.2", features = ["full"] }
-tokio-tungstenite =  { version = "0.19", features = ["rustls-tls-native-roots"] }
+tokio = { version = "1.32", features = ["full"] }
+tokio-tungstenite =  { version = "0.20", features = ["rustls-tls-native-roots"] }
 futures = "0.3"
-sqlx = { version = "0.6", features = ["runtime-tokio-rustls","mysql", "postgres", "chrono", "bigdecimal"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls","mysql", "postgres", "chrono", "bigdecimal"] }
 chrono = { version = "0.4", features=["serde"] }
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 url = "2.4"

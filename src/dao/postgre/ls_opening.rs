@@ -43,7 +43,7 @@ impl Table<LS_Opening> {
         .bind(&data.LS_cltr_amnt_asset)
         .bind(&data.LS_native_amnt_stable)
         .bind(&data.LS_native_amnt_nolus)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
@@ -92,7 +92,7 @@ impl Table<LS_Opening> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
+        query.execute(&mut **transaction).await?;
         Ok(())
     }
 

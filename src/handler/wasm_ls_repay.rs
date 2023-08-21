@@ -5,9 +5,10 @@ use std::str::FromStr;
 
 use crate::{
     configuration::{AppState, State},
+    dao::DataBase,
     error::Error,
     model::LS_Repayment,
-    types::LS_Repayment_Type, dao::DataBase,
+    types::LS_Repayment_Type,
 };
 
 pub async fn parse_and_insert(
@@ -17,7 +18,10 @@ pub async fn parse_and_insert(
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
-    let at = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(at_sec, 0), Utc);
+    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| {
+        Error::DecodeDateTimeError(format!("Wasm_LP_repay date parse {}", at_sec))
+    })?;
+    let at = DateTime::<Utc>::from_utc(time, Utc);
 
     let ls_repay = LS_Repayment {
         LS_repayment_height: item.height.parse()?,

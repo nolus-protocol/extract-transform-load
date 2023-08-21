@@ -15,7 +15,7 @@ impl Table<Block> {
             "#,
         )
         .bind(block.id)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
