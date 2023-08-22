@@ -1,5 +1,5 @@
 use super::{DataBase, QueryResult};
-use crate::model::{LP_Pool_State, Table};
+use crate::model::{LP_Pool_State, Supplied_Borrowed_Series, Table, Utilization_Level};
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
 use std::str::FromStr;
@@ -94,5 +94,48 @@ impl Table<LP_Pool_State> {
         let yield_amount = yield_amount.unwrap_or(BigDecimal::from_str("0")?);
 
         Ok((locked, borrowed, yield_amount))
+    }
+
+    pub async fn get_supplied_borrowed_series(
+        &self,
+    ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
+        let data = sqlx::query_as(
+            r#"
+                SELECT `LP_Pool_timestamp`, `LP_Pool_total_value_locked_stable` / 1000000 AS `Supplied`, `LP_Pool_total_borrowed_stable` / 1000000 AS `Borrowed` FROM `LP_Pool_State` ORDER BY `LP_Pool_timestamp` 
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_utilization_level(
+        &self,
+        skip: i64,
+        limit: i64,
+    ) -> Result<Vec<Utilization_Level>, Error> {
+        let data = sqlx::query_as(
+            r#"
+                SELECT (`LP_Pool_total_borrowed_stable` / `LP_Pool_total_value_locked_stable`)*100 as `Utilization_Level` FROM `LP_Pool_State` ORDER BY `LP_Pool_timestamp` DESC LIMIT ? OFFSET ?
+            "#,
+        )
+        .bind(limit)
+        .bind(skip)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_borrowed(&self) -> Result<BigDecimal, crate::error::Error> {
+        let value: Option<(BigDecimal,)>   = sqlx::query_as(
+            r#"
+                SELECT `LP_Pool_total_borrowed_stable` / 1000000 AS `Borrowed` FROM `LP_Pool_State` ORDER BY `LP_Pool_timestamp` DESC LIMIT 1
+            "#,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
+
+        Ok(amnt.0)
     }
 }

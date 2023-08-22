@@ -1,7 +1,15 @@
 use actix_cors::Cors;
-use actix_web::{dev::Server, HttpServer, http::header, web, App, middleware};
+use actix_files::Files;
+use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
 
-use crate::{configuration::{AppState, State}, error::Error, controller::test_message};
+use crate::{
+    configuration::{AppState, State},
+    controller::{
+        borrow_apr, buyback, deposit_suspension, optimal, supplied_borrowed_series,
+        total_value_locked, utilization_level, yield_value, distributed, leased_assets, borrowed, revenue,
+    },
+    error::Error,
+};
 
 pub async fn server_task(app_state: &AppState<State>) -> Result<(), Error> {
     let app = app_state.clone();
@@ -9,7 +17,8 @@ pub async fn server_task(app_state: &AppState<State>) -> Result<(), Error> {
         let server = init_server(app)?;
         server.await?;
         Ok(())
-    }).await?
+    })
+    .await?
 }
 
 fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
@@ -18,6 +27,8 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
 
     let server = HttpServer::new(move || {
         let app = app_state.clone();
+        let static_dir = app_state.config.static_dir.to_string();
+
         let cors = Cors::default()
             .allowed_origin_fn(move |origin, _| {
                 let allowed = &app.config.allowed_origins;
@@ -33,13 +44,24 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
         App::new()
             .wrap(cors)
             .wrap(middleware::Compress::default())
-
             .app_data(web::Data::new(app_state.clone()))
             .app_data(web::JsonConfig::default().limit(4096))
             .service(
                 web::scope("/api")
-                    .service(test_message::index),
+                    .service(total_value_locked::index)
+                    .service(yield_value::index)
+                    .service(borrow_apr::index)
+                    .service(supplied_borrowed_series::index)
+                    .service(utilization_level::index)
+                    .service(optimal::index)
+                    .service(deposit_suspension::index)
+                    .service(buyback::index)
+                    .service(distributed::index)
+                    .service(leased_assets::index)
+                    .service(borrowed::index)
+                    .service(revenue::index),
             )
+            .service(Files::new("/", static_dir).index_file("index.html"))
     })
     .bind((host, port))?
     .disable_signals()

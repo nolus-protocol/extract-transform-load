@@ -217,6 +217,7 @@ pub struct Config {
     pub server_host: String,
     pub port: u16,
     pub allowed_origins: Vec<String>,
+    pub static_dir: String,
 }
 
 impl Config {
@@ -306,6 +307,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         .split(',')
         .map(|item| item.to_string())
         .collect::<Vec<String>>();
+    let static_dir = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), env::var("STATIC_DIRECTORY")?);
 
     let mut hash_map_currencies: HashMap<String, Currency> = HashMap::new();
     let mut hash_map_pool_currency: HashMap<String, Currency> = HashMap::new();
@@ -346,6 +348,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         server_host,
         port,
         allowed_origins,
+        static_dir
     };
 
     Ok(config)

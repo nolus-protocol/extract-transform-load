@@ -1,5 +1,5 @@
 use super::{DataBase, QueryResult};
-use crate::model::{LS_Opening, Table};
+use crate::model::{LS_Opening, Table, Borrow_APR, Leased_Asset};
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
@@ -212,5 +212,29 @@ impl Table<LS_Opening> {
         let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
 
         Ok(amnt)
+    }
+
+    pub async fn get_borrow_apr(&self, skip: i64, limit: i64) -> Result<Vec<Borrow_APR>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT `LS_interest` / 10.0 AS `APR` FROM `LS_Opening` ORDER BY `LS_timestamp` DESC LIMIT ? OFFSET ?
+            "#,
+        )
+        .bind(limit)
+        .bind(skip)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_leased_assets(&self) -> Result<Vec<Leased_Asset>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT `LS_asset_symbol` AS `Asset`, SUM(`LS_loan_amnt_asset` / 1000000) AS `Loan` FROM `LS_Opening` GROUP BY `Asset`
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
     }
 }

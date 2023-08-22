@@ -66,7 +66,7 @@ impl Table<Block> {
     ) -> Result<Option<Block>, Error> {
         sqlx::query_as(
             r#"
-             SELECT * FROM "block" WHERE id = ?
+             SELECT * FROM `block` WHERE id = ?
             "#,
         )
         .bind(id)

@@ -1,5 +1,5 @@
 use super::{DataBase, QueryResult};
-use crate::model::{TR_Profit, Table};
+use crate::model::{TR_Profit, Table, Buyback};
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
@@ -82,5 +82,34 @@ impl Table<TR_Profit> {
         let amnt_nolus = amnt_nolus.unwrap_or(BigDecimal::from_str("0")?);
 
         Ok((amnt, amnt_nolus))
+    }
+
+    pub async fn get_buyback(&self, skip: i64, limit: i64) -> Result<Vec<Buyback>, Error> { 
+        let data = sqlx::query_as(
+            r#"
+                SELECT `TR_Profit_timestamp` AS time, (SUM(`TR_Profit_amnt_nls` / 1000000) OVER ( Order By `TR_Profit_timestamp`)) AS `Bought-back` FROM `TR_Profit` LIMIT ? OFFSET ? 
+            "#,
+        )
+        .bind(limit)
+        .bind(skip)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_revenue(&self) -> Result<BigDecimal, crate::error::Error> {
+        let value: (Option<BigDecimal>,) = sqlx::query_as(
+            r#"
+                SELECT SUM(`TR_Profit_amnt_stable`) / 1000000 AS `Distributed` FROM `TR_Profit`
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let (amnt,) = value;
+        let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
+
+        Ok(amnt)
+
     }
 }
