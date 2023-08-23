@@ -1,1 +1,223 @@
-xaxaxa
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+          content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Nolus Stats</title>
+    <link rel="icon"
+          href="/favicon.svg" />
+    <script>
+        const host = window.location.origin;
+        document.addEventListener('DOMContentLoaded', () => {
+            const queries = document.getElementById('queries');
+            fetch(`${host}/endoints.json`).then(async (data) => {
+                const endpoints = await data.json();
+                parseView(queries, endpoints);
+            }).catch((error) => console.log(error));
+        });
+
+        function queryItem(item, query) {
+            fetch(`${host}${item.url}`).then(async (data) => {
+                const result = await data.json();
+                const element = document.createElement('div');
+                const child = query.querySelector('#result');
+
+                if (child) {
+                    query.removeChild(child);
+                }
+
+                element.classList.add("result");
+                element.innerHTML = JSON.stringify(result, null, "\t");
+                element.id = "result";
+                query.appendChild(element);
+
+            }).catch((error) => console.log(error));
+        }
+
+        function parseView(query, endpoints) {
+            for (const item of endpoints) {
+                const query = document.createElement('div');
+                query.classList.add('query');
+
+                const type = document.createElement('div');
+                const href = document.createElement('a');
+                const description = document.createElement('p');
+                const querySpan = document.createElement('span');
+
+                querySpan.innerText = 'query';
+                type.classList.add('type');
+                type.onclick = function () { queryItem(item, query) };
+                type.innerText = item.type;
+                type.appendChild(querySpan);
+
+                href.target = '_blank';
+                href.href = `${host}${item.url}`;
+                href.innerText = item.url
+
+                description.innerText = item.description;
+
+                query.appendChild(type);
+                query.appendChild(href);
+                query.appendChild(description);
+
+                if (item.params) {
+                    let url = '?';
+                    const h4 = document.createElement('h4');
+                    h4.innerText = 'Params';
+                    query.appendChild(h4);
+
+                    for (const param of item.params) {
+                        const paramElement = document.createElement('div');
+
+                        const name = document.createElement('span');
+                        name.classList.add('name');
+                        name.innerText = `${param.name}:`;
+
+                        const typeParam = document.createElement('span');
+                        typeParam.classList.add('param');
+                        typeParam.innerText = `${param.type}`;
+
+                        const defaultParam = document.createElement('span');
+                        defaultParam.classList.add('default');
+                        defaultParam.innerText = `Default: ${param.default}`;
+
+                        if (param.max) {
+                            defaultParam.innerText += ` Max: ${param.max}`;
+                        }
+
+                        paramElement.classList.add('param');
+                        paramElement.appendChild(name);
+                        paramElement.appendChild(typeParam);
+                        paramElement.appendChild(defaultParam);
+
+                        query.appendChild(paramElement);
+
+                        url += `${param.name}=${param.default}&`;
+                    }
+                    href.href += url;
+                }
+
+                queries.appendChild(query);
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 200;
+            margin-left: 6px;
+        }
+
+        div#queries {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        div.query {
+            display: flex;
+            align-items: center;
+            justify-content: revert;
+            background: rgb(97 175 254 / 22%);
+            width: 100%;
+            max-width: 880px;
+            padding: 5px;
+            border-radius: 8px;
+            border: solid 1px rgb(97 175 254);
+            flex-wrap: wrap;
+            margin: 8px 4px 0 4px;
+            flex-basis: 100%;
+            overflow: hidden;
+        }
+
+        div.query div.type {
+            background: #61affe;
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            font-size: 18;
+            font-weight: 600;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        div.query div.type span {
+            display: block;
+            font-size: 10px;
+            font-weight: 200;
+            text-align: center;
+        }
+
+        div.query a {
+            margin: 0 12px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: black;
+
+        }
+
+        div.query p {
+            font-size: 14px;
+        }
+
+        div.query div.result {
+            flex-basis: 100%;
+            white-space: pre;
+            margin-top: 8px;
+            padding: 12px;
+            background: rgb(0 0 0 / 82%);
+            color: #08e408;
+            border-radius: 8px;
+            font-size: 13px;
+            overflow: scroll;
+        }
+
+        div.query h4 {
+            margin: 12px 0;
+            font-size: 18px;
+            font-weight: 200;
+            flex-basis: 100%;
+        }
+
+        div.query div.param {
+            flex-basis: 100%;
+        }
+
+        div.query div.param span.name {
+            font-size: 14px;
+            margin-right: 6px;
+            font-weight: 600;
+        }
+
+        div.query div.param span.param {
+            font-size: 15px;
+            font-weight: 400;
+        }
+
+        div.query div.param span.default {
+            font-size: 14px;
+            font-weight: 200;
+            margin-left: 6px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>HTTP API Console</h1>
+
+    <div id="queries">
+
+    </div>
+
+</body>
+
+</html>

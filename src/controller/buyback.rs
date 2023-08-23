@@ -4,7 +4,7 @@ use crate::{
     model::Buyback,
 };
 use actix_web::{get, web, Responder, Result};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[get("/buyback")]
 async fn index(
@@ -12,14 +12,14 @@ async fn index(
     data: web::Query<Query>,
 ) -> Result<impl Responder, Error> {
     let skip = data.skip.unwrap_or(0);
-    let limit = data.limit.unwrap_or(32);
-    let data = state.database.tr_profit.get_buyback(skip, limit).await?;
-    Ok(web::Json(Response { result: data }))
-}
+    let mut limit = data.limit.unwrap_or(32);
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Response {
-    pub result: Vec<Buyback>,
+    if limit > 100 {
+        limit = 100;
+    }
+
+    let data: Vec<Buyback> = state.database.tr_profit.get_buyback(skip, limit).await?;
+    Ok(web::Json(data))
 }
 
 #[derive(Debug, Deserialize)]

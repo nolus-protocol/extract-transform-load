@@ -1,9 +1,10 @@
 use crate::{
     configuration::{AppState, State},
-    error::Error, model::Borrow_APR,
+    error::Error,
 };
 use actix_web::{get, web, Responder, Result};
-use serde::{Deserialize, Serialize};
+use bigdecimal::BigDecimal;
+use serde::Deserialize;
 
 #[get("/borrow-apr")]
 async fn index(
@@ -11,14 +12,19 @@ async fn index(
     data: web::Query<Query>,
 ) -> Result<impl Responder, Error> {
     let skip = data.skip.unwrap_or(0);
-    let limit = data.limit.unwrap_or(32);
-    let data = state.database.ls_opening.get_borrow_apr(skip, limit).await?;
-    Ok(web::Json(Response { result: data }))
-}
+    let mut limit = data.limit.unwrap_or(32);
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Response {
-    pub result: Vec<Borrow_APR>,
+    if limit > 100 {
+        limit = 100;
+    }
+
+    let data = state
+        .database
+        .ls_opening
+        .get_borrow_apr(skip, limit)
+        .await?;
+    let items: Vec<BigDecimal> = data.iter().map(|item| item.APR.to_owned()).collect();
+    Ok(web::Json(items))
 }
 
 #[derive(Debug, Deserialize)]
