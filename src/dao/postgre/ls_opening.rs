@@ -1,5 +1,5 @@
 use super::{DataBase, QueryResult};
-use crate::model::{LS_Opening, Table};
+use crate::model::{Borrow_APR, LS_Opening, Table, Leased_Asset};
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
@@ -43,7 +43,7 @@ impl Table<LS_Opening> {
         .bind(&data.LS_cltr_amnt_asset)
         .bind(&data.LS_native_amnt_stable)
         .bind(&data.LS_native_amnt_nolus)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
@@ -92,7 +92,7 @@ impl Table<LS_Opening> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
+        query.execute(&mut **transaction).await?;
         Ok(())
     }
 
@@ -211,5 +211,29 @@ impl Table<LS_Opening> {
         let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
 
         Ok(amnt)
+    }
+
+    pub async fn get_borrow_apr(&self, skip: i64, limit: i64) -> Result<Vec<Borrow_APR>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT "LS_interest" / 10.0 AS "APR" FROM "LS_Opening" ORDER BY "LS_timestamp" DESC OFFSET $1 LIMIT $2
+            "#,
+        )
+        .bind(skip)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_leased_assets(&self) -> Result<Vec<Leased_Asset>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT "LS_asset_symbol" AS "Asset", SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening" GROUP BY "Asset"
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
     }
 }

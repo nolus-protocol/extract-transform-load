@@ -196,7 +196,7 @@ impl Handler {
         _total: i64,
     ) -> Result<bool, Error> {
 
-        for mut range in &mut *parts {
+        for range in &mut *parts {
             let (start, end) = range;
             let mut r = *start..*end;
             if let Some(i) = r.next() {

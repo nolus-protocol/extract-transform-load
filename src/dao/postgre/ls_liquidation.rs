@@ -37,7 +37,7 @@ impl Table<LS_Liquidation> {
         .bind(&data.LS_current_margin_stable)
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
@@ -82,7 +82,7 @@ impl Table<LS_Liquidation> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
+        query.execute(&mut **transaction).await?;
         Ok(())
     }
 }

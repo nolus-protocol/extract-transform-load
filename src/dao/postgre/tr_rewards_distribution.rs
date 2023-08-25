@@ -27,7 +27,7 @@ impl Table<TR_Rewards_Distribution> {
         .bind(data.TR_Rewards_timestamp)
         .bind(&data.TR_Rewards_amnt_stable)
         .bind(&data.TR_Rewards_amnt_nls)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
@@ -60,7 +60,7 @@ impl Table<TR_Rewards_Distribution> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
+        query.execute(&mut **transaction).await?;
         Ok(())
     }
 
@@ -102,6 +102,21 @@ impl Table<TR_Rewards_Distribution> {
         .bind(to)
         .fetch_one(&self.pool)
         .await?;
+        let (amnt,) = value;
+        let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
+
+        Ok(amnt)
+    }
+
+    pub async fn get_distributed(&self) -> Result<BigDecimal, crate::error::Error> {
+        let value: (Option<BigDecimal>,)  = sqlx::query_as(
+            r#"
+                SELECT SUM("TR_Rewards_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Rewards_Distribution"
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
         let (amnt,) = value;
         let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
 

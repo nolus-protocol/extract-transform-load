@@ -31,7 +31,7 @@ impl Table<LP_Deposit> {
         .bind(&data.LP_amnt_stable)
         .bind(&data.LP_amnt_asset)
         .bind(&data.LP_amnt_receipts)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
@@ -40,7 +40,6 @@ impl Table<LP_Deposit> {
         data: &Vec<LP_Deposit>,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-
         if data.is_empty() {
             return Ok(());
         }
@@ -69,8 +68,8 @@ impl Table<LP_Deposit> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
-        
+        query.execute(&mut **transaction).await?;
+
         Ok(())
     }
 
@@ -109,6 +108,21 @@ impl Table<LP_Deposit> {
         .bind(to)
         .fetch_one(&self.pool)
         .await?;
+        let (amnt,) = value;
+        let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
+
+        Ok(amnt)
+    }
+
+    pub async fn get_yield(&self) -> Result<BigDecimal, crate::error::Error> {
+        let value: (Option<BigDecimal>,)   = sqlx::query_as(
+            r#"
+                SELECT ((("Price Per Receipt" - 1) / "Days Difference") * 365) * 100 AS "Yield" FROM (SELECT ROUND(CAST("LP_Pool_total_value_locked_stable" AS DECIMAL(38, 5)) / CAST("LP_Pool_total_issued_receipts" AS DECIMAL(38, 5)),5) AS "Price Per Receipt", EXTRACT(DAY FROM (NOW() - "LP_timestamp")) AS "Days Difference" FROM "LP_Deposit" LEFT JOIN "LP_Pool_State" ON "LP_Deposit"."LP_Pool_id"="LP_Pool_State"."LP_Pool_id" ORDER BY "LP_timestamp" ASC LIMIT 1) joined
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
         let (amnt,) = value;
         let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
 

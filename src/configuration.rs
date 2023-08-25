@@ -19,7 +19,6 @@ impl<T> AppState<T> {
     pub fn new(state: T) -> AppState<T> {
         AppState(Arc::new(state))
     }
-
 }
 
 impl<T> Clone for AppState<T> {
@@ -120,9 +119,7 @@ impl State {
             let mp_asset_mapping = &database.mp_asset_mapping;
             let c = mp_asset_mapping.get_one(symbol.to_owned()).await?;
             if c.is_none() {
-                let data = http
-                    .get_coingecko_info(coinGeckoId.to_owned())
-                    .await?;
+                let data = http.get_coingecko_info(coinGeckoId.to_owned()).await?;
                 let item = MP_Asset_Mapping {
                     MP_asset_symbol: symbol.to_owned(),
                     MP_asset_symbol_coingecko: data.id.to_owned(),
@@ -217,6 +214,10 @@ pub struct Config {
     pub hash_map_currencies: HashMap<String, Currency>,
     pub hash_map_pool_currency: HashMap<String, Currency>,
     pub treasury_contract: String,
+    pub server_host: String,
+    pub port: u16,
+    pub allowed_origins: Vec<String>,
+    pub static_dir: String,
 }
 
 impl Config {
@@ -252,9 +253,7 @@ impl Config {
         let url = &self.coingecko_info_url;
         formatter(
             url.to_string(),
-            &[
-                Formatter::Str(encode(coingeckoId.as_str()).to_string()),
-            ],
+            &[Formatter::Str(encode(coingeckoId.as_str()).to_string())],
         )
     }
 
@@ -302,6 +301,14 @@ pub fn get_configuration() -> Result<Config, Error> {
     let native_currency = env::var("NATIVE_CURRENCY")?;
     let treasury_contract = env::var("TREASURY_CONTRACT")?;
 
+    let server_host = env::var("SERVER_HOST")?;
+    let port: u16 = env::var("PORT")?.parse()?;
+    let allowed_origins = env::var("ALLOWED_ORIGINS")?
+        .split(',')
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>();
+    let static_dir = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), env::var("STATIC_DIRECTORY")?);
+
     let mut hash_map_currencies: HashMap<String, Currency> = HashMap::new();
     let mut hash_map_pool_currency: HashMap<String, Currency> = HashMap::new();
 
@@ -338,6 +345,10 @@ pub fn get_configuration() -> Result<Config, Error> {
         hash_map_currencies,
         hash_map_pool_currency,
         treasury_contract,
+        server_host,
+        port,
+        allowed_origins,
+        static_dir
     };
 
     Ok(config)

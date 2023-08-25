@@ -17,7 +17,7 @@ impl Table<LS_Closing> {
         )
         .bind(&data.LS_contract_id)
         .bind(data.LS_timestamp)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
 
@@ -42,7 +42,7 @@ impl Table<LS_Closing> {
         });
 
         let query = query_builder.build();
-        query.execute(transaction).await?;
+        query.execute(&mut **transaction).await?;
         Ok(())
     }
 

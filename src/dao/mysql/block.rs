@@ -15,7 +15,7 @@ impl Table<Block> {
             "#,
         )
         .bind(block.id)
-        .execute(transaction)
+        .execute(&mut **transaction)
         .await
     }
     pub async fn get_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
@@ -66,7 +66,7 @@ impl Table<Block> {
     ) -> Result<Option<Block>, Error> {
         sqlx::query_as(
             r#"
-             SELECT * FROM "block" WHERE id = ?
+             SELECT * FROM `block` WHERE id = ?
             "#,
         )
         .bind(id)

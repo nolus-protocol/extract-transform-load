@@ -1,0 +1,14 @@
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
+use sqlx::FromRow;
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, FromRow, Deserialize, Serialize)]
+pub struct Supplied_Borrowed_Series {
+    #[sqlx(rename = "LP_Pool_timestamp")]
+    pub lp_pool_timestamp: DateTime<Utc>,
+    #[sqlx(rename = "Supplied")]
+    pub supplied: BigDecimal,
+    #[sqlx(rename = "Borrowed")]
+    pub borrowed: BigDecimal,
+}

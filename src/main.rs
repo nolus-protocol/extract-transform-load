@@ -5,12 +5,14 @@ use futures::TryFutureExt;
 use tokio::time;
 use tracing::{error, Level};
 
+
 use etl::{
     configuration::{get_configuration, set_configuration, AppState, Config, State},
     error::Error,
     handler::{aggregation_task, mp_assets},
     model::Actions,
     provider::{DatabasePool, Event, QueryApi, HTTP},
+    server
 };
 
 #[tokio::main]
@@ -31,7 +33,7 @@ async fn app_main() -> Result<(), Error> {
         .with_max_level({
             #[cfg(debug_assertions)]
             {
-                Level::DEBUG
+                Level::INFO
             }
 
             #[cfg(not(debug_assertions))]
@@ -60,10 +62,11 @@ async fn app_main() -> Result<(), Error> {
     mp_assets::fetch_insert(app_state.clone()).await?;
     let mut event_manager = Event::new(app_state.clone());
 
-    let (_, r, _) = tokio::try_join!(
+    let (_, r, _, _) = tokio::try_join!(
         event_manager.run(),
         mp_assets::mp_assets_task(app_state.clone()).map_err(|e| e.into()),
-        start_aggregation_tasks(app_state.clone())
+        start_aggregation_tasks(app_state.clone()),
+        server::server_task(&app_state)
     )?;
 
     r

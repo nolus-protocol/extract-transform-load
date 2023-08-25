@@ -1,0 +1,96 @@
+[
+    {
+        "description": "Total Value Locked",
+        "url": "/api/total-value-locked",
+        "type": "GET"
+    },
+    {
+        "description": "Yield",
+        "url": "/api/yield",
+        "type": "GET"
+    },
+    {
+        "description": "Borrow APR",
+        "url": "/api/borrow-apr",
+        "type": "GET",
+        "params": [
+            {
+                "name": "skip",
+                "type": "Number",
+                "default": 0
+            },
+            {
+                "name": "limit",
+                "type": "Number",
+                "default": 32,
+                "max": 100
+            }
+        ]
+    },
+    {
+        "description": "Time series Supplied/Borrowed",
+        "url": "/api/time-series",
+        "type": "GET"
+    },
+    {
+        "description": "Utilization Level",
+        "url": "/api/utilization-level",
+        "type": "GET",
+        "params": [
+            {
+                "name": "skip",
+                "type": "Number",
+                "default": 0
+            },
+            {
+                "name": "limit",
+                "type": "Number",
+                "default": 32,
+                "max": 100
+            }
+        ]
+    },
+    {
+        "description": "Optimal",
+        "url": "/api/optimal",
+        "type": "GET"
+    },
+    {
+        "description": "Buyback (Total)",
+        "url": "/api/buyback",
+        "type": "GET",
+        "params": [
+            {
+                "name": "skip",
+                "type": "Number",
+                "default": 0
+            },
+            {
+                "name": "limit",
+                "type": "Number",
+                "default": 32,
+                "max": 100
+            }
+        ]
+    },
+    {
+        "description": "Distributed",
+        "url": "/api/distributed",
+        "type": "GET"
+    },
+    {
+        "description": "Leased Assets (Total)",
+        "url": "/api/leased-assets",
+        "type": "GET"
+    },
+    {
+        "description": "Borrowed",
+        "url": "/api/borrowed",
+        "type": "GET"
+    },
+    {
+        "description": "Protocol Revenue",
+        "url": "/api/revenue",
+        "type": "GET"
+    }
+]
