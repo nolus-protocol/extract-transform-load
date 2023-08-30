@@ -15,5 +15,6 @@ pub mod wasm_tr_rewards;
 pub mod lp_pool_state;
 pub mod tr_state;
 pub mod pl_state;
+pub mod cache_state;
 
 pub use aggregation_task::aggregation_task;

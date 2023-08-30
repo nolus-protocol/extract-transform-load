@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
@@ -8,8 +10,13 @@ use serde::{Deserialize, Serialize};
 
 #[get("/total-value-locked")]
 async fn index(state: web::Data<AppState<State>>) -> Result<impl Responder, Error> {
-    let data = state.database.ls_state.get_total_value_locked().await?;
-    Ok(web::Json(Response { total_value_locked: data }))
+    let total_value_locked = if let Ok(item) = state.cache.lock() {
+        item.total_value_locked.to_owned().unwrap_or(BigDecimal::from_str("0")?)
+    }else{
+        BigDecimal::from_str("0")?
+    };
+
+    Ok(web::Json(Response { total_value_locked }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]

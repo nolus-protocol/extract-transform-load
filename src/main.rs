@@ -9,7 +9,7 @@ use tracing::{error, Level};
 use etl::{
     configuration::{get_configuration, set_configuration, AppState, Config, State},
     error::Error,
-    handler::{aggregation_task, mp_assets},
+    handler::{aggregation_task, mp_assets, cache_state},
     model::Actions,
     provider::{DatabasePool, Event, QueryApi, HTTP},
     server
@@ -62,14 +62,18 @@ async fn app_main() -> Result<(), Error> {
     mp_assets::fetch_insert(app_state.clone()).await?;
     let mut event_manager = Event::new(app_state.clone());
 
-    let (_, r, _, _) = tokio::try_join!(
+    let (_, asset_tasks, _, _, cache_state) = tokio::try_join!(
         event_manager.run(),
         mp_assets::mp_assets_task(app_state.clone()).map_err(|e| e.into()),
         start_aggregation_tasks(app_state.clone()),
-        server::server_task(&app_state)
+        server::server_task(&app_state),
+        cache_state::cache_state_tasks(app_state.clone()).map_err(|e| e.into()),
     )?;
 
-    r
+    asset_tasks?;
+    cache_state?;
+
+    Ok(())
 }
 
 async fn init<'c>() -> Result<(Config, DatabasePool), Error> {

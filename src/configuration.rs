@@ -8,7 +8,7 @@ use bigdecimal::BigDecimal;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{env, fs};
 use urlencoding::encode;
 
@@ -36,11 +36,18 @@ impl<T> Deref for AppState<T> {
 }
 
 #[derive(Debug)]
+pub struct Cache {
+    pub total_value_locked: Option<BigDecimal>,
+    pub r#yield: Option<BigDecimal>
+}
+
+#[derive(Debug)]
 pub struct State {
     pub config: Config,
     pub database: DatabasePool,
     pub http: HTTP,
     pub query_api: QueryApi,
+    pub cache: Mutex<Cache>
 }
 
 impl State {
@@ -59,6 +66,7 @@ impl State {
             database,
             http,
             query_api,
+            cache: Mutex::new(Cache { total_value_locked: None, r#yield: None })
         })
     }
 
@@ -208,6 +216,7 @@ pub struct Config {
     pub stable_currency: String,
     pub aggregation_interval: u8,
     pub mp_asset_interval: u8,
+    pub cache_state_interval: u16,
     pub supported_currencies: Vec<Currency>,
     pub lp_pools: Vec<(String, String)>,
     pub native_currency: String,
@@ -296,6 +305,8 @@ pub fn get_configuration() -> Result<Config, Error> {
     let stable_currency = env::var("STABLE_CURRENCY")?;
     let aggregation_interval = env::var("AGGREGATION_INTTERVAL")?.parse()?;
     let mp_asset_interval = env::var("MP_ASSET_INTERVAL_IN_MINUTES")?.parse()?;
+    let cache_state_interval = env::var("CACHE_INTERVAL_IN_MINUTES")?.parse()?;
+
     let supported_currencies = get_supported_currencies()?;
     let lp_pools = get_lp_pools()?;
     let native_currency = env::var("NATIVE_CURRENCY")?;
@@ -339,6 +350,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         stable_currency,
         aggregation_interval,
         mp_asset_interval,
+        cache_state_interval,
         supported_currencies,
         lp_pools,
         native_currency,
