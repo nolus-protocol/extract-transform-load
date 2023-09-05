@@ -17,6 +17,7 @@ use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
 use actix_web::{
     http::header::ToStrError as HEADER_TO_STR_ERROR, ResponseError,
 };
+use cosmos_sdk_proto::prost::DecodeError as COSMOS_PROST_DECODE_ERROR;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -94,6 +95,9 @@ pub enum Error {
 
     #[error("{0}")]
     HeaderToStrError(#[from] HEADER_TO_STR_ERROR),
+
+    #[error("{0}")]
+    CosmosDecodeProstError(#[from] COSMOS_PROST_DECODE_ERROR)
 }
 
 impl ResponseError for Error {}

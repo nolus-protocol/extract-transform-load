@@ -1,6 +1,6 @@
 [package]
 name = "etl"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 
 [profile.dev]
@@ -11,7 +11,7 @@ overflow-checks = true
 lto = "fat"
 
 [dependencies]
-actix-web = { version = "4.3"}
+actix-web = { version = "4.4"}
 actix-cors = "0.6"
 actix-files = "0.6"
 
@@ -26,7 +26,7 @@ reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 url = "2.4"
 base64 = "0.21"
 cosmos-sdk-proto = { version = "0.19", features = ["cosmwasm"] }
-prost = "0.11"
+prost = "0.12"
 bigdecimal = { version = "0.3", features = ["serde"] }
 urlencoding = "2.1"
 thiserror = "1.0"

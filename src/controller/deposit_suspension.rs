@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[get("/deposit-suspension")]
 async fn index() -> Result<impl Responder, Error> {
     Ok(web::Json(Response {
-        deposit_suspension: String::from("50.00%"),
+        deposit_suspension: String::from("50.00"),
     }))
 }
 

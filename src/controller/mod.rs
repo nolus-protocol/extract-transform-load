@@ -10,3 +10,4 @@ pub mod distributed;
 pub mod leased_assets;
 pub mod borrowed;
 pub mod revenue;
+pub mod incentives_pool;

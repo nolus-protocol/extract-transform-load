@@ -56,6 +56,11 @@
         "type": "GET"
     },
     {
+        "description": "Deposit Suspension",
+        "url": "/api/deposit-suspension",
+        "type": "GET"
+    },
+    {
         "description": "Buyback (Total)",
         "url": "/api/buyback",
         "type": "GET",
@@ -72,6 +77,11 @@
                 "max": 100
             }
         ]
+    },
+    {
+        "description": "Incentives Pool",
+        "url": "/api/incentives-pool",
+        "type": "GET"
     },
     {
         "description": "Distributed",

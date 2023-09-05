@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[get("/optimal")]
 async fn index() -> Result<impl Responder, Error> {
     Ok(web::Json(Response {
-        optimal: String::from("70.00%"),
+        optimal: String::from("70.00"),
     }))
 }
 
