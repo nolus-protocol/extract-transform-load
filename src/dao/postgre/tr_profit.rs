@@ -97,6 +97,21 @@ impl Table<TR_Profit> {
         Ok(data)
     }
 
+    pub async fn get_buyback_total(&self) -> Result<BigDecimal, crate::error::Error> {
+        let value: (Option<BigDecimal>,) = sqlx::query_as(
+            r#"
+                SELECT SUM("TR_Profit_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Profit"
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let (amnt,) = value;
+        let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
+
+        Ok(amnt)
+    }
+
     pub async fn get_revenue(&self) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"

@@ -24,7 +24,7 @@ MP_ASSET_INTERVAL_IN_MINUTES=1
 LP_POOLS=(nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5,USDC)
 NATIVE_CURRENCY=NLS
 TREASURY_CONTRACT=nolus14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0k0puz
-HOST=127.0.0.1
+SERVER_HOST=127.0.0.1
 PORT=8080
 ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
 ```

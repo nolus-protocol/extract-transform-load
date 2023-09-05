@@ -6,7 +6,7 @@ use crate::{
     configuration::{AppState, State},
     controller::{
         borrow_apr, buyback, deposit_suspension, optimal, supplied_borrowed_series,
-        total_value_locked, utilization_level, yield_value, distributed, leased_assets, borrowed, revenue,
+        total_value_locked, utilization_level, yield_value, distributed, leased_assets, borrowed, revenue, buyback_total
     },
     error::Error,
 };
@@ -59,7 +59,8 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(distributed::index)
                     .service(leased_assets::index)
                     .service(borrowed::index)
-                    .service(revenue::index),
+                    .service(revenue::index)
+                    .service(buyback_total::index),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })
