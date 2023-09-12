@@ -129,7 +129,7 @@ impl Table<LP_Pool_State> {
     pub async fn get_borrowed(&self) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)>   = sqlx::query_as(
             r#"
-                SELECT SUM("LP_Pool_total_borrowed_stable") / 1000000 AS "Borrowed" FROM "LP_Pool_State"
+                SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening"
             "#,
         )
         .fetch_optional(&self.pool)
