@@ -120,8 +120,12 @@ impl Table<LS_State> {
                   CASE
                     WHEN `LS_asset_symbol` = 'WBTC' THEN `LS_amnt_stable` / 100000000
                     WHEN `LS_asset_symbol` = 'WETH' THEN `LS_amnt_stable` / 1000000000000000000
+                    WHEN `LS_asset_symbol` = 'EVMOS' THEN `LS_amnt_stable` / 1000000000000000000
+
                     WHEN `LS_asset_symbol` != 'WETH'
-                    AND `LS_asset_symbol` != 'WBTC' THEN `LS_amnt_stable` / 1000000
+                    AND `LS_asset_symbol` != 'WBTC' 
+                    AND `LS_asset_symbol` != 'EVMOS' 
+                    THEN `LS_amnt_stable` / 1000000
                   END AS `Lease Value`
                 FROM
                   `LS_State`
