@@ -28,6 +28,7 @@ TREASURY_CONTRACT=nolus14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0k0p
 SERVER_HOST=127.0.0.1
 PORT=8080
 ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+TIMEOUT=180
 ```
 
 PATH: /lib/systemd/system/etl.service

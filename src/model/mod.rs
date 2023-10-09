@@ -24,6 +24,7 @@ mod supplied_borrowed_series;
 mod utilization_level;
 mod buyback;
 mod leased_asset;
+mod tvl_serie;
 
 pub use action_history::{Action_History, Actions};
 pub use block::Block;
@@ -51,3 +52,4 @@ pub use supplied_borrowed_series::Supplied_Borrowed_Series;
 pub use utilization_level::Utilization_Level;
 pub use buyback::Buyback;
 pub use leased_asset::Leased_Asset;
+pub use tvl_serie::TVL_Serie;

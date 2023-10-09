@@ -7,10 +7,10 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use tracing::{info, error};
-use std::process::exit;
-use std::sync::Arc;
+use tokio::time::timeout;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
@@ -19,6 +19,7 @@ use tokio_tungstenite::{
         tungstenite::{error::Error as WS_ERROR, Message},
     },
 };
+use tracing::info;
 use url::Url;
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
@@ -175,7 +176,12 @@ impl Handler {
     ) -> Result<(), Error> {
         self.set_tasks(parts, write, counter.clone(), total).await?;
         loop {
-            match self.parse_message(read.next().await).await {
+            let data = timeout(
+                Duration::from_secs(self.app_state.config.timeout),
+                read.next(),
+            )
+            .await?;
+            match self.parse_message(data).await {
                 Ok(proceed) => {
                     if proceed && !self.set_tasks(parts, write, counter.clone(), total).await? {
                         break;
@@ -195,7 +201,6 @@ impl Handler {
         counter: Arc<AtomicI64>,
         _total: i64,
     ) -> Result<bool, Error> {
-
         for range in &mut *parts {
             let (start, end) = range;
             let mut r = *start..*end;
@@ -204,7 +209,7 @@ impl Handler {
                 let event = self.app_state.config.block_results_event(i, id);
                 write.send(Message::Text(event)).await?;
                 counter.fetch_add(1, Ordering::SeqCst);
-      
+
                 range.0 += 1;
                 return Ok(true);
             }
@@ -250,18 +255,20 @@ impl Handler {
     }
 }
 
-pub fn start_sync(app_state: AppState<State>) {
+pub async fn start_sync(app_state: AppState<State>) -> Result<(), Error> {
     tokio::spawn(async {
         let sync_manager = Synchronization {};
-        let result = sync_manager.run(app_state).await;
-        match result {
-            Ok(_) => {
-                info!("Synchronization completed")
-            }
-            Err(error) => {
-                error!("Synchronization end with error: {}", error);
-                exit(1);
-            }
-        }
-    });
+        match sync_manager.run(app_state).await {
+            Ok(()) => {
+                sync_manager.set_running(false);
+            },
+            Err(e) => {
+                sync_manager.set_running(false);
+                return Err(e);
+            },
+        };
+        info!("Synchronization completed");
+        Ok(())
+    })
+    .await?
 }

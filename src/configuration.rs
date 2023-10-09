@@ -1,7 +1,7 @@
 use crate::dao::get_path;
 use crate::error::Error;
 use crate::helpers::{formatter, parse_tuple_string, Formatter};
-use crate::model::{LP_Pool, MP_Asset_Mapping};
+use crate::model::{LP_Pool, MP_Asset_Mapping, TVL_Serie};
 use crate::provider::{DatabasePool, QueryApi, HTTP};
 use crate::types::Currency;
 use bigdecimal::BigDecimal;
@@ -38,6 +38,7 @@ impl<T> Deref for AppState<T> {
 #[derive(Debug)]
 pub struct Cache {
     pub total_value_locked: Option<BigDecimal>,
+    pub total_value_locked_series: Option<Vec<TVL_Serie>>,
     pub r#yield: Option<BigDecimal>
 }
 
@@ -66,7 +67,7 @@ impl State {
             database,
             http,
             query_api,
-            cache: Mutex::new(Cache { total_value_locked: None, r#yield: None })
+            cache: Mutex::new(Cache { total_value_locked: None, total_value_locked_series: None, r#yield: None })
         })
     }
 
@@ -217,6 +218,7 @@ pub struct Config {
     pub aggregation_interval: u8,
     pub mp_asset_interval: u8,
     pub cache_state_interval: u16,
+    pub timeout: u64,
     pub supported_currencies: Vec<Currency>,
     pub lp_pools: Vec<(String, String)>,
     pub native_currency: String,
@@ -306,6 +308,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     let aggregation_interval = env::var("AGGREGATION_INTTERVAL")?.parse()?;
     let mp_asset_interval = env::var("MP_ASSET_INTERVAL_IN_MINUTES")?.parse()?;
     let cache_state_interval = env::var("CACHE_INTERVAL_IN_MINUTES")?.parse()?;
+    let timeout = env::var("TIMEOUT")?.parse()?;
 
     let supported_currencies = get_supported_currencies()?;
     let lp_pools = get_lp_pools()?;
@@ -351,6 +354,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         aggregation_interval,
         mp_asset_interval,
         cache_state_interval,
+        timeout,
         supported_currencies,
         lp_pools,
         native_currency,

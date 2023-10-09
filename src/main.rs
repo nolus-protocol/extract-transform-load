@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use chrono::Utc;
-use futures::TryFutureExt;
 use tokio::time;
 use tracing::{error, Level};
 
@@ -62,16 +61,13 @@ async fn app_main() -> Result<(), Error> {
     mp_assets::fetch_insert(app_state.clone()).await?;
     let mut event_manager = Event::new(app_state.clone());
 
-    let (_, asset_tasks, _, _, cache_state) = tokio::try_join!(
+    let (_, _, _, _, _) = tokio::try_join!(
         event_manager.run(),
-        mp_assets::mp_assets_task(app_state.clone()).map_err(|e| e.into()),
+        mp_assets::mp_assets_task(app_state.clone()),
         start_aggregation_tasks(app_state.clone()),
         server::server_task(&app_state),
-        cache_state::cache_state_tasks(app_state.clone()).map_err(|e| e.into()),
+        cache_state::cache_state_tasks(app_state.clone())
     )?;
-
-    asset_tasks?;
-    cache_state?;
 
     Ok(())
 }

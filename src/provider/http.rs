@@ -1,4 +1,6 @@
-use reqwest::get;
+use std::time::Duration;
+
+use reqwest::Client;
 
 use crate::{
     configuration::Config,
@@ -18,13 +20,17 @@ impl HTTP {
 
     pub async fn get_coingecko_info(&self, coinGeckoId: String) -> Result<CoinGeckoInfo, Error> {
         let url = self.config.get_coingecko_info_url(coinGeckoId);
-        let json = get(url).await?.json::<CoinGeckoInfo>().await?;
+        let client = Client::builder().timeout(Duration::from_secs(self.config.timeout)).build()?;
+
+        let json = client.get(url).send().await?.json::<CoinGeckoInfo>().await?;
         Ok(json)
     }
 
     pub async fn get_coingecko_prices(&self, ids: &[String]) -> Result<CoinGeckoPrice, Error> {
         let url = self.config.get_coingecko_prices_url(ids);
-        let json = get(url).await?.json::<CoinGeckoPrice>().await?;
+        let client = Client::builder().timeout(Duration::from_secs(self.config.timeout)).build()?;
+
+        let json = client.get(url).send().await?.json::<CoinGeckoPrice>().await?;
         Ok(json)
     }
 
@@ -37,13 +43,17 @@ impl HTTP {
         let url = self
             .config
             .get_coingecko_market_data_range_url(id, from, to);
-        let json = get(url).await?.json::<CoinGeckoMarketData>().await?;
+        let client = Client::builder().timeout(Duration::from_secs(self.config.timeout)).build()?;
+
+        let json = client.get(url).send().await?.json::<CoinGeckoMarketData>().await?;
         Ok(json)
     }
 
     pub async fn get_latest_block(&self) -> Result<i64, Error> {
         let url = self.config.get_abci_info_url();
-        let json = get(url).await?.json::<AbciBody>().await?;
+        let client = Client::builder().timeout(Duration::from_secs(self.config.timeout)).build()?;
+
+        let json = client.get(url).send().await?.json::<AbciBody>().await?;
         let height: i64 = json.result.response.last_block_height.parse()?;
 
         Ok(height)

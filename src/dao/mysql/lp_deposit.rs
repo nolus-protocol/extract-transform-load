@@ -115,18 +115,17 @@ impl Table<LP_Deposit> {
     }
 
     pub async fn get_yield(&self) -> Result<BigDecimal, crate::error::Error> {
-        let value: (Option<BigDecimal>,)  = sqlx::query_as(
+        let value: Option<(BigDecimal,)>  = sqlx::query_as(
             r#"
                 SELECT (((`Price Per Receipt` - 1) / `Days Difference`) * 365) * 100 AS `Yield` FROM (SELECT ROUND(CAST(`LP_Pool_total_value_locked_stable` AS DECIMAL(38, 5)) / CAST(`LP_Pool_total_issued_receipts` AS DECIMAL(38, 5)),5) AS `Price Per Receipt`, EXTRACT(DAY FROM (NOW() - `LP_timestamp`)) AS `Days Difference` FROM `LP_Deposit` LEFT JOIN `LP_Pool_State` ON `LP_Deposit`.`LP_Pool_id`=`LP_Pool_State`.`LP_Pool_id` ORDER BY `LP_timestamp` ASC LIMIT 1) joined
             "#,
         )
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await?;
 
-        let (amnt,) = value;
-        let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
+        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
 
-        Ok(amnt)
+        Ok(amnt.0)
     }
 
 }

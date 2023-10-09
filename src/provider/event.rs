@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::synchronization::start_sync;
 use crate::configuration::{AppState, State};
 use crate::error::Error;
@@ -6,6 +8,7 @@ use crate::types::BlockValue;
 use futures::stream::SplitSink;
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
+use tokio::time::{sleep, timeout};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{error::Error as WS_ERROR, Message},
@@ -30,10 +33,13 @@ impl Event {
         loop {
             let app = self.app_state.clone();
 
-            start_sync(app);
-            if let Err(e) = self.init().await {
-                error!("WS disconnected with error: {}, try to reconnecting...", e);
+            let res = tokio::try_join!(start_sync(app), self.init());
+            
+            if let Err(e) = res {
+                error!("WS disconnected with error {}, try to reconnecting...", e);
             }
+
+            sleep(Duration::from_secs(self.app_state.config.timeout)).await;
         }
     }
 
@@ -50,7 +56,14 @@ impl Event {
         write.send(Message::Text(new_block_event)).await?;
 
         loop {
-            self.parse_message(read.next().await, &mut write).await?;
+            let data = timeout(
+                Duration::from_secs(self.app_state.config.timeout),
+                read.next(),
+            )
+            .await?;
+            if (self.parse_message(data, &mut write).await).is_err() {
+                return Err(Error::ServerError(String::from("WS disconnected")));
+            };
         }
     }
 

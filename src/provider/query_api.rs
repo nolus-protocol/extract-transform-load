@@ -1,7 +1,7 @@
 use crate::{
     configuration::Config,
     error::Error,
-    types::{LP_Pool_State_Type, LS_State_Type, QueryBody, Balance, LPP_Price},
+    types::{Balance, LPP_Price, LP_Pool_State_Type, LS_State_Type, QueryBody},
 };
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -15,6 +15,7 @@ use cosmos_sdk_proto::{
 };
 use reqwest::Client;
 use std::fmt::Write;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct QueryApi {
@@ -51,10 +52,7 @@ impl QueryApi {
         Ok(None)
     }
 
-    pub async fn lpp_price_state(
-        &self,
-        contract: String,
-    ) -> Result<Option<LPP_Price>, Error> {
+    pub async fn lpp_price_state(&self, contract: String) -> Result<Option<LPP_Price>, Error> {
         let bytes = b"{\"price\": []}";
         let res = self.query_state(bytes, contract).await?;
 
@@ -66,7 +64,11 @@ impl QueryApi {
         Ok(None)
     }
 
-    pub async fn balanace_state(&self, contract: String, address: String) -> Result<Option<Balance>, Error> {
+    pub async fn balanace_state(
+        &self,
+        contract: String,
+        address: String,
+    ) -> Result<Option<Balance>, Error> {
         let request = format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
         let bytes = request.as_bytes();
         let res = self.query_state(bytes, contract).await?;
@@ -81,7 +83,10 @@ impl QueryApi {
     async fn query_state(&self, bytes: &[u8], contract: String) -> Result<Option<String>, Error> {
         let data = self.state_from_proto(bytes, contract)?;
 
-        let client = Client::new();
+        let client = Client::builder()
+            .timeout(Duration::from_secs(self.config.timeout))
+            .build()?;
+
         let res = client
             .post(self.config.get_abci_query_url())
             .body(format!(
@@ -102,7 +107,7 @@ impl QueryApi {
             .send()
             .await?
             .json::<QueryBody>()
-            .await?;    
+            .await?;
 
         let value = res.result.response.value;
 
@@ -119,7 +124,10 @@ impl QueryApi {
     ) -> Result<Option<QueryAllBalancesResponse>, Error> {
         let data = self.balances_from_proto(address)?;
 
-        let client = Client::new();
+        let client = Client::builder()
+            .timeout(Duration::from_secs(self.config.timeout))
+            .build()?;
+
         let res = client
             .post(self.config.get_abci_query_url())
             .body(format!(

@@ -15,7 +15,6 @@ use super::{lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state};
 pub fn aggregation_task(app_state: AppState<State>) -> JoinHandle<Result<(), Error>> {
     tokio::spawn(async move {
         let timestsamp = Utc::now();
-
         let action = app_state
             .database
             .action_history

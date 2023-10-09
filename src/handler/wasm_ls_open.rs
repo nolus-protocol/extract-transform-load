@@ -25,7 +25,9 @@ pub async fn parse_and_insert(
     let (loan_price, downpayment_price) = tokio::try_join!(f1, f2)?;
     let air: i16 = item.air.parse()?;
 
-    let at_sec: i64 = item.at.parse()?;
+    let sec: i64 = item.at.parse()?;
+    let at_sec = sec / 1_000_000_000;
+
     let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| Error::DecodeDateTimeError(format!(
         "Wasm_LS_Open date parse {}",
         at_sec

@@ -1,8 +1,10 @@
 use chrono::Utc;
 use futures::future::join_all;
 use sqlx::types::BigDecimal;
-use tokio::{task::JoinHandle, time, time::Duration};
+use tokio::{time, time::Duration};
+use tracing::error;
 
+use super::mp_map_assets;
 use crate::{
     configuration::{AppState, State},
     error::Error,
@@ -10,11 +12,11 @@ use crate::{
     model::{Action_History, MP_Asset},
 };
 use std::str::FromStr;
-use super::mp_map_assets;
 
 pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
     let (data, ids) = mp_map_assets::get_mappings(&app_state.database.mp_asset_mapping).await;
     let prices = app_state.http.get_coingecko_prices(&ids).await?;
+
     let mut joins = Vec::new();
     let timestamp = Utc::now();
 
@@ -62,7 +64,7 @@ pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn mp_assets_task(app_state: AppState<State>) -> JoinHandle<Result<(), Error>> {
+pub async fn mp_assets_task(app_state: AppState<State>) -> Result<(), Error> {
     let interval: u64 = app_state.config.mp_asset_interval.into();
     let interval: u64 = interval * 60;
 
@@ -73,8 +75,9 @@ pub fn mp_assets_task(app_state: AppState<State>) -> JoinHandle<Result<(), Error
             interval.tick().await;
             let app = app_state.clone();
             if let Err(error) = fetch_insert(app).await {
-                return Err(Error::TaskError(error.to_string()));
+                error!("Task error {}", error);
             };
         }
     })
+    .await?
 }

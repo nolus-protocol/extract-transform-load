@@ -17,7 +17,6 @@ use crate::types::{EventData, BlockBody};
 
 use base64::engine::general_purpose;
 use base64::Engine;
-use chrono::Utc;
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
 
@@ -85,7 +84,7 @@ pub fn parse_wasm_ls_open(attributes: Vec<Attributes>) -> Result<LS_Opening_Type
             .get("air")
             .ok_or(Error::FieldNotExist(String::from("air")))?
             .to_string(),
-        at: Utc::now().timestamp().to_string(), //ls_open.get("at").ok_or(Error::FieldNotExist(String::from("at")))?.to_string(),
+        at: ls_open.get("at").ok_or(Error::FieldNotExist(String::from("at")))?.to_string(),
         loan_pool_id: ls_open
             .get("loan-pool-id")
             .ok_or(Error::FieldNotExist(String::from("loan-pool-id")))?
