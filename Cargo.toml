@@ -11,6 +11,7 @@ overflow-checks = true
 lto = "fat"
 
 [dependencies]
+
 actix-web = { version = "4.4"}
 actix-cors = "0.6"
 actix-files = "0.6"

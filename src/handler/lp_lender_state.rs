@@ -1,7 +1,7 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use std::str::FromStr;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 
 use crate::{
     configuration::{AppState, State},
@@ -21,16 +21,30 @@ pub async fn parse_and_insert(
         .await?;
     let mut data: Vec<LP_Lender_State> = Vec::new();
     let mut tasks = vec![];
+    let max_tasks = app_state.config.max_tasks;
 
     for item in items {
-        tasks.push(proceed(&app_state, item, timestsamp));
+        tasks.push(proceed(app_state.clone(), item, timestsamp));
     }
 
-    let results = futures::future::join_all(tasks).await;
+    while !tasks.is_empty() {
+        let mut st = JoinSet::new();
+        let range = if tasks.len() > max_tasks {
+            max_tasks
+        } else {
+            tasks.len()
+        };
 
-    for task in results {
-        let item = task?;
-        data.push(item);
+        for _t in 0..range {
+            if let Some(item) = tasks.pop() {
+                st.spawn(item);
+            }
+        }
+
+        while let Some(item) = st.join_next().await {
+            let d = item??;
+            data.push(d);
+        }
     }
 
     app_state
@@ -43,7 +57,7 @@ pub async fn parse_and_insert(
 }
 
 async fn proceed(
-    state: &AppState<State>,
+    state: AppState<State>,
     item: (String, String),
     timestsamp: DateTime<Utc>,
 ) -> Result<LP_Lender_State, Error> {
@@ -62,7 +76,7 @@ async fn proceed(
     let lpp_price = if let Some(price) = lpp_price? {
         let amount = BigDecimal::from_str(&price.amount.amount)?;
         let quote_amount = BigDecimal::from_str(&price.amount_quote.amount)?;
-        
+
         &amount / &quote_amount
     } else {
         BigDecimal::from(0)

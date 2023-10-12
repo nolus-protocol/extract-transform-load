@@ -29,6 +29,7 @@ SERVER_HOST=127.0.0.1
 PORT=8080
 ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
 TIMEOUT=300
+MAX_TASKS=64
 ```
 
 PATH: /lib/systemd/system/etl.service

@@ -229,6 +229,7 @@ pub struct Config {
     pub port: u16,
     pub allowed_origins: Vec<String>,
     pub static_dir: String,
+    pub max_tasks: usize
 }
 
 impl Config {
@@ -309,6 +310,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     let mp_asset_interval = env::var("MP_ASSET_INTERVAL_IN_MINUTES")?.parse()?;
     let cache_state_interval = env::var("CACHE_INTERVAL_IN_MINUTES")?.parse()?;
     let timeout = env::var("TIMEOUT")?.parse()?;
+    let max_tasks = env::var("MAX_TASKS")?.parse()?;
 
     let supported_currencies = get_supported_currencies()?;
     let lp_pools = get_lp_pools()?;
@@ -364,7 +366,8 @@ pub fn get_configuration() -> Result<Config, Error> {
         server_host,
         port,
         allowed_origins,
-        static_dir
+        static_dir,
+        max_tasks
     };
 
     Ok(config)

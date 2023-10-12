@@ -1,7 +1,7 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use std::str::FromStr;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 
 use crate::{
     configuration::{AppState, State},
@@ -16,17 +16,31 @@ pub async fn parse_and_insert(
     let items = app_state.database.lp_pool.get_all().await?;
     let mut data = vec![];
     let mut tasks = vec![];
+    let max_tasks = app_state.config.max_tasks;
 
     for item in items {
-        tasks.push(proceed(&app_state, item, timestsamp));
+        tasks.push(proceed(app_state.clone(), item, timestsamp));
     }
 
-    let results = futures::future::join_all(tasks).await;
+    while !tasks.is_empty() {
+        let mut st = JoinSet::new();
+        let range = if tasks.len() > max_tasks {
+            max_tasks
+        } else {
+            tasks.len()
+        };
 
-    for task in results {
-        let item = task?;
-        if let Some(ls_state) = item {
-            data.push(ls_state);
+        for _t in 0..range {
+            if let Some(item) = tasks.pop() {
+                st.spawn(item);
+            }
+        }
+
+        while let Some(item) = st.join_next().await {
+            let d = item??;
+            if let Some(record) = d {
+                data.push(record);
+            }
         }
     }
 
@@ -40,7 +54,7 @@ pub async fn parse_and_insert(
 }
 
 async fn proceed(
-    state: &AppState<State>,
+    state: AppState<State>,
     item: LP_Pool,
     timestsamp: DateTime<Utc>,
 ) -> Result<Option<LP_Pool_State>, Error> {

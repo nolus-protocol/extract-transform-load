@@ -1,36 +1,54 @@
-use std::time::Duration;
-
 use reqwest::Client;
+use std::time::Duration;
 
 use crate::{
     configuration::Config,
-    error::Error,
+    error::{self, Error},
     types::{AbciBody, CoinGeckoInfo, CoinGeckoMarketData, CoinGeckoPrice},
 };
 
 #[derive(Debug)]
 pub struct HTTP {
     pub config: Config,
+    pub http: Client,
 }
 
 impl HTTP {
-    pub fn new(config: Config) -> Self {
-        HTTP { config }
+    pub fn new(config: Config) -> Result<HTTP, Error> {
+        let http = match Client::builder()
+            .timeout(Duration::from_secs(config.timeout))
+            .build()
+        {
+            Ok(c) => c,
+            Err(e) => {
+                return Err(error::Error::REQWEST(e));
+            }
+        };
+
+        Ok(HTTP { config, http })
     }
 
     pub async fn get_coingecko_info(&self, coinGeckoId: String) -> Result<CoinGeckoInfo, Error> {
         let url = self.config.get_coingecko_info_url(coinGeckoId);
-        let client = Client::builder().timeout(Duration::from_secs(self.config.timeout)).build()?;
-
-        let json = client.get(url).send().await?.json::<CoinGeckoInfo>().await?;
+        let json = self
+            .http
+            .get(url)
+            .send()
+            .await?
+            .json::<CoinGeckoInfo>()
+            .await?;
         Ok(json)
     }
 
     pub async fn get_coingecko_prices(&self, ids: &[String]) -> Result<CoinGeckoPrice, Error> {
         let url = self.config.get_coingecko_prices_url(ids);
-        let client = Client::builder().timeout(Duration::from_secs(self.config.timeout)).build()?;
-
-        let json = client.get(url).send().await?.json::<CoinGeckoPrice>().await?;
+        let json = self
+            .http
+            .get(url)
+            .send()
+            .await?
+            .json::<CoinGeckoPrice>()
+            .await?;
         Ok(json)
     }
 
@@ -43,17 +61,26 @@ impl HTTP {
         let url = self
             .config
             .get_coingecko_market_data_range_url(id, from, to);
-        let client = Client::builder().timeout(Duration::from_secs(self.config.timeout)).build()?;
 
-        let json = client.get(url).send().await?.json::<CoinGeckoMarketData>().await?;
+        let json = self
+            .http
+            .get(url)
+            .send()
+            .await?
+            .json::<CoinGeckoMarketData>()
+            .await?;
         Ok(json)
     }
 
     pub async fn get_latest_block(&self) -> Result<i64, Error> {
         let url = self.config.get_abci_info_url();
-        let client = Client::builder().timeout(Duration::from_secs(self.config.timeout)).build()?;
-
-        let json = client.get(url).send().await?.json::<AbciBody>().await?;
+        let json = self
+            .http
+            .get(url)
+            .send()
+            .await?
+            .json::<AbciBody>()
+            .await?;
         let height: i64 = json.result.response.last_block_height.parse()?;
 
         Ok(height)

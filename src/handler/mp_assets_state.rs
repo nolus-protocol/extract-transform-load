@@ -1,7 +1,6 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use futures::future::join_all;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 
 use crate::{
     configuration::{AppState, State},
@@ -21,16 +20,30 @@ pub async fn fetch_insert(
         .get_all()
         .await
         .unwrap_or(vec![]);
-    let mut joins = Vec::new();
+    let mut tasks = Vec::new();
+    let max_tasks = app_state.config.max_tasks;
 
     for item in data {
-        joins.push(parse_and_insert(app_state.clone(), item, timestsamp));
+        tasks.push(parse_and_insert(app_state.clone(), item, timestsamp));
     }
 
-    let result = join_all(joins).await;
+    while !tasks.is_empty() {
+        let mut st = JoinSet::new();
+        let range = if tasks.len() > max_tasks {
+            max_tasks
+        } else {
+            tasks.len()
+        };
 
-    for item in result {
-        item?
+        for _t in 0..range {
+            if let Some(item) = tasks.pop() {
+                st.spawn(item);
+            }
+        }
+
+        while let Some(item) = st.join_next().await {
+            item??;
+        }
     }
 
     Ok(())

@@ -1,6 +1,6 @@
 use crate::{
     configuration::Config,
-    error::Error,
+    error::{self, Error},
     types::{Balance, LPP_Price, LP_Pool_State_Type, LS_State_Type, QueryBody},
 };
 use base64::engine::general_purpose;
@@ -20,11 +20,22 @@ use std::time::Duration;
 #[derive(Debug)]
 pub struct QueryApi {
     config: Config,
+    pub http: Client,
 }
 
 impl QueryApi {
-    pub fn new(config: Config) -> Self {
-        QueryApi { config }
+    pub fn new(config: Config) -> Result<QueryApi, Error> {
+        let http = match Client::builder()
+            .timeout(Duration::from_secs(config.timeout))
+            .build()
+        {
+            Ok(c) => c,
+            Err(e) => {
+                return Err(error::Error::REQWEST(e));
+            }
+        };
+
+        Ok(QueryApi { config, http })
     }
 
     pub async fn lease_state(&self, contract: String) -> Result<Option<LS_State_Type>, Error> {
@@ -83,11 +94,8 @@ impl QueryApi {
     async fn query_state(&self, bytes: &[u8], contract: String) -> Result<Option<String>, Error> {
         let data = self.state_from_proto(bytes, contract)?;
 
-        let client = Client::builder()
-            .timeout(Duration::from_secs(self.config.timeout))
-            .build()?;
-
-        let res = client
+        let res = self
+            .http
             .post(self.config.get_abci_query_url())
             .body(format!(
                 r#"{{
@@ -124,11 +132,8 @@ impl QueryApi {
     ) -> Result<Option<QueryAllBalancesResponse>, Error> {
         let data = self.balances_from_proto(address)?;
 
-        let client = Client::builder()
-            .timeout(Duration::from_secs(self.config.timeout))
-            .build()?;
-
-        let res = client
+        let res = self
+            .http
             .post(self.config.get_abci_query_url())
             .body(format!(
                 r#"{{

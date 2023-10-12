@@ -4,7 +4,6 @@ use chrono::Utc;
 use tokio::time;
 use tracing::{error, Level};
 
-
 use etl::{
     configuration::{get_configuration, set_configuration, AppState, Config, State},
     error::Error,
@@ -52,8 +51,8 @@ async fn app_main() -> Result<(), Error> {
     };
 
     let db_pool = database;
-    let http = HTTP::new(config.clone());
-    let query_api = QueryApi::new(config.clone());
+    let http = HTTP::new(config.clone())?;
+    let query_api = QueryApi::new(config.clone())?;
 
     let state = State::new(config.clone(), db_pool, http, query_api).await?;
     let app_state = AppState::new(state);
@@ -81,7 +80,7 @@ async fn init<'c>() -> Result<(Config, DatabasePool), Error> {
 
 async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error> {
     let interval_value: u64 = app_state.config.aggregation_interval.into();
-    let interval_value = interval_value * 60 * 60;
+    let interval_value = interval_value * 60;
     let model = &app_state.database.action_history;
     let mut dt_ms = 0;
 
