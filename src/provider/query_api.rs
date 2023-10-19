@@ -39,7 +39,7 @@ impl QueryApi {
     }
 
     pub async fn lease_state(&self, contract: String) -> Result<Option<LS_State_Type>, Error> {
-        let bytes = b"{\"status_query\":[]}";
+        let bytes = b"{}";
         let res = self.query_state(bytes, contract).await?;
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
