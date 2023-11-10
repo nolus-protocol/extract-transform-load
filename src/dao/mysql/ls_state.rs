@@ -1,5 +1,5 @@
 use super::{DataBase, QueryResult};
-use crate::model::{LS_Opening, LS_State, Table};
+use crate::model::{LS_Opening, LS_State, Table, TVL_Serie};
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
 use std::str::FromStr;
@@ -110,8 +110,8 @@ impl Table<LS_State> {
     }
 
     pub async fn get_total_value_locked(&self) -> Result<BigDecimal, crate::error::Error> {
-        let value: Option<(BigDecimal,)>  = sqlx::query_as(
-            r#"
+      let value: Option<(BigDecimal,)>  = sqlx::query_as(
+        r#"
               WITH Lease_Value AS (
                 SELECT
                   `LS_State`.`LS_timestamp` AS `Timestamp`,
@@ -121,11 +121,15 @@ impl Table<LS_State> {
                     WHEN `LS_asset_symbol` = 'WBTC' THEN `LS_amnt_stable` / 100000000
                     WHEN `LS_asset_symbol` = 'WETH' THEN `LS_amnt_stable` / 1000000000000000000
                     WHEN `LS_asset_symbol` = 'EVMOS' THEN `LS_amnt_stable` / 1000000000000000000
+                    WHEN `LS_asset_symbol` = 'CRO' THEN `LS_amnt_stable` / 100000000
 
                     WHEN `LS_asset_symbol` != 'WETH'
                     AND `LS_asset_symbol` != 'WBTC' 
-                    AND `LS_asset_symbol` != 'EVMOS' 
+                    AND `LS_asset_symbol` != 'EVMOS'
+                    AND `LS_asset_symbol` != 'CRO' 
+
                     THEN `LS_amnt_stable` / 1000000
+
                   END AS `Lease Value`
                 FROM
                   `LS_State`
@@ -165,4 +169,61 @@ impl Table<LS_State> {
 
         Ok(amnt.0)
     }
+
+    pub async fn get_total_value_locked_series(&self) -> Result<Vec<TVL_Serie>, Error> {
+      let data = sqlx::query_as(
+          r#"
+          WITH Lease_Value AS (
+            SELECT
+              `LS_State`.`LS_timestamp` AS `Timestamp`,
+              `LS_asset_symbol` AS `Token`,
+              `LS_Opening`.`LS_contract_id` as `Contract ID`,
+              CASE
+                WHEN `LS_asset_symbol` = 'WBTC' THEN `LS_amnt_stable` / 100000000
+                WHEN `LS_asset_symbol` = 'WETH' THEN `LS_amnt_stable` / 1000000000000000000
+                WHEN `LS_asset_symbol` = 'EVMOS' THEN `LS_amnt_stable` / 1000000000000000000
+                WHEN `LS_asset_symbol` = 'CRO' THEN `LS_amnt_stable` / 100000000
+
+                WHEN `LS_asset_symbol` != 'WETH'
+                AND `LS_asset_symbol` != 'WBTC' 
+                AND `LS_asset_symbol` != 'EVMOS'
+                AND `LS_asset_symbol` != 'CRO' 
+                
+                THEN `LS_amnt_stable` / 1000000
+
+              END AS `Lease Value`
+            FROM
+              `LS_State`
+              LEFT JOIN `LS_Opening` ON `LS_Opening`.`LS_contract_id` = `LS_State`.`LS_contract_id`
+            WHERE
+              `LS_amnt_stable` > 0
+            ORDER BY
+              `Lease Value` DESC
+          ),
+          Available_Assets AS (
+            SELECT
+              `LP_Pool_timestamp` AS `Timestamp`,
+              (
+                `LP_Pool_total_value_locked_stable` - `LP_Pool_total_borrowed_stable`
+              ) / 1000000 AS `Available Assets`
+            FROM
+              `LP_Pool_State`
+          )
+          SELECT
+            (SUM(`Lease Value`) + `Available Assets`) AS `TVL`,
+            l.`Timestamp` as  `Timestamp`
+          FROM
+            Lease_Value l
+            LEFT JOIN Available_Assets a ON l.`Timestamp` = a.`Timestamp`
+          GROUP BY
+            l.`Timestamp`,
+            a.`Available Assets`
+          ORDER BY
+            l.`Timestamp` ASC;
+          "#,
+      )
+      .fetch_all(&self.pool)
+      .await?;
+      Ok(data)
+  }
 }
