@@ -13,3 +13,4 @@ pub mod revenue;
 pub mod incentives_pool;
 pub mod buyback_total;
 pub mod total_value_locked_series;
+pub mod earn_apr;

@@ -1,7 +1,9 @@
 use crate::{
     configuration::Config,
     error::{self, Error},
-    types::{Balance, LPP_Price, LP_Pool_State_Type, LS_State_Type, QueryBody},
+    types::{
+        Balance, LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type, QueryBody,
+    },
 };
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -54,6 +56,20 @@ impl QueryApi {
         contract: String,
     ) -> Result<Option<LP_Pool_State_Type>, Error> {
         let bytes = b"{\"lpp_balance\": []}";
+        let res = self.query_state(bytes, contract).await?;
+        if let Some(item) = res {
+            let data = serde_json::from_str(&item)?;
+            return Ok(Some(data));
+        }
+
+        Ok(None)
+    }
+
+    pub async fn lpp_config_state(
+        &self,
+        contract: String,
+    ) -> Result<Option<LP_Pool_Config_State_Type>, Error> {
+        let bytes = b"{\"config\": []}";
         let res = self.query_state(bytes, contract).await?;
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;

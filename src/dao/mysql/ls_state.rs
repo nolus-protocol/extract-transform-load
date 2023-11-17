@@ -110,7 +110,7 @@ impl Table<LS_State> {
     }
 
     pub async fn get_total_value_locked(&self) -> Result<BigDecimal, crate::error::Error> {
-      let value: Option<(BigDecimal,)>  = sqlx::query_as(
+      let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
               WITH Lease_Value AS (
                 SELECT
@@ -165,9 +165,14 @@ impl Table<LS_State> {
         .fetch_optional(&self.pool)
         .await?;
 
-        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
+        let default = BigDecimal::from_str("0")?;
+        let amount = if let Some(v) = value {
+          v.0
+        }else{
+          Some(default.to_owned())
+        };
 
-        Ok(amnt.0)
+        Ok(amount.unwrap_or(default.to_owned()))
     }
 
     pub async fn get_total_value_locked_series(&self) -> Result<Vec<TVL_Serie>, Error> {

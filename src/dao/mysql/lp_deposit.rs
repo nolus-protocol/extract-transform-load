@@ -114,6 +114,7 @@ impl Table<LP_Deposit> {
         Ok(amnt)
     }
 
+    // TODO: fix null return
     pub async fn get_yield(&self) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)>  = sqlx::query_as(
             r#"

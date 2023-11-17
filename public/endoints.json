@@ -33,6 +33,11 @@
         ]
     },
     {
+        "description": "Earn APR",
+        "url": "/api/earn-apr",
+        "type": "GET"
+    },
+    {
         "description": "Time series Supplied/Borrowed",
         "url": "/api/time-series",
         "type": "GET"

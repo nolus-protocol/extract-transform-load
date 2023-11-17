@@ -17,9 +17,10 @@ impl Table<LP_Pool_State> {
                 "LP_Pool_total_borrowed_stable",
                 "LP_Pool_total_borrowed_asset",
                 "LP_Pool_total_yield_stable",
-                "LP_Pool_total_yield_asset"
+                "LP_Pool_total_yield_asset",
+                "LP_Pool_min_utilization_threshold"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         "#,
         )
         .bind(&data.LP_Pool_id)
@@ -51,7 +52,8 @@ impl Table<LP_Pool_State> {
                 "LP_Pool_total_borrowed_stable",
                 "LP_Pool_total_borrowed_asset",
                 "LP_Pool_total_yield_stable",
-                "LP_Pool_total_yield_asset"
+                "LP_Pool_total_yield_asset",
+                "LP_Pool_min_utilization_threshold"
             )"#,
         );
 
@@ -64,7 +66,9 @@ impl Table<LP_Pool_State> {
                 .push_bind(&data.LP_Pool_total_borrowed_stable)
                 .push_bind(&data.LP_Pool_total_borrowed_asset)
                 .push_bind(&data.LP_Pool_total_yield_stable)
-                .push_bind(&data.LP_Pool_total_yield_asset);
+                .push_bind(&data.LP_Pool_total_yield_asset)
+                .push_bind(&data.LP_Pool_min_utilization_threshold);
+            
         });
 
         let query = query_builder.build();
