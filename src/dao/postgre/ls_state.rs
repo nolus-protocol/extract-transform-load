@@ -122,11 +122,13 @@ impl Table<LS_State> {
                     WHEN "LS_asset_symbol" = 'WETH' THEN "LS_amnt_stable" / 1000000000000000000
                     WHEN "LS_asset_symbol" = 'EVMOS' THEN "LS_amnt_stable" / 1000000000000000000
                     WHEN "LS_asset_symbol" = 'CRO' THEN "LS_amnt_stable" / 100000000
+                    WHEN "LS_asset_symbol" = 'TIA' THEN "LS_amnt_stable" / 100000000
 
                     WHEN "LS_asset_symbol" != 'WETH'
                     AND "LS_asset_symbol" != 'WBTC' 
                     AND "LS_asset_symbol" != 'EVMOS'
                     AND "LS_asset_symbol" != 'CRO' 
+                    AND "LS_asset_symbol" != 'TIA' 
 
                     THEN "LS_amnt_stable" / 1000000
 
@@ -188,12 +190,14 @@ impl Table<LS_State> {
                 WHEN "LS_asset_symbol" = 'WETH' THEN "LS_amnt_stable" / 1000000000000000000
                 WHEN "LS_asset_symbol" = 'EVMOS' THEN "LS_amnt_stable" / 1000000000000000000
                 WHEN "LS_asset_symbol" = 'CRO' THEN "LS_amnt_stable" / 100000000
+                WHEN "LS_asset_symbol" = 'TIA' THEN "LS_amnt_stable" / 100000000
 
                 WHEN "LS_asset_symbol" != 'WETH'
                 AND "LS_asset_symbol" != 'WBTC' 
                 AND "LS_asset_symbol" != 'EVMOS'
                 AND "LS_asset_symbol" != 'CRO' 
-                
+                AND "LS_asset_symbol" != 'TIA' 
+
                 THEN "LS_amnt_stable" / 1000000
 
               END AS "Lease Value"
