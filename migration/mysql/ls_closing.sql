@@ -1,4 +1,0 @@
-CREATE TABLE IF NOT EXISTS `LS_Closing` (
-  `LS_contract_id` VARCHAR(64) PRIMARY KEY NOT NULL,
-  `LS_timestamp` TIMESTAMP NOT NULL
-);

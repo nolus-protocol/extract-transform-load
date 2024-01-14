@@ -237,7 +237,6 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    // TODO: add for mysql feature
     pub async fn get_earn_apr(&self) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)> = sqlx::query_as(
             r#"
