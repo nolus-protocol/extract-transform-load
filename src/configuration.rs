@@ -3,8 +3,9 @@ use crate::error::Error;
 use crate::helpers::{formatter, parse_tuple_string, Formatter};
 use crate::model::{LP_Pool, MP_Asset_Mapping, TVL_Serie};
 use crate::provider::{DatabasePool, QueryApi, HTTP};
-use crate::types::Currency;
+use crate::types::{Currency, AdminProtocolType};
 use bigdecimal::BigDecimal;
+use futures::future::join_all;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -48,6 +49,7 @@ pub struct State {
     pub database: DatabasePool,
     pub http: HTTP,
     pub query_api: QueryApi,
+    pub protocols: HashMap<String, AdminProtocolType>,
     pub cache: Mutex<Cache>,
 }
 
@@ -61,12 +63,14 @@ impl State {
         Self::init_migrations(&database).await?;
         Self::init_pools(&config.lp_pools, &database).await?;
         Self::init_mp_asset_mapping(&database, &http, &config.supported_currencies).await?;
+        let protocols = Self::init_admin_protocols(&query_api, &config).await?;
 
         Ok(Self {
             config,
             database,
             http,
             query_api,
+            protocols,
             cache: Mutex::new(Cache {
                 total_value_locked: None,
                 total_value_locked_series: None,
@@ -141,6 +145,30 @@ impl State {
             }
         }
         Ok(())
+    }
+
+    async fn init_admin_protocols(query_api: &QueryApi, config: &Config) -> Result<HashMap<String, AdminProtocolType>, Error> {
+        let protocols = query_api
+            .get_admin_config(config.admin_contract.to_owned())
+            .await?;
+        let mut joins = vec![];
+        let protocolsMap = HashMap::<String, AdminProtocolType>::new();
+
+        if let Some(protocols) = protocols {
+            for p in protocols {
+                if !config.ignore_protocols.contains(&p) {
+                    joins.push(query_api.get_protocol_config(config.admin_contract.to_owned(), p))
+                }
+            }
+        }
+
+        let result = join_all(joins).await;
+
+        for item in result.into_iter().flatten().flatten() {
+            dbg!(item);
+        }
+
+        Ok(protocolsMap)
     }
 
     pub async fn in_stabe(&self, currency_symbol: &str, value: &str) -> Result<BigDecimal, Error> {
