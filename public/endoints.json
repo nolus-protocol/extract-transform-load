@@ -117,5 +117,17 @@
         "description": "Protocol Revenue",
         "url": "/api/revenue",
         "type": "GET"
+    },
+    {
+        "description": "Get lease opening",
+        "url": "/api/ls-opening",
+        "type": "GET",
+        "params": [
+            {
+                "name": "lease",
+                "type": "String",
+                "default": "nolus1h6lt7se38uh802fvekrws239jeukga6r89f3ykngnduxdssg6z2qr2dgp8"
+            }
+        ]
     }
 ]

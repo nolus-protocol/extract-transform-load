@@ -39,7 +39,7 @@ impl<T> Deref for AppState<T> {
 pub struct Cache {
     pub total_value_locked: Option<BigDecimal>,
     pub total_value_locked_series: Option<Vec<TVL_Serie>>,
-    pub r#yield: Option<BigDecimal>
+    pub r#yield: Option<BigDecimal>,
 }
 
 #[derive(Debug)]
@@ -48,7 +48,7 @@ pub struct State {
     pub database: DatabasePool,
     pub http: HTTP,
     pub query_api: QueryApi,
-    pub cache: Mutex<Cache>
+    pub cache: Mutex<Cache>,
 }
 
 impl State {
@@ -67,7 +67,11 @@ impl State {
             database,
             http,
             query_api,
-            cache: Mutex::new(Cache { total_value_locked: None, total_value_locked_series: None, r#yield: None })
+            cache: Mutex::new(Cache {
+                total_value_locked: None,
+                total_value_locked_series: None,
+                r#yield: None,
+            }),
         })
     }
 
@@ -229,7 +233,9 @@ pub struct Config {
     pub port: u16,
     pub allowed_origins: Vec<String>,
     pub static_dir: String,
-    pub max_tasks: usize
+    pub max_tasks: usize,
+    pub admin_contract: String,
+    pub ignore_protocols: Vec<String>,
 }
 
 impl Config {
@@ -311,6 +317,11 @@ pub fn get_configuration() -> Result<Config, Error> {
     let cache_state_interval = env::var("CACHE_INTERVAL_IN_MINUTES")?.parse()?;
     let timeout = env::var("TIMEOUT")?.parse()?;
     let max_tasks = env::var("MAX_TASKS")?.parse()?;
+    let admin_contract = env::var("ADMIN_CONTRACT")?.parse()?;
+    let ignore_protocols = env::var("IGNORE_PROTOCOLS")?
+        .split(',')
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>();
 
     let supported_currencies = get_supported_currencies()?;
     let lp_pools = get_lp_pools()?;
@@ -323,7 +334,11 @@ pub fn get_configuration() -> Result<Config, Error> {
         .split(',')
         .map(|item| item.to_string())
         .collect::<Vec<String>>();
-    let static_dir = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), env::var("STATIC_DIRECTORY")?);
+    let static_dir = format!(
+        "{}/{}",
+        env!("CARGO_MANIFEST_DIR"),
+        env::var("STATIC_DIRECTORY")?
+    );
 
     let mut hash_map_currencies: HashMap<String, Currency> = HashMap::new();
     let mut hash_map_pool_currency: HashMap<String, Currency> = HashMap::new();
@@ -367,7 +382,9 @@ pub fn get_configuration() -> Result<Config, Error> {
         port,
         allowed_origins,
         static_dir,
-        max_tasks
+        max_tasks,
+        admin_contract,
+        ignore_protocols,
     };
 
     Ok(config)

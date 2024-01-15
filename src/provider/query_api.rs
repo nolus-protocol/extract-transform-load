@@ -230,4 +230,18 @@ impl QueryApi {
 
         Ok(s)
     }
+
+    pub async fn get_admin_config(
+        &self,
+        contract: String,
+    ) -> Result<Option<LP_Pool_State_Type>, Error> {
+        let bytes = b"{\"lpp_balance\": []}";
+        let res = self.query_state(bytes, contract).await?;
+        if let Some(item) = res {
+            let data = serde_json::from_str(&item)?;
+            return Ok(Some(data));
+        }
+
+        Ok(None)
+    }
 }

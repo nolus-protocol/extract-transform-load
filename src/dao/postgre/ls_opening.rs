@@ -318,4 +318,19 @@ impl Table<LS_Opening> {
 
         Ok(amnt.0)
     }
+
+
+    pub async fn get(
+        &self,
+        LS_contract_id: Option<String>,
+    ) -> Result<Option<LS_Opening>, Error> {
+        sqlx::query_as(
+            r#"
+             SELECT * FROM "LS_Opening" WHERE "LS_contract_id" = $1
+            "#,
+        )
+        .bind(LS_contract_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
 }

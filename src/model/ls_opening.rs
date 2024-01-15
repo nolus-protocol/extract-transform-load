@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
 use sqlx::{types::BigDecimal, FromRow};
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Deserialize, Serialize)]
 pub struct LS_Opening {
     pub LS_contract_id: String,
     pub LS_address_id: String,
