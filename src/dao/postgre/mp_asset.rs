@@ -1,7 +1,7 @@
-use super::QueryResult;
+use super::{DataBase, QueryResult};
 use crate::model::{MP_Asset, Table};
 use chrono::{DateTime, Utc};
-use sqlx::{error::Error, types::BigDecimal};
+use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
 
 impl Table<MP_Asset> {
     pub async fn insert(&self, data: MP_Asset) -> Result<QueryResult, Error> {
@@ -16,6 +16,32 @@ impl Table<MP_Asset> {
         .bind(&data.MP_price_in_stable)
         .execute(&self.pool)
         .await
+    }
+
+    pub async fn insert_many(&self, data: &Vec<MP_Asset>) -> Result<(), Error> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        let mut query_builder: QueryBuilder<DataBase> = QueryBuilder::new(
+            r#"
+            INSERT INTO "MP_Asset" (
+                "MP_asset_symbol",
+                "MP_asset_timestamp",
+                "MP_price_in_stable"
+            )"#,
+        );
+
+        query_builder.push_values(data, |mut b, mp| {
+            b.push_bind(&mp.MP_asset_symbol)
+                .push_bind(mp.MP_asset_timestamp)
+                .push_bind(&mp.MP_price_in_stable);
+        });
+
+        let query = query_builder.build();
+        query.execute(&self.pool).await?;
+
+        Ok(())
     }
 
     pub async fn get_min_max_from_range(
@@ -50,5 +76,4 @@ impl Table<MP_Asset> {
         .fetch_one(&self.pool)
         .await
     }
-
 }

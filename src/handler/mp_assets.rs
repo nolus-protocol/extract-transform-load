@@ -4,7 +4,6 @@ use sqlx::types::BigDecimal;
 use tokio::{time, time::Duration};
 use tracing::error;
 
-use super::mp_map_assets;
 use crate::{
     configuration::{AppState, State},
     error::Error,
@@ -14,33 +13,55 @@ use crate::{
 use std::str::FromStr;
 
 pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
-    let (data, ids) = mp_map_assets::get_mappings(&app_state.database.mp_asset_mapping).await;
-    let prices = app_state.http.get_coingecko_prices(&ids).await?;
-
     let mut joins = Vec::new();
+    let mut mp_assets = vec![];
+    let mut currencies = vec![];
     let timestamp = Utc::now();
 
-    for (key, value) in prices {
-        let item = data
-            .iter()
-            .position(|item| item.MP_asset_symbol_coingecko == key)
-            .ok_or(Error::FieldNotExist(String::from("MP_ASSET")))?;
+    for protocol in app_state.protocols.values() {
+        joins.push(
+            app_state
+                .query_api
+                .get_prices(protocol.contracts.oracle.to_owned(), None),
+        );
+    }
 
-        let item = &data[item];
-        let stable_currency = app_state.config.stable_currency.to_owned();
-        let value = value
-            .get(&stable_currency)
-            .ok_or(Error::FieldNotExist(String::from("currency")))?;
-        let value = BigDecimal::from_str(&value.to_string())?;
+    for result in join_all(joins).await {
+        match result {
+            Ok(data) => {
+                if let Some(item) = data {
+                    for price in item.prices {
+                        if !currencies.contains(&price.amount.ticker){
+                            let value = BigDecimal::from_str(&price.amount_quote.amount)?
+                                / BigDecimal::from_str(&price.amount.amount)?;
+                            let mp_asset = MP_Asset {
+                                MP_asset_symbol: price.amount.ticker.to_owned(),
+                                MP_asset_timestamp: timestamp,
+                                MP_price_in_stable: value,
+                            };
+                            mp_assets.push(mp_asset);
+                            currencies.push(price.amount.ticker.to_owned());
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        }
+    }
 
+    for stable in &app_state.config.lpns {
+        let value = BigDecimal::from_str("1")?;
         let mp_asset = MP_Asset {
-            MP_asset_symbol: item.MP_asset_symbol.to_owned(),
+            MP_asset_symbol: stable.to_owned(),
             MP_asset_timestamp: timestamp,
             MP_price_in_stable: value,
         };
-
-        joins.push(app_state.database.mp_asset.insert(mp_asset));
+        mp_assets.push(mp_asset);
     }
+
+    app_state.database.mp_asset.insert_many(&mp_assets).await?;
 
     let action_history = Action_History {
         action_type: Actions::MpAssetAction.to_string(),
@@ -52,14 +73,6 @@ pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
         .action_history
         .insert(action_history)
         .await?;
-
-    let result = join_all(joins).await;
-
-    for item in result {
-        if let Err(e) = item {
-            return Err(Error::SQL(e));
-        }
-    }
 
     Ok(())
 }

@@ -3,7 +3,7 @@ use crate::{
     error::{self, Error},
     types::{
         AdminProtocolType, Balance, LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type,
-        LS_State_Type, QueryBody,
+        LS_State_Type, Prices, QueryBody,
     },
 };
 use base64::engine::general_purpose;
@@ -14,7 +14,7 @@ use cosmos_sdk_proto::{
         base::query::v1beta1::PageRequest,
     },
     cosmwasm::wasm::v1::{QuerySmartContractStateRequest, QuerySmartContractStateResponse},
-    traits::{Message, MessageExt},
+    traits::Message,
 };
 use reqwest::Client;
 use std::fmt::Write;
@@ -43,7 +43,7 @@ impl QueryApi {
 
     pub async fn lease_state(&self, contract: String) -> Result<Option<LS_State_Type>, Error> {
         let bytes = b"{}";
-        let res = self.query_state(bytes, contract).await?;
+        let res = self.query_state(bytes, contract, None).await?;
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));
@@ -57,7 +57,7 @@ impl QueryApi {
         contract: String,
     ) -> Result<Option<LP_Pool_State_Type>, Error> {
         let bytes = b"{\"lpp_balance\": []}";
-        let res = self.query_state(bytes, contract).await?;
+        let res = self.query_state(bytes, contract, None).await?;
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));
@@ -71,7 +71,7 @@ impl QueryApi {
         contract: String,
     ) -> Result<Option<LP_Pool_Config_State_Type>, Error> {
         let bytes = b"{\"config\": []}";
-        let res = self.query_state(bytes, contract).await?;
+        let res = self.query_state(bytes, contract, None).await?;
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));
@@ -82,7 +82,7 @@ impl QueryApi {
 
     pub async fn lpp_price_state(&self, contract: String) -> Result<Option<LPP_Price>, Error> {
         let bytes = b"{\"price\": []}";
-        let res = self.query_state(bytes, contract).await?;
+        let res = self.query_state(bytes, contract, None).await?;
 
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
@@ -99,7 +99,7 @@ impl QueryApi {
     ) -> Result<Option<Balance>, Error> {
         let request = format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
         let bytes = request.as_bytes();
-        let res = self.query_state(bytes, contract).await?;
+        let res = self.query_state(bytes, contract, None).await?;
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));
@@ -108,8 +108,14 @@ impl QueryApi {
         Ok(None)
     }
 
-    async fn query_state(&self, bytes: &[u8], contract: String) -> Result<Option<String>, Error> {
+    async fn query_state(
+        &self,
+        bytes: &[u8],
+        contract: String,
+        height: Option<String>,
+    ) -> Result<Option<String>, Error> {
         let data = self.state_from_proto(bytes, contract)?;
+        let height = height.unwrap_or(String::from("0"));
 
         let res = self
             .http
@@ -121,20 +127,19 @@ impl QueryApi {
                     "params": [
                         "/cosmwasm.wasm.v1.Query/SmartContractState", 
                         "{}",
-                        "0",
+                        "{}",
                         true
                     ],
                     "id": -1
                 }}
                 "#,
-                data
+                data, height
             ))
             .send()
             .await?
             .json::<QueryBody>()
             .await?;
 
-        dbg!(&res);
         let value = res.result.response.value;
 
         if let Some(v) = value {
@@ -235,7 +240,7 @@ impl QueryApi {
 
     pub async fn get_admin_config(&self, contract: String) -> Result<Option<Vec<String>>, Error> {
         let bytes = b"{\"protocols\": {}}";
-        let res = self.query_state(bytes, contract).await?;
+        let res = self.query_state(bytes, contract, None).await?;
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));
@@ -249,14 +254,26 @@ impl QueryApi {
         contract: String,
         protocol: String,
     ) -> Result<Option<AdminProtocolType>, Error> {
-        let bytes = format!(
-            r#"{{"protocol": {{"protocol": "{}"}}}}"#,
-            protocol
-        ).to_owned();
-
+        let bytes = format!(r#"{{"protocol": {{"protocol": "{}"}}}}"#, protocol).to_owned();
         let bytes = bytes.as_bytes();
-        let res = self.query_state(bytes, contract).await?;
- 
+        let res = self.query_state(bytes, contract, None).await?;
+
+        if let Some(item) = res {
+            let data = serde_json::from_str(&item)?;
+            return Ok(Some(data));
+        }
+
+        Ok(None)
+    }
+
+    pub async fn get_prices(
+        &self,
+        contract: String,
+        height: Option<String>,
+    ) -> Result<Option<Prices>, Error> {
+        let bytes = b"{\"prices\": {}}";
+        let res = self.query_state(bytes, contract, height).await?;
+
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
             return Ok(Some(data));

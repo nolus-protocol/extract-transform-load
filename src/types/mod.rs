@@ -26,6 +26,7 @@ mod amount_ticker;
 mod block;
 mod lp_pool_config_state_type;
 mod admin_protocol_type;
+mod prices_type;
 
 pub use abci_response::AbciBody;
 pub use block_response::{BlockBody, EventData, Attributes};
@@ -55,3 +56,4 @@ pub use amount_ticker::AmountTicker;
 pub use block::BlockValue;
 pub use lp_pool_config_state_type::LP_Pool_Config_State_Type;
 pub use admin_protocol_type::AdminProtocolType;
+pub use prices_type::Prices;

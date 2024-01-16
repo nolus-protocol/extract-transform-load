@@ -3,7 +3,7 @@ use crate::error::Error;
 use crate::helpers::{formatter, parse_tuple_string, Formatter};
 use crate::model::{LP_Pool, MP_Asset_Mapping, TVL_Serie};
 use crate::provider::{DatabasePool, QueryApi, HTTP};
-use crate::types::{Currency, AdminProtocolType};
+use crate::types::{AdminProtocolType, Currency};
 use bigdecimal::BigDecimal;
 use futures::future::join_all;
 use std::collections::HashMap;
@@ -64,7 +64,6 @@ impl State {
         Self::init_pools(&config.lp_pools, &database).await?;
         Self::init_mp_asset_mapping(&database, &http, &config.supported_currencies).await?;
         let protocols = Self::init_admin_protocols(&query_api, &config).await?;
-
         Ok(Self {
             config,
             database,
@@ -147,12 +146,15 @@ impl State {
         Ok(())
     }
 
-    async fn init_admin_protocols(query_api: &QueryApi, config: &Config) -> Result<HashMap<String, AdminProtocolType>, Error> {
+    async fn init_admin_protocols(
+        query_api: &QueryApi,
+        config: &Config,
+    ) -> Result<HashMap<String, AdminProtocolType>, Error> {
         let protocols = query_api
             .get_admin_config(config.admin_contract.to_owned())
             .await?;
         let mut joins = vec![];
-        let protocolsMap = HashMap::<String, AdminProtocolType>::new();
+        let mut protocolsMap = HashMap::<String, AdminProtocolType>::new();
 
         if let Some(protocols) = protocols {
             for p in protocols {
@@ -165,7 +167,7 @@ impl State {
         let result = join_all(joins).await;
 
         for item in result.into_iter().flatten().flatten() {
-            dbg!(item);
+            protocolsMap.insert(item.network.to_owned(), item);
         }
 
         Ok(protocolsMap)
@@ -264,6 +266,9 @@ pub struct Config {
     pub max_tasks: usize,
     pub admin_contract: String,
     pub ignore_protocols: Vec<String>,
+    pub initial_protocol: String,
+    pub lpn_price: BigDecimal,
+    pub lpns: Vec<String>,
 }
 
 impl Config {
@@ -351,6 +356,13 @@ pub fn get_configuration() -> Result<Config, Error> {
         .map(|item| item.to_string())
         .collect::<Vec<String>>();
 
+    let initial_protocol = env::var("INITIAL_PROTOCOL")?.parse()?;
+    let lpn_price = env::var("LPN_PRICE")?.parse()?;
+    let lpns = env::var("LPNS")?
+        .split(',')
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>();
+
     let supported_currencies = get_supported_currencies()?;
     let lp_pools = get_lp_pools()?;
     let native_currency = env::var("NATIVE_CURRENCY")?;
@@ -413,6 +425,9 @@ pub fn get_configuration() -> Result<Config, Error> {
         max_tasks,
         admin_contract,
         ignore_protocols,
+        initial_protocol,
+        lpn_price,
+        lpns,
     };
 
     Ok(config)
