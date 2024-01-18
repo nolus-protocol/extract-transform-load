@@ -20,6 +20,7 @@ mod pl_state;
 mod action_history;
 mod types;
 mod path;
+mod ls_close_position;
 
 pub use types::{DBRow,DataBase,PoolOption,PoolType,QueryResult};
 pub use path::get_path;

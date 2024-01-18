@@ -16,5 +16,6 @@ pub mod lp_pool_state;
 pub mod tr_state;
 pub mod pl_state;
 pub mod cache_state;
+pub mod wasm_ls_close_position;
 
 pub use aggregation_task::aggregation_task;

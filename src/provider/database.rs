@@ -1,7 +1,7 @@
 use crate::configuration::Config;
 use crate::dao::{PoolType, PoolOption};
 use crate::error::Error;
-use crate::model::Table;
+use crate::model::{Table, LS_Close_Position};
 use crate::model::{
     Action_History, Block, LP_Deposit, LP_Lender_State, LP_Pool, LP_Pool_State, LP_Withdraw,
     LS_Closing, LS_Liquidation, LS_Opening, LS_Repayment, LS_State, MP_Asset, MP_Asset_Mapping,
@@ -30,6 +30,7 @@ pub struct DatabasePool {
     pub mp_yield: Table<MP_Yield>,
     pub pl_state: Table<PL_State>,
     pub action_history: Table<Action_History>,
+    pub ls_close_position: Table<LS_Close_Position>,
     pub pool: PoolType,
 }
 
@@ -64,6 +65,7 @@ impl<'c> DatabasePool {
             mp_asset_mapping,
             mp_yield: Table::new(pool.clone()),
             pl_state: Table::new(pool.clone()),
+            ls_close_position: Table::new(pool.clone()),
             action_history: Table::new(pool),
         })
     }

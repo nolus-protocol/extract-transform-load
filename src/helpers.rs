@@ -2,7 +2,7 @@ use crate::configuration::{AppState, State};
 use crate::dao::DataBase;
 use crate::handler::{
     wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close, wasm_ls_liquidation, wasm_ls_open,
-    wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards,
+    wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards, wasm_ls_close_position,
 };
 use crate::model::Block;
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-use crate::types::{EventData, BlockBody};
+use crate::types::{BlockBody, EventData, LS_Close_Position_Type};
 
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -84,7 +84,10 @@ pub fn parse_wasm_ls_open(attributes: Vec<Attributes>) -> Result<LS_Opening_Type
             .get("air")
             .ok_or(Error::FieldNotExist(String::from("air")))?
             .to_string(),
-        at: ls_open.get("at").ok_or(Error::FieldNotExist(String::from("at")))?.to_string(),
+        at: ls_open
+            .get("at")
+            .ok_or(Error::FieldNotExist(String::from("at")))?
+            .to_string(),
         loan_pool_id: ls_open
             .get("loan-pool-id")
             .ok_or(Error::FieldNotExist(String::from("loan-pool-id")))?
@@ -132,43 +135,110 @@ pub fn parse_wasm_ls_repayment(attributes: Vec<Attributes>) -> Result<LS_Repayme
             .to_string(),
         to: ls_repayment
             .get("to")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("to")))?
             .to_string(),
         payment_symbol: ls_repayment
             .get("payment-symbol")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
             .to_string(),
         payment_amount: ls_repayment
             .get("payment-amount")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
             .to_string(),
         at: ls_repayment
             .get("at")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("at")))?
             .to_string(),
         loan_close: ls_repayment
             .get("loan-close")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("loan-close")))?
             .to_string(),
         prev_margin_interest: ls_repayment
             .get("prev-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?
             .to_string(),
         prev_loan_interest: ls_repayment
             .get("prev-loan-interest")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?
             .to_string(),
         curr_margin_interest: ls_repayment
             .get("curr-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?
             .to_string(),
         curr_loan_interest: ls_repayment
             .get("curr-loan-interest")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
+            .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?
             .to_string(),
         principal: ls_repayment
             .get("principal")
+            .ok_or(Error::FieldNotExist(String::from("principal")))?
+            .to_string(),
+    };
+
+    Ok(c)
+}
+
+pub fn parse_wasm_ls_close_position(
+    attributes: Vec<Attributes>,
+) -> Result<LS_Close_Position_Type, Error> {
+    let ls_close_position = pasrse_data(attributes)?;
+
+    let c = LS_Close_Position_Type {
+        height: ls_close_position
+            .get("height")
             .ok_or(Error::FieldNotExist(String::from("height")))?
+            .to_string(),
+        to: ls_close_position
+            .get("to")
+            .ok_or(Error::FieldNotExist(String::from("to")))?
+            .to_string(),
+        change: ls_close_position
+            .get("to")
+            .ok_or(Error::FieldNotExist(String::from("change")))?
+            .to_string(),
+        amount_amount: ls_close_position
+            .get("amount-amount")
+            .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
+            .to_string(),
+        amount_symbol: ls_close_position
+            .get("amount-symbol")
+            .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
+            .to_string(),
+        payment_symbol: ls_close_position
+            .get("payment-symbol")
+            .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
+            .to_string(),
+        payment_amount: ls_close_position
+            .get("payment-amount")
+            .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
+            .to_string(),
+        at: ls_close_position
+            .get("at")
+            .ok_or(Error::FieldNotExist(String::from("at")))?
+            .to_string(),
+        loan_close: ls_close_position
+            .get("loan-close")
+            .ok_or(Error::FieldNotExist(String::from("loan_close")))?
+            .to_string(),
+        prev_margin_interest: ls_close_position
+            .get("prev-margin-interest")
+            .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?
+            .to_string(),
+        prev_loan_interest: ls_close_position
+            .get("prev-loan-interest")
+            .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?
+            .to_string(),
+        curr_margin_interest: ls_close_position
+            .get("curr-margin-interest")
+            .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?
+            .to_string(),
+        curr_loan_interest: ls_close_position
+            .get("curr-loan-interest")
+            .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?
+            .to_string(),
+        principal: ls_close_position
+            .get("principal")
+            .ok_or(Error::FieldNotExist(String::from("principal")))?
             .to_string(),
     };
 
@@ -393,6 +463,10 @@ pub async fn parse_event(
                 let wasm_ls_closing = parse_wasm_ls_close(event.attributes)?;
                 wasm_ls_close::parse_and_insert(&app_state, wasm_ls_closing, tx).await?;
             }
+            EventsType::LS_Close_Position => {
+                let wasm_ls_close_position = parse_wasm_ls_close_position(event.attributes)?;
+                wasm_ls_close_position::parse_and_insert(&app_state, wasm_ls_close_position, tx).await?;
+            }
             EventsType::LS_Repay => {
                 let wasm_ls_repay = parse_wasm_ls_repayment(event.attributes)?;
                 wasm_ls_repay::parse_and_insert(&app_state, wasm_ls_repay, tx).await?;
@@ -492,6 +566,7 @@ impl FromStr for MessageType {
 pub enum EventsType {
     LS_Opening,
     LS_Closing,
+    LS_Close_Position,
     LS_Repay,
     LS_Liquidation,
     LP_deposit,
@@ -505,6 +580,7 @@ impl fmt::Display for EventsType {
         match self {
             EventsType::LS_Opening => write!(f, "wasm-ls-open"),
             EventsType::LS_Closing => write!(f, "wasm-ls-close"),
+            EventsType::LS_Close_Position => write!(f, "wasm-ls-close-position"),
             EventsType::LS_Repay => write!(f, "wasm-ls-repay"),
             EventsType::LS_Liquidation => write!(f, "wasm-ls-liquidation"),
             EventsType::LP_deposit => write!(f, "wasm-lp-deposit"),
@@ -520,6 +596,7 @@ impl From<EventsType> for String {
         match value {
             EventsType::LS_Opening => String::from("wasm-ls-open"),
             EventsType::LS_Closing => String::from("wasm-ls-close"),
+            EventsType::LS_Close_Position => String::from("wasm-ls-close-position"),
             EventsType::LS_Repay => String::from("wasm-ls-repay"),
             EventsType::LS_Liquidation => String::from("wasm-ls-liquidation"),
             EventsType::LP_deposit => String::from("wasm-lp-deposit"),
@@ -537,6 +614,7 @@ impl FromStr for EventsType {
         match value {
             "wasm-ls-open" => Ok(EventsType::LS_Opening),
             "wasm-ls-close" => Ok(EventsType::LS_Closing),
+            "wasm-ls-close-position" => Ok(EventsType::LS_Close_Position),
             "wasm-ls-repay" => Ok(EventsType::LS_Repay),
             "wasm-ls-liquidation" => Ok(EventsType::LS_Liquidation),
             "wasm-lp-deposit" => Ok(EventsType::LP_deposit),
