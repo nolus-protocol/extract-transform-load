@@ -5,6 +5,29 @@ use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
 
 impl Table<TR_Profit> {
+    pub async fn isExists(&self, tr_profit: &TR_Profit) -> Result<bool, crate::error::Error> {
+        let (value,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT 
+                COUNT(*)
+            FROM "TR_Profit" 
+            WHERE 
+                "TR_Profit_height" = $1 AND
+                "TR_Profit_timestamp" = $2
+            "#,
+        )
+        .bind(tr_profit.TR_Profit_height)
+        .bind(tr_profit.TR_Profit_timestamp)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if value > 0 {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
     pub async fn insert(
         &self,
         data: TR_Profit,

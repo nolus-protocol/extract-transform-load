@@ -5,6 +5,7 @@ use reqwest::Error as REQWEST_ERROR;
 use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;
 use std::fmt::Error as FMT_ERROR;
+use std::num::TryFromIntError as TRY_FROM_INT_ERROR;
 use std::{
     env::VarError, io::Error as IO_ERROR, num::ParseIntError,
     str::ParseBoolError as PARSE_BOOL_ERROR, string::ParseError as StringParseError,
@@ -98,6 +99,9 @@ pub enum Error {
 
     #[error("{0}")]
     HeaderToStrError(#[from] HEADER_TO_STR_ERROR),
+    
+    #[error("{0}")]
+    TryFromIntError(#[from] TRY_FROM_INT_ERROR),
 
 }
 

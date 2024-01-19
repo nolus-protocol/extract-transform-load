@@ -4,6 +4,27 @@ use chrono::{DateTime, Utc};
 use sqlx::{error::Error, QueryBuilder, Transaction};
 
 impl Table<LS_Closing> {
+
+    pub async fn isExists(&self, ls_closing: &LS_Closing) -> Result<bool, crate::error::Error> {
+        let (value,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT 
+                COUNT(*)
+            FROM "LS_Closing" 
+            WHERE 
+                "LS_contract_id" = $1       
+            "#,
+        )
+        .bind(&ls_closing.LS_contract_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if value > 0 {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
     pub async fn insert(
         &self,
         data: LS_Closing,

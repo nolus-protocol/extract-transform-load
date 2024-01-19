@@ -5,6 +5,7 @@ use crate::model::{LP_Pool, MP_Asset_Mapping, TVL_Serie};
 use crate::provider::{DatabasePool, QueryApi, HTTP};
 use crate::types::{AdminProtocolType, Currency};
 use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use futures::future::join_all;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -178,6 +179,15 @@ impl State {
         let currency = self.get_currency(currency_symbol)?;
         let Currency(_, _, symbol, _) = currency;
         let (stabe_price,) = self.database.mp_asset.get_price(symbol).await?;
+        let val = self.in_stabe_calc(&stabe_price, value)?;
+
+        Ok(val)
+    }
+
+    pub async fn in_stabe_by_date(&self, currency_symbol: &str, value: &str, date_time: &DateTime::<Utc>) -> Result<BigDecimal, Error> {
+        let currency = self.get_currency(currency_symbol)?;
+        let Currency(_, _, symbol, _) = currency;
+        let (stabe_price,) = self.database.mp_asset.get_price_by_date(symbol, date_time).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
         Ok(val)

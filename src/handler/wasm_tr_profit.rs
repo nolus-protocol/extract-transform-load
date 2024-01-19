@@ -28,16 +28,20 @@ pub async fn parse_and_insert(
         TR_Profit_idx: None,
         TR_Profit_timestamp: at,
         TR_Profit_amnt_stable: app_state
-            .in_stabe(&item.profit_symbol, &item.profit_amount)
+            .in_stabe_by_date(&item.profit_symbol, &item.profit_amount, &at)
             .await?,
         TR_Profit_amnt_nls: BigDecimal::from_str(&item.profit_amount)?,
     };
 
-    app_state
-        .database
-        .tr_profit
-        .insert(tr_profit, transaction)
-        .await?;
+    let isExists = app_state.database.tr_profit.isExists(&tr_profit).await?;
+
+    if !isExists {
+        app_state
+            .database
+            .tr_profit
+            .insert(tr_profit, transaction)
+            .await?;
+    }
 
     Ok(())
 }

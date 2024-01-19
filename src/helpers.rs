@@ -1,8 +1,8 @@
 use crate::configuration::{AppState, State};
 use crate::dao::DataBase;
 use crate::handler::{
-    wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close, wasm_ls_liquidation, wasm_ls_open,
-    wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards, wasm_ls_close_position,
+    wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close, wasm_ls_close_position, wasm_ls_liquidation,
+    wasm_ls_open, wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards,
 };
 use crate::model::Block;
 use crate::{
@@ -64,7 +64,7 @@ pub fn parse_tuple_string(data: String) -> Vec<String> {
     items
 }
 
-pub fn parse_wasm_ls_open(attributes: Vec<Attributes>) -> Result<LS_Opening_Type, Error> {
+pub fn parse_wasm_ls_open(attributes: &Vec<Attributes>) -> Result<LS_Opening_Type, Error> {
     let ls_open = pasrse_data(attributes)?;
 
     let c = LS_Opening_Type {
@@ -109,7 +109,7 @@ pub fn parse_wasm_ls_open(attributes: Vec<Attributes>) -> Result<LS_Opening_Type
     Ok(c)
 }
 
-pub fn parse_wasm_ls_close(attributes: Vec<Attributes>) -> Result<LS_Closing_Type, Error> {
+pub fn parse_wasm_ls_close(attributes: &Vec<Attributes>) -> Result<LS_Closing_Type, Error> {
     let ls_close = pasrse_data(attributes)?;
     let c = LS_Closing_Type {
         id: ls_close
@@ -125,7 +125,7 @@ pub fn parse_wasm_ls_close(attributes: Vec<Attributes>) -> Result<LS_Closing_Typ
     Ok(c)
 }
 
-pub fn parse_wasm_ls_repayment(attributes: Vec<Attributes>) -> Result<LS_Repayment_Type, Error> {
+pub fn parse_wasm_ls_repayment(attributes: &Vec<Attributes>) -> Result<LS_Repayment_Type, Error> {
     let ls_repayment = pasrse_data(attributes)?;
 
     let c = LS_Repayment_Type {
@@ -179,74 +179,76 @@ pub fn parse_wasm_ls_repayment(attributes: Vec<Attributes>) -> Result<LS_Repayme
 }
 
 pub fn parse_wasm_ls_close_position(
-    attributes: Vec<Attributes>,
-) -> Result<LS_Close_Position_Type, Error> {
+    attributes: &Vec<Attributes>,
+) -> Result<Option<LS_Close_Position_Type>, Error> {
     let ls_close_position = pasrse_data(attributes)?;
+    if ls_close_position.contains_key("height") {
+        let c = LS_Close_Position_Type {
+            height: ls_close_position
+                .get("height")
+                .ok_or(Error::FieldNotExist(String::from("height")))?
+                .to_string(),
+            to: ls_close_position
+                .get("to")
+                .ok_or(Error::FieldNotExist(String::from("to")))?
+                .to_string(),
+            change: ls_close_position
+                .get("change")
+                .ok_or(Error::FieldNotExist(String::from("change")))?
+                .to_string(),
+            amount_amount: ls_close_position
+                .get("amount-amount")
+                .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
+                .to_string(),
+            amount_symbol: ls_close_position
+                .get("amount-symbol")
+                .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
+                .to_string(),
+            payment_symbol: ls_close_position
+                .get("payment-symbol")
+                .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
+                .to_string(),
+            payment_amount: ls_close_position
+                .get("payment-amount")
+                .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
+                .to_string(),
+            at: ls_close_position
+                .get("at")
+                .ok_or(Error::FieldNotExist(String::from("at")))?
+                .to_string(),
+            loan_close: ls_close_position
+                .get("loan-close")
+                .ok_or(Error::FieldNotExist(String::from("loan_close")))?
+                .to_string(),
+            prev_margin_interest: ls_close_position
+                .get("prev-margin-interest")
+                .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?
+                .to_string(),
+            prev_loan_interest: ls_close_position
+                .get("prev-loan-interest")
+                .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?
+                .to_string(),
+            curr_margin_interest: ls_close_position
+                .get("curr-margin-interest")
+                .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?
+                .to_string(),
+            curr_loan_interest: ls_close_position
+                .get("curr-loan-interest")
+                .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?
+                .to_string(),
+            principal: ls_close_position
+                .get("principal")
+                .ok_or(Error::FieldNotExist(String::from("principal")))?
+                .to_string(),
+        };
+        return Ok(Some(c));
+    }
 
-    let c = LS_Close_Position_Type {
-        height: ls_close_position
-            .get("height")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_string(),
-        to: ls_close_position
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_string(),
-        change: ls_close_position
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("change")))?
-            .to_string(),
-        amount_amount: ls_close_position
-            .get("amount-amount")
-            .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
-            .to_string(),
-        amount_symbol: ls_close_position
-            .get("amount-symbol")
-            .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
-            .to_string(),
-        payment_symbol: ls_close_position
-            .get("payment-symbol")
-            .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
-            .to_string(),
-        payment_amount: ls_close_position
-            .get("payment-amount")
-            .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
-            .to_string(),
-        at: ls_close_position
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
-        loan_close: ls_close_position
-            .get("loan-close")
-            .ok_or(Error::FieldNotExist(String::from("loan_close")))?
-            .to_string(),
-        prev_margin_interest: ls_close_position
-            .get("prev-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?
-            .to_string(),
-        prev_loan_interest: ls_close_position
-            .get("prev-loan-interest")
-            .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?
-            .to_string(),
-        curr_margin_interest: ls_close_position
-            .get("curr-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?
-            .to_string(),
-        curr_loan_interest: ls_close_position
-            .get("curr-loan-interest")
-            .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?
-            .to_string(),
-        principal: ls_close_position
-            .get("principal")
-            .ok_or(Error::FieldNotExist(String::from("principal")))?
-            .to_string(),
-    };
-
-    Ok(c)
+    Ok(None)
 }
 
 pub fn parse_wasm_ls_liquidation(
-    attributes: Vec<Attributes>,
+    attributes: &Vec<Attributes>,
 ) -> Result<LS_Liquidation_Type, Error> {
     let ls_liquidation = pasrse_data(attributes)?;
     let c = LS_Liquidation_Type {
@@ -299,7 +301,7 @@ pub fn parse_wasm_ls_liquidation(
     Ok(c)
 }
 
-pub fn parse_wasm_lp_deposit(attributes: Vec<Attributes>) -> Result<LP_Deposit_Type, Error> {
+pub fn parse_wasm_lp_deposit(attributes: &Vec<Attributes>) -> Result<LP_Deposit_Type, Error> {
     let deposit = pasrse_data(attributes)?;
 
     let c = LP_Deposit_Type {
@@ -336,7 +338,7 @@ pub fn parse_wasm_lp_deposit(attributes: Vec<Attributes>) -> Result<LP_Deposit_T
     Ok(c)
 }
 
-pub fn parse_wasm_lp_withdraw(attributes: Vec<Attributes>) -> Result<LP_Withdraw_Type, Error> {
+pub fn parse_wasm_lp_withdraw(attributes: &Vec<Attributes>) -> Result<LP_Withdraw_Type, Error> {
     let lp_withdraw = pasrse_data(attributes)?;
 
     let c = LP_Withdraw_Type {
@@ -377,7 +379,7 @@ pub fn parse_wasm_lp_withdraw(attributes: Vec<Attributes>) -> Result<LP_Withdraw
     Ok(c)
 }
 
-pub fn parse_wasm_tr_profit(attributes: Vec<Attributes>) -> Result<TR_Profit_Type, Error> {
+pub fn parse_wasm_tr_profit(attributes: &Vec<Attributes>) -> Result<TR_Profit_Type, Error> {
     let tr_profit = pasrse_data(attributes)?;
 
     let c = TR_Profit_Type {
@@ -403,7 +405,7 @@ pub fn parse_wasm_tr_profit(attributes: Vec<Attributes>) -> Result<TR_Profit_Typ
 }
 
 pub fn parse_wasm_tr_rewards_distribution(
-    attributes: Vec<Attributes>,
+    attributes: &Vec<Attributes>,
 ) -> Result<TR_Rewards_Distribution_Type, Error> {
     let tr_rewards_distribution = pasrse_data(attributes)?;
 
@@ -433,14 +435,14 @@ pub fn parse_wasm_tr_rewards_distribution(
     Ok(c)
 }
 
-fn pasrse_data(attributes: Vec<Attributes>) -> Result<HashMap<String, String>, Error> {
+fn pasrse_data(attributes: &Vec<Attributes>) -> Result<HashMap<String, String>, Error> {
     let mut data: HashMap<String, String> = HashMap::new();
 
     for attribute in attributes {
-        let key = general_purpose::STANDARD.decode(attribute.key)?;
+        let key = general_purpose::STANDARD.decode(&attribute.key)?;
         let str_key = String::from_utf8_lossy(&key);
-        let value =
-            general_purpose::STANDARD.decode(attribute.value.unwrap_or(String::from("")))?;
+        let value = general_purpose::STANDARD
+            .decode(attribute.value.clone().unwrap_or(String::from("")))?;
         let str_value = String::from_utf8_lossy(&value);
         data.insert(str_key.to_string(), str_value.to_string());
     }
@@ -450,47 +452,50 @@ fn pasrse_data(attributes: Vec<Attributes>) -> Result<HashMap<String, String>, E
 
 pub async fn parse_event(
     app_state: AppState<State>,
-    event: EventData,
+    event: &EventData,
+    index: usize,
     tx: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     if let Ok(t) = EventsType::from_str(&event.r#type) {
         match t {
             EventsType::LS_Opening => {
-                let wasm_ls_opening = parse_wasm_ls_open(event.attributes)?;
+                let wasm_ls_opening = parse_wasm_ls_open(&event.attributes)?;
                 wasm_ls_open::parse_and_insert(&app_state, wasm_ls_opening, tx).await?;
             }
             EventsType::LS_Closing => {
-                let wasm_ls_closing = parse_wasm_ls_close(event.attributes)?;
+                let wasm_ls_closing = parse_wasm_ls_close(&event.attributes)?;
                 wasm_ls_close::parse_and_insert(&app_state, wasm_ls_closing, tx).await?;
             }
             EventsType::LS_Close_Position => {
-                let wasm_ls_close_position = parse_wasm_ls_close_position(event.attributes)?;
-                wasm_ls_close_position::parse_and_insert(&app_state, wasm_ls_close_position, tx).await?;
+                let wasm_ls_close_position = parse_wasm_ls_close_position(&event.attributes)?;
+                if let Some(item) = wasm_ls_close_position {
+                    wasm_ls_close_position::parse_and_insert(&app_state, item, tx).await?;
+                }
             }
             EventsType::LS_Repay => {
-                let wasm_ls_repay = parse_wasm_ls_repayment(event.attributes)?;
+                let wasm_ls_repay = parse_wasm_ls_repayment(&event.attributes)?;
                 wasm_ls_repay::parse_and_insert(&app_state, wasm_ls_repay, tx).await?;
             }
             EventsType::LS_Liquidation => {
-                let wasm_ls_liquidation = parse_wasm_ls_liquidation(event.attributes)?;
+                let wasm_ls_liquidation = parse_wasm_ls_liquidation(&event.attributes)?;
                 wasm_ls_liquidation::parse_and_insert(&app_state, wasm_ls_liquidation, tx).await?;
             }
             EventsType::LP_deposit => {
-                let wasm_lp_deposit = parse_wasm_lp_deposit(event.attributes)?;
+                let wasm_lp_deposit = parse_wasm_lp_deposit(&event.attributes)?;
                 wasm_lp_deposit::parse_and_insert(&app_state, wasm_lp_deposit, tx).await?;
             }
             EventsType::LP_Withdraw => {
-                let wasm_lp_withdraw = parse_wasm_lp_withdraw(event.attributes)?;
+                let wasm_lp_withdraw = parse_wasm_lp_withdraw(&event.attributes)?;
                 wasm_lp_withdraw::parse_and_insert(&app_state, wasm_lp_withdraw, tx).await?;
             }
             EventsType::TR_Profit => {
-                let wasm_tr_profit = parse_wasm_tr_profit(event.attributes)?;
+                let wasm_tr_profit = parse_wasm_tr_profit(&event.attributes)?;
                 wasm_tr_profit::parse_and_insert(&app_state, wasm_tr_profit, tx).await?;
             }
             EventsType::TR_Rewards_Distribution => {
                 let wasm_tr_rewards_distribution =
-                    parse_wasm_tr_rewards_distribution(event.attributes)?;
-                wasm_tr_rewards::parse_and_insert(&app_state, wasm_tr_rewards_distribution, tx)
+                    parse_wasm_tr_rewards_distribution(&event.attributes)?;
+                wasm_tr_rewards::parse_and_insert(&app_state, wasm_tr_rewards_distribution, index, tx)
                     .await?;
             }
         }
@@ -508,8 +513,8 @@ pub async fn insert_block(app_state: AppState<State>, data: BlockBody) -> Result
         if let Some(items) = data.result.txs_results {
             for tx_results in items {
                 if let Some(events) = tx_results.events {
-                    for event in events {
-                        parse_event(app_state.clone(), event, &mut tx).await?;
+                    for (index, event) in events.iter().enumerate() {
+                        parse_event(app_state.clone(), event, index, &mut tx).await?;
                     }
                 }
             }

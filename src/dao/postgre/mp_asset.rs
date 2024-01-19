@@ -76,4 +76,27 @@ impl Table<MP_Asset> {
         .fetch_one(&self.pool)
         .await
     }
+
+    pub async fn get_price_by_date(
+        &self,
+        key: &str,
+        date_time: &DateTime<Utc>,
+    ) -> Result<(BigDecimal,), Error> {
+        sqlx::query_as(
+            r#"
+            SELECT "MP_price_in_stable"
+            FROM "MP_Asset"
+            WHERE
+                "MP_asset_symbol" = $1
+                AND
+                "MP_asset_timestamp" >= $2
+
+            ORDER BY "MP_asset_timestamp" ASC LIMIT 1
+            "#,
+        )
+        .bind(key)
+        .bind(date_time)
+        .fetch_one(&self.pool)
+        .await
+    }
 }

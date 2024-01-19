@@ -3,6 +3,30 @@ use crate::model::{LS_Liquidation, Table};
 use sqlx::{error::Error, QueryBuilder, Transaction};
 
 impl Table<LS_Liquidation> {
+    pub async fn isExists(&self, ls_liquidatiion: &LS_Liquidation) -> Result<bool, crate::error::Error> {
+        let (value,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT 
+                COUNT(*)
+            FROM "LS_Liquidation" 
+            WHERE 
+                "LS_liquidation_height" = $1 AND
+                "LS_contract_id" = $2
+            "#,
+        )
+        .bind(ls_liquidatiion.LS_liquidation_height)
+        .bind(&ls_liquidatiion.LS_contract_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if value > 0 {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
+
     pub async fn insert(
         &self,
         data: LS_Liquidation,

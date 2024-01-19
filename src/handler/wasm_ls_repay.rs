@@ -29,7 +29,7 @@ pub async fn parse_and_insert(
         LS_contract_id: item.to,
         LS_symbol: item.payment_symbol.to_owned(),
         LS_amnt_stable: app_state
-            .in_stabe(&item.payment_symbol, &item.payment_amount)
+            .in_stabe_by_date(&item.payment_symbol, &item.payment_amount, &at)
             .await?,
         LS_timestamp: at,
         LS_loan_close: item.loan_close.parse()?,
@@ -40,11 +40,15 @@ pub async fn parse_and_insert(
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
     };
 
-    app_state
-        .database
-        .ls_repayment
-        .insert(ls_repay, transaction)
-        .await?;
+    let isExists = app_state.database.ls_repayment.isExists(&ls_repay).await?;
+    
+    if !isExists {
+        app_state
+            .database
+            .ls_repayment
+            .insert(ls_repay, transaction)
+            .await?;
+    }
 
     Ok(())
 }

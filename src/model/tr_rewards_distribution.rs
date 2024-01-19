@@ -9,4 +9,5 @@ pub struct TR_Rewards_Distribution {
     pub TR_Rewards_timestamp: DateTime<Utc>,
     pub TR_Rewards_amnt_stable: BigDecimal,
     pub TR_Rewards_amnt_nls: BigDecimal,
+    pub Event_Block_Index: i32
 }

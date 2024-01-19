@@ -22,7 +22,6 @@ pub async fn parse_and_insert(
         Error::DecodeDateTimeError(format!("Wasm_LS_Close_Position date parse {}", at_sec))
     })?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
-
     let ls_close_position = LS_Close_Position {
         LS_position_height: item.height.parse()?,
         LS_position_idx: None,
@@ -32,7 +31,7 @@ pub async fn parse_and_insert(
         LS_amount_amount: BigDecimal::from_str(&item.amount_amount)?,
         LS_amount_symbol: item.amount_symbol,
         LS_amnt_stable: app_state
-            .in_stabe(&item.payment_symbol, &item.payment_amount)
+            .in_stabe_by_date(&item.payment_symbol, &item.payment_amount, &at)
             .await?,
         LS_timestamp: at,
         LS_loan_close: item.loan_close.parse()?,
@@ -43,11 +42,19 @@ pub async fn parse_and_insert(
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
     };
 
-    app_state
+    let isExists = app_state
         .database
         .ls_close_position
-        .insert(ls_close_position, transaction)
+        .isExists(&ls_close_position)
         .await?;
+    
+    if !isExists {
+        app_state
+            .database
+            .ls_close_position
+            .insert(ls_close_position, transaction)
+            .await?;
+    }
 
     Ok(())
 }

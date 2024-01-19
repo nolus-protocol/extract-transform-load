@@ -16,23 +16,21 @@ pub async fn parse_and_insert(
     item: LS_Opening_Type,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
-    let f1 = app_state.database.mp_asset.get_price(&item.currency);
-    let f2 = app_state
-        .database
-        .mp_asset
-        .get_price(&item.downpayment_symbol);
-
-    let (loan_price, downpayment_price) = tokio::try_join!(f1, f2)?;
-    let air: i16 = item.air.parse()?;
-
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
 
-    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| Error::DecodeDateTimeError(format!(
-        "Wasm_LS_Open date parse {}",
-        at_sec
-    )))?;
+    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0)
+        .ok_or_else(|| Error::DecodeDateTimeError(format!("Wasm_LS_Open date parse {}", at_sec)))?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
+
+    let f1 = app_state.database.mp_asset.get_price_by_date(&item.currency, &at);
+    let f2 = app_state
+        .database
+        .mp_asset
+        .get_price_by_date(&item.downpayment_symbol, &at);
+
+    let (loan_price, downpayment_price) = tokio::try_join!(f1, f2)?;
+    let air: i16 = item.air.parse()?;
 
     let (l_price,) = loan_price;
     let (d_price,) = downpayment_price;
@@ -53,11 +51,15 @@ pub async fn parse_and_insert(
         LS_native_amnt_nolus: BigDecimal::from(0),
     };
 
-    app_state
-        .database
-        .ls_opening
-        .insert(ls_opening, transaction)
-        .await?;
+    let isExists = app_state.database.ls_opening.isExists(&ls_opening).await?;
+
+    if !isExists {
+        app_state
+            .database
+            .ls_opening
+            .insert(ls_opening, transaction)
+            .await?;
+    }
 
     Ok(())
 }

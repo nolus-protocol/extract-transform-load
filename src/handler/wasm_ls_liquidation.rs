@@ -28,7 +28,7 @@ pub async fn parse_and_insert(
         LS_contract_id: item.to,
         LS_symbol: item.liquidation_symbol.to_owned(),
         LS_amnt_stable: app_state
-            .in_stabe(&item.liquidation_symbol, &item.liquidation_amount)
+            .in_stabe_by_date(&item.liquidation_symbol, &item.liquidation_amount, &at)
             .await?,
         LS_timestamp: at,
         LS_transaction_type: item.r#type,
@@ -39,11 +39,20 @@ pub async fn parse_and_insert(
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
     };
 
-    app_state
+
+    let isExists = app_state
         .database
         .ls_liquidation
-        .insert(ls_liquidation, transaction)
+        .isExists(&ls_liquidation)
         .await?;
+
+    if !isExists {
+        app_state
+            .database
+            .ls_liquidation
+            .insert(ls_liquidation, transaction)
+            .await?;
+    }
 
     Ok(())
 }

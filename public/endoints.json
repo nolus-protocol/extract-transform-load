@@ -126,7 +126,7 @@
             {
                 "name": "lease",
                 "type": "String",
-                "default": "nolus1h6lt7se38uh802fvekrws239jeukga6r89f3ykngnduxdssg6z2qr2dgp8"
+                "default": null
             }
         ]
     }

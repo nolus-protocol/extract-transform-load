@@ -7,6 +7,32 @@ use std::str::FromStr;
 type OptionDecimal = Option<BigDecimal>;
 
 impl Table<LS_Repayment> {
+
+    pub async fn isExists(&self, ls_repayment: &LS_Repayment) -> Result<bool, crate::error::Error> {
+        let (value,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT 
+                COUNT(*)
+            FROM "LS_Repayment" 
+            WHERE 
+                "LS_repayment_height" = $1 AND
+                "LS_contract_id" = $2 AND
+                "LS_timestamp" = $3
+            "#,
+        )
+        .bind(ls_repayment.LS_repayment_height)
+        .bind(&ls_repayment.LS_contract_id)
+        .bind(ls_repayment.LS_timestamp)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if value > 0 {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
     pub async fn insert(
         &self,
         data: LS_Repayment,

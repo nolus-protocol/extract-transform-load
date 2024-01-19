@@ -3,6 +3,30 @@ use crate::model::{LS_Close_Position, Table};
 use sqlx::{error::Error, QueryBuilder, Transaction};
 
 impl Table<LS_Close_Position> {
+
+    pub async fn isExists(&self, ls_close_position: &LS_Close_Position) -> Result<bool, crate::error::Error> {
+        let (value,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT 
+                COUNT(*)
+            FROM "LS_Close_Position" 
+            WHERE 
+                "LS_position_height" = $1 AND
+                "LS_contract_id" = $2
+            "#,
+        )
+        .bind(ls_close_position.LS_position_height)
+        .bind(&ls_close_position.LS_contract_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if value > 0 {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
     pub async fn insert(
         &self,
         data: LS_Close_Position,

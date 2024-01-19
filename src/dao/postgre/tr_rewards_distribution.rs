@@ -5,6 +5,34 @@ use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
 
 impl Table<TR_Rewards_Distribution> {
+    pub async fn isExists(
+        &self,
+        tr_reward: &TR_Rewards_Distribution,
+    ) -> Result<bool, crate::error::Error> {
+        let (value,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT 
+                COUNT(*)
+            FROM "TR_Rewards_Distribution" 
+            WHERE 
+                "TR_Rewards_height" = $1 AND
+                "TR_Rewards_Pool_id" = $2 AND
+                "Event_Block_Index" = $3
+            "#,
+        )
+        .bind(tr_reward.TR_Rewards_height)
+        .bind(&tr_reward.TR_Rewards_Pool_id)
+        .bind(tr_reward.Event_Block_Index)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if value > 0 {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
     pub async fn insert(
         &self,
         data: TR_Rewards_Distribution,
@@ -17,9 +45,10 @@ impl Table<TR_Rewards_Distribution> {
                 "TR_Rewards_Pool_id",
                 "TR_Rewards_timestamp",
                 "TR_Rewards_amnt_stable",
-                "TR_Rewards_amnt_nls"
+                "TR_Rewards_amnt_nls",
+                "Event_Block_Index"
             )
-            VALUES($1, $2, $3, $4, $5)
+            VALUES($1, $2, $3, $4, $5, $6)
         "#,
         )
         .bind(data.TR_Rewards_height)
@@ -27,6 +56,7 @@ impl Table<TR_Rewards_Distribution> {
         .bind(data.TR_Rewards_timestamp)
         .bind(&data.TR_Rewards_amnt_stable)
         .bind(&data.TR_Rewards_amnt_nls)
+        .bind(data.Event_Block_Index)
         .execute(&mut **transaction)
         .await
     }
@@ -47,7 +77,8 @@ impl Table<TR_Rewards_Distribution> {
                 "TR_Rewards_Pool_id",
                 "TR_Rewards_timestamp",
                 "TR_Rewards_amnt_stable",
-                "TR_Rewards_amnt_nls"
+                "TR_Rewards_amnt_nls",
+                "Event_Block_Index"
             )"#,
         );
 
@@ -56,7 +87,8 @@ impl Table<TR_Rewards_Distribution> {
                 .push_bind(&tr.TR_Rewards_Pool_id)
                 .push_bind(tr.TR_Rewards_timestamp)
                 .push_bind(&tr.TR_Rewards_amnt_stable)
-                .push_bind(&tr.TR_Rewards_amnt_nls);
+                .push_bind(&tr.TR_Rewards_amnt_nls)
+                .push_bind(tr.Event_Block_Index);
         });
 
         let query = query_builder.build();

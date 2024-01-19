@@ -5,9 +5,10 @@ use std::str::FromStr;
 
 use crate::{
     configuration::{AppState, State},
+    dao::DataBase,
     error::Error,
     model::LP_Withdraw,
-    types::LP_Withdraw_Type, dao::DataBase,
+    types::LP_Withdraw_Type,
 };
 
 pub async fn parse_and_insert(
@@ -17,10 +18,9 @@ pub async fn parse_and_insert(
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
-    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| Error::DecodeDateTimeError(format!(
-        "Wasm_LP_withdraw date parse {}",
-        at_sec
-    )))?;
+    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| {
+        Error::DecodeDateTimeError(format!("Wasm_LP_withdraw date parse {}", at_sec))
+    })?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
 
     let lp_withdraw = LP_Withdraw {
@@ -30,18 +30,25 @@ pub async fn parse_and_insert(
         LP_timestamp: at,
         LP_Pool_id: item.from,
         LP_amnt_stable: app_state
-            .in_stabe(&item.withdraw_symbol, &item.withdraw_amount)
+            .in_stabe_by_date(&item.withdraw_symbol, &item.withdraw_amount, &at)
             .await?,
         LP_amnt_asset: BigDecimal::from_str(&item.withdraw_amount)?,
         LP_amnt_receipts: BigDecimal::from_str(&item.receipts)?,
         LP_deposit_close: item.close.parse()?,
     };
-
-    app_state
+    let isExists = app_state
         .database
         .lp_withdraw
-        .insert(lp_withdraw, transaction)
+        .isExists(&lp_withdraw)
         .await?;
+
+    if !isExists {
+        app_state
+            .database
+            .lp_withdraw
+            .insert(lp_withdraw, transaction)
+            .await?;
+    }
 
     Ok(())
 }

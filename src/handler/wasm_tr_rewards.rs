@@ -14,6 +14,7 @@ use crate::{
 pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: TR_Rewards_Distribution_Type,
+    index: usize,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -24,22 +25,27 @@ pub async fn parse_and_insert(
     })?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
 
-    let tr_reward_distribution = TR_Rewards_Distribution {
+    let tr_rewards_distribution = TR_Rewards_Distribution {
         TR_Rewards_height: item.height.parse()?,
         TR_Rewards_idx: None,
         TR_Rewards_Pool_id: item.to.to_owned(),
         TR_Rewards_timestamp: at,
         TR_Rewards_amnt_stable: app_state
-            .in_stabe(&item.rewards_symbol, &item.rewards_amount)
+            .in_stabe_by_date(&item.rewards_symbol, &item.rewards_amount, &at)
             .await?,
         TR_Rewards_amnt_nls: BigDecimal::from_str(&item.rewards_amount)?,
+        Event_Block_Index: index.try_into()?
     };
 
-    app_state
-        .database
-        .tr_rewards_distribution
-        .insert(tr_reward_distribution, transaction)
-        .await?;
+    let isExists = app_state.database.tr_rewards_distribution.isExists(&tr_rewards_distribution).await?;
+
+    if !isExists {
+        app_state
+            .database
+            .tr_rewards_distribution
+            .insert(tr_rewards_distribution, transaction)
+            .await?;
+    }
 
     Ok(())
 }
