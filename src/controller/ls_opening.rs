@@ -18,7 +18,7 @@ async fn index(
         let (downpayment_price,) = state
             .database
             .mp_asset
-            .get_price_by_date(&lease.LS_cltr_symbol, &lease.LS_timestamp)
+            .get_price_by_date(&lease.LS_asset_symbol, &lease.LS_timestamp)
             .await?;
         return Ok(web::Json(Some(ResponseData { lease, downpayment_price })));
     }
