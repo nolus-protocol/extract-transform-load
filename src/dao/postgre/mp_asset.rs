@@ -82,7 +82,7 @@ impl Table<MP_Asset> {
         key: &str,
         date_time: &DateTime<Utc>,
     ) -> Result<(BigDecimal,), Error> {
-        sqlx::query_as(
+        let item = sqlx::query_as(
             r#"
             SELECT "MP_price_in_stable"
             FROM "MP_Asset"
@@ -97,6 +97,19 @@ impl Table<MP_Asset> {
         .bind(key)
         .bind(date_time)
         .fetch_one(&self.pool)
-        .await
+        .await;
+
+        if let Err(err) = item {
+            match err {
+                Error::RowNotFound => {
+                    return self.get_price(key).await;
+                }
+                _ => {
+                    return Err(err);
+                }
+            }
+        }
+
+        item
     }
 }

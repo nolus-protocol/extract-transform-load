@@ -12,3 +12,4 @@ ALTER TABLE "TR_Rewards_Distribution" ADD COLUMN "Event_Block_Index" INT NOT NUL
 ALTER TABLE "TR_Rewards_Distribution" DROP CONSTRAINT "MP_Asset_Mapping_pkey";
 ALTER TABLE "TR_Rewards_Distribution" DROP CONSTRAINT "TR_Rewards_Distribution_pkey";
 ALTER TABLE "TR_Rewards_Distribution" ADD CONSTRAINT "TR_Rewards_Distribution_pkey" PRIMARY KEY ("TR_Rewards_height","Event_Block_Index", "TR_Rewards_Pool_id");
+DELETE FROM block;
