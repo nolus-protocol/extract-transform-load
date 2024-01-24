@@ -14,9 +14,6 @@ use crate::{
 };
 
 use crate::types::{BlockBody, EventData, LS_Close_Position_Type};
-
-use base64::engine::general_purpose;
-use base64::Engine;
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
 
@@ -66,7 +63,6 @@ pub fn parse_tuple_string(data: String) -> Vec<String> {
 
 pub fn parse_wasm_ls_open(attributes: &Vec<Attributes>) -> Result<LS_Opening_Type, Error> {
     let ls_open = pasrse_data(attributes)?;
-
     let c = LS_Opening_Type {
         id: ls_open
             .get("id")
@@ -437,14 +433,21 @@ pub fn parse_wasm_tr_rewards_distribution(
 
 fn pasrse_data(attributes: &Vec<Attributes>) -> Result<HashMap<String, String>, Error> {
     let mut data: HashMap<String, String> = HashMap::new();
-
     for attribute in attributes {
-        let key = general_purpose::STANDARD.decode(&attribute.key)?;
-        let str_key = String::from_utf8_lossy(&key);
-        let value = general_purpose::STANDARD
-            .decode(attribute.value.clone().unwrap_or(String::from("")))?;
-        let str_value = String::from_utf8_lossy(&value);
-        data.insert(str_key.to_string(), str_value.to_string());
+        // dbg!("xa2");
+        // dbg!(&attribute);
+        // let c = &attribute.key;
+        // dbg!(&c);
+        // let key = general_purpose::STANDARD.decode(&attribute.key);
+        // dbg!(&key);
+        // let key = key?;
+        // let str_key = String::from_utf8_lossy(&key);
+        // let value = general_purpose::STANDARD
+        //     .decode(attribute.value.clone().unwrap_or(String::from("")))?;
+        // let str_value = String::from_utf8_lossy(&value);
+        let value = attribute.value.to_owned().unwrap_or(String::from(""));
+        let key = attribute.key.to_owned();
+        data.insert(key, value);
     }
 
     Ok(data)
@@ -509,7 +512,6 @@ pub async fn insert_block(app_state: AppState<State>, data: BlockBody) -> Result
 
     if block.is_none() {
         let mut tx = app_state.database.pool.begin().await?;
-
         if let Some(items) = data.result.txs_results {
             for tx_results in items {
                 if let Some(events) = tx_results.events {

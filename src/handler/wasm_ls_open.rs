@@ -22,7 +22,7 @@ pub async fn parse_and_insert(
     let time = NaiveDateTime::from_timestamp_opt(at_sec, 0)
         .ok_or_else(|| Error::DecodeDateTimeError(format!("Wasm_LS_Open date parse {}", at_sec)))?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
-
+    
     let f1 = app_state.database.mp_asset.get_price_by_date(&item.currency, &at);
     let f2 = app_state
         .database
@@ -34,7 +34,6 @@ pub async fn parse_and_insert(
 
     let (l_price,) = loan_price;
     let (d_price,) = downpayment_price;
-
     let ls_opening = LS_Opening {
         LS_contract_id: item.id,
         LS_address_id: item.customer,

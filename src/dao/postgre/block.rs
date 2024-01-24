@@ -61,10 +61,7 @@ impl Table<Block> {
         .await
     }
 
-    pub async fn get_one(
-        &self,
-        id: i64
-    ) -> Result<Option<Block>, Error> {
+    pub async fn get_one(&self, id: i64) -> Result<Option<Block>, Error> {
         sqlx::query_as(
             r#"
              SELECT * FROM "block" WHERE id = $1
@@ -73,5 +70,16 @@ impl Table<Block> {
         .bind(id)
         .fetch_optional(&self.pool)
         .await
+    }
+
+    pub async fn count(&self) -> Result<i64, Error> {
+        let (count,)= sqlx::query_as(
+            r#"
+             SELECT COUNT(*) FROM "block"
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(count)
     }
 }

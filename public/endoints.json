@@ -129,5 +129,10 @@
                 "default": null
             }
         ]
+    },
+    {
+        "description": "Synced blocks",
+        "url": "/api/blocks",
+        "type": "GET"
     }
 ]

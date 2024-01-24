@@ -49,7 +49,7 @@ sudo systemctl enable etl
 ### BUILD
 
 ```
-cargo 1.66.0 or higher
+cargo 1.75.0 or higher
 
 cargo build --release
 ```

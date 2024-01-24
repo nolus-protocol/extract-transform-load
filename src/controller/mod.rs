@@ -15,3 +15,4 @@ pub mod buyback_total;
 pub mod total_value_locked_series;
 pub mod earn_apr;
 pub mod ls_opening;
+pub mod blocks;
