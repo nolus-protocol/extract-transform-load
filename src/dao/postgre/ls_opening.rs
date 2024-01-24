@@ -258,7 +258,93 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    pub async fn get_earn_apr(&self) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_earn_apr(&self, protocol: String) -> Result<BigDecimal, crate::error::Error> {
+        let value: Option<(BigDecimal,)> = sqlx::query_as(
+            r#"
+            WITH DateRange AS (
+                SELECT
+                    generate_series(
+                        CURRENT_DATE - INTERVAL '30 days',
+                        CURRENT_DATE,
+                        '1 day'
+                    ) :: date AS date
+            ),
+            DailyInterest AS (
+                SELECT
+                    DATE("LS_timestamp") AS date,
+                    MAX("LS_interest") AS max_interest
+                FROM
+                    "LS_Opening"
+                WHERE
+                    "LS_timestamp" >= CURRENT_DATE - INTERVAL '30 days'
+                    AND "LS_loan_pool_id" = $1
+                GROUP BY
+                    DATE("LS_timestamp")
+            ),
+            MaxLSInterest AS (
+                SELECT
+                    dr.date,
+                    COALESCE(
+                        di.max_interest,
+                        FIRST_VALUE(di.max_interest) OVER (
+                            ORDER BY
+                                dr.date ROWS BETWEEN UNBOUNDED PRECEDING
+                                AND 1 PRECEDING
+                        )
+                    ) AS max_interest
+                FROM
+                    DateRange dr
+                    LEFT JOIN DailyInterest di ON dr.date = di.date
+            ),
+            MaxLPRatio AS (
+                SELECT
+                    DATE("LP_Pool_timestamp") AS date,
+                    (
+                        "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
+                    ) AS ratio
+                FROM
+                    (
+                        SELECT
+                            *,
+                            RANK() OVER (
+                                PARTITION BY DATE("LP_Pool_timestamp")
+                                ORDER BY
+                                    (
+                                        "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
+                                    ) DESC
+                            ) AS rank
+                        FROM
+                            "LP_Pool_State"
+                        WHERE
+                            "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '30 days'
+                            AND "LP_Pool_id" = $2
+                    ) ranked
+                WHERE
+                    ranked.rank = 1
+            ),
+            APRCalc AS (
+                SELECT
+                    AVG((mli.max_interest - 40) * mlr.ratio) / 10 AS "Earn APR"
+                FROM
+                    MaxLSInterest mli
+                    JOIN MaxLPRatio mlr ON mli.date = mlr.date
+            )
+            SELECT
+                (POWER((1 + ("Earn APR" / 100 / 365)), 365) - 1) * 100 AS "Earn APY"
+            FROM APRCalc
+            "#,
+        )
+        .bind(&protocol)
+        .bind(&protocol)
+        .fetch_optional(&self.pool)
+        .await?;
+        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
+
+        Ok(amnt.0)
+    }
+
+    //TODO: deprecate
+    pub async fn get_earn_apr_old(&self) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)> = sqlx::query_as(
             r#"
                 WITH DateRange AS (
@@ -339,6 +425,7 @@ impl Table<LS_Opening> {
 
         Ok(amnt.0)
     }
+
 
     pub async fn get(&self, LS_contract_id: Option<String>) -> Result<Option<LS_Opening>, Error> {
         sqlx::query_as(

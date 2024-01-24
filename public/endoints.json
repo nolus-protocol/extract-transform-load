@@ -35,7 +35,14 @@
     {
         "description": "Earn APR",
         "url": "/api/earn-apr",
-        "type": "GET"
+        "type": "GET",
+        "params": [
+            {
+                "name": "protocol",
+                "type": "String",
+                "default": null
+            }
+        ]
     },
     {
         "description": "Time series Supplied/Borrowed",

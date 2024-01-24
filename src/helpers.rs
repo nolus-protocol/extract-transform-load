@@ -434,17 +434,6 @@ pub fn parse_wasm_tr_rewards_distribution(
 fn pasrse_data(attributes: &Vec<Attributes>) -> Result<HashMap<String, String>, Error> {
     let mut data: HashMap<String, String> = HashMap::new();
     for attribute in attributes {
-        // dbg!("xa2");
-        // dbg!(&attribute);
-        // let c = &attribute.key;
-        // dbg!(&c);
-        // let key = general_purpose::STANDARD.decode(&attribute.key);
-        // dbg!(&key);
-        // let key = key?;
-        // let str_key = String::from_utf8_lossy(&key);
-        // let value = general_purpose::STANDARD
-        //     .decode(attribute.value.clone().unwrap_or(String::from("")))?;
-        // let str_value = String::from_utf8_lossy(&value);
         let value = attribute.value.to_owned().unwrap_or(String::from(""));
         let key = attribute.key.to_owned();
         data.insert(key, value);
