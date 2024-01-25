@@ -18,12 +18,34 @@ async fn index(
         limit = 100;
     }
 
+    if let Some(protocolKey) = &data.protocol {
+        let protocolKey = protocolKey.to_uppercase();
+        let admin = state.protocols.get(&protocolKey);
+
+        if let Some(protocol) = admin {
+            let data = state
+                .database
+                .lp_pool_state
+                .get_utilization_level(protocol.contracts.lpp.to_owned(), skip, limit)
+                .await?;
+            let items: Vec<BigDecimal> = data
+                .iter()
+                .map(|item| item.utilization_level.to_owned())
+                .collect();
+
+            return Ok(web::Json(items));
+        }
+    }
+
     let data = state
         .database
         .lp_pool_state
-        .get_utilization_level(skip, limit)
+        .get_utilization_level_old(skip, limit)
         .await?;
-    let items: Vec<BigDecimal> = data.iter().map(|item| item.utilization_level.to_owned()).collect();
+    let items: Vec<BigDecimal> = data
+        .iter()
+        .map(|item| item.utilization_level.to_owned())
+        .collect();
 
     Ok(web::Json(items))
 }
@@ -32,4 +54,5 @@ async fn index(
 pub struct Query {
     skip: Option<i64>,
     limit: Option<i64>,
+    protocol: Option<String>,
 }

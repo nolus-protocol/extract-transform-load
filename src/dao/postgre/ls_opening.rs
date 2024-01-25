@@ -234,12 +234,18 @@ impl Table<LS_Opening> {
         Ok(amnt)
     }
 
-    pub async fn get_borrow_apr(&self, skip: i64, limit: i64) -> Result<Vec<Borrow_APR>, Error> {
+    pub async fn get_borrow_apr(
+        &self,
+        protocol: String,
+        skip: i64,
+        limit: i64,
+    ) -> Result<Vec<Borrow_APR>, Error> {
         let data = sqlx::query_as(
             r#"
-            SELECT "LS_interest" / 10.0 AS "APR" FROM "LS_Opening" ORDER BY "LS_timestamp" DESC OFFSET $1 LIMIT $2
+            SELECT "LS_interest" / 10.0 AS "APR" FROM "LS_Opening" WHERE "LS_loan_pool_id" = $1 ORDER BY "LS_timestamp" DESC OFFSET $2 LIMIT $3
             "#,
         )
+        .bind(protocol)
         .bind(skip)
         .bind(limit)
         .fetch_all(&self.pool)
@@ -247,7 +253,19 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    pub async fn get_leased_assets(&self) -> Result<Vec<Leased_Asset>, Error> {
+    pub async fn get_leased_assets(&self, protocol: String) -> Result<Vec<Leased_Asset>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT "LS_asset_symbol" AS "Asset", SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening" WHERE "LS_loan_pool_id" = $1 GROUP BY "Asset"
+            "#,
+        )
+        .bind(protocol)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_leased_assets_total(&self) -> Result<Vec<Leased_Asset>, Error> {
         let data = sqlx::query_as(
             r#"
             SELECT "LS_asset_symbol" AS "Asset", SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening" GROUP BY "Asset"
@@ -343,90 +361,6 @@ impl Table<LS_Opening> {
         Ok(amnt.0)
     }
 
-    //TODO: deprecate
-    pub async fn get_earn_apr_old(&self) -> Result<BigDecimal, crate::error::Error> {
-        let value: Option<(BigDecimal,)> = sqlx::query_as(
-            r#"
-                WITH DateRange AS (
-                    SELECT
-                    generate_series(
-                        CURRENT_DATE - INTERVAL '30 days',
-                        CURRENT_DATE,
-                        '1 day'
-                    ) :: date AS date
-                ),
-                DailyInterest AS (
-                    SELECT
-                    DATE("LS_timestamp") AS date,
-                    MAX("LS_interest") AS max_interest
-                    FROM
-                    "LS_Opening"
-                    WHERE
-                    "LS_timestamp" >= CURRENT_DATE - INTERVAL '30 days'
-                    GROUP BY
-                    DATE("LS_timestamp")
-                ),
-                MaxLSInterest AS (
-                    SELECT
-                    dr.date,
-                    COALESCE(
-                        di.max_interest,
-                        FIRST_VALUE(di.max_interest) OVER (
-                        ORDER BY
-                            dr.date ROWS BETWEEN UNBOUNDED PRECEDING
-                            AND 1 PRECEDING
-                        )
-                    ) AS max_interest
-                    FROM
-                    DateRange dr
-                    LEFT JOIN DailyInterest di ON dr.date = di.date
-                ),
-                MaxLPRatio AS (
-                    SELECT
-                    DATE("LP_Pool_timestamp") AS date,
-                    (
-                        "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
-                    ) AS ratio
-                    FROM
-                    (
-                        SELECT
-                        *,
-                        RANK() OVER (
-                            PARTITION BY DATE("LP_Pool_timestamp")
-                            ORDER BY
-                            (
-                                "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
-                            ) DESC
-                        ) AS rank
-                        FROM
-                        "LP_Pool_State"
-                        WHERE
-                        "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '30 days'
-                    ) ranked
-                    WHERE
-                    ranked.rank = 1
-                ),
-                APRCalc AS (
-                    SELECT
-                    AVG((mli.max_interest - 40) * mlr.ratio) / 10 AS "Earn APR"
-                    FROM
-                    MaxLSInterest mli
-                    JOIN MaxLPRatio mlr ON mli.date = mlr.date
-                )
-                SELECT
-                    (POWER((1 + ("Earn APR" / 100 / 365)), 365) - 1) * 100 AS "Earn APY"
-                FROM APRCalc;
-              "#,
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
-
-        Ok(amnt.0)
-    }
-
-
     pub async fn get(&self, LS_contract_id: Option<String>) -> Result<Option<LS_Opening>, Error> {
         sqlx::query_as(
             r#"
@@ -436,5 +370,32 @@ impl Table<LS_Opening> {
         .bind(LS_contract_id)
         .fetch_optional(&self.pool)
         .await
+    }
+
+    pub async fn get_borrowed(&self, protocol: String) -> Result<BigDecimal, crate::error::Error> {
+        let value: Option<(BigDecimal,)>   = sqlx::query_as(
+            r#"
+                SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening" WHERE "LS_loan_pool_id" = $1
+            "#,
+        )
+        .bind(protocol)
+        .fetch_optional(&self.pool)
+        .await?;
+        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
+
+        Ok(amnt.0)
+    }
+
+    pub async fn get_borrowed_total(&self) -> Result<BigDecimal, crate::error::Error> {
+        let value: Option<(BigDecimal,)> = sqlx::query_as(
+            r#"
+                SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening"
+            "#,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
+
+        Ok(amnt.0)
     }
 }

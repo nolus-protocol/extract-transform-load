@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
@@ -21,10 +23,9 @@ async fn index(
         }
     }
 
-    let data = state.database.ls_opening.get_earn_apr_old().await?;
 
     Ok(web::Json(Response {
-        earn_apr: data
+        earn_apr: BigDecimal::from_str("0")?
     }))
 }
 

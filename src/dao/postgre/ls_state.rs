@@ -1,5 +1,5 @@
 use super::{DataBase, QueryResult};
-use crate::model::{LS_Opening, LS_State, Table, TVL_Serie};
+use crate::model::{LS_Opening, LS_State, Table};
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
 use std::str::FromStr;
@@ -112,54 +112,37 @@ impl Table<LS_State> {
     pub async fn get_total_value_locked(&self) -> Result<BigDecimal, crate::error::Error> {
       let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
-              WITH Lease_Value AS (
-                SELECT
-                  "LS_State"."LS_timestamp" AS "Timestamp",
-                  "LS_asset_symbol" AS "Token",
-                  "LS_Opening"."LS_contract_id" as "Contract ID",
-                  CASE
-                    WHEN "LS_asset_symbol" = 'WBTC' THEN "LS_amnt_stable" / 100000000
-                    WHEN "LS_asset_symbol" = 'WETH' THEN "LS_amnt_stable" / 1000000000000000000
-                    WHEN "LS_asset_symbol" = 'EVMOS' THEN "LS_amnt_stable" / 1000000000000000000
-                    WHEN "LS_asset_symbol" = 'CRO' THEN "LS_amnt_stable" / 100000000
-
-                    WHEN "LS_asset_symbol" != 'WETH'
-                    AND "LS_asset_symbol" != 'WBTC' 
-                    AND "LS_asset_symbol" != 'EVMOS'
-                    AND "LS_asset_symbol" != 'CRO' 
-
-                    THEN "LS_amnt_stable" / 1000000
-
-                  END AS "Lease Value"
-                FROM
-                  "LS_State"
-                  LEFT JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_State"."LS_contract_id"
-                WHERE
-                  "LS_amnt_stable" > 0
-                ORDER BY
-                  "Lease Value" DESC
-              ),
-              Available_Assets AS (
-                SELECT
-                  "LP_Pool_timestamp" AS "Timestamp",
-                  (
-                    "LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable"
-                  ) / 1000000 AS "Available Assets"
-                FROM
-                  "LP_Pool_State"
-              )
-              SELECT
-                (SUM("Lease Value") + "Available Assets") AS "TVL"
-              FROM
-                Lease_Value l
-                LEFT JOIN Available_Assets a ON l."Timestamp" = a."Timestamp"
-              GROUP BY
-                l."Timestamp",
-                a."Available Assets"
-              ORDER BY
-                l."Timestamp" DESC
-              LIMIT
-                1
+          WITH Lease_Value AS (
+            SELECT s."LS_amnt_stable" / 1000000 AS "Lease Value"
+            FROM
+              "LS_State" s
+            WHERE "LS_timestamp" = (
+              SELECT MAX("LS_timestamp")
+              FROM "LS_State"
+            )
+          ),
+          Available_Assets_Osmosis AS (
+            SELECT
+              ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
+            FROM
+              "LP_Pool_State"
+            WHERE "LP_Pool_id" = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5'
+            ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+          ),
+          Available_Assets_Neutron AS (
+            SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
+            FROM
+              "LP_Pool_State"
+            WHERE "LP_Pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94'
+            ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+          ),
+          Lease_Value_Sum AS (
+            SELECT SUM("Lease Value") AS "Total Lease Value" FROM Lease_Value
+          )
+          SELECT
+              (SELECT "Total Lease Value" FROM Lease_Value_Sum) +
+              (SELECT "Available Assets" FROM Available_Assets_Osmosis) +
+              (SELECT "Available Assets" FROM Available_Assets_Neutron) AS "TVL"
             "#,
         )
         .fetch_optional(&self.pool)
@@ -175,60 +158,4 @@ impl Table<LS_State> {
         Ok(amount.unwrap_or(default.to_owned()))
     }
 
-    pub async fn get_total_value_locked_series(&self) -> Result<Vec<TVL_Serie>, Error> {
-      let data = sqlx::query_as(
-          r#"
-          WITH Lease_Value AS (
-            SELECT
-              "LS_State"."LS_timestamp" AS "Timestamp",
-              "LS_asset_symbol" AS "Token",
-              "LS_Opening"."LS_contract_id" as "Contract ID",
-              CASE
-                WHEN "LS_asset_symbol" = 'WBTC' THEN "LS_amnt_stable" / 100000000
-                WHEN "LS_asset_symbol" = 'WETH' THEN "LS_amnt_stable" / 1000000000000000000
-                WHEN "LS_asset_symbol" = 'EVMOS' THEN "LS_amnt_stable" / 1000000000000000000
-                WHEN "LS_asset_symbol" = 'CRO' THEN "LS_amnt_stable" / 100000000
-
-                WHEN "LS_asset_symbol" != 'WETH'
-                AND "LS_asset_symbol" != 'WBTC' 
-                AND "LS_asset_symbol" != 'EVMOS'
-                AND "LS_asset_symbol" != 'CRO' 
-                
-                THEN "LS_amnt_stable" / 1000000
-
-              END AS "Lease Value"
-            FROM
-              "LS_State"
-              LEFT JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_State"."LS_contract_id"
-            WHERE
-              "LS_amnt_stable" > 0
-            ORDER BY
-              "Lease Value" DESC
-          ),
-          Available_Assets AS (
-            SELECT
-              "LP_Pool_timestamp" AS "Timestamp",
-              (
-                "LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable"
-              ) / 1000000 AS "Available Assets"
-            FROM
-              "LP_Pool_State"
-          )
-          SELECT
-            (SUM("Lease Value") + "Available Assets") AS "TVL",
-            l."Timestamp" as  "Timestamp"
-          FROM
-            Lease_Value l
-            LEFT JOIN Available_Assets a ON l."Timestamp" = a."Timestamp"
-          GROUP BY
-            l."Timestamp",
-            a."Available Assets"
-          ORDER BY
-            l."Timestamp" ASC;
-          "#,
-      )
-      .fetch_all(&self.pool)
-      .await?;
-      Ok(data)
-  }
 }

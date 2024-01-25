@@ -302,6 +302,26 @@ Aggragation is done over all records pertaining to the same *aggregation interva
 | PL_OUT_TR_rewards_amnt_stable | Unsigned Int(140) | sum(TR_Rewards_Distribution::TR_Rewards_amnt_stable) for all records with TR_Rewards_Distribution::TR_Rewards_timestamp within the interval | Total amount transferred in stable since the last Platform snapshot
 | PL_OUT_TR_rewards_amnt_nls    | Unsigned Int(140) | sum(TR_Rewards_Distribution::TR_Rewards_amnt_nls) for all records with TR_Rewards_Distribution::TR_Rewards_timestamp within the interval | Total amount transferred in NLS since the last Platform snapshot
 
+### **LS_Close_Position** [Primary Key = LS_position_height + LS_position_idx]
+
+| Property Name     | Type              | EventType.Attribute::Index | Description
+| ----------------- | ----------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| LS_position_height| Int(64)           | wasm-ls-close.height| Height of the block this transaction is in
+| LS_position_idx   | Int(32)           | wasm-ls-close.idx   | Index in the block this transaction is at
+| LS_contract_id    | Alphanumeric(64)  | wasm-ls-close.to   | Lease Smart Contract ID
+| LS_symbol         | Alphanumeric(20)  | *supported currencies*[wasm-ls-close.payment-symbol]  | payment currency symbol
+| LS_change         | Unsigned Int(128) | wasm-ls-close.change  | change after market close position
+| LS_amount_amount  | Unsigned Int(128) | wasm-ls-close.amount_amount  | 
+| LS_amount_symbol         | Alphanumeric(20)      | wasm-ls-close.LS_amount_symbol  | 
+| LS_amnt_stable    | Unsigned Int(128) | in_stable(wasm-ls-close.payment_amount)  | The amount of the transaction in stable
+| LS_timestamp      | Timestamp         | wasm-ls-close.at   | Open time of the lease
+| LS_loan_close     | Boolean           | wasm-ls-close.loan-close  | A flag indicating if this repayment closes the loan
+| LS_prev_margin_stable      | Unsigned Int(128) | wasm-ls-close.prev-margin-interest | The paid margin interest amount for the previous period, if any
+| LS_prev_interest_stable    | Unsigned Int(128) | wasm-ls-close.prev-loan-interest   | The paid loan interest amount for the previous period, if any
+| LS_current_margin_stable   | Unsigned Int(128) | wasm-ls-close.curr-margin-interest | The paid margin interest amount for the current period, if any
+| LS_current_interest_stable | Unsigned Int(128) | wasm-ls-close.curr-loan-interest   | The paid loan interest amount for the current period, if any
+| LS_principal_stable        | Unsigned Int(128) | wasm-ls-close.principal            | The paid principal, if any
+
 #### Database types
 Due to the lack of unsigned integer types in the databases with more that 64 bits we define the mapping of Unsigned Int(128) as Decimal(log(2 ** 128, 10), 0), i.e. Decimal(39, 0). Simmilarly, the fields that accumulate such values we map into Decimal(log(2 ** 140, 10), 0), i.e. Decimal(42, 0).
 

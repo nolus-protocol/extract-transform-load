@@ -1,7 +1,7 @@
 use crate::dao::get_path;
 use crate::error::Error;
 use crate::helpers::{formatter, parse_tuple_string, Formatter};
-use crate::model::{LP_Pool, MP_Asset_Mapping, TVL_Serie};
+use crate::model::{LP_Pool, MP_Asset_Mapping};
 use crate::provider::{DatabasePool, QueryApi, HTTP};
 use crate::types::{AdminProtocolType, Currency};
 use bigdecimal::BigDecimal;
@@ -39,9 +39,7 @@ impl<T> Deref for AppState<T> {
 
 #[derive(Debug)]
 pub struct Cache {
-    pub total_value_locked: Option<BigDecimal>,
-    pub total_value_locked_series: Option<Vec<TVL_Serie>>,
-    pub r#yield: Option<BigDecimal>,
+    pub total_value_locked: Option<BigDecimal>
 }
 
 #[derive(Debug)]
@@ -72,9 +70,7 @@ impl State {
             query_api,
             protocols,
             cache: Mutex::new(Cache {
-                total_value_locked: None,
-                total_value_locked_series: None,
-                r#yield: None,
+                total_value_locked: None
             }),
         })
     }

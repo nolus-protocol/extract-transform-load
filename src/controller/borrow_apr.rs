@@ -18,12 +18,22 @@ async fn index(
         limit = 100;
     }
 
-    let data = state
-        .database
-        .ls_opening
-        .get_borrow_apr(skip, limit)
-        .await?;
-    let items: Vec<BigDecimal> = data.iter().map(|item| item.APR.to_owned()).collect();
+    if let Some(protocolKey) = &data.protocol {
+        let protocolKey = protocolKey.to_uppercase();
+        let admin = state.protocols.get(&protocolKey);
+
+        if let Some(protocol) = admin {
+            let data = state
+                .database
+                .ls_opening
+                .get_borrow_apr(protocol.contracts.lpp.to_owned(), skip, limit)
+                .await?;
+            let items: Vec<BigDecimal> = data.iter().map(|item| item.APR.to_owned()).collect();
+            return Ok(web::Json(items));
+        }
+    }
+
+    let items = vec![];
     Ok(web::Json(items))
 }
 
@@ -31,4 +41,5 @@ async fn index(
 pub struct Query {
     skip: Option<i64>,
     limit: Option<i64>,
+    protocol: Option<String>,
 }

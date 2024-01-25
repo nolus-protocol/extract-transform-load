@@ -5,16 +5,6 @@
         "type": "GET"
     },
     {
-        "description": "Total Value Locked series",
-        "url": "/api/total-value-locked-series",
-        "type": "GET"
-    },
-    {
-        "description": "Yield",
-        "url": "/api/yield",
-        "type": "GET"
-    },
-    {
         "description": "Borrow APR",
         "url": "/api/borrow-apr",
         "type": "GET",
