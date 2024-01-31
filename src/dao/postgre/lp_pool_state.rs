@@ -120,31 +120,15 @@ impl Table<LP_Pool_State> {
         let data = sqlx::query_as(
             r#"
             SELECT 
-                "LP_Pool_timestamp",
-                SUM(CASE 
-                        WHEN "LP_Pool_timestamp" < '2024-01-22 18:04:17' THEN "LP_Pool_total_value_locked_stable" / 1000000
-                        ELSE 0 
-                    END) + 
-                MAX(CASE 
-                        WHEN "LP_Pool_timestamp" >= '2024-01-22 18:04:17' THEN "LP_Pool_total_value_locked_stable" / 1000000
-                        ELSE 0 
-                    END) AS "Supplied",
-                SUM(CASE 
-                        WHEN "LP_Pool_timestamp" < '2024-01-22 18:04:17' THEN "LP_Pool_total_borrowed_stable" / 1000000
-                        ELSE 0 
-                    END) + 
-                MAX(CASE 
-                        WHEN "LP_Pool_timestamp" >= '2024-01-22 18:04:17' THEN "LP_Pool_total_borrowed_stable" / 1000000
-                        ELSE 0 
-                    END) AS "Borrowed"
-            FROM 
+                "LP_Pool_timestamp", SUM("LP_Pool_total_value_locked_stable" / 1000000) AS "Supplied", SUM("LP_Pool_total_borrowed_stable" / 1000000) AS "Borrowed" 
+            FROM
                 "LP_Pool_State"
             WHERE
                 "LP_Pool_id" IN ('nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94', 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5')
             GROUP BY 
                 "LP_Pool_timestamp"
             ORDER BY 
-                "LP_Pool_timestamp" DESC;
+                "LP_Pool_timestamp" DESC
             "#,
         )
         .fetch_all(&self.pool)

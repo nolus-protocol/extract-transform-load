@@ -31,16 +31,33 @@ pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
             Ok(data) => {
                 if let Some(item) = data {
                     for price in item.prices {
-                        if !currencies.contains(&price.amount.ticker){
-                            let value = BigDecimal::from_str(&price.amount_quote.amount)?
-                                / BigDecimal::from_str(&price.amount.amount)?;
-                            let mp_asset = MP_Asset {
-                                MP_asset_symbol: price.amount.ticker.to_owned(),
-                                MP_asset_timestamp: timestamp,
-                                MP_price_in_stable: value,
-                            };
-                            mp_assets.push(mp_asset);
-                            currencies.push(price.amount.ticker.to_owned());
+                        if let Some(asset) = app_state
+                            .config
+                            .hash_map_currencies
+                            .get(&price.amount.ticker)
+                        {
+                            if !currencies.contains(&price.amount.ticker) {
+                                let decimals = asset.3 - app_state.config.lpn_decimals;
+                                let mut value = BigDecimal::from_str(&price.amount_quote.amount)?
+                                    / BigDecimal::from_str(&price.amount.amount)?;
+                                let decimals_abs = decimals.abs();
+
+                                let power_value = BigDecimal::from(u64::pow(10, decimals_abs.try_into()?));
+
+                                if decimals > 0 {
+                                    value *= power_value;
+                                } else {
+                                    value = value / power_value;
+                                }
+
+                                let mp_asset = MP_Asset {
+                                    MP_asset_symbol: price.amount.ticker.to_owned(),
+                                    MP_asset_timestamp: timestamp,
+                                    MP_price_in_stable: value,
+                                };
+                                mp_assets.push(mp_asset);
+                                currencies.push(price.amount.ticker.to_owned());
+                            }
                         }
                     }
                 }

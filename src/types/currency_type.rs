@@ -1,2 +1,2 @@
 #[derive(Debug, Clone)]
-pub struct Currency(pub String, pub String, pub String, pub u8);
+pub struct Currency(pub String, pub String, pub String, pub i16);

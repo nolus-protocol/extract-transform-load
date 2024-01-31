@@ -12,3 +12,49 @@ ALTER TABLE "TR_Rewards_Distribution" ADD COLUMN "Event_Block_Index" INT NOT NUL
 ALTER TABLE "TR_Rewards_Distribution" DROP CONSTRAINT "TR_Rewards_Distribution_pkey";
 ALTER TABLE "TR_Rewards_Distribution" ADD CONSTRAINT "TR_Rewards_Distribution_pkey" PRIMARY KEY ("TR_Rewards_height","Event_Block_Index", "TR_Rewards_Pool_id");
 DELETE FROM block;
+
+30.01.2024
+
+select * from "MP_Asset" where "MP_asset_symbol" = 'WBTC' ORDER BY "MP_asset_timestamp" DESC;
+
+UPDATE "MP_Asset" 
+SET "MP_price_in_stable" = "MP_price_in_stable" * 100
+WHERE  "MP_asset_symbol" = 'WBTC' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+
+
+select * from "MP_Asset" where "MP_asset_symbol" = 'WETH' ORDER BY "MP_asset_timestamp" DESC;
+
+UPDATE "MP_Asset" 
+SET "MP_price_in_stable" = "MP_price_in_stable" * 1000000000000
+WHERE  "MP_asset_symbol" = 'WETH' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+
+
+select * from "MP_Asset" where "MP_asset_symbol" = 'EVMOS' ORDER BY "MP_asset_timestamp" DESC;
+
+UPDATE "MP_Asset" 
+SET "MP_price_in_stable" = "MP_price_in_stable" * 1000000000000
+WHERE  "MP_asset_symbol" = 'EVMOS' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+
+
+select * from "MP_Asset" where "MP_asset_symbol" = 'DYDX' ORDER BY "MP_asset_timestamp" DESC;
+
+UPDATE "MP_Asset" 
+SET "MP_price_in_stable" = "MP_price_in_stable" * 1000000000000
+WHERE  "MP_asset_symbol" = 'DYDX' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+
+
+select * from "MP_Asset" where "MP_asset_symbol" = 'CRO' ORDER BY "MP_asset_timestamp" DESC;
+
+UPDATE "MP_Asset" 
+SET "MP_price_in_stable" = "MP_price_in_stable" * 100
+WHERE  "MP_asset_symbol" = 'CRO' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+
+_________________________________________________________________________________________________
+
+block 3605559 , 2024-01-20 00:11:03+02
+
+DELETE FROM "LS_Close_Position" WHERE "LS_timestamp" >= '2024-01-20 00:11:03+02';
+DELETE FROM "LS_Liquidation" WHERE "LS_timestamp" >= '2024-01-20 00:11:03+02';
+DELETE FROM "LS_Opening" WHERE "LS_timestamp" >= '2024-01-20 00:11:03+02';
+DELETE FROM "LS_Repayment" WHERE "LS_timestamp" >= '2024-01-20 00:11:03+02';
+DELETE FROM "block" WHERE "id" >= 3605559;

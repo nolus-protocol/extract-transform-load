@@ -276,6 +276,7 @@ pub struct Config {
     pub initial_protocol: String,
     pub lpn_price: BigDecimal,
     pub lpns: Vec<String>,
+    pub lpn_decimals: i16
 }
 
 impl Config {
@@ -358,6 +359,8 @@ pub fn get_configuration() -> Result<Config, Error> {
     let timeout = env::var("TIMEOUT")?.parse()?;
     let max_tasks = env::var("MAX_TASKS")?.parse()?;
     let admin_contract = env::var("ADMIN_CONTRACT")?.parse()?;
+    let lpn_decimals = env::var("LPN_DECIMALS")?.parse()?;
+
     let ignore_protocols = env::var("IGNORE_PROTOCOLS")?
         .split(',')
         .map(|item| item.to_string())
@@ -435,6 +438,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         initial_protocol,
         lpn_price,
         lpns,
+        lpn_decimals
     };
 
     Ok(config)
