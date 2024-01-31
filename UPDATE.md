@@ -19,35 +19,42 @@ select * from "MP_Asset" where "MP_asset_symbol" = 'WBTC' ORDER BY "MP_asset_tim
 
 UPDATE "MP_Asset" 
 SET "MP_price_in_stable" = "MP_price_in_stable" * 100
-WHERE  "MP_asset_symbol" = 'WBTC' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+WHERE  "MP_asset_symbol" = 'WBTC' AND "MP_asset_timestamp" >= '2024-01-22 16:04:17.362439+00';
 
 
 select * from "MP_Asset" where "MP_asset_symbol" = 'WETH' ORDER BY "MP_asset_timestamp" DESC;
 
 UPDATE "MP_Asset" 
 SET "MP_price_in_stable" = "MP_price_in_stable" * 1000000000000
-WHERE  "MP_asset_symbol" = 'WETH' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+WHERE  "MP_asset_symbol" = 'WETH' AND "MP_asset_timestamp" >= '2024-01-22 16:04:17.362439+00';
 
 
 select * from "MP_Asset" where "MP_asset_symbol" = 'EVMOS' ORDER BY "MP_asset_timestamp" DESC;
 
 UPDATE "MP_Asset" 
 SET "MP_price_in_stable" = "MP_price_in_stable" * 1000000000000
-WHERE  "MP_asset_symbol" = 'EVMOS' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+WHERE  "MP_asset_symbol" = 'EVMOS' AND "MP_asset_timestamp" >= '2024-01-22 16:04:17.362439+00';
 
 
 select * from "MP_Asset" where "MP_asset_symbol" = 'DYDX' ORDER BY "MP_asset_timestamp" DESC;
 
 UPDATE "MP_Asset" 
 SET "MP_price_in_stable" = "MP_price_in_stable" * 1000000000000
-WHERE  "MP_asset_symbol" = 'DYDX' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+WHERE  "MP_asset_symbol" = 'DYDX' AND "MP_asset_timestamp" >= '2024-01-22 16:04:17.362439+00';
 
 
 select * from "MP_Asset" where "MP_asset_symbol" = 'CRO' ORDER BY "MP_asset_timestamp" DESC;
 
 UPDATE "MP_Asset" 
 SET "MP_price_in_stable" = "MP_price_in_stable" * 100
-WHERE  "MP_asset_symbol" = 'CRO' AND "MP_asset_timestamp" >= '2024-01-16 10:42:03.423475+02';
+WHERE  "MP_asset_symbol" = 'CRO' AND "MP_asset_timestamp" >= '2024-01-22 16:04:17.362439+00';
+
+
+select * from "MP_Asset" where "MP_asset_symbol" = 'INJ' ORDER BY "MP_asset_timestamp" DESC;
+
+UPDATE "MP_Asset" 
+SET "MP_price_in_stable" = "MP_price_in_stable" * 1000000000000
+WHERE  "MP_asset_symbol" = 'INJ' AND "MP_asset_timestamp" >= '2024-01-22 16:04:17.362439+00';
 
 _________________________________________________________________________________________________
 
