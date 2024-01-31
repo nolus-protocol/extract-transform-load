@@ -65,3 +65,5 @@ DELETE FROM "LS_Liquidation" WHERE "LS_timestamp" >= '2024-01-20 00:11:03+02';
 DELETE FROM "LS_Opening" WHERE "LS_timestamp" >= '2024-01-20 00:11:03+02';
 DELETE FROM "LS_Repayment" WHERE "LS_timestamp" >= '2024-01-20 00:11:03+02';
 DELETE FROM "block" WHERE "id" >= 3605559;
+
+finished at 2024-01-31 12:24:04
