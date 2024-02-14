@@ -14,3 +14,4 @@ pub mod buyback_total;
 pub mod earn_apr;
 pub mod ls_opening;
 pub mod blocks;
+pub mod ls_openings;

@@ -11,6 +11,8 @@ pub struct LS_Opening_Type {
     pub loan_pool_id: String,
     #[serde(alias = "loan-amount")]
     pub loan_amount: String,
+    #[serde(alias = "loan-symbol")]
+    pub loan_symbol: String,
     #[serde(alias = "downpayment-amount")]
     pub downpayment_amount: String,
     #[serde(alias = "downpayment-symbol")]

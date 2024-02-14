@@ -5,7 +5,19 @@ use crate::{
 use tokio::{time, time::Duration};
 
 pub async fn set_total_value_locked(app_state: AppState<State>) -> Result<(), Error> {
-    let data = app_state.database.ls_state.get_total_value_locked().await?;
+    let osmosis = if let Some(osmosis) = app_state.protocols.get("OSMOSIS") {
+        osmosis
+    } else {
+        return Err(Error::ProtocolError(String::from("osmosis")));
+    };
+
+    let neutron = if let Some(neutron) = app_state.protocols.get("NEUTRON") {
+        neutron
+    } else {
+        return Err(Error::ProtocolError(String::from("neutron")));
+    };
+
+    let data = app_state.database.ls_state.get_total_value_locked(osmosis.contracts.lpp.to_owned(), neutron.contracts.lpp.to_owned()).await?;
     let cache = &app_state.clone().cache;
     let cache = cache.lock();
 
@@ -22,16 +34,12 @@ pub async fn cache_state_tasks(app_state: AppState<State>) -> Result<(), Error> 
 
     let mut interval = time::interval(Duration::from_secs(interval));
     tokio::spawn(async move {
-        tokio::try_join!(
-            set_total_value_locked(app_state.clone()),
-        )?;
+        tokio::try_join!(set_total_value_locked(app_state.clone()),)?;
 
         interval.tick().await;
         loop {
             interval.tick().await;
-            tokio::try_join!(
-                set_total_value_locked(app_state.clone()),
-            )?;
+            tokio::try_join!(set_total_value_locked(app_state.clone()),)?;
         }
     })
     .await?

@@ -67,3 +67,19 @@ DELETE FROM "LS_Repayment" WHERE "LS_timestamp" >= '2024-01-20 00:11:03+02';
 DELETE FROM "block" WHERE "id" >= 3605559;
 
 finished at 2024-01-31 12:24:04
+
+LS_loan_amnt_stable at 2024-02-12 22:43:04
+
+13.02.2024
+
+ALTER TABLE "MP_Asset" ADD COLUMN "Protocol" VARCHAR(256);
+
+UPDATE "MP_Asset" 
+SET "Protocol" = 'OSMOSIS' WHERE "MP_asset_symbol" IN ('NLS','USDC','OSMO','ST_OSMO', 'ATOM', 'ST_ATOM', 'WETH', 'WBTC', 'AKT', 'AXL', 'JUNO', 'EVMOS', 'STK_ATOM', 'SCRT', 'CRO', 'TIA', 'STARS', 'Q_ATOM', 'STRD', 'INJ');
+
+UPDATE "MP_Asset" 
+SET "Protocol" = 'NEUTRON' WHERE "MP_asset_symbol" IN ('NTRN','USDC_AXELAR', 'DYDX');
+
+ALTER TABLE "MP_Asset" ALTER COLUMN "Protocol" SET NOT NULL;
+ALTER TABLE "MP_Asset" DROP CONSTRAINT "MP_Asset_pkey";
+ALTER TABLE "MP_Asset" ADD CONSTRAINT "MP_Asset_pkey" PRIMARY KEY ("MP_asset_symbol", "MP_asset_timestamp", "Protocol");

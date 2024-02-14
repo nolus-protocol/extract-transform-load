@@ -22,6 +22,7 @@ pub async fn parse_and_insert(
         Error::DecodeDateTimeError(format!("Wasm_LP_deposit date parse {}", at_sec))
     })?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
+    let protocol = app_state.get_protocol_by_pool_id(&item.to);
 
     let lp_deposit = LP_Deposit {
         LP_deposit_idx: None,
@@ -30,7 +31,7 @@ pub async fn parse_and_insert(
         LP_timestamp: at,
         LP_Pool_id: item.to.to_owned(),
         LP_amnt_stable: app_state
-            .in_stabe_by_date(&item.deposit_symbol, &item.deposit_amount, &at)
+            .in_stabe_by_date(&item.deposit_symbol, &item.deposit_amount, protocol, &at)
             .await?,
         LP_amnt_asset: BigDecimal::from_str(&item.deposit_amount)?,
         LP_amnt_receipts: BigDecimal::from_str(&item.receipts)?,

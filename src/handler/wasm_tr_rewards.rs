@@ -24,6 +24,7 @@ pub async fn parse_and_insert(
         Error::DecodeDateTimeError(format!("Wasm_TR_rewards date parse {}", at_sec))
     })?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
+    let protocol = app_state.get_protocol_by_pool_id(&item.to);
 
     let tr_rewards_distribution = TR_Rewards_Distribution {
         TR_Rewards_height: item.height.parse()?,
@@ -31,13 +32,17 @@ pub async fn parse_and_insert(
         TR_Rewards_Pool_id: item.to.to_owned(),
         TR_Rewards_timestamp: at,
         TR_Rewards_amnt_stable: app_state
-            .in_stabe_by_date(&item.rewards_symbol, &item.rewards_amount, &at)
+            .in_stabe_by_date(&item.rewards_symbol, &item.rewards_amount, protocol, &at)
             .await?,
         TR_Rewards_amnt_nls: BigDecimal::from_str(&item.rewards_amount)?,
-        Event_Block_Index: index.try_into()?
+        Event_Block_Index: index.try_into()?,
     };
 
-    let isExists = app_state.database.tr_rewards_distribution.isExists(&tr_rewards_distribution).await?;
+    let isExists = app_state
+        .database
+        .tr_rewards_distribution
+        .isExists(&tr_rewards_distribution)
+        .await?;
 
     if !isExists {
         app_state

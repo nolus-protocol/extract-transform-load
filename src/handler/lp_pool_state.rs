@@ -2,6 +2,7 @@ use bigdecimal::{BigDecimal, FromPrimitive};
 use chrono::{DateTime, Utc};
 use std::str::FromStr;
 use tokio::task::{JoinHandle, JoinSet};
+use tracing::error;
 
 use crate::{
     configuration::{AppState, State},
@@ -66,17 +67,21 @@ async fn proceed(
     let lp_pool_state = if let Some(d) = data {
         d
     } else {
-        return Err(Error::ServerError(String::from(
-            "can not parse LP_Pool_State_Type",
-        )));
+        error!(
+            "Lp_pool not exists {}, can not parse LP_Pool_State_Type",
+            item.LP_Pool_id.to_string()
+        );
+        return Ok(None);
     };
 
     let lp_pool_config_state = if let Some(c) = config {
         c
     } else {
-        return Err(Error::ServerError(String::from(
-            "can not parse LP_Pool_Config_State_Type",
-        )));
+        error!(
+            "Lp_pool not exists {}, can not parse LP_Pool_Config_State_Type",
+            item.LP_Pool_id.to_string()
+        );
+        return Ok(None);
     };
 
     let min_utilization_threshold =

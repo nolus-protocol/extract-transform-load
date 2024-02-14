@@ -22,14 +22,24 @@ pub async fn parse_and_insert(
         Error::DecodeDateTimeError(format!("Wasm_LP_repay date parse {}", at_sec))
     })?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
+    let lease = app_state
+        .database
+        .ls_opening
+        .get(item.to.to_owned())
+        .await?;
+
+    let protocol = match lease {
+        Some(lease) => app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id),
+        None => None
+    };
 
     let ls_repay = LS_Repayment {
         LS_repayment_height: item.height.parse()?,
         LS_repayment_idx: None,
-        LS_contract_id: item.to,
+        LS_contract_id: item.to.to_owned(),
         LS_symbol: item.payment_symbol.to_owned(),
         LS_amnt_stable: app_state
-            .in_stabe_by_date(&item.payment_symbol, &item.payment_amount, &at)
+            .in_stabe_by_date(&item.payment_symbol, &item.payment_amount, protocol, &at)
             .await?,
         LS_timestamp: at,
         LS_loan_close: item.loan_close.parse()?,
@@ -41,7 +51,7 @@ pub async fn parse_and_insert(
     };
 
     let isExists = app_state.database.ls_repayment.isExists(&ls_repay).await?;
-    
+
     if !isExists {
         app_state
             .database

@@ -61,10 +61,11 @@ async fn proceed(
     if let Some(data) = query_data {
         if let Some(status) = data.opened {
             let pool_currency = state.get_currency_by_pool_id(&item.LS_loan_pool_id)?;
+            let protocol = state.get_protocol_by_pool_id(&item.LS_loan_pool_id);
 
             let (price, pool_currency_price) = join!(
-                state.database.mp_asset.get_price(&item.LS_asset_symbol),
-                state.database.mp_asset.get_price(&pool_currency.2),
+                state.database.mp_asset.get_price(&status.amount.ticker, protocol.to_owned()),
+                state.database.mp_asset.get_price(&pool_currency.2, protocol.to_owned()),
             );
 
             let (price,) = price?;

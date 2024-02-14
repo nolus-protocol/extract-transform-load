@@ -269,16 +269,17 @@ impl QueryApi {
     pub async fn get_prices(
         &self,
         contract: String,
+        protocol: String,
         height: Option<String>,
-    ) -> Result<Option<Prices>, Error> {
+    ) -> Result<(Option<Prices>, String), Error> {
         let bytes = b"{\"prices\": {}}";
         let res = self.query_state(bytes, contract, height).await?;
 
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
-            return Ok(Some(data));
+            return Ok((Some(data), protocol));
         }
 
-        Ok(None)
+        Ok((None, protocol))
     }
 }

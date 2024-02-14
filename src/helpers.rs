@@ -92,6 +92,10 @@ pub fn parse_wasm_ls_open(attributes: &Vec<Attributes>) -> Result<LS_Opening_Typ
             .get("loan-amount")
             .ok_or(Error::FieldNotExist(String::from("loan-amount")))?
             .to_string(),
+        loan_symbol: ls_open
+            .get("loan-symbol")
+            .ok_or(Error::FieldNotExist(String::from("loan-symbol")))?
+            .to_string(),
         downpayment_amount: ls_open
             .get("downpayment-amount")
             .ok_or(Error::FieldNotExist(String::from("downpayment-amount")))?

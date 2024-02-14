@@ -7,15 +7,14 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use tokio::time::timeout;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
     {
-        connect_async,
+        connect_async_with_config,
         tungstenite::{error::Error as WS_ERROR, Message},
     },
 };
@@ -157,7 +156,19 @@ impl Handler {
         total: i64,
     ) -> Result<(), Error> {
         let url = Url::parse(self.app_state.config.websocket_host.as_str())?;
-        let (socket, _response) = connect_async(url).await?;
+        let (socket, _response) = connect_async_with_config(
+            url,
+            Some(WebSocketConfig {
+                max_send_queue: None,
+                write_buffer_size: 256 * 1024,
+                max_write_buffer_size: usize::MAX,
+                max_message_size: Some(256 << 20),
+                max_frame_size: Some(64 << 20),
+                accept_unmasked_frames: false,
+            }),
+            false,
+        )
+        .await?;
         let (mut write, mut read) = socket.split();
 
         self.stream_handler(&mut parts, &mut write, &mut read, counter, total)
@@ -176,18 +187,15 @@ impl Handler {
     ) -> Result<(), Error> {
         self.set_tasks(parts, write, counter.clone(), total).await?;
         loop {
-            let data = timeout(
-                Duration::from_secs(self.app_state.config.timeout),
-                read.next(),
-            )
-            .await?;
-            match self.parse_message(data).await {
+            match self.parse_message(read.next().await).await {
                 Ok(proceed) => {
                     if proceed && !self.set_tasks(parts, write, counter.clone(), total).await? {
                         break;
                     }
                 }
-                Err(e) => return Err(Error::ParseMessage(e.to_string())),
+                Err(e) => {
+                    return Err(Error::ParseMessage(e.to_string()));
+                },
             }
         }
 
@@ -207,6 +215,7 @@ impl Handler {
             if let Some(i) = r.next() {
                 let id = self.get_id();
                 let event = self.app_state.config.block_results_event(i, id);
+
                 write.send(Message::Text(event)).await?;
                 counter.fetch_add(1, Ordering::SeqCst);
 
@@ -261,11 +270,11 @@ pub async fn start_sync(app_state: AppState<State>) -> Result<(), Error> {
         match sync_manager.run(app_state).await {
             Ok(()) => {
                 sync_manager.set_running(false);
-            },
+            }
             Err(e) => {
                 sync_manager.set_running(false);
                 return Err(e);
-            },
+            }
         };
         info!("Synchronization completed");
         Ok(())

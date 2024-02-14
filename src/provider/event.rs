@@ -8,12 +8,10 @@ use crate::types::BlockValue;
 use futures::stream::SplitSink;
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
-use tokio::time::{sleep, timeout};
-use tokio_tungstenite::{
-    connect_async,
-    tungstenite::{error::Error as WS_ERROR, Message},
-};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use tokio::time::sleep;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
+use tokio_tungstenite::tungstenite::{error::Error as WS_ERROR, Message};
+use tokio_tungstenite::{connect_async_with_config, MaybeTlsStream, WebSocketStream};
 use tracing::{error, info};
 use url::Url;
 
@@ -34,12 +32,12 @@ impl Event {
             let app = self.app_state.clone();
 
             let res = tokio::try_join!(start_sync(app), self.init());
-            
+
             if let Err(e) = res {
                 error!("WS disconnected with error {}, try to reconnecting...", e);
             }
 
-            sleep(Duration::from_secs(self.app_state.config.timeout)).await;
+            sleep(Duration::from_secs(self.app_state.config.socket_reconnect_interval)).await;
         }
     }
 
@@ -47,7 +45,19 @@ impl Event {
         info!("WS connect successfully");
 
         let url = Url::parse(self.app_state.config.websocket_host.as_str())?;
-        let (socket, _response) = connect_async(url).await?;
+        let (socket, _response) = connect_async_with_config(
+            url,
+            Some(WebSocketConfig {
+                max_send_queue: None,
+                write_buffer_size: 256 * 1024,
+                max_write_buffer_size: usize::MAX,
+                max_message_size: Some(256 << 20),
+                max_frame_size: Some(64 << 20),
+                accept_unmasked_frames: false,
+            }),
+            false,
+        )
+        .await?;
         let (mut write, mut read) = socket.split();
 
         let id = self.get_id();
@@ -56,12 +66,7 @@ impl Event {
         write.send(Message::Text(new_block_event)).await?;
 
         loop {
-            let data = timeout(
-                Duration::from_secs(self.app_state.config.timeout),
-                read.next(),
-            )
-            .await?;
-            if (self.parse_message(data, &mut write).await).is_err() {
+            if (self.parse_message(read.next().await, &mut write).await).is_err() {
                 return Err(Error::ServerError(String::from("WS disconnected")));
             };
         }

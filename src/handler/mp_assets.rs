@@ -12,52 +12,51 @@ use crate::{
 };
 use std::str::FromStr;
 
-pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
+pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) -> Result<(), Error> {
     let mut joins = Vec::new();
     let mut mp_assets = vec![];
-    let mut currencies = vec![];
     let timestamp = Utc::now();
 
     for protocol in app_state.protocols.values() {
-        joins.push(
-            app_state
-                .query_api
-                .get_prices(protocol.contracts.oracle.to_owned(), None),
-        );
+        joins.push(app_state.query_api.get_prices(
+            protocol.contracts.oracle.to_owned(),
+            protocol.network.to_owned(),
+            height.to_owned(),
+        ));
     }
-
     for result in join_all(joins).await {
         match result {
             Ok(data) => {
-                if let Some(item) = data {
+                let (assets, protocol) = data;
+                if let Some(item) = assets {
+
                     for price in item.prices {
                         if let Some(asset) = app_state
                             .config
                             .hash_map_currencies
                             .get(&price.amount.ticker)
                         {
-                            if !currencies.contains(&price.amount.ticker) {
-                                let decimals = asset.3 - app_state.config.lpn_decimals;
-                                let mut value = BigDecimal::from_str(&price.amount_quote.amount)?
-                                    / BigDecimal::from_str(&price.amount.amount)?;
-                                let decimals_abs = decimals.abs();
+                            let decimals = asset.3 - app_state.config.lpn_decimals;
+                            let mut value = BigDecimal::from_str(&price.amount_quote.amount)?
+                                / BigDecimal::from_str(&price.amount.amount)?;
+                            let decimals_abs = decimals.abs();
 
-                                let power_value = BigDecimal::from(u64::pow(10, decimals_abs.try_into()?));
+                            let power_value =
+                                BigDecimal::from(u64::pow(10, decimals_abs.try_into()?));
 
-                                if decimals > 0 {
-                                    value *= power_value;
-                                } else {
-                                    value = value / power_value;
-                                }
-
-                                let mp_asset = MP_Asset {
-                                    MP_asset_symbol: price.amount.ticker.to_owned(),
-                                    MP_asset_timestamp: timestamp,
-                                    MP_price_in_stable: value,
-                                };
-                                mp_assets.push(mp_asset);
-                                currencies.push(price.amount.ticker.to_owned());
+                            if decimals > 0 {
+                                value *= power_value;
+                            } else {
+                                value = value / power_value;
                             }
+
+                            let mp_asset = MP_Asset {
+                                MP_asset_symbol: price.amount.ticker.to_owned(),
+                                MP_asset_timestamp: timestamp,
+                                MP_price_in_stable: value,
+                                Protocol: protocol.to_owned(),
+                            };
+                            mp_assets.push(mp_asset);
                         }
                     }
                 }
@@ -68,14 +67,28 @@ pub async fn fetch_insert(app_state: AppState<State>) -> Result<(), Error> {
         }
     }
 
-    for stable in &app_state.config.lpns {
-        let value = BigDecimal::from_str("1")?;
-        let mp_asset = MP_Asset {
-            MP_asset_symbol: stable.to_owned(),
-            MP_asset_timestamp: timestamp,
-            MP_price_in_stable: value,
-        };
-        mp_assets.push(mp_asset);
+    for (protocol, config) in &app_state.protocols {
+        let item = app_state
+            .config
+            .lp_pools
+            .iter()
+            .find(|(contract, _currency)| contract == &config.contracts.lpp);
+
+        match item {
+            Some((_contract, currency)) => {
+                let value = app_state.config.lpn_price.to_owned();
+                let mp_asset = MP_Asset {
+                    MP_asset_symbol: currency.to_owned(),
+                    MP_asset_timestamp: timestamp,
+                    MP_price_in_stable: value,
+                    Protocol: protocol.to_owned()
+                };
+                mp_assets.push(mp_asset);
+            }
+            None => {
+                error!("Lpn currency not found in protocol {}", &protocol);
+            }
+        }
     }
 
     app_state.database.mp_asset.insert_many(&mp_assets).await?;
@@ -104,7 +117,7 @@ pub async fn mp_assets_task(app_state: AppState<State>) -> Result<(), Error> {
         loop {
             interval.tick().await;
             let app = app_state.clone();
-            if let Err(error) = fetch_insert(app).await {
+            if let Err(error) = fetch_insert(app, None).await {
                 error!("Task error {}", error);
             };
         }

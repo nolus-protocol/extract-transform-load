@@ -361,7 +361,7 @@ impl Table<LS_Opening> {
         Ok(amnt.0)
     }
 
-    pub async fn get(&self, LS_contract_id: Option<String>) -> Result<Option<LS_Opening>, Error> {
+    pub async fn get(&self, LS_contract_id: String) -> Result<Option<LS_Opening>, Error> {
         sqlx::query_as(
             r#"
              SELECT * FROM "LS_Opening" WHERE "LS_contract_id" = $1
@@ -397,5 +397,28 @@ impl Table<LS_Opening> {
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
 
         Ok(amnt.0)
+    }
+
+    pub async fn get_leases(&self, leases: Vec<&str>) -> Result<Vec<LS_Opening>, Error> {
+        let mut params = String::from("$1");
+
+        for i in 1..leases.len() {
+            params+=&format!(", ${}", i+1);
+        }
+
+        let query_str = format!(
+            r#"
+            SELECT * FROM "LS_Opening" WHERE "LS_contract_id" IN({}) 
+        "#,
+            params
+        );
+        let mut query: sqlx::query::QueryAs<'_, _, _, _> = sqlx::query_as(&query_str);
+
+        for i in leases {
+            query = query.bind(i);
+        }
+
+        let data = query.fetch_all(&self.pool).await?;
+        Ok(data)
     }
 }

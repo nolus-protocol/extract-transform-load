@@ -29,16 +29,16 @@ pub async fn parse_and_insert(
         let (stable_price,) = app_state
             .database
             .mp_asset
-            .get_price(&app_state.config.native_currency)
+            .get_price(
+                &app_state.config.native_currency,
+                Some(app_state.config.initial_protocol.to_owned()),
+            )
             .await?;
 
         for coin in balance.balances {
             let item = TR_State {
                 TR_timestamp: timestsamp,
-                TR_amnt_stable: app_state.in_stabe_calc(
-                    &stable_price,
-                    &coin.amount,
-                )?,
+                TR_amnt_stable: app_state.in_stabe_calc(&stable_price, &coin.amount)?,
                 TR_amnt_nls: BigDecimal::from_str(&coin.amount)?,
             };
 

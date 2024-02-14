@@ -22,7 +22,7 @@ pub async fn parse_and_insert(
         Error::DecodeDateTimeError(format!("Wasm_LP_withdraw date parse {}", at_sec))
     })?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
-
+    let protocol = app_state.get_protocol_by_pool_id(&item.from);
     let lp_withdraw = LP_Withdraw {
         LP_withdraw_height: item.height.parse()?,
         LP_withdraw_idx: None,
@@ -30,7 +30,7 @@ pub async fn parse_and_insert(
         LP_timestamp: at,
         LP_Pool_id: item.from,
         LP_amnt_stable: app_state
-            .in_stabe_by_date(&item.withdraw_symbol, &item.withdraw_amount, &at)
+            .in_stabe_by_date(&item.withdraw_symbol, &item.withdraw_amount, protocol, &at)
             .await?,
         LP_amnt_asset: BigDecimal::from_str(&item.withdraw_amount)?,
         LP_amnt_receipts: BigDecimal::from_str(&item.receipts)?,

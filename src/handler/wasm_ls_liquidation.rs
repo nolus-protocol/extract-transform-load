@@ -5,9 +5,10 @@ use std::str::FromStr;
 
 use crate::{
     configuration::{AppState, State},
+    dao::DataBase,
     error::Error,
     model::LS_Liquidation,
-    types::LS_Liquidation_Type, dao::DataBase,
+    types::LS_Liquidation_Type,
 };
 
 pub async fn parse_and_insert(
@@ -17,10 +18,20 @@ pub async fn parse_and_insert(
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
-    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| Error::DecodeDateTimeError(format!(
-        "Wasm_LS_Liquidation date parse {}",
-        at_sec
-    )))?;
+    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| {
+        Error::DecodeDateTimeError(format!("Wasm_LS_Liquidation date parse {}", at_sec))
+    })?;
+    let lease = app_state
+        .database
+        .ls_opening
+        .get(item.to.to_owned())
+        .await?;
+
+    let protocol = match lease {
+        Some(lease) => app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id),
+        None => None
+    };
+    
     let at = DateTime::<Utc>::from_utc(time, Utc);
     let ls_liquidation = LS_Liquidation {
         LS_liquidation_height: item.height.parse()?,
@@ -28,7 +39,12 @@ pub async fn parse_and_insert(
         LS_contract_id: item.to,
         LS_symbol: item.liquidation_symbol.to_owned(),
         LS_amnt_stable: app_state
-            .in_stabe_by_date(&item.liquidation_symbol, &item.liquidation_amount, &at)
+            .in_stabe_by_date(
+                &item.liquidation_symbol,
+                &item.liquidation_amount,
+                protocol,
+                &at,
+            )
             .await?,
         LS_timestamp: at,
         LS_transaction_type: item.r#type,
@@ -38,7 +54,6 @@ pub async fn parse_and_insert(
         LS_current_interest_stable: BigDecimal::from_str(&item.curr_loan_interest)?,
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
     };
-
 
     let isExists = app_state
         .database

@@ -22,12 +22,16 @@ pub async fn parse_and_insert(
     let time = NaiveDateTime::from_timestamp_opt(at_sec, 0)
         .ok_or_else(|| Error::DecodeDateTimeError(format!("Wasm_LS_Open date parse {}", at_sec)))?;
     let at = DateTime::<Utc>::from_utc(time, Utc);
-    
-    let f1 = app_state.database.mp_asset.get_price_by_date(&item.currency, &at);
+
+    let protocol = app_state.get_protocol_by_pool_id(&item.loan_pool_id);
+    let f1 = app_state
+        .database
+        .mp_asset
+        .get_price_by_date(&item.loan_symbol, protocol.to_owned(), &at);
     let f2 = app_state
         .database
         .mp_asset
-        .get_price_by_date(&item.downpayment_symbol, &at);
+        .get_price_by_date(&item.downpayment_symbol, protocol.to_owned(), &at);
 
     let (loan_price, downpayment_price) = tokio::try_join!(f1, f2)?;
     let air: i16 = item.air.parse()?;

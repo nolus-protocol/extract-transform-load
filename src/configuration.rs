@@ -171,19 +171,20 @@ impl State {
         Ok(protocolsMap)
     }
 
-    pub async fn in_stabe(&self, currency_symbol: &str, value: &str) -> Result<BigDecimal, Error> {
+    pub async fn in_stabe(&self, currency_symbol: &str, protocol: Option<String>, value: &str) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
         let Currency(_, _, symbol, _) = currency;
-        let (stabe_price,) = self.database.mp_asset.get_price(symbol).await?;
+        let (stabe_price,) = self.database.mp_asset.get_price(symbol, protocol).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
         Ok(val)
     }
 
-    pub async fn in_stabe_by_date(&self, currency_symbol: &str, value: &str, date_time: &DateTime::<Utc>) -> Result<BigDecimal, Error> {
+    pub async fn in_stabe_by_date(&self, currency_symbol: &str, value: &str, protocol: Option<String>, date_time: &DateTime::<Utc>) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
         let Currency(_, _, symbol, _) = currency;
-        let (stabe_price,) = self.database.mp_asset.get_price_by_date(symbol, date_time).await?;
+        
+        let (stabe_price,) = self.database.mp_asset.get_price_by_date(symbol, protocol, date_time).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
         Ok(val)
@@ -196,11 +197,18 @@ impl State {
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency_by_pool_id(pool_id)?;
         let Currency(_, _, symbol, _) = currency;
+        let protocol = self.get_protocol_by_pool_id(pool_id);
 
-        let (stabe_price,) = self.database.mp_asset.get_price(symbol).await?;
+        let (stabe_price,) = self.database.mp_asset.get_price(symbol, protocol).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
         Ok(val)
+    }
+
+    pub fn get_protocol_by_pool_id(&self, pool_id: &str) -> Option<String>{
+        let protocols = &self.protocols;
+        let protocol = protocols.iter().find(|(_protocol, data)| data.contracts.lpp == pool_id );
+        protocol.map(|(protocol,_)| protocol.to_owned())
     }
 
     pub fn in_stabe_calc(
@@ -276,7 +284,8 @@ pub struct Config {
     pub initial_protocol: String,
     pub lpn_price: BigDecimal,
     pub lpns: Vec<String>,
-    pub lpn_decimals: i16
+    pub lpn_decimals: i16,
+    pub socket_reconnect_interval: u64
 }
 
 impl Config {
@@ -360,6 +369,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     let max_tasks = env::var("MAX_TASKS")?.parse()?;
     let admin_contract = env::var("ADMIN_CONTRACT")?.parse()?;
     let lpn_decimals = env::var("LPN_DECIMALS")?.parse()?;
+    let socket_reconnect_interval = env::var("SOCKET_RECONNECT_INTERVAL")?.parse()?;
 
     let ignore_protocols = env::var("IGNORE_PROTOCOLS")?
         .split(',')
@@ -438,7 +448,8 @@ pub fn get_configuration() -> Result<Config, Error> {
         initial_protocol,
         lpn_price,
         lpns,
-        lpn_decimals
+        lpn_decimals,
+        socket_reconnect_interval
     };
 
     Ok(config)

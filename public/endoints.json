@@ -131,5 +131,17 @@
         "description": "Synced blocks",
         "url": "/api/blocks",
         "type": "GET"
+    },
+    {
+        "description": "Opened leases",
+        "url": "/api/ls-openings",
+        "type": "GET",
+        "params": [
+            {
+                "name": "leases",
+                "type": "Array<String>",
+                "default": null
+            }
+        ]
     }
 ]

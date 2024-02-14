@@ -103,6 +103,9 @@ pub enum Error {
     #[error("{0}")]
     TryFromIntError(#[from] TRY_FROM_INT_ERROR),
 
+    #[error("Protocol not found: {0}")]
+    ProtocolError(String),
+
 }
 
 impl ResponseError for Error {}

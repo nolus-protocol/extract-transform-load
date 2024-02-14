@@ -5,9 +5,7 @@ use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
 use crate::{
     configuration::{AppState, State},
     controller::{
-        blocks, borrow_apr, borrowed, buyback, buyback_total, deposit_suspension, 
-        distributed, earn_apr, incentives_pool, leased_assets, ls_opening, optimal, 
-        revenue, supplied_borrowed_series, total_value_locked, utilization_level
+        blocks, borrow_apr, borrowed, buyback, buyback_total, deposit_suspension, distributed, earn_apr, incentives_pool, leased_assets, ls_opening, ls_openings, optimal, revenue, supplied_borrowed_series, total_value_locked, utilization_level
     },
     error::Error,
 };
@@ -65,6 +63,7 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(ls_opening::index)
                     .service(earn_apr::index)
                     .service(blocks::index)
+                    .service(ls_openings::index)
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

@@ -116,6 +116,8 @@ impl Table<LP_Pool_State> {
 
     pub async fn get_supplied_borrowed_series_total(
         &self,
+        osmosis_protocol: String,
+        neutron_protocol: String
     ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
         let data = sqlx::query_as(
             r#"
@@ -124,12 +126,15 @@ impl Table<LP_Pool_State> {
             FROM
                 "LP_Pool_State"
             WHERE
-                "LP_Pool_id" IN ('nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94', 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5')
+                "LP_Pool_id" IN ($1, $2)
             GROUP BY 
                 "LP_Pool_timestamp"
             ORDER BY 
                 "LP_Pool_timestamp" DESC
             "#,
+        )
+        .bind(osmosis_protocol)
+        .bind(neutron_protocol
         )
         .fetch_all(&self.pool)
         .await?;

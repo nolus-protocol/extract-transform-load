@@ -24,10 +24,25 @@ async fn index(
         }
     }
 
+    let osmosis = if let Some(osmosis) = state.protocols.get("OSMOSIS") {
+        osmosis
+    } else {
+        return Err(Error::ProtocolError(String::from("osmosis")));
+    };
+
+    let neutron = if let Some(neutron) = state.protocols.get("NEUTRON") {
+        neutron
+    } else {
+        return Err(Error::ProtocolError(String::from("neutron")));
+    };
+
     let data = state
         .database
         .lp_pool_state
-        .get_supplied_borrowed_series_total()
+        .get_supplied_borrowed_series_total(
+            osmosis.contracts.lpp.to_owned(),
+            neutron.contracts.lpp.to_owned(),
+        )
         .await?;
     Ok(web::Json(data))
 }
