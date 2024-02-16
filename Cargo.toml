@@ -7,8 +7,11 @@ edition = "2021"
 debug = 0
 
 [profile.release]
+opt-level = 3
+strip = true
 overflow-checks = true
-lto = "fat"
+lto = true
+codegen-units = 1
 
 [dependencies]
 

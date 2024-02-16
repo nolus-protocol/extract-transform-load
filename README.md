@@ -87,9 +87,9 @@ VALUES
   ('USDC_AXELAR', NOW(), 0, 'NEUTRON'),
   ('ATOM', NOW(), 0, 'NEUTRON');
 
-  DO $FN$
+DO $FN$
 BEGIN
-  FOR counter IN 1..3500000 LOOP
+  FOR counter IN 1..2500000 LOOP
     EXECUTE $$ INSERT INTO block(id) VALUES ($1) RETURNING id $$ 
       USING counter;
   END LOOP;
@@ -97,7 +97,7 @@ END;
 $FN$;
 
 GRANT ALL ON block TO nolus;
-
+GRANT ALL ON "MP_Asset" TO nolus;
 
 PATH: /lib/systemd/system/etl.service
 sudo systemctl enable etl

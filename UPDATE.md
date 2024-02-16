@@ -72,6 +72,9 @@ LS_loan_amnt_stable at 2024-02-12 22:43:04
 
 13.02.2024
 
+select COUNT(*) from "MP_Asset" where "MP_asset_symbol" = 'NEUTRON';
+UPDATE "MP_Asset" set "MP_asset_symbol" = 'NTRN' WHERE "MP_asset_symbol" = 'NEUTRON';
+
 ALTER TABLE "MP_Asset" ADD COLUMN "Protocol" VARCHAR(256);
 
 UPDATE "MP_Asset" 
@@ -79,6 +82,7 @@ SET "Protocol" = 'OSMOSIS' WHERE "MP_asset_symbol" IN ('NLS','USDC','OSMO','ST_O
 
 UPDATE "MP_Asset" 
 SET "Protocol" = 'NEUTRON' WHERE "MP_asset_symbol" IN ('NTRN','USDC_AXELAR', 'DYDX');
+
 
 ALTER TABLE "MP_Asset" ALTER COLUMN "Protocol" SET NOT NULL;
 ALTER TABLE "MP_Asset" DROP CONSTRAINT "MP_Asset_pkey";
