@@ -16,6 +16,7 @@ use crate::{
 use crate::types::{BlockBody, EventData, LS_Close_Position_Type};
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
+use tracing::error;
 
 #[derive(Debug)]
 pub enum Formatter {
@@ -155,19 +156,35 @@ pub fn parse_wasm_ls_repayment(attributes: &Vec<Attributes>) -> Result<LS_Repaym
             .to_string(),
         prev_margin_interest: ls_repayment
             .get("prev-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?
+            .unwrap_or(
+                ls_repayment
+                    .get("overdue-margin-interest")
+                    .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?,
+            )
             .to_string(),
         prev_loan_interest: ls_repayment
             .get("prev-loan-interest")
-            .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?
+            .unwrap_or(
+                ls_repayment
+                    .get("overdue-loan-interest")
+                    .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?,
+            )
             .to_string(),
         curr_margin_interest: ls_repayment
             .get("curr-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?
+            .unwrap_or(
+                ls_repayment
+                    .get("due-margin-interest")
+                    .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?,
+            )
             .to_string(),
         curr_loan_interest: ls_repayment
             .get("curr-loan-interest")
-            .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?
+            .unwrap_or(
+                ls_repayment
+                    .get("due-loan-interest")
+                    .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?,
+            )
             .to_string(),
         principal: ls_repayment
             .get("principal")
@@ -222,19 +239,35 @@ pub fn parse_wasm_ls_close_position(
                 .to_string(),
             prev_margin_interest: ls_close_position
                 .get("prev-margin-interest")
-                .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?
+                .unwrap_or(
+                    ls_close_position
+                        .get("overdue-margin-interest")
+                        .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?,
+                )
                 .to_string(),
             prev_loan_interest: ls_close_position
                 .get("prev-loan-interest")
-                .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?
+                .unwrap_or(
+                    ls_close_position
+                        .get("overdue-loan-interest")
+                        .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?,
+                )
                 .to_string(),
             curr_margin_interest: ls_close_position
                 .get("curr-margin-interest")
-                .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?
+                .unwrap_or(
+                    ls_close_position
+                        .get("due-margin-interest")
+                        .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?,
+                )
                 .to_string(),
             curr_loan_interest: ls_close_position
                 .get("curr-loan-interest")
-                .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?
+                .unwrap_or(
+                    ls_close_position
+                        .get("due-loan-interest")
+                        .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?,
+                )
                 .to_string(),
             principal: ls_close_position
                 .get("principal")
@@ -278,19 +311,35 @@ pub fn parse_wasm_ls_liquidation(
             .to_string(),
         prev_margin_interest: ls_liquidation
             .get("prev-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?
+            .unwrap_or(
+                ls_liquidation
+                    .get("overdue-margin-interest")
+                    .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?,
+            )
             .to_string(),
         prev_loan_interest: ls_liquidation
             .get("prev-loan-interest")
-            .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?
+            .unwrap_or(
+                ls_liquidation
+                    .get("overdue-loan-interest")
+                    .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?,
+            )
             .to_string(),
         curr_margin_interest: ls_liquidation
             .get("curr-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?
+            .unwrap_or(
+                ls_liquidation
+                    .get("due-margin-interest")
+                    .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?,
+            )
             .to_string(),
         curr_loan_interest: ls_liquidation
             .get("curr-loan-interest")
-            .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?
+            .unwrap_or(
+                ls_liquidation
+                    .get("due-loan-interest")
+                    .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?,
+            )
             .to_string(),
         principal: ls_liquidation
             .get("principal")
@@ -491,8 +540,13 @@ pub async fn parse_event(
             EventsType::TR_Rewards_Distribution => {
                 let wasm_tr_rewards_distribution =
                     parse_wasm_tr_rewards_distribution(&event.attributes)?;
-                wasm_tr_rewards::parse_and_insert(&app_state, wasm_tr_rewards_distribution, index, tx)
-                    .await?;
+                wasm_tr_rewards::parse_and_insert(
+                    &app_state,
+                    wasm_tr_rewards_distribution,
+                    index,
+                    tx,
+                )
+                .await?;
             }
         }
     }
@@ -500,6 +554,14 @@ pub async fn parse_event(
 }
 
 pub async fn insert_block(app_state: AppState<State>, data: BlockBody) -> Result<bool, Error> {
+    if let Some(error) = data.error {
+        error!("Synchroniziation error: {}", &error.data);
+        return Err(Error::ProtocolError(format!(
+            "code: {}, message: {}, data: {}",
+            error.code, error.message, error.data
+        )));
+    }
+
     let height = data.result.height.parse::<i64>()?;
     let block = app_state.database.block.get_one(height).await?;
 

@@ -36,7 +36,7 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
                             .hash_map_currencies
                             .get(&price.amount.ticker)
                         {
-                            let decimals = asset.3 - app_state.config.lpn_decimals;
+                            let decimals = asset.2 - app_state.config.lpn_decimals;
                             let mut value = BigDecimal::from_str(&price.amount_quote.amount)?
                                 / BigDecimal::from_str(&price.amount.amount)?;
                             let decimals_abs = decimals.abs();

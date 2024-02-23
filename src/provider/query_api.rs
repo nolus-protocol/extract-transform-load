@@ -116,7 +116,7 @@ impl QueryApi {
     ) -> Result<Option<String>, Error> {
         let data = self.state_from_proto(bytes, contract)?;
         let height = height.unwrap_or(String::from("0"));
-
+        
         let res = self
             .http
             .post(self.config.get_abci_query_url())
@@ -254,7 +254,7 @@ impl QueryApi {
         contract: String,
         protocol: String,
     ) -> Result<Option<AdminProtocolType>, Error> {
-        let bytes = format!(r#"{{"protocol": {{"protocol": "{}"}}}}"#, protocol).to_owned();
+        let bytes = format!(r#"{{"protocol": "{}"}}"#, protocol).to_owned();
         let bytes = bytes.as_bytes();
         let res = self.query_state(bytes, contract, None).await?;
 

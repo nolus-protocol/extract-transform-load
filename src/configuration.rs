@@ -129,7 +129,7 @@ impl State {
         http: &HTTP,
         supported_currencies: &Vec<Currency>,
     ) -> Result<(), Error> {
-        for Currency(coinGeckoId, _address, symbol, _deicmal) in supported_currencies {
+        for Currency(coinGeckoId, symbol, _deicmal) in supported_currencies {
             let mp_asset_mapping = &database.mp_asset_mapping;
             let c = mp_asset_mapping.get_one(symbol.to_owned()).await?;
             if c.is_none() {
@@ -173,7 +173,7 @@ impl State {
 
     pub async fn in_stabe(&self, currency_symbol: &str, protocol: Option<String>, value: &str) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
-        let Currency(_, _, symbol, _) = currency;
+        let Currency(_, symbol, _) = currency;
         let (stabe_price,) = self.database.mp_asset.get_price(symbol, protocol).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
@@ -182,7 +182,7 @@ impl State {
 
     pub async fn in_stabe_by_date(&self, currency_symbol: &str, value: &str, protocol: Option<String>, date_time: &DateTime::<Utc>) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
-        let Currency(_, _, symbol, _) = currency;
+        let Currency(_,symbol, _) = currency;
         
         let (stabe_price,) = self.database.mp_asset.get_price_by_date(symbol, protocol, date_time).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
@@ -196,7 +196,7 @@ impl State {
         value: &str,
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency_by_pool_id(pool_id)?;
-        let Currency(_, _, symbol, _) = currency;
+        let Currency(_, symbol, _) = currency;
         let protocol = self.get_protocol_by_pool_id(pool_id);
 
         let (stabe_price,) = self.database.mp_asset.get_price(symbol, protocol).await?;
@@ -405,7 +405,7 @@ pub fn get_configuration() -> Result<Config, Error> {
 
     for currency in &supported_currencies {
         let c = currency.clone();
-        hash_map_currencies.insert(currency.2.to_string(), c);
+        hash_map_currencies.insert(currency.1.to_string(), c);
     }
 
     for pool in &lp_pools {
@@ -510,12 +510,11 @@ fn get_supported_currencies() -> Result<Vec<Currency>, Error> {
 
     for c in supported_currencies {
         let items: Vec<&str> = c.split(',').collect();
-        assert_eq!(items.len(), 4);
-        let chain = items[0].to_owned();
-        let internal_symbl = items[1].to_owned();
-        let symbol = items[2].to_owned();
-        let decimal = items[3].parse()?;
-        data.push(Currency(chain, internal_symbl, symbol, decimal));
+        assert_eq!(items.len(), 3);
+        let coingeckoId = items[0].to_owned();
+        let ticker = items[1].to_owned();
+        let decimal = items[2].parse()?;
+        data.push(Currency(coingeckoId, ticker, decimal));
     }
 
     Ok(data)

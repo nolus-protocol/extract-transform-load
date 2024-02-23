@@ -13,8 +13,14 @@ pub struct Status {
     pub loan_interest_rate: u128,
     pub margin_interest_rate: u128,
     pub principal_due: AmountTicker,
-    pub previous_margin_due: AmountTicker,
-    pub previous_interest_due: AmountTicker,
-    pub current_margin_due: AmountTicker,
-    pub current_interest_due: AmountTicker,
+    //old
+    pub previous_margin_due: Option<AmountTicker>,
+    pub previous_interest_due: Option<AmountTicker>,
+    pub current_margin_due: Option<AmountTicker>,
+    pub current_interest_due: Option<AmountTicker>,
+    //new
+    pub overdue_margin: Option<AmountTicker>,
+    pub overdue_interest: Option<AmountTicker>,
+    pub due_margin: Option<AmountTicker>,
+    pub due_interest: Option<AmountTicker>,
 }

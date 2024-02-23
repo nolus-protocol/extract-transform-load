@@ -5,6 +5,7 @@ pub struct BlockBody {
     pub jsonrpc: String,
     pub id: i64,
     pub result: BlockResult,
+    pub error:  Option<BodyError>
 }
 
 #[derive(Debug, Deserialize)]
@@ -28,4 +29,11 @@ pub struct EventData {
 pub struct Attributes {
     pub key: String,
     pub value: Option<String>
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BodyError {
+    pub code: String,
+    pub message: String,
+    pub data: String
 }

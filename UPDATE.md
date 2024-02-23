@@ -87,3 +87,13 @@ SET "Protocol" = 'NEUTRON' WHERE "MP_asset_symbol" IN ('NTRN','USDC_AXELAR', 'DY
 ALTER TABLE "MP_Asset" ALTER COLUMN "Protocol" SET NOT NULL;
 ALTER TABLE "MP_Asset" DROP CONSTRAINT "MP_Asset_pkey";
 ALTER TABLE "MP_Asset" ADD CONSTRAINT "MP_Asset_pkey" PRIMARY KEY ("MP_asset_symbol", "MP_asset_timestamp", "Protocol");
+
+22.02.2024 NEW CURRENCIES
+
+(stride-staked-tia,stTIA,6),
+(jackal-protocol,JKL,6),
+(milkyway-staked-tia,milkTIA,6),
+(levana-protocol,LVN,6),
+(quasar-2,QSR,6),
+(picasso,PICA,12),
+(dymension,DYM,18),
