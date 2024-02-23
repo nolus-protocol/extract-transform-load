@@ -28,6 +28,7 @@ mod lp_pool_config_state_type;
 mod admin_protocol_type;
 mod prices_type;
 mod ls_close_position_type;
+mod interest_values;
 
 pub use abci_response::AbciBody;
 pub use block_response::{BlockBody, EventData, Attributes};
@@ -59,3 +60,4 @@ pub use lp_pool_config_state_type::LP_Pool_Config_State_Type;
 pub use admin_protocol_type::AdminProtocolType;
 pub use prices_type::Prices;
 pub use ls_close_position_type::LS_Close_Position_Type;
+pub use interest_values::Interest_values;

@@ -8,8 +8,9 @@ use crate::model::Block;
 use crate::{
     error::Error,
     types::{
-        Attributes, LP_Deposit_Type, LP_Withdraw_Type, LS_Closing_Type, LS_Liquidation_Type,
-        LS_Opening_Type, LS_Repayment_Type, TR_Profit_Type, TR_Rewards_Distribution_Type,
+        Attributes, Interest_values, LP_Deposit_Type, LP_Withdraw_Type, LS_Closing_Type,
+        LS_Liquidation_Type, LS_Opening_Type, LS_Repayment_Type, TR_Profit_Type,
+        TR_Rewards_Distribution_Type,
     },
 };
 
@@ -128,7 +129,7 @@ pub fn parse_wasm_ls_close(attributes: &Vec<Attributes>) -> Result<LS_Closing_Ty
 
 pub fn parse_wasm_ls_repayment(attributes: &Vec<Attributes>) -> Result<LS_Repayment_Type, Error> {
     let ls_repayment = pasrse_data(attributes)?;
-
+    let items = parseInterestValues(&ls_repayment)?;
     let c = LS_Repayment_Type {
         height: ls_repayment
             .get("height")
@@ -154,38 +155,10 @@ pub fn parse_wasm_ls_repayment(attributes: &Vec<Attributes>) -> Result<LS_Repaym
             .get("loan-close")
             .ok_or(Error::FieldNotExist(String::from("loan-close")))?
             .to_string(),
-        prev_margin_interest: ls_repayment
-            .get("prev-margin-interest")
-            .unwrap_or(
-                ls_repayment
-                    .get("overdue-margin-interest")
-                    .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?,
-            )
-            .to_string(),
-        prev_loan_interest: ls_repayment
-            .get("prev-loan-interest")
-            .unwrap_or(
-                ls_repayment
-                    .get("overdue-loan-interest")
-                    .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?,
-            )
-            .to_string(),
-        curr_margin_interest: ls_repayment
-            .get("curr-margin-interest")
-            .unwrap_or(
-                ls_repayment
-                    .get("due-margin-interest")
-                    .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?,
-            )
-            .to_string(),
-        curr_loan_interest: ls_repayment
-            .get("curr-loan-interest")
-            .unwrap_or(
-                ls_repayment
-                    .get("due-loan-interest")
-                    .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?,
-            )
-            .to_string(),
+        prev_margin_interest: items.prev_margin_interest,
+        prev_loan_interest: items.prev_loan_interest,
+        curr_margin_interest: items.curr_margin_interest,
+        curr_loan_interest: items.curr_loan_interest,
         principal: ls_repayment
             .get("principal")
             .ok_or(Error::FieldNotExist(String::from("principal")))?
@@ -200,6 +173,7 @@ pub fn parse_wasm_ls_close_position(
 ) -> Result<Option<LS_Close_Position_Type>, Error> {
     let ls_close_position = pasrse_data(attributes)?;
     if ls_close_position.contains_key("height") {
+        let items = parseInterestValues(&ls_close_position)?;
         let c = LS_Close_Position_Type {
             height: ls_close_position
                 .get("height")
@@ -237,38 +211,10 @@ pub fn parse_wasm_ls_close_position(
                 .get("loan-close")
                 .ok_or(Error::FieldNotExist(String::from("loan_close")))?
                 .to_string(),
-            prev_margin_interest: ls_close_position
-                .get("prev-margin-interest")
-                .unwrap_or(
-                    ls_close_position
-                        .get("overdue-margin-interest")
-                        .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?,
-                )
-                .to_string(),
-            prev_loan_interest: ls_close_position
-                .get("prev-loan-interest")
-                .unwrap_or(
-                    ls_close_position
-                        .get("overdue-loan-interest")
-                        .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?,
-                )
-                .to_string(),
-            curr_margin_interest: ls_close_position
-                .get("curr-margin-interest")
-                .unwrap_or(
-                    ls_close_position
-                        .get("due-margin-interest")
-                        .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?,
-                )
-                .to_string(),
-            curr_loan_interest: ls_close_position
-                .get("curr-loan-interest")
-                .unwrap_or(
-                    ls_close_position
-                        .get("due-loan-interest")
-                        .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?,
-                )
-                .to_string(),
+            prev_margin_interest: items.prev_margin_interest,
+            prev_loan_interest: items.prev_loan_interest,
+            curr_margin_interest: items.curr_margin_interest,
+            curr_loan_interest: items.curr_loan_interest,
             principal: ls_close_position
                 .get("principal")
                 .ok_or(Error::FieldNotExist(String::from("principal")))?
@@ -284,6 +230,7 @@ pub fn parse_wasm_ls_liquidation(
     attributes: &Vec<Attributes>,
 ) -> Result<LS_Liquidation_Type, Error> {
     let ls_liquidation = pasrse_data(attributes)?;
+    let items = parseInterestValues(&ls_liquidation)?;
     let c = LS_Liquidation_Type {
         height: ls_liquidation
             .get("height")
@@ -309,38 +256,10 @@ pub fn parse_wasm_ls_liquidation(
             .get("cause")
             .ok_or(Error::FieldNotExist(String::from("cause")))?
             .to_string(),
-        prev_margin_interest: ls_liquidation
-            .get("prev-margin-interest")
-            .unwrap_or(
-                ls_liquidation
-                    .get("overdue-margin-interest")
-                    .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?,
-            )
-            .to_string(),
-        prev_loan_interest: ls_liquidation
-            .get("prev-loan-interest")
-            .unwrap_or(
-                ls_liquidation
-                    .get("overdue-loan-interest")
-                    .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?,
-            )
-            .to_string(),
-        curr_margin_interest: ls_liquidation
-            .get("curr-margin-interest")
-            .unwrap_or(
-                ls_liquidation
-                    .get("due-margin-interest")
-                    .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?,
-            )
-            .to_string(),
-        curr_loan_interest: ls_liquidation
-            .get("curr-loan-interest")
-            .unwrap_or(
-                ls_liquidation
-                    .get("due-loan-interest")
-                    .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?,
-            )
-            .to_string(),
+        prev_margin_interest: items.prev_margin_interest,
+        prev_loan_interest: items.prev_loan_interest,
+        curr_margin_interest: items.curr_margin_interest,
+        curr_loan_interest: items.curr_loan_interest,
         principal: ls_liquidation
             .get("principal")
             .ok_or(Error::FieldNotExist(String::from("principal")))?
@@ -348,6 +267,43 @@ pub fn parse_wasm_ls_liquidation(
     };
 
     Ok(c)
+}
+
+pub fn parseInterestValues(value: &HashMap<String, String>) -> Result<Interest_values, Error> {
+    let prev_margin_interest = match value.get("prev-margin-interest") {
+        Some(prev_margin_interest) => prev_margin_interest,
+        None => value
+            .get("overdue-margin-interest")
+            .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?,
+    };
+
+    let prev_loan_interest = match value.get("prev-loan-interest") {
+        Some(prev_loan_interest) => prev_loan_interest,
+        None => value
+            .get("overdue-loan-interest")
+            .ok_or(Error::FieldNotExist(String::from("prev-loan-interest")))?,
+    };
+
+    let curr_margin_interest = match value.get("curr-margin-interest") {
+        Some(curr_margin_interest) => curr_margin_interest,
+        None => value
+            .get("due-margin-interest")
+            .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?,
+    };
+
+    let curr_loan_interest = match value.get("curr-loan-interest") {
+        Some(curr_loan_interest) => curr_loan_interest,
+        None => value
+            .get("due-loan-interest")
+            .ok_or(Error::FieldNotExist(String::from("curr-loan-interest")))?,
+    };
+
+    Ok(Interest_values {
+        prev_margin_interest: prev_margin_interest.to_owned(),
+        prev_loan_interest: prev_loan_interest.to_owned(),
+        curr_margin_interest: curr_margin_interest.to_owned(),
+        curr_loan_interest: curr_loan_interest.to_owned(),
+    })
 }
 
 pub fn parse_wasm_lp_deposit(attributes: &Vec<Attributes>) -> Result<LP_Deposit_Type, Error> {
