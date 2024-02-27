@@ -138,14 +138,14 @@ impl Table<LS_State> {
               ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
             FROM
               "LP_Pool_State"
-            WHERE "LP_Pool_id" = $1
+            WHERE "LP_Pool_id" = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5'
             ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
           ),
           Available_Assets_Neutron AS (
             SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
             FROM
               "LP_Pool_State"
-            WHERE "LP_Pool_id" = $2
+            WHERE "LP_Pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94'
             ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
           ),
           Lease_Value_Sum AS (

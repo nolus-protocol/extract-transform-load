@@ -80,10 +80,10 @@ UPDATE "MP_Asset" set "MP_asset_symbol" = 'NTRN' WHERE "MP_asset_symbol" = 'NEUT
 ALTER TABLE "MP_Asset" ADD COLUMN "Protocol" VARCHAR(256);
 
 UPDATE "MP_Asset" 
-SET "Protocol" = 'OSMOSIS' WHERE "MP_asset_symbol" IN ('NLS','USDC','OSMO','ST_OSMO', 'ATOM', 'ST_ATOM', 'WETH', 'WBTC', 'AKT', 'AXL', 'JUNO', 'EVMOS', 'STK_ATOM', 'SCRT', 'CRO', 'TIA', 'STARS', 'Q_ATOM', 'STRD', 'INJ');
+SET "Protocol" = 'OSMOSIS-OSMOSIS-USDC_AXELAR' WHERE "MP_asset_symbol" IN ('NLS','USDC','OSMO','ST_OSMO', 'ATOM', 'ST_ATOM', 'WETH', 'WBTC', 'AKT', 'AXL', 'JUNO', 'EVMOS', 'STK_ATOM', 'SCRT', 'CRO', 'TIA', 'STARS', 'Q_ATOM', 'STRD', 'INJ');
 
 UPDATE "MP_Asset" 
-SET "Protocol" = 'NEUTRON' WHERE "MP_asset_symbol" IN ('NTRN','USDC_AXELAR', 'DYDX');
+SET "Protocol" = 'NEUTRON-ASTROPORT-USDC_AXELAR' WHERE "MP_asset_symbol" IN ('NTRN','USDC_AXELAR', 'DYDX');
 
 
 ALTER TABLE "MP_Asset" ALTER COLUMN "Protocol" SET NOT NULL;
