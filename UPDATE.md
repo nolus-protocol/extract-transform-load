@@ -70,6 +70,8 @@ finished at 2024-01-31 12:24:04
 
 LS_loan_amnt_stable at 2024-02-12 22:43:04
 
+____________________________________________________________
+
 13.02.2024
 
 select COUNT(*) from "MP_Asset" where "MP_asset_symbol" = 'NEUTRON';

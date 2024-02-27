@@ -10,6 +10,8 @@ async fn index(
     state: web::Data<AppState<State>>,
     data: web::Query<Query>,
 ) -> Result<impl Responder, Error> {
+
+
     if let Some(protocolKey) = &data.protocol {
         let protocolKey = protocolKey.to_uppercase();
         let admin = state.protocols.get(&protocolKey);
@@ -24,25 +26,16 @@ async fn index(
         }
     }
 
-    let osmosis = if let Some(osmosis) = state.protocols.get("OSMOSIS") {
-        osmosis
-    } else {
-        return Err(Error::ProtocolError(String::from("osmosis")));
-    };
+    let mut protocols: Vec<String> = vec![];
 
-    let neutron = if let Some(neutron) = state.protocols.get("NEUTRON") {
-        neutron
-    } else {
-        return Err(Error::ProtocolError(String::from("neutron")));
-    };
+    for  data in state.protocols.values() {
+        protocols.push(data.contracts.lpp.to_owned());
+    }
 
     let data = state
         .database
         .lp_pool_state
-        .get_supplied_borrowed_series_total(
-            osmosis.contracts.lpp.to_owned(),
-            neutron.contracts.lpp.to_owned(),
-        )
+        .get_supplied_borrowed_series_total(protocols)
         .await?;
     Ok(web::Json(data))
 }

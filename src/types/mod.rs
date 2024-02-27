@@ -57,7 +57,7 @@ pub use amount::Amount;
 pub use amount_ticker::AmountTicker;
 pub use block::BlockValue;
 pub use lp_pool_config_state_type::LP_Pool_Config_State_Type;
-pub use admin_protocol_type::AdminProtocolType;
+pub use admin_protocol_type::{AdminProtocolType, AdminProtocolExtendType};
 pub use prices_type::Prices;
 pub use ls_close_position_type::LS_Close_Position_Type;
 pub use interest_values::Interest_values;

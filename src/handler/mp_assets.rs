@@ -20,7 +20,7 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
     for protocol in app_state.protocols.values() {
         joins.push(app_state.query_api.get_prices(
             protocol.contracts.oracle.to_owned(),
-            protocol.network.to_owned(),
+            protocol.protocol.to_owned(),
             height.to_owned(),
         ));
     }

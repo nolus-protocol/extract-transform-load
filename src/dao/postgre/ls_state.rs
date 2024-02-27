@@ -109,7 +109,7 @@ impl Table<LS_State> {
         Ok(value)
     }
 
-    pub async fn get_total_value_locked(&self, osmosis_protocol: String, neutron_protocol: String) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_total_value_locked(&self, osmosis_usdc_protocol: String, neutron_axelar_protocol: String) -> Result<BigDecimal, crate::error::Error> {
       let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
           WITH Lease_Value_Divisor AS (
@@ -157,8 +157,8 @@ impl Table<LS_State> {
             (SELECT "Available Assets" FROM Available_Assets_Neutron) AS "TVL"
             "#,
         )
-        .bind(osmosis_protocol)
-        .bind(neutron_protocol)
+        .bind(osmosis_usdc_protocol)
+        .bind(neutron_axelar_protocol)
         .fetch_optional(&self.pool)
         .await?;
 

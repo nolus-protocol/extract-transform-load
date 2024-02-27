@@ -116,28 +116,37 @@ impl Table<LP_Pool_State> {
 
     pub async fn get_supplied_borrowed_series_total(
         &self,
-        osmosis_protocol: String,
-        neutron_protocol: String
+        protocols: Vec<String>,
     ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
-        let data = sqlx::query_as(
+        let mut params = String::from("$1");
+
+        for i in 1..protocols.len() {
+            params += &format!(", ${}", i + 1);
+        }
+
+        let query_str = format!(
             r#"
             SELECT 
                 "LP_Pool_timestamp", SUM("LP_Pool_total_value_locked_stable" / 1000000) AS "Supplied", SUM("LP_Pool_total_borrowed_stable" / 1000000) AS "Borrowed" 
             FROM
                 "LP_Pool_State"
             WHERE
-                "LP_Pool_id" IN ($1, $2)
+                "LP_Pool_id" IN ({}) 
             GROUP BY 
                 "LP_Pool_timestamp"
             ORDER BY 
                 "LP_Pool_timestamp" DESC
             "#,
-        )
-        .bind(osmosis_protocol)
-        .bind(neutron_protocol
-        )
-        .fetch_all(&self.pool)
-        .await?;
+            params
+        );
+
+        let mut query: sqlx::query::QueryAs<'_, _, _, _> = sqlx::query_as(&query_str);
+
+        for i in protocols {
+            query = query.bind(i);
+        }
+
+        let data = query.fetch_all(&self.pool).await?;
         Ok(data)
     }
 

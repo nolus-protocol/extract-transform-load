@@ -2,8 +2,7 @@ use crate::{
     configuration::Config,
     error::{self, Error},
     types::{
-        AdminProtocolType, Balance, LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type,
-        LS_State_Type, Prices, QueryBody,
+        AdminProtocolExtendType, AdminProtocolType, Balance, LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type, Prices, QueryBody
     },
 };
 use base64::engine::general_purpose;
@@ -253,13 +252,19 @@ impl QueryApi {
         &self,
         contract: String,
         protocol: String,
-    ) -> Result<Option<AdminProtocolType>, Error> {
+    ) -> Result<Option<AdminProtocolExtendType>, Error> {
         let bytes = format!(r#"{{"protocol": "{}"}}"#, protocol).to_owned();
         let bytes = bytes.as_bytes();
         let res = self.query_state(bytes, contract, None).await?;
 
         if let Some(item) = res {
-            let data = serde_json::from_str(&item)?;
+            let data = serde_json::from_str::<AdminProtocolType>(&item)?;
+            let data = AdminProtocolExtendType{
+                contracts: data.contracts,
+                network: data.network,
+                protocol: protocol.to_owned()
+            };
+
             return Ok(Some(data));
         }
 

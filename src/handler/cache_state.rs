@@ -5,19 +5,19 @@ use crate::{
 use tokio::{time, time::Duration};
 
 pub async fn set_total_value_locked(app_state: AppState<State>) -> Result<(), Error> {
-    let osmosis = if let Some(osmosis) = app_state.protocols.get("OSMOSIS") {
-        osmosis
+    let osmosis_usdc = if let Some((osmosis_usdc, _)) = app_state.config.lp_pools.first() {
+        osmosis_usdc
     } else {
-        return Err(Error::ProtocolError(String::from("osmosis")));
+        return Err(Error::ProtocolError(String::from("osmosis_usdc")));
     };
 
-    let neutron = if let Some(neutron) = app_state.protocols.get("NEUTRON") {
-        neutron
+    let neutron_usdc_axelar = if let Some((neutron_usdc_axelar, _)) = app_state.config.lp_pools.get(1) {
+        neutron_usdc_axelar
     } else {
-        return Err(Error::ProtocolError(String::from("neutron")));
+        return Err(Error::ProtocolError(String::from("neutron_usdc_axelar")));
     };
 
-    let data = app_state.database.ls_state.get_total_value_locked(osmosis.contracts.lpp.to_owned(), neutron.contracts.lpp.to_owned()).await?;
+    let data = app_state.database.ls_state.get_total_value_locked(osmosis_usdc.to_owned(), neutron_usdc_axelar.to_owned()).await?;
     let cache = &app_state.clone().cache;
     let cache = cache.lock();
 

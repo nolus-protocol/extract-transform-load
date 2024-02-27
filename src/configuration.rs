@@ -3,7 +3,7 @@ use crate::error::Error;
 use crate::helpers::{formatter, parse_tuple_string, Formatter};
 use crate::model::{LP_Pool, MP_Asset_Mapping};
 use crate::provider::{DatabasePool, QueryApi, HTTP};
-use crate::types::{AdminProtocolType, Currency};
+use crate::types::{AdminProtocolExtendType, Currency};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use futures::future::join_all;
@@ -48,7 +48,7 @@ pub struct State {
     pub database: DatabasePool,
     pub http: HTTP,
     pub query_api: QueryApi,
-    pub protocols: HashMap<String, AdminProtocolType>,
+    pub protocols: HashMap<String, AdminProtocolExtendType>,
     pub cache: Mutex<Cache>,
 }
 
@@ -147,12 +147,12 @@ impl State {
     async fn init_admin_protocols(
         query_api: &QueryApi,
         config: &Config,
-    ) -> Result<HashMap<String, AdminProtocolType>, Error> {
+    ) -> Result<HashMap<String, AdminProtocolExtendType>, Error> {
         let protocols = query_api
             .get_admin_config(config.admin_contract.to_owned())
             .await?;
         let mut joins = vec![];
-        let mut protocolsMap = HashMap::<String, AdminProtocolType>::new();
+        let mut protocolsMap = HashMap::<String, AdminProtocolExtendType>::new();
 
         if let Some(protocols) = protocols {
             for p in protocols {
@@ -165,7 +165,7 @@ impl State {
         let result = join_all(joins).await;
 
         for item in result.into_iter().flatten().flatten() {
-            protocolsMap.insert(item.network.to_owned(), item);
+            protocolsMap.insert(item.protocol.to_owned(), item);
         }
 
         Ok(protocolsMap)
