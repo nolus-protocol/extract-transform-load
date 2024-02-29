@@ -17,7 +17,12 @@ pub async fn set_total_value_locked(app_state: AppState<State>) -> Result<(), Er
         return Err(Error::ProtocolError(String::from("neutron_usdc_axelar")));
     };
 
-    let data = app_state.database.ls_state.get_total_value_locked(osmosis_usdc.to_owned(), neutron_usdc_axelar.to_owned()).await?;
+    let osmosis_usdc_noble = if let Some((osmosis_usdc_noble, _)) = app_state.config.lp_pools.get(2) {
+        osmosis_usdc_noble
+    } else {
+        return Err(Error::ProtocolError(String::from("osmosis_usdc_noble")));
+    };
+    let data = app_state.database.ls_state.get_total_value_locked(osmosis_usdc.to_owned(), neutron_usdc_axelar.to_owned(), osmosis_usdc_noble.to_owned()).await?;
     let cache = &app_state.clone().cache;
     let cache = cache.lock();
 

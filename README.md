@@ -18,12 +18,12 @@ psql
 HOST=pirin-cl.nolus.network:26657
 DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
 SYNC_THREADS=16
-SUPPORTED_CURRENCIES=(nolus,NLS,6),(usd-coin,USDC,6),(osmosis,OSMO,6),(stride-staked-osmo,ST_OSMO,6),(cosmos,ATOM,6),(stride-staked-atom,ST_ATOM,6),(weth,WETH,18),(wrapped-bitcoin,WBTC,8),(akash-network,AKT,6),(axelar,AXL,6),(juno-network,JUNO,6),(evmos,EVMOS,18),(stkatom,STK_ATOM,6),(secret,SCRT,6),(crypto-com-chain,CRO,8),(celestia,TIA,6),(stargaze,STARS,6),(cosmos,Q_ATOM,6),(neutron-3,NTRN,6),(usd-coin,USDC_AXELAR,6),(dydx-chain,DYDX,18),(stride,STRD,6),(injective-protocol,INJ,18),(stride-staked-tia,stTIA,6),(jackal-protocol,JKL,6),(milkyway-staked-tia,milkTIA,6),(levana-protocol,LVN,6),(quasar-2,QSR,6),(picasso,PICA,12),(dymension,DYM,18)
+SUPPORTED_CURRENCIES=(nolus,NLS,6),(usd-coin,USDC,6),(osmosis,OSMO,6),(stride-staked-osmo,ST_OSMO,6),(cosmos,ATOM,6),(stride-staked-atom,ST_ATOM,6),(weth,WETH,18),(wrapped-bitcoin,WBTC,8),(akash-network,AKT,6),(axelar,AXL,6),(juno-network,JUNO,6),(evmos,EVMOS,18),(stkatom,STK_ATOM,6),(secret,SCRT,6),(crypto-com-chain,CRO,8),(celestia,TIA,6),(stargaze,STARS,6),(cosmos,Q_ATOM,6),(neutron-3,NTRN,6),(usd-coin,USDC_AXELAR,6),(dydx-chain,DYDX,18),(stride,STRD,6),(injective-protocol,INJ,18),(stride-staked-tia,ST_TIA,6),(jackal-protocol,JKL,6),(milkyway-staked-tia,MILK_TIA,6),(levana-protocol,LVN,6),(quasar-2,QSR,6),(picasso,PICA,12),(dymension,DYM,18),(usd-coin,USDC_NOBLE,6)
 STABLE_CURRENCY=usd
 AGGREGATION_INTTERVAL=1
 MP_ASSET_INTERVAL_IN_MINUTES=1
 CACHE_INTERVAL_IN_MINUTES=60
-LP_POOLS=(nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5,USDC),(nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94,USDC_AXELAR)
+LP_POOLS=(nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5,USDC),(nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94,USDC_AXELAR),(nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf,USDC_NOBLE)
 NATIVE_CURRENCY=NLS
 TREASURY_CONTRACT=nolus14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0k0puz
 SERVER_HOST=127.0.0.1
@@ -33,9 +33,9 @@ TIMEOUT=300
 MAX_TASKS=64
 ADMIN_CONTRACT=nolus1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jsqxf8nd
 IGNORE_PROTOCOLS=
-INITIAL_PROTOCOL=OSMOSIS
+INITIAL_PROTOCOL=OSMOSIS-OSMOSIS-USDC_AXELAR
 LPN_PRICE=1
-LPNS=USDC,USDC_AXELAR
+LPNS=USDC,USDC_AXELAR,USDC_NOBLE
 LPN_DECIMALS=6
 SOCKET_RECONNECT_INTERVAL=5
 COINGECKO_INFO_URL=https://pro-api.coingecko.com/api/v3/coins/$0?localization=false&market_data=false&tickers=false&developer_data=false&community_data=false&x_cg_pro_api_key=PRO_API_KEY
