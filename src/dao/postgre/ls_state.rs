@@ -108,8 +108,8 @@ impl Table<LS_State> {
         .await?;
         Ok(value)
     }
-
-    pub async fn get_total_value_locked(&self, osmosis_usdc_protocol: String, neutron_axelar_protocol: String, osmosis_usdc_noble_protocol: String) -> Result<BigDecimal, crate::error::Error> {
+    
+    pub async fn get_total_value_locked(&self, osmosis_usdc_protocol: String, neutron_axelar_protocol: String) -> Result<BigDecimal, crate::error::Error> {
       let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
           WITH Lease_Value_Divisor AS (
@@ -131,28 +131,21 @@ impl Table<LS_State> {
               "LS_State" s
             LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
             LEFT JOIN Lease_Value_Divisor d ON o."LS_asset_symbol" = d."LS_asset_symbol"
-            WHERE s."LS_timestamp" > NOW() - INTERVAL '3 hours'
+            WHERE s."LS_timestamp" > NOW() - INTERVAL '1 hours'
           ),
           Available_Assets_Osmosis AS (
             SELECT
               ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
             FROM
               "LP_Pool_State"
-            WHERE "LP_Pool_id" = $1
+            WHERE "LP_Pool_id" = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5'
             ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
           ),
           Available_Assets_Neutron AS (
             SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
             FROM
               "LP_Pool_State"
-            WHERE "LP_Pool_id" = $2
-            ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
-          ),
-          Available_Osmosis_Noble_Neutron AS (
-            SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
-            FROM
-              "LP_Pool_State"
-            WHERE "LP_Pool_id" = $3
+            WHERE "LP_Pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94'
             ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
           ),
           Lease_Value_Sum AS (
@@ -161,14 +154,11 @@ impl Table<LS_State> {
           SELECT
             (SELECT "Total Lease Value" FROM Lease_Value_Sum) +
             (SELECT "Available Assets" FROM Available_Assets_Osmosis) +
-            (SELECT "Available Assets" FROM Available_Assets_Neutron) +
-            (SELECT "Available Assets" FROM Available_Osmosis_Noble_Neutron) AS "TVL"
+            (SELECT "Available Assets" FROM Available_Assets_Neutron) AS "TVL"
             "#,
         )
         .bind(osmosis_usdc_protocol)
         .bind(neutron_axelar_protocol)
-
-        .bind(osmosis_usdc_noble_protocol)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -181,5 +171,76 @@ impl Table<LS_State> {
 
         Ok(amount.unwrap_or(default.to_owned()))
     }
+
+    // pub async fn get_total_value_locked(&self, osmosis_usdc_protocol: String, neutron_axelar_protocol: String) -> Result<BigDecimal, crate::error::Error> {
+    //   let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
+    //     r#"
+    //       WITH Lease_Value_Divisor AS (
+    //         SELECT
+    //           "LS_asset_symbol",
+    //           CASE
+    //             WHEN "LS_asset_symbol" IN ('WBTC', 'CRO') THEN 100000000
+    //             WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX') THEN 1000000000000000000
+    //             ELSE 1000000
+    //           END AS "Divisor"
+    //         FROM
+    //           "LS_Opening"
+    //         GROUP BY
+    //           "LS_asset_symbol"
+    //       ),
+    //       Lease_Value AS (
+    //         SELECT s."LS_amnt_stable" / d."Divisor" AS "Lease Value"
+    //         FROM
+    //           "LS_State" s
+    //         LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
+    //         LEFT JOIN Lease_Value_Divisor d ON o."LS_asset_symbol" = d."LS_asset_symbol"
+    //         WHERE s."LS_timestamp" > NOW() - INTERVAL '3 hours'
+    //       ),
+    //       Available_Assets_Osmosis AS (
+    //         SELECT
+    //           ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
+    //         FROM
+    //           "LP_Pool_State"
+    //         WHERE "LP_Pool_id" = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5'
+    //         ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+    //       ),
+    //       Available_Assets_Neutron AS (
+    //         SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
+    //         FROM
+    //           "LP_Pool_State"
+    //         WHERE "LP_Pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94'
+    //         ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+    //       ),
+    //       Available_Osmosis_Noble_Neutron AS (
+    //         SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
+    //         FROM
+    //           "LP_Pool_State"
+    //         WHERE "LP_Pool_id" = 'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf'
+    //         ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+    //       ),
+    //       Lease_Value_Sum AS (
+    //         SELECT SUM("Lease Value") AS "Total Lease Value" FROM Lease_Value
+    //       )
+    //       SELECT
+    //         (SELECT "Total Lease Value" FROM Lease_Value_Sum) +
+    //         (SELECT "Available Assets" FROM Available_Assets_Osmosis) +
+    //         (SELECT "Available Assets" FROM Available_Assets_Neutron) +
+    //         (SELECT "Available Assets" FROM Available_Osmosis_Noble_Neutron) AS "TVL"
+    //         "#,
+    //     )
+    //     .bind(osmosis_usdc_protocol)
+    //     .bind(neutron_axelar_protocol)
+    //     .fetch_optional(&self.pool)
+    //     .await?;
+
+    //     let default = BigDecimal::from_str("0")?;
+    //     let amount = if let Some(v) = value {
+    //       v.0
+    //     }else{
+    //       Some(default.to_owned())
+    //     };
+
+    //     Ok(amount.unwrap_or(default.to_owned()))
+    // }
 
 }
