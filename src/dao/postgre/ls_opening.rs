@@ -282,7 +282,7 @@ impl Table<LS_Opening> {
             WITH DateRange AS (
                 SELECT
                     generate_series(
-                        CURRENT_DATE - INTERVAL '30 days',
+                        CURRENT_DATE - INTERVAL '7 days',
                         CURRENT_DATE,
                         '1 day'
                     ) :: date AS date
@@ -294,7 +294,7 @@ impl Table<LS_Opening> {
                 FROM
                     "LS_Opening"
                 WHERE
-                    "LS_timestamp" >= CURRENT_DATE - INTERVAL '30 days'
+                    "LS_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
                     AND "LS_loan_pool_id" = $1
                 GROUP BY
                     DATE("LS_timestamp")
@@ -334,7 +334,7 @@ impl Table<LS_Opening> {
                         FROM
                             "LP_Pool_State"
                         WHERE
-                            "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '30 days'
+                            "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
                             AND "LP_Pool_id" = $2
                     ) ranked
                 WHERE
