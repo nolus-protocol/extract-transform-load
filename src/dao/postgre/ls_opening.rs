@@ -403,7 +403,7 @@ impl Table<LS_Opening> {
         let mut params = String::from("$1");
 
         for i in 1..leases.len() {
-            params+=&format!(", ${}", i+1);
+            params += &format!(", ${}", i + 1);
         }
 
         let query_str = format!(
@@ -420,5 +420,51 @@ impl Table<LS_Opening> {
 
         let data = query.fetch_all(&self.pool).await?;
         Ok(data)
+    }
+
+    pub async fn get_total_tx_value(
+        &self
+    ) -> Result<BigDecimal, crate::error::Error> {
+        let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
+          r#"
+                WITH Opened_Leases AS (
+                    SELECT
+                    CASE
+                    WHEN "LS_cltr_symbol" IN ('WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000 
+                    WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000 
+                    WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM') THEN "LS_cltr_amnt_stable" / 1000000000000000000
+                    ELSE "LS_cltr_amnt_stable" / 1000000
+                    END AS "Down Payment Amount",
+                    "LS_loan_amnt_asset" / 1000000 AS "Loan"
+                    FROM "LS_Opening"
+                )
+                
+                SELECT
+                    SUM ("Volume") AS "Tx Value"
+                FROM (
+                    SELECT ("Down Payment Amount" + "Loan") AS "Volume" FROM Opened_Leases
+                    UNION ALL
+                    SELECT SUM("LP_amnt_asset" / 1000000) AS "Volume" FROM "LP_Deposit"
+                    UNION ALL 
+                    SELECT SUM("LP_amnt_asset" / 1000000) AS "Volume" FROM "LP_Withdraw"
+                    UNION ALL
+                    SELECT SUM("LS_amnt_stable" / 1000000) AS "Volume" FROM "LS_Close_Position"
+                    UNION ALL
+                    SELECT SUM("LS_amnt_stable" / 1000000) AS "Volume" FROM "LS_Repayment"
+                ) AS combined_data;
+          
+              "#,
+          )
+          .fetch_optional(&self.pool)
+          .await?;
+
+        let default = BigDecimal::from_str("0")?;
+        let amount = if let Some(v) = value {
+            v.0
+        } else {
+            Some(default.to_owned())
+        };
+
+        Ok(amount.unwrap_or(default.to_owned()))
     }
 }

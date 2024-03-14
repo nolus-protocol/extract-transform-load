@@ -30,6 +30,7 @@ pub async fn set_total_value_locked(app_state: AppState<State>) -> Result<(), Er
         c.total_value_locked = Some(data);
     }
 
+
     Ok(())
 }
 

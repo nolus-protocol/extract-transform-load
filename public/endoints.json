@@ -143,5 +143,10 @@
                 "default": null
             }
         ]
+    },
+    {
+        "description": "Total transactions value",
+        "url": "/api/total-tx-value",
+        "type": "GET"
     }
 ]

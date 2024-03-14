@@ -9,7 +9,7 @@ use crate::{
     model::{Actions, Table},
 };
 
-use super::mp_assets_state;
+use super::{cache_state, mp_assets_state};
 use super::{lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state};
 
 pub fn aggregation_task(app_state: AppState<State>) -> JoinHandle<Result<(), Error>> {
@@ -70,6 +70,8 @@ pub fn aggregation_task(app_state: AppState<State>) -> JoinHandle<Result<(), Err
         {
             return Err(Error::ServerError(error.to_string()));
         };
+
+        cache_state::set_total_value_locked(app_state.clone()).await?;
 
         Ok(())
     })
