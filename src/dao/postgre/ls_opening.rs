@@ -287,17 +287,29 @@ impl Table<LS_Opening> {
                         '1 day'
                     ) :: date AS date
             ),
+            Pool_State_Interest AS (
+            SELECT
+                "LP_Pool_timestamp",
+                CASE
+                    WHEN "LP_Pool_total_borrowed_stable"/"LP_Pool_total_value_locked_stable" < 0.7 THEN (12 + (("LP_Pool_total_borrowed_stable"/"LP_Pool_total_value_locked_stable") / (1 - ("LP_Pool_total_borrowed_stable"/"LP_Pool_total_value_locked_stable")) / 0.7)*2) * 10
+                    ELSE 186 
+                END AS "interest"
+            FROM
+                "LP_Pool_State"
+            WHERE
+                "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
+                AND "LP_Pool_id" = $1
+            ORDER BY
+                "LP_Pool_timestamp" DESC
+            ),
             DailyInterest AS (
                 SELECT
-                    DATE("LS_timestamp") AS date,
-                    MAX("LS_interest") AS max_interest
+                DATE("LP_Pool_timestamp") as date,
+                MAX("interest") AS max_interest
                 FROM
-                    "LS_Opening"
-                WHERE
-                    "LS_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
-                    AND "LS_loan_pool_id" = $1
+                Pool_State_Interest
                 GROUP BY
-                    DATE("LS_timestamp")
+                "LP_Pool_timestamp"
             ),
             MaxLSInterest AS (
                 SELECT
@@ -348,7 +360,7 @@ impl Table<LS_Opening> {
                     JOIN MaxLPRatio mlr ON mli.date = mlr.date
             )
             SELECT
-                (POWER((1 + ("Earn APR" / 100 / 365)), 365) - 1) * 100 AS "Earn APY"
+                COALESCE((POWER((1 + ("Earn APR" / 100 / 365)), 365) - 1) * 100, 0) AS "Earn APY"
             FROM APRCalc
             "#,
         )
