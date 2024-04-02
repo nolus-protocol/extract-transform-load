@@ -148,5 +148,10 @@
         "description": "Total transactions value",
         "url": "/api/total-tx-value",
         "type": "GET"
+    },
+    {
+        "description": "Version",
+        "url": "/api/version",
+        "type": "GET"
     }
 ]

@@ -16,3 +16,4 @@ pub mod ls_opening;
 pub mod blocks;
 pub mod ls_openings;
 pub mod total_tx_value;
+pub mod version;
