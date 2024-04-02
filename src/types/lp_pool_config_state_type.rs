@@ -3,8 +3,6 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct LP_Pool_Config_State_Type {
     pub borrow_rate: Borrow_Rate,
-    pub lease_code_id: String,
-    pub lpn_ticker: String,
     pub min_utilization: u128,
 }
 
