@@ -7,7 +7,8 @@ use tokio::{
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    model::{LS_Opening, LS_State}, types::AmountTicker,
+    model::{LS_Opening, LS_State},
+    types::AmountTicker,
 };
 
 pub async fn parse_and_insert(
@@ -64,37 +65,74 @@ async fn proceed(
             let protocol = state.get_protocol_by_pool_id(&item.LS_loan_pool_id);
 
             let (price, pool_currency_price) = join!(
-                state.database.mp_asset.get_price(&status.amount.ticker, protocol.to_owned()),
-                state.database.mp_asset.get_price(&pool_currency.1, protocol.to_owned()),
+                state
+                    .database
+                    .mp_asset
+                    .get_price(&status.amount.ticker, protocol.to_owned()),
+                state
+                    .database
+                    .mp_asset
+                    .get_price(&pool_currency.1, protocol.to_owned()),
             );
 
             let (price,) = price?;
             let (pool_currency_price,) = pool_currency_price?;
 
-            let previous_margin_due = status.previous_margin_due.unwrap_or(AmountTicker{amount: "0".to_string(), ticker: pool_currency.1.to_owned()});
-            let overdue_margin = status.overdue_margin.unwrap_or(AmountTicker{amount: "0".to_string(), ticker: pool_currency.1.to_owned()});
+            let previous_margin_due = status.previous_margin_due.unwrap_or(AmountTicker {
+                amount: "0".to_string(),
+                ticker: pool_currency.1.to_owned(),
+            });
+            let overdue_margin = status.overdue_margin.unwrap_or(AmountTicker {
+                amount: "0".to_string(),
+                ticker: pool_currency.1.to_owned(),
+            });
 
-            let previous_interest_due = status.previous_interest_due.unwrap_or(AmountTicker{amount: "0".to_string(), ticker: pool_currency.1.to_owned()});
-            let overdue_interest = status.overdue_interest.unwrap_or(AmountTicker{amount: "0".to_string(), ticker: pool_currency.1.to_owned()});
+            let previous_interest_due = status.previous_interest_due.unwrap_or(AmountTicker {
+                amount: "0".to_string(),
+                ticker: pool_currency.1.to_owned(),
+            });
+            let overdue_interest = status.overdue_interest.unwrap_or(AmountTicker {
+                amount: "0".to_string(),
+                ticker: pool_currency.1.to_owned(),
+            });
 
-            let current_margin_due = status.current_margin_due.unwrap_or(AmountTicker{amount: "0".to_string(), ticker: pool_currency.1.to_owned()});
-            let due_margin = status.due_margin.unwrap_or(AmountTicker{amount: "0".to_string(), ticker: pool_currency.1.to_owned()});
+            let current_margin_due = status.current_margin_due.unwrap_or(AmountTicker {
+                amount: "0".to_string(),
+                ticker: pool_currency.1.to_owned(),
+            });
+            let due_margin = status.due_margin.unwrap_or(AmountTicker {
+                amount: "0".to_string(),
+                ticker: pool_currency.1.to_owned(),
+            });
 
-            let current_interest_due = status.current_interest_due.unwrap_or(AmountTicker{amount: "0".to_string(), ticker: pool_currency.1.to_owned()});
-            let due_interest = status.due_interest.unwrap_or(AmountTicker{amount: "0".to_string(), ticker: pool_currency.1.to_owned()});
+            let current_interest_due = status.current_interest_due.unwrap_or(AmountTicker {
+                amount: "0".to_string(),
+                ticker: pool_currency.1.to_owned(),
+            });
+            let due_interest = status.due_interest.unwrap_or(AmountTicker {
+                amount: "0".to_string(),
+                ticker: pool_currency.1.to_owned(),
+            });
 
-            let previous_margin_due_stable = state.in_stabe_calc(&pool_currency_price, &previous_margin_due.amount)?;
-            let overdue_margin_stable = state.in_stabe_calc(&pool_currency_price, &overdue_margin.amount)?;
+            let previous_margin_due_stable =
+                state.in_stabe_calc(&pool_currency_price, &previous_margin_due.amount)?;
+            let overdue_margin_stable =
+                state.in_stabe_calc(&pool_currency_price, &overdue_margin.amount)?;
 
-            let previous_interest_due_stable = state.in_stabe_calc(&pool_currency_price, &previous_interest_due.amount)?;
-            let overdue_interest_stable = state.in_stabe_calc(&pool_currency_price, &overdue_interest.amount)?;
+            let previous_interest_due_stable =
+                state.in_stabe_calc(&pool_currency_price, &previous_interest_due.amount)?;
+            let overdue_interest_stable =
+                state.in_stabe_calc(&pool_currency_price, &overdue_interest.amount)?;
 
-            let current_margin_due_stable = state.in_stabe_calc(&pool_currency_price, &current_margin_due.amount)?;
-            let due_margin_stable = state.in_stabe_calc(&pool_currency_price, &due_margin.amount)?;
+            let current_margin_due_stable =
+                state.in_stabe_calc(&pool_currency_price, &current_margin_due.amount)?;
+            let due_margin_stable =
+                state.in_stabe_calc(&pool_currency_price, &due_margin.amount)?;
 
-            let current_interest_due_stable = state.in_stabe_calc(&pool_currency_price, &current_interest_due.amount)?;
-            let due_interest_stable = state.in_stabe_calc(&pool_currency_price, &due_interest.amount)?;
-
+            let current_interest_due_stable =
+                state.in_stabe_calc(&pool_currency_price, &current_interest_due.amount)?;
+            let due_interest_stable =
+                state.in_stabe_calc(&pool_currency_price, &due_interest.amount)?;
 
             let ls_state = LS_State {
                 LS_contract_id: item.LS_contract_id,

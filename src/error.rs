@@ -1,3 +1,4 @@
+use actix_web::{http::header::ToStrError as HEADER_TO_STR_ERROR, ResponseError};
 use base64::DecodeError as BASE64_DECODE_ERROR;
 use bigdecimal::ParseBigDecimalError as BIG_DECIMAL_ERROR;
 use prost::DecodeError as DECODE_ERROR;
@@ -14,11 +15,8 @@ use thiserror::Error;
 use tokio::task::JoinError;
 use tokio::time::error::Elapsed;
 use tokio_tungstenite::tungstenite::Error as WS_ERROR;
-use url::ParseError as URL_ERROR;
 use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
-use actix_web::{
-    http::header::ToStrError as HEADER_TO_STR_ERROR, ResponseError,
-};
+use url::ParseError as URL_ERROR;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -99,13 +97,12 @@ pub enum Error {
 
     #[error("{0}")]
     HeaderToStrError(#[from] HEADER_TO_STR_ERROR),
-    
+
     #[error("{0}")]
     TryFromIntError(#[from] TRY_FROM_INT_ERROR),
 
     #[error("Protocol not found: {0}")]
     ProtocolError(String),
-
 }
 
 impl ResponseError for Error {}

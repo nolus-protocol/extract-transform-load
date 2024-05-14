@@ -1,5 +1,5 @@
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::DateTime;
 use sqlx::Transaction;
 use std::str::FromStr;
 
@@ -18,10 +18,9 @@ pub async fn parse_and_insert(
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
-    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| {
+    let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
         Error::DecodeDateTimeError(format!("Wasm_LP_withdraw date parse {}", at_sec))
     })?;
-    let at = DateTime::<Utc>::from_utc(time, Utc);
     let protocol = app_state.get_protocol_by_pool_id(&item.from);
     let lp_withdraw = LP_Withdraw {
         LP_withdraw_height: item.height.parse()?,

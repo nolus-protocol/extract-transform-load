@@ -7,10 +7,10 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
 use tokio::net::TcpStream;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
     {
@@ -195,7 +195,7 @@ impl Handler {
                 }
                 Err(e) => {
                     return Err(Error::ParseMessage(e.to_string()));
-                },
+                }
             }
         }
 

@@ -434,9 +434,7 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    pub async fn get_total_tx_value(
-        &self
-    ) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_total_tx_value(&self) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
           r#"
                 WITH Opened_Leases AS (

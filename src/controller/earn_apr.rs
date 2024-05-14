@@ -17,14 +17,17 @@ async fn index(
         let protocolKey = protocolKey.to_uppercase();
         let admin = state.protocols.get(&protocolKey);
         if let Some(protocol) = admin {
-            let data = state.database.ls_opening.get_earn_apr(protocol.contracts.lpp.to_owned()).await?;
+            let data = state
+                .database
+                .ls_opening
+                .get_earn_apr(protocol.contracts.lpp.to_owned())
+                .await?;
             return Ok(web::Json(Response { earn_apr: data }));
         }
     }
 
-
     Ok(web::Json(Response {
-        earn_apr: BigDecimal::from_str("0")?
+        earn_apr: BigDecimal::from_str("0")?,
     }))
 }
 

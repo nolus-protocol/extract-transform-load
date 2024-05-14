@@ -7,10 +7,10 @@ use tracing::{error, Level};
 use etl::{
     configuration::{get_configuration, set_configuration, AppState, Config, State},
     error::Error,
-    handler::{aggregation_task, mp_assets, cache_state},
+    handler::{aggregation_task, cache_state, mp_assets},
     model::Actions,
     provider::{DatabasePool, Event, QueryApi, HTTP},
-    server
+    server,
 };
 
 #[tokio::main]
@@ -67,7 +67,6 @@ async fn app_main() -> Result<(), Error> {
         server::server_task(&app_state),
         cache_state::cache_state_tasks(app_state.clone())
     )?;
-
 
     Ok(())
 }

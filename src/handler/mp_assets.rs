@@ -29,7 +29,6 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
             Ok(data) => {
                 let (assets, protocol) = data;
                 if let Some(item) = assets {
-
                     for price in item.prices {
                         if let Some(asset) = app_state
                             .config
@@ -81,7 +80,7 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
                     MP_asset_symbol: currency.to_owned(),
                     MP_asset_timestamp: timestamp,
                     MP_price_in_stable: value,
-                    Protocol: protocol.to_owned()
+                    Protocol: protocol.to_owned(),
                 };
                 mp_assets.push(mp_asset);
             }

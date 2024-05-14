@@ -1,19 +1,29 @@
 # Extract Transform Load
+
 Define Nolus data necessary for further analysis and implement an agent extracting it, transforming and loading into a relational SQL database.
 
 ## HOW TO
 
 ### PostgreSQL
 
+### Linux
+
 sudo -i -u postgres
+
+### OSX
+
+psql -U <CURRENTLY_LOGGED_IN_MAC_USERNAME> postgres
+
 psql
 
 1. CREATE DATABASE database_name;
 2. GRANT ALL PRIVILEGES ON DATABASE database_name to user_name;
-3. Copy .env.example to .env and set necessary settings
-4. Add in  COINGECKO_INFO_URL, COINGECKO_PRICES_URL, COINGECKO_MARKET_DATA_RANGE_URL config for PRO_API_KEY
+3. GRANT ALL ON SCHEMA public TO user_name;
+4. Copy .env.example to .env and set necessary settings
+5. Add in COINGECKO_INFO_URL, COINGECKO_PRICES_URL, COINGECKO_MARKET_DATA_RANGE_URL config for PRO_API_KEY
 
 ### Test config:
+
 ```
 HOST=pirin-cl.nolus.network:26657
 DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
@@ -44,6 +54,7 @@ COINGECKO_MARKET_DATA_RANGE_URL=https://pro-api.coingecko.com/api/v3/coins/$0/ma
 ```
 
 ### Testnet config:
+
 ```
 HOST=rila-cl.nolus.network:26657
 DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
@@ -72,28 +83,29 @@ COINGECKO_INFO_URL=https://pro-api.coingecko.com/api/v3/coins/$0?localization=fa
 COINGECKO_PRICES_URL=https://pro-api.coingecko.com/api/v3/simple/price?ids=$0&vs_currencies=$1&x_cg_pro_api_key=PRO_API_KEY
 COINGECKO_MARKET_DATA_RANGE_URL=https://pro-api.coingecko.com/api/v3/coins/$0/market_chart/range?vs_currency=$1&from=$2&to=$3&x_cg_pro_api_key=PRO_API_KEY
 ```
+
 TESTNET CURRENCIES WHEN FEEDERS NOT RETURN CORRECT DATA
 
 INSERT INTO "MP_Asset"
-  ("MP_asset_symbol", "MP_asset_timestamp", "MP_price_in_stable", "Protocol")
+("MP_asset_symbol", "MP_asset_timestamp", "MP_price_in_stable", "Protocol")
 VALUES
-  ('OSMO', NOW(), 0, 'OSMOSIS'),
-  ('USDC', NOW(), 0, 'OSMOSIS'),
-  ('ATOM', NOW(), 0, 'OSMOSIS'),
-  ('NLS', NOW(), 0, 'OSMOSIS'),
-  ('AKT', NOW(), 0, 'OSMOSIS'),
-  ('JUNO', NOW(), 0, 'OSMOSIS'),
-  ('NTRN', NOW(), 0, 'NEUTRON'),
-  ('NLS', NOW(), 0, 'NEUTRON'),
-  ('USDC_AXELAR', NOW(), 0, 'NEUTRON'),
-  ('ATOM', NOW(), 0, 'NEUTRON');
+('OSMO', NOW(), 0, 'OSMOSIS'),
+('USDC', NOW(), 0, 'OSMOSIS'),
+('ATOM', NOW(), 0, 'OSMOSIS'),
+('NLS', NOW(), 0, 'OSMOSIS'),
+('AKT', NOW(), 0, 'OSMOSIS'),
+('JUNO', NOW(), 0, 'OSMOSIS'),
+('NTRN', NOW(), 0, 'NEUTRON'),
+('NLS', NOW(), 0, 'NEUTRON'),
+('USDC_AXELAR', NOW(), 0, 'NEUTRON'),
+('ATOM', NOW(), 0, 'NEUTRON');
 
 DO $FN$
 BEGIN
-  FOR counter IN 1..3661002 LOOP
-    EXECUTE $$ INSERT INTO block(id) VALUES ($1) RETURNING id $$ 
-      USING counter;
-  END LOOP;
+FOR counter IN 1..5300000 LOOP
+EXECUTE $$ INSERT INTO block(id) VALUES ($1) RETURNING id $$
+USING counter;
+END LOOP;
 END;
 $FN$;
 
@@ -110,7 +122,6 @@ cargo 1.75.0 or higher
 
 cargo build --release
 ```
-
 
 ### DAEMON
 

@@ -73,7 +73,7 @@ impl Table<Block> {
     }
 
     pub async fn count(&self) -> Result<i64, Error> {
-        let (count,)= sqlx::query_as(
+        let (count,) = sqlx::query_as(
             r#"
              SELECT COUNT(*) FROM "block"
             "#,

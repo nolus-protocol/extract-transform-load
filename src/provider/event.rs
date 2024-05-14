@@ -10,6 +10,7 @@ use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::time::sleep;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
+// use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::{error::Error as WS_ERROR, Message};
 use tokio_tungstenite::{connect_async_with_config, MaybeTlsStream, WebSocketStream};
 use tracing::{error, info};
@@ -37,7 +38,10 @@ impl Event {
                 error!("WS disconnected with error {}, try to reconnecting...", e);
             }
 
-            sleep(Duration::from_secs(self.app_state.config.socket_reconnect_interval)).await;
+            sleep(Duration::from_secs(
+                self.app_state.config.socket_reconnect_interval,
+            ))
+            .await;
         }
     }
 

@@ -1,4 +1,7 @@
-use sqlx::{PgPool, postgres::{PgPoolOptions, PgRow, PgQueryResult}, Postgres};
+use sqlx::{
+    postgres::{PgPoolOptions, PgQueryResult, PgRow},
+    PgPool, Postgres,
+};
 
 pub type PoolType = PgPool;
 pub type PoolOption = PgPoolOptions;

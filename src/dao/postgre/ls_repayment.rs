@@ -7,7 +7,6 @@ use std::str::FromStr;
 type OptionDecimal = Option<BigDecimal>;
 
 impl Table<LS_Repayment> {
-
     pub async fn isExists(&self, ls_repayment: &LS_Repayment) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"

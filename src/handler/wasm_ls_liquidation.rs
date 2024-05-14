@@ -1,5 +1,5 @@
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::DateTime;
 use sqlx::Transaction;
 use std::str::FromStr;
 
@@ -18,7 +18,7 @@ pub async fn parse_and_insert(
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
-    let time = NaiveDateTime::from_timestamp_opt(at_sec, 0).ok_or_else(|| {
+    let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
         Error::DecodeDateTimeError(format!("Wasm_LS_Liquidation date parse {}", at_sec))
     })?;
     let lease = app_state
@@ -29,10 +29,9 @@ pub async fn parse_and_insert(
 
     let protocol = match lease {
         Some(lease) => app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id),
-        None => None
+        None => None,
     };
-    
-    let at = DateTime::<Utc>::from_utc(time, Utc);
+
     let ls_liquidation = LS_Liquidation {
         LS_liquidation_height: item.height.parse()?,
         LS_liquidation_idx: None,

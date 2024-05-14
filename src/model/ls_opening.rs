@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::{types::BigDecimal, FromRow};
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, FromRow, Deserialize, Serialize)]
 pub struct LS_Opening {

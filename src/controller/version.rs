@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 async fn index() -> Result<impl Responder, Error> {
     const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 
-    Ok(web::Json(Response{version: VERSION}))
+    Ok(web::Json(Response { version: VERSION }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]

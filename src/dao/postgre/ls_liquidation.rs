@@ -3,7 +3,10 @@ use crate::model::{LS_Liquidation, Table};
 use sqlx::{error::Error, QueryBuilder, Transaction};
 
 impl Table<LS_Liquidation> {
-    pub async fn isExists(&self, ls_liquidatiion: &LS_Liquidation) -> Result<bool, crate::error::Error> {
+    pub async fn isExists(
+        &self,
+        ls_liquidatiion: &LS_Liquidation,
+    ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 
@@ -25,7 +28,6 @@ impl Table<LS_Liquidation> {
 
         Ok(false)
     }
-
 
     pub async fn insert(
         &self,

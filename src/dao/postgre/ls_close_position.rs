@@ -3,8 +3,10 @@ use crate::model::{LS_Close_Position, Table};
 use sqlx::{error::Error, QueryBuilder, Transaction};
 
 impl Table<LS_Close_Position> {
-
-    pub async fn isExists(&self, ls_close_position: &LS_Close_Position) -> Result<bool, crate::error::Error> {
+    pub async fn isExists(
+        &self,
+        ls_close_position: &LS_Close_Position,
+    ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 

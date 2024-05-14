@@ -10,8 +10,6 @@ async fn index(
     state: web::Data<AppState<State>>,
     data: web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-
-
     if let Some(protocolKey) = &data.protocol {
         let protocolKey = protocolKey.to_uppercase();
         let admin = state.protocols.get(&protocolKey);
@@ -28,7 +26,7 @@ async fn index(
 
     let mut protocols: Vec<String> = vec![];
 
-    for  data in state.protocols.values() {
+    for data in state.protocols.values() {
         protocols.push(data.contracts.lpp.to_owned());
     }
 

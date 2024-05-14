@@ -11,5 +11,5 @@ pub struct LP_Withdraw_Type {
     #[serde(alias = "withdraw-symbol")]
     pub withdraw_symbol: String,
     pub receipts: String,
-    pub close: String
+    pub close: String,
 }

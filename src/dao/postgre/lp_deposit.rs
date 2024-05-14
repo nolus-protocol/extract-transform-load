@@ -5,7 +5,6 @@ use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
 
 impl Table<LP_Deposit> {
-
     pub async fn isExists(&self, ls_deposit: &LP_Deposit) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
@@ -141,5 +140,4 @@ impl Table<LP_Deposit> {
 
         Ok(amnt)
     }
-
 }

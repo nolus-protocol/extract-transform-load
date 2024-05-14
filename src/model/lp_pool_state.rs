@@ -12,5 +12,5 @@ pub struct LP_Pool_State {
     pub LP_Pool_total_borrowed_asset: BigDecimal,
     pub LP_Pool_total_yield_stable: BigDecimal,
     pub LP_Pool_total_yield_asset: BigDecimal,
-    pub LP_Pool_min_utilization_threshold: BigDecimal
+    pub LP_Pool_min_utilization_threshold: BigDecimal,
 }

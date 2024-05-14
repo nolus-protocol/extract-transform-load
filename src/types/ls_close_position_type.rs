@@ -26,4 +26,3 @@ pub struct LS_Close_Position_Type {
     pub curr_loan_interest: String,
     pub principal: String,
 }
-

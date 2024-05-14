@@ -2,7 +2,8 @@ use crate::{
     configuration::Config,
     error::{self, Error},
     types::{
-        AdminProtocolExtendType, AdminProtocolType, Balance, LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type, Prices, QueryBody
+        AdminProtocolExtendType, AdminProtocolType, Balance, LPP_Price, LP_Pool_Config_State_Type,
+        LP_Pool_State_Type, LS_State_Type, Prices, QueryBody,
     },
 };
 use base64::engine::general_purpose;
@@ -115,7 +116,7 @@ impl QueryApi {
     ) -> Result<Option<String>, Error> {
         let data = self.state_from_proto(bytes, contract)?;
         let height = height.unwrap_or(String::from("0"));
-        
+
         let res = self
             .http
             .post(self.config.get_abci_query_url())
@@ -259,10 +260,10 @@ impl QueryApi {
 
         if let Some(item) = res {
             let data = serde_json::from_str::<AdminProtocolType>(&item)?;
-            let data = AdminProtocolExtendType{
+            let data = AdminProtocolExtendType {
                 contracts: data.contracts,
                 network: data.network,
-                protocol: protocol.to_owned()
+                protocol: protocol.to_owned(),
             };
 
             return Ok(Some(data));

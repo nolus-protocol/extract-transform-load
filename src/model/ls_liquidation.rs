@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr, io};
+use std::{fmt, io, str::FromStr};
 
 use chrono::{DateTime, Utc};
 use sqlx::{types::BigDecimal, FromRow};

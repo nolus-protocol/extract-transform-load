@@ -16,5 +16,5 @@ pub struct Response {
 pub struct Params {
     pub height: String,
     pub value: Option<String>,
-    pub log: Option<String>
+    pub log: Option<String>,
 }

@@ -1,5 +1,5 @@
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use tokio::task::{JoinHandle, JoinSet};
 
 use crate::{
@@ -58,11 +58,9 @@ async fn parse_and_insert(
     let interval: i64 = app_state.config.aggregation_interval.into();
     let from = to - interval * 60 * 60;
 
-    let time = NaiveDateTime::from_timestamp_opt(from, 0).ok_or_else(|| Error::DecodeDateTimeError(format!(
-        "MP_ASSETS_STATE date parse {}",
-        from
-    )))?;
-    let from_date = DateTime::<Utc>::from_utc(time, Utc);
+    let from_date = DateTime::from_timestamp(from, 0).ok_or_else(|| {
+        Error::DecodeDateTimeError(format!("MP_ASSETS_STATE date parse {}", from))
+    })?;
 
     let market_data = app_state
         .http
@@ -121,8 +119,9 @@ async fn parse_and_insert(
     Ok(())
 }
 
-pub fn start_task(app_state: AppState<State>, timestsamp: DateTime<Utc>) -> JoinHandle<Result<(), Error>>  {
-    tokio::spawn(async move {
-        fetch_insert(app_state, timestsamp).await
-    })
+pub fn start_task(
+    app_state: AppState<State>,
+    timestsamp: DateTime<Utc>,
+) -> JoinHandle<Result<(), Error>> {
+    tokio::spawn(async move { fetch_insert(app_state, timestsamp).await })
 }

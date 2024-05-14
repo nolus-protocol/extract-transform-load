@@ -21,4 +21,3 @@ pub struct LS_Repayment_Type {
     pub curr_loan_interest: String,
     pub principal: String,
 }
-

@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use super::Amount;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct LP_Pool_State_Type {
@@ -8,5 +8,3 @@ pub struct LP_Pool_State_Type {
     pub total_interest_due: Amount,
     pub balance_nlpn: Amount,
 }
-
-

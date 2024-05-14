@@ -18,9 +18,7 @@ async fn index(
     let mut joins = Vec::new();
 
     for item in data {
-        joins.push(
-            getData(state.clone(), item)
-        )
+        joins.push(getData(state.clone(), item))
     }
 
     let result = join_all(joins).await;
@@ -29,7 +27,6 @@ async fn index(
     for item in result.into_iter().flatten().flatten() {
         items.push(item);
     }
-
 
     Ok(web::Json(items))
 }
