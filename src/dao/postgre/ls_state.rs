@@ -123,7 +123,7 @@ impl Table<LS_State> {
               CASE
                 WHEN "LS_asset_symbol" IN ('WBTC', 'CRO') THEN 100000000
                 WHEN "LS_asset_symbol" IN ('PICA') THEN 1000000000000
-                WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM') THEN 1000000000000000000
+                WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
                 ELSE 1000000
               END AS "Divisor"
             FROM

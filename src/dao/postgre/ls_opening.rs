@@ -442,7 +442,7 @@ impl Table<LS_Opening> {
                     CASE
                     WHEN "LS_cltr_symbol" IN ('WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000 
                     WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000 
-                    WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM') THEN "LS_cltr_amnt_stable" / 1000000000000000000
+                    WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_cltr_amnt_stable" / 1000000000000000000
                     ELSE "LS_cltr_amnt_stable" / 1000000
                     END AS "Down Payment Amount",
                     "LS_loan_amnt_asset" / 1000000 AS "Loan"
