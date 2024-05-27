@@ -30,6 +30,20 @@ sqlx = { version = "0.7", features = [
     "chrono",
     "bigdecimal",
 ] }
+
+cosmrs = { version = "0.16", default-features = false, features = [
+    "rpc",
+    "grpc",
+    "bip32",
+    "cosmwasm",
+] }
+
+tonic = { version = "0.11", default_features = false, features = [
+    "tls",
+    "tls-roots",
+    "gzip",
+] }
+
 chrono = { version = "0.4.37", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 url = "2.5"

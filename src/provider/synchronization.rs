@@ -254,6 +254,9 @@ impl Handler {
 
     async fn to_json(&self, message: String) -> Result<bool, Error> {
         let item = serde_json::from_str::<BlockBody>(&message)?;
+        let height = item.result.height.to_owned();
+        let url = self.app_state.config.get_query_block_url(height);
+
         helpers::insert_block(self.app_state.clone(), item).await
     }
 

@@ -1,7 +1,12 @@
 use std::time::Duration;
 
 use chrono::Utc;
+use cosmos_sdk_proto::cosmos::base::tendermint::v1beta1::GetLatestBlockRequest;
 use tokio::time;
+use tonic::{transport::Channel as TonicChannel, Response as TonicResponse};
+
+use cosmrs::proto::cosmos::base::tendermint::v1beta1::service_client::ServiceClient as TendermintServiceClient;
+
 use tracing::{error, Level};
 
 use etl::{
@@ -60,12 +65,13 @@ async fn app_main() -> Result<(), Error> {
     mp_assets::fetch_insert(app_state.clone(), None).await?;
     let mut event_manager = Event::new(app_state.clone());
 
-    let (_, _, _, _, _) = tokio::try_join!(
+    let (_, _, _, _, _, _) = tokio::try_join!(
         event_manager.run(),
         mp_assets::mp_assets_task(app_state.clone()),
         start_aggregation_tasks(app_state.clone()),
         server::server_task(&app_state),
-        cache_state::cache_state_tasks(app_state.clone())
+        cache_state::cache_state_tasks(app_state.clone()),
+        test()
     )?;
 
     Ok(())
@@ -138,4 +144,29 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
         }
     })
     .await?
+}
+
+async fn test() -> Result<(), Error> {
+    let channel = TonicChannel::from_static("https://pirin-cl.nolus.network:9090")
+        .connect()
+        .await
+        .unwrap();
+    let mut client = TendermintServiceClient::new(channel);
+    let data = client
+        .get_latest_block(GetLatestBlockRequest {})
+        .await
+        .map(TonicResponse::into_inner)
+        .unwrap();
+    dbg!(data.block.unwrap().header.unwrap().height);
+
+    let data = client
+        .get_latest_block(GetLatestBlockRequest {})
+        .await
+        .map(TonicResponse::into_inner)
+        .unwrap();
+    dbg!(data.block.unwrap().header.unwrap().height);
+    Ok(())
+    // let mut grpc_client: GrpcClient<TonicChannel> = GrpcClient::new(rpc.clone());
+
+    // grpc_client.ready().await?;
 }

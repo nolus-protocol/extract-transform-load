@@ -275,6 +275,7 @@ pub struct Config {
     pub new_block_event: String,
     pub abci_info_url: String,
     pub abci_query_url: String,
+    pub query_block: String,
     pub block_results_event: String,
     pub sync_threads: i16,
     pub coingecko_info_url: String,
@@ -334,6 +335,18 @@ impl Config {
         formatter(url.to_string(), &[Formatter::Str(host_url.to_string())])
     }
 
+    pub fn get_query_block_url(&self, block_height: String) -> String {
+        let url = &self.query_block;
+        let host_url = &self.host;
+        formatter(
+            url.to_string(),
+            &[
+                Formatter::Str(host_url.to_string()),
+                Formatter::Str(block_height),
+            ],
+        )
+    }
+
     pub fn get_coingecko_info_url(&self, coingeckoId: String) -> String {
         let url = &self.coingecko_info_url;
         formatter(
@@ -373,6 +386,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     let new_block_event = env::var("NEW_BLOCK_EVENT")?;
     let abci_info_url = env::var("ABCI_INFO_URL")?;
     let abci_query_url = env::var("ABCI_QUERY_URL")?;
+    let query_block = env::var("QUERY_BLOCK")?;
     let block_results_event = env::var("BLOCK_RESULTS_EVENT")?;
     let sync_threads: i16 = env::var("SYNC_THREADS")?.parse()?;
     let coingecko_info_url = env::var("COINGECKO_INFO_URL")?;
@@ -439,6 +453,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         new_block_event,
         abci_info_url,
         abci_query_url,
+        query_block,
         block_results_event,
         sync_threads,
         coingecko_info_url,

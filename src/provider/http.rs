@@ -4,7 +4,7 @@ use std::time::Duration;
 use crate::{
     configuration::Config,
     error::{self, Error},
-    types::{AbciBody, CoinGeckoInfo, CoinGeckoMarketData, CoinGeckoPrice},
+    types::{AbciBody, BlockQuery, CoinGeckoInfo, CoinGeckoMarketData, CoinGeckoPrice},
 };
 
 #[derive(Debug)]
@@ -78,5 +78,17 @@ impl HTTP {
         let height: i64 = json.result.response.last_block_height.parse()?;
 
         Ok(height)
+    }
+
+    pub async fn get_block(&self, url: &str) -> Result<BlockQuery, Error> {
+        let json = self
+            .http
+            .get(url)
+            .send()
+            .await?
+            .json::<BlockQuery>()
+            .await?;
+
+        Ok(json)
     }
 }
