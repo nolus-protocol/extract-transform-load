@@ -14,7 +14,7 @@ use std::{
 use thiserror::Error;
 use tokio::task::JoinError;
 use tokio::time::error::Elapsed;
-use tokio_tungstenite::tungstenite::Error as WS_ERROR;
+use tokio_tungstenite::tungstenite::{http::Error as HTTP_ERROR, Error as WS_ERROR};
 use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
 use url::ParseError as URL_ERROR;
 
@@ -103,6 +103,9 @@ pub enum Error {
 
     #[error("Protocol not found: {0}")]
     ProtocolError(String),
+
+    #[error("Http error: {0}")]
+    HttpError(#[from] HTTP_ERROR),
 }
 
 impl ResponseError for Error {}

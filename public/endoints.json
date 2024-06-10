@@ -1,157 +1,167 @@
 [
-    {
-        "description": "Total Value Locked",
-        "url": "/api/total-value-locked",
-        "type": "GET"
-    },
-    {
-        "description": "Borrow APR",
-        "url": "/api/borrow-apr",
-        "type": "GET",
-        "params": [
-            {
-                "name": "skip",
-                "type": "Number",
-                "default": 0
-            },
-            {
-                "name": "limit",
-                "type": "Number",
-                "default": 32,
-                "max": 100
-            }
-        ]
-    },
-    {
-        "description": "Earn APR",
-        "url": "/api/earn-apr",
-        "type": "GET",
-        "params": [
-            {
-                "name": "protocol",
-                "type": "String",
-                "default": null
-            }
-        ]
-    },
-    {
-        "description": "Time series Supplied/Borrowed",
-        "url": "/api/time-series",
-        "type": "GET"
-    },
-    {
-        "description": "Utilization Level",
-        "url": "/api/utilization-level",
-        "type": "GET",
-        "params": [
-            {
-                "name": "skip",
-                "type": "Number",
-                "default": 0
-            },
-            {
-                "name": "limit",
-                "type": "Number",
-                "default": 32,
-                "max": 100
-            }
-        ]
-    },
-    {
-        "description": "Optimal",
-        "url": "/api/optimal",
-        "type": "GET"
-    },
-    {
-        "description": "Deposit Suspension",
-        "url": "/api/deposit-suspension",
-        "type": "GET"
-    },
-    {
-        "description": "Buyback list",
-        "url": "/api/buyback",
-        "type": "GET",
-        "params": [
-            {
-                "name": "skip",
-                "type": "Number",
-                "default": 0
-            },
-            {
-                "name": "limit",
-                "type": "Number",
-                "default": 32,
-                "max": 100
-            }
-        ]
-    },
-    {
-        "description": "Incentives Pool",
-        "url": "/api/incentives-pool",
-        "type": "GET"
-    },
-    {
-        "description": "Buyback total",
-        "url": "/api/buyback-total",
-        "type": "GET"
-    },
-    {
-        "description": "Distributed",
-        "url": "/api/distributed",
-        "type": "GET"
-    },
-    {
-        "description": "Leased Assets (Total)",
-        "url": "/api/leased-assets",
-        "type": "GET"
-    },
-    {
-        "description": "Borrowed",
-        "url": "/api/borrowed",
-        "type": "GET"
-    },
-    {
-        "description": "Protocol Revenue",
-        "url": "/api/revenue",
-        "type": "GET"
-    },
-    {
-        "description": "Get lease opening",
-        "url": "/api/ls-opening",
-        "type": "GET",
-        "params": [
-            {
-                "name": "lease",
-                "type": "String",
-                "default": null
-            }
-        ]
-    },
-    {
-        "description": "Synced blocks",
-        "url": "/api/blocks",
-        "type": "GET"
-    },
-    {
-        "description": "Opened leases",
-        "url": "/api/ls-openings",
-        "type": "GET",
-        "params": [
-            {
-                "name": "leases",
-                "type": "Array<String>",
-                "default": null
-            }
-        ]
-    },
-    {
-        "description": "Total transactions value",
-        "url": "/api/total-tx-value",
-        "type": "GET"
-    },
-    {
-        "description": "Version",
-        "url": "/api/version",
-        "type": "GET"
-    }
+  {
+    "description": "Total Value Locked",
+    "url": "/api/total-value-locked",
+    "type": "GET"
+  },
+  {
+    "description": "Borrow APR",
+    "url": "/api/borrow-apr",
+    "type": "GET",
+    "params": [
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 32,
+        "max": 100
+      }
+    ]
+  },
+  {
+    "description": "Earn APR",
+    "url": "/api/earn-apr",
+    "type": "GET",
+    "params": [
+      {
+        "name": "protocol",
+        "type": "String",
+        "default": null
+      }
+    ]
+  },
+  {
+    "description": "Time series Supplied/Borrowed",
+    "url": "/api/time-series",
+    "type": "GET"
+  },
+  {
+    "description": "Utilization Level",
+    "url": "/api/utilization-level",
+    "type": "GET",
+    "params": [
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 32,
+        "max": 100
+      }
+    ]
+  },
+  {
+    "description": "Optimal",
+    "url": "/api/optimal",
+    "type": "GET"
+  },
+  {
+    "description": "Deposit Suspension",
+    "url": "/api/deposit-suspension",
+    "type": "GET"
+  },
+  {
+    "description": "Buyback list",
+    "url": "/api/buyback",
+    "type": "GET",
+    "params": [
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 32,
+        "max": 100
+      }
+    ]
+  },
+  {
+    "description": "Incentives Pool",
+    "url": "/api/incentives-pool",
+    "type": "GET"
+  },
+  {
+    "description": "Buyback total",
+    "url": "/api/buyback-total",
+    "type": "GET"
+  },
+  {
+    "description": "Distributed",
+    "url": "/api/distributed",
+    "type": "GET"
+  },
+  {
+    "description": "Leased Assets (Total)",
+    "url": "/api/leased-assets",
+    "type": "GET"
+  },
+  {
+    "description": "Borrowed",
+    "url": "/api/borrowed",
+    "type": "GET"
+  },
+  {
+    "description": "Protocol Revenue",
+    "url": "/api/revenue",
+    "type": "GET"
+  },
+  {
+    "description": "Get lease opening",
+    "url": "/api/ls-opening",
+    "type": "GET",
+    "params": [
+      {
+        "name": "lease",
+        "type": "String",
+        "default": null
+      }
+    ]
+  },
+  {
+    "description": "Synced blocks",
+    "url": "/api/blocks",
+    "type": "GET"
+  },
+  {
+    "description": "Opened leases",
+    "url": "/api/ls-openings",
+    "type": "GET",
+    "params": [
+      {
+        "name": "leases",
+        "type": "Array<String>",
+        "default": null
+      }
+    ]
+  },
+  {
+    "description": "Total transactions value",
+    "url": "/api/total-tx-value",
+    "type": "GET"
+  },
+  {
+    "description": "Version",
+    "url": "/api/version",
+    "type": "GET"
+  },
+  {
+    "description": "Max ls interest for 7 days",
+    "url": "/api/max_ls_interest_7d/nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf",
+    "type": "GET"
+  },
+  {
+    "description": "Max lp ratio",
+    "url": "/api/max_lp_ratio/nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf",
+    "type": "GET"
+  }
 ]

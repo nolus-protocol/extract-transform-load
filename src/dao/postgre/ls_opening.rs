@@ -1,5 +1,8 @@
 use super::{DataBase, QueryResult};
-use crate::model::{Borrow_APR, LS_Opening, Leased_Asset, Table};
+use crate::{
+    model::{Borrow_APR, LS_Opening, Leased_Asset, Table},
+    types::LS_Max_Interest,
+};
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
@@ -476,5 +479,30 @@ impl Table<LS_Opening> {
         };
 
         Ok(amount.unwrap_or(default.to_owned()))
+    }
+
+    pub async fn get_max_ls_interest_7d(
+        &self,
+        lpp_address: String,
+    ) -> Result<Vec<LS_Max_Interest>, Error> {
+        let data = sqlx::query_as(
+            r#"
+                SELECT
+                    DATE("LS_timestamp") AS "date",
+                    MAX("LS_interest") AS "max_interest"
+                FROM
+                    "LS_Opening"
+                WHERE
+                    "LS_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
+                    AND "LS_loan_pool_id" = $1
+                GROUP BY
+                    "date"
+                ORDER BY "date" DESC
+            "#,
+        )
+        .bind(lpp_address)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
     }
 }
