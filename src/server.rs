@@ -30,9 +30,13 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
     let server = HttpServer::new(move || {
         let app = app_state.clone();
         let static_dir = app_state.config.static_dir.to_string();
-
+        let allowed_cors = String::from("*");
+        let cors_access_all = app.config.allowed_origins.contains(&allowed_cors);
         let cors = Cors::default()
             .allowed_origin_fn(move |origin, _| {
+                if cors_access_all {
+                    return true;
+                }
                 let allowed = &app.config.allowed_origins;
                 if let Ok(origin) = origin.to_str() {
                     return allowed.contains(&origin.to_string());
