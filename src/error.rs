@@ -1,7 +1,7 @@
 use actix_web::{http::header::ToStrError as HEADER_TO_STR_ERROR, ResponseError};
 use base64::DecodeError as BASE64_DECODE_ERROR;
 use bigdecimal::ParseBigDecimalError as BIG_DECIMAL_ERROR;
-use prost::DecodeError as DECODE_ERROR;
+use cosmos_sdk_proto::prost::DecodeError as DECODE_ERROR;
 use reqwest::Error as REQWEST_ERROR;
 use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;

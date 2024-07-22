@@ -10,6 +10,7 @@ use futures::{
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
 use tokio::net::TcpStream;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
@@ -19,7 +20,6 @@ use tokio_tungstenite::{
     },
 };
 use tracing::info;
-use url::Url;
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
 
@@ -155,9 +155,9 @@ impl Handler {
         counter: Arc<AtomicI64>,
         total: i64,
     ) -> Result<(), Error> {
-        let url = Url::parse(self.app_state.config.websocket_host.as_str())?;
+        let req = (self.app_state.config.websocket_host.as_str()).into_client_request()?;
         let (socket, _response) = connect_async_with_config(
-            url,
+            req,
             Some(WebSocketConfig {
                 max_send_queue: None,
                 write_buffer_size: 256 * 1024,
