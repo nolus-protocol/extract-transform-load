@@ -1,7 +1,7 @@
 use actix_web::{http::header::ToStrError as HEADER_TO_STR_ERROR, ResponseError};
 use base64::DecodeError as BASE64_DECODE_ERROR;
 use bigdecimal::ParseBigDecimalError as BIG_DECIMAL_ERROR;
-use prost::DecodeError as DECODE_ERROR;
+use cosmos_sdk_proto::prost::DecodeError as DECODE_ERROR;
 use reqwest::Error as REQWEST_ERROR;
 use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;
@@ -14,9 +14,11 @@ use std::{
 use thiserror::Error;
 use tokio::task::JoinError;
 use tokio::time::error::Elapsed;
-use tokio_tungstenite::tungstenite::Error as WS_ERROR;
+use tokio_tungstenite::tungstenite::{http::Error as HTTP_ERROR, Error as WS_ERROR};
 use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
 use url::ParseError as URL_ERROR;
+
+use tonic::transport::Error as TONIC_ERROR;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -103,6 +105,9 @@ pub enum Error {
 
     #[error("Protocol not found: {0}")]
     ProtocolError(String),
+
+    #[error("Http error: {0}")]
+    HttpError(#[from] HTTP_ERROR),
 }
 
 impl ResponseError for Error {}

@@ -12,6 +12,7 @@ impl Table<LS_State> {
                 "LS_contract_id",
                 "LS_timestamp",
                 "LS_amnt_stable",
+                "LS_amnt",
                 "LS_prev_margin_stable",
                 "LS_prev_interest_stable",
                 "LS_current_margin_stable",
@@ -24,6 +25,7 @@ impl Table<LS_State> {
         .bind(&data.LS_contract_id)
         .bind(data.LS_timestamp)
         .bind(&data.LS_amnt_stable)
+        .bind(&data.LS_amnt)
         .bind(&data.LS_prev_margin_stable)
         .bind(&data.LS_prev_interest_stable)
         .bind(&data.LS_current_margin_stable)
@@ -71,6 +73,7 @@ impl Table<LS_State> {
                 "LS_contract_id",
                 "LS_timestamp",
                 "LS_amnt_stable",
+                "LS_amnt",
                 "LS_prev_margin_stable",
                 "LS_prev_interest_stable",
                 "LS_current_margin_stable",
@@ -83,6 +86,7 @@ impl Table<LS_State> {
             b.push_bind(&data.LS_contract_id)
                 .push_bind(data.LS_timestamp)
                 .push_bind(&data.LS_amnt_stable)
+                .push_bind(&data.LS_amnt)
                 .push_bind(&data.LS_prev_margin_stable)
                 .push_bind(&data.LS_prev_interest_stable)
                 .push_bind(&data.LS_current_margin_stable)
@@ -123,7 +127,7 @@ impl Table<LS_State> {
               CASE
                 WHEN "LS_asset_symbol" IN ('WBTC', 'CRO') THEN 100000000
                 WHEN "LS_asset_symbol" IN ('PICA') THEN 1000000000000
-                WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM') THEN 1000000000000000000
+                WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
                 ELSE 1000000
               END AS "Divisor"
             FROM

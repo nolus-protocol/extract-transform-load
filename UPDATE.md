@@ -93,3 +93,7 @@ ALTER TABLE "MP_Asset" ADD CONSTRAINT "MP_Asset_pkey" PRIMARY KEY ("MP_asset_sym
 (quasar-2,QSR,6),
 (picasso,PICA,12),
 (dymension,DYM,18),
+
+06.06.2024
+
+ALTER TABLE "LS_State" ADD COLUMN "LS_amnt" DECIMAL(39, 0) NOT NULL DEFAULT 0;

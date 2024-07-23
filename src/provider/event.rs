@@ -10,11 +10,11 @@ use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::time::sleep;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
-// use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
-use tokio_tungstenite::tungstenite::{error::Error as WS_ERROR, Message};
+use tokio_tungstenite::tungstenite::{
+    client::IntoClientRequest, error::Error as WS_ERROR, Message,
+};
 use tokio_tungstenite::{connect_async_with_config, MaybeTlsStream, WebSocketStream};
 use tracing::{error, info};
-use url::Url;
 
 #[derive(Debug)]
 pub struct Event {
@@ -48,9 +48,11 @@ impl Event {
     async fn init(&mut self) -> Result<(), Error> {
         info!("WS connect successfully");
 
-        let url = Url::parse(self.app_state.config.websocket_host.as_str())?;
+        // let url = Url::parse(self.app_state.config.websocket_host.as_str())?;
+        let req = (self.app_state.config.websocket_host.as_str()).into_client_request()?;
+
         let (socket, _response) = connect_async_with_config(
-            url,
+            req,
             Some(WebSocketConfig {
                 max_send_queue: None,
                 write_buffer_size: 256 * 1024,

@@ -28,12 +28,12 @@ psql
 HOST=pirin-cl.nolus.network:26657
 DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
 SYNC_THREADS=16
-SUPPORTED_CURRENCIES=(nolus,NLS,6),(usd-coin,USDC,6),(osmosis,OSMO,6),(stride-staked-osmo,ST_OSMO,6),(cosmos,ATOM,6),(stride-staked-atom,ST_ATOM,6),(weth,WETH,18),(wrapped-bitcoin,WBTC,8),(akash-network,AKT,6),(axelar,AXL,6),(juno-network,JUNO,6),(evmos,EVMOS,18),(stkatom,STK_ATOM,6),(secret,SCRT,6),(crypto-com-chain,CRO,8),(celestia,TIA,6),(stargaze,STARS,6),(cosmos,Q_ATOM,6),(neutron-3,NTRN,6),(usd-coin,USDC_AXELAR,6),(dydx-chain,DYDX,18),(stride,STRD,6),(injective-protocol,INJ,18),(stride-staked-tia,ST_TIA,6),(jackal-protocol,JKL,6),(milkyway-staked-tia,MILK_TIA,6),(levana-protocol,LVN,6),(quasar-2,QSR,6),(picasso,PICA,12),(dymension,DYM,18),(usd-coin,USDC_NOBLE,6)
+SUPPORTED_CURRENCIES=(nolus,NLS,6),(usd-coin,USDC,6),(osmosis,OSMO,6),(stride-staked-osmo,ST_OSMO,6),(cosmos,ATOM,6),(stride-staked-atom,ST_ATOM,6),(weth,WETH,18),(wrapped-bitcoin,WBTC,8),(akash-network,AKT,6),(axelar,AXL,6),(juno-network,JUNO,6),(evmos,EVMOS,18),(stkatom,STK_ATOM,6),(secret,SCRT,6),(crypto-com-chain,CRO,8),(celestia,TIA,6),(stargaze,STARS,6),(cosmos,Q_ATOM,6),(neutron-3,NTRN,6),(usd-coin,USDC_AXELAR,6),(dydx-chain,DYDX,18),(stride,STRD,6),(injective-protocol,INJ,18),(stride-staked-tia,ST_TIA,6),(jackal-protocol,JKL,6),(milkyway-staked-tia,MILK_TIA,6),(levana-protocol,LVN,6),(quasar-2,QSR,6),(picasso,PICA,12),(dymension,DYM,18),(usd-coin,USDC_NOBLE,6),(cudos,CUDOS,18)
 STABLE_CURRENCY=usd
 AGGREGATION_INTTERVAL=1
 MP_ASSET_INTERVAL_IN_MINUTES=1
 CACHE_INTERVAL_IN_MINUTES=60
-LP_POOLS=(nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5,USDC),(nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94,USDC_AXELAR),(nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf,USDC_NOBLE)
+LP_POOLS=(nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6,USDC_NOBLE),(nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5,USDC),(nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94,USDC_AXELAR),(nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf,USDC_NOBLE)
 NATIVE_CURRENCY=NLS
 TREASURY_CONTRACT=nolus14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0k0puz
 SERVER_HOST=127.0.0.1
@@ -102,7 +102,7 @@ VALUES
 
 DO $FN$
 BEGIN
-FOR counter IN 1..5300000 LOOP
+FOR counter IN 1..6300000 LOOP
 EXECUTE $$ INSERT INTO block(id) VALUES ($1) RETURNING id $$
 USING counter;
 END LOOP;

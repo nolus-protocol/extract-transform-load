@@ -6,8 +6,9 @@ use crate::{
     configuration::{AppState, State},
     controller::{
         blocks, borrow_apr, borrowed, buyback, buyback_total, deposit_suspension, distributed,
-        earn_apr, incentives_pool, leased_assets, ls_opening, ls_openings, optimal, revenue,
-        supplied_borrowed_series, total_tx_value, total_value_locked, utilization_level, version,
+        earn_apr, incentives_pool, leased_assets, ls_opening, ls_openings, max_lp_ratio,
+        max_ls_interest_7d, optimal, revenue, supplied_borrowed_series, total_tx_value,
+        total_value_locked, utilization_level, version,
     },
     error::Error,
 };
@@ -29,9 +30,13 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
     let server = HttpServer::new(move || {
         let app = app_state.clone();
         let static_dir = app_state.config.static_dir.to_string();
-
+        let allowed_cors = String::from("*");
+        let cors_access_all = app.config.allowed_origins.contains(&allowed_cors);
         let cors = Cors::default()
             .allowed_origin_fn(move |origin, _| {
+                if cors_access_all {
+                    return true;
+                }
                 let allowed = &app.config.allowed_origins;
                 if let Ok(origin) = origin.to_str() {
                     return allowed.contains(&origin.to_string());
@@ -67,7 +72,9 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(blocks::index)
                     .service(ls_openings::index)
                     .service(total_tx_value::index)
-                    .service(version::index),
+                    .service(version::index)
+                    .service(max_ls_interest_7d::index)
+                    .service(max_lp_ratio::index),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

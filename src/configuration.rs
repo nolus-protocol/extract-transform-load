@@ -2,7 +2,7 @@ use crate::dao::get_path;
 use crate::error::Error;
 use crate::helpers::{formatter, parse_tuple_string, Formatter};
 use crate::model::{LP_Pool, MP_Asset_Mapping};
-use crate::provider::{DatabasePool, QueryApi, HTTP};
+use crate::provider::{DatabasePool, Grpc, QueryApi, HTTP};
 use crate::types::{AdminProtocolExtendType, Currency};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
@@ -48,6 +48,7 @@ pub struct State {
     pub database: DatabasePool,
     pub http: HTTP,
     pub query_api: QueryApi,
+    pub grpc: Grpc,
     pub protocols: HashMap<String, AdminProtocolExtendType>,
     pub cache: Mutex<Cache>,
 }
@@ -57,6 +58,7 @@ impl State {
         config: Config,
         database: DatabasePool,
         http: HTTP,
+        grpc: Grpc,
         query_api: QueryApi,
     ) -> Result<State, Error> {
         Self::init_migrations(&database).await?;
@@ -68,6 +70,7 @@ impl State {
             database,
             http,
             query_api,
+            grpc,
             protocols,
             cache: Mutex::new(Cache {
                 total_value_locked: None,
@@ -304,6 +307,7 @@ pub struct Config {
     pub lpns: Vec<String>,
     pub lpn_decimals: i16,
     pub socket_reconnect_interval: u64,
+    pub grpc_host: String,
 }
 
 impl Config {
@@ -401,6 +405,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     let admin_contract = env::var("ADMIN_CONTRACT")?.parse()?;
     let lpn_decimals = env::var("LPN_DECIMALS")?.parse()?;
     let socket_reconnect_interval = env::var("SOCKET_RECONNECT_INTERVAL")?.parse()?;
+    let grpc_host = env::var("GRPC_HOST")?.parse()?;
 
     let ignore_protocols = env::var("IGNORE_PROTOCOLS")?
         .split(',')
@@ -482,6 +487,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         lpns,
         lpn_decimals,
         socket_reconnect_interval,
+        grpc_host,
     };
 
     Ok(config)

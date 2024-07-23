@@ -1,3 +1,6 @@
+use std::str::FromStr;
+
+use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use tokio::{
     join,
@@ -138,6 +141,7 @@ async fn proceed(
                 LS_contract_id: item.LS_contract_id,
                 LS_timestamp: timestsamp,
                 LS_amnt_stable: state.in_stabe_calc(&price, &status.amount.amount)?,
+                LS_amnt: BigDecimal::from_str(&status.amount.amount.to_string())?,
                 LS_prev_margin_stable: previous_margin_due_stable + overdue_margin_stable,
                 LS_prev_interest_stable: previous_interest_due_stable + overdue_interest_stable,
                 LS_current_margin_stable: current_margin_due_stable + due_margin_stable,
