@@ -18,7 +18,7 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
     let timestamp = Utc::now();
 
     for protocol in app_state.protocols.values() {
-        joins.push(app_state.query_api.get_prices(
+        joins.push(app_state.grpc.get_prices(
             protocol.contracts.oracle.to_owned(),
             protocol.protocol.to_owned(),
             height.to_owned(),
@@ -28,35 +28,32 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
         match result {
             Ok(data) => {
                 let (assets, protocol) = data;
-                if let Some(item) = assets {
-                    for price in item.prices {
-                        if let Some(asset) = app_state
-                            .config
-                            .hash_map_currencies
-                            .get(&price.amount.ticker)
-                        {
-                            let decimals = asset.2 - app_state.config.lpn_decimals;
-                            let mut value = BigDecimal::from_str(&price.amount_quote.amount)?
-                                / BigDecimal::from_str(&price.amount.amount)?;
-                            let decimals_abs = decimals.abs();
+                for price in assets.prices {
+                    if let Some(asset) = app_state
+                        .config
+                        .hash_map_currencies
+                        .get(&price.amount.ticker)
+                    {
+                        let decimals = asset.2 - app_state.config.lpn_decimals;
+                        let mut value = BigDecimal::from_str(&price.amount_quote.amount)?
+                            / BigDecimal::from_str(&price.amount.amount)?;
+                        let decimals_abs = decimals.abs();
 
-                            let power_value =
-                                BigDecimal::from(u64::pow(10, decimals_abs.try_into()?));
+                        let power_value = BigDecimal::from(u64::pow(10, decimals_abs.try_into()?));
 
-                            if decimals > 0 {
-                                value *= power_value;
-                            } else {
-                                value = value / power_value;
-                            }
-
-                            let mp_asset = MP_Asset {
-                                MP_asset_symbol: price.amount.ticker.to_owned(),
-                                MP_asset_timestamp: timestamp,
-                                MP_price_in_stable: value,
-                                Protocol: protocol.to_owned(),
-                            };
-                            mp_assets.push(mp_asset);
+                        if decimals > 0 {
+                            value *= power_value;
+                        } else {
+                            value = value / power_value;
                         }
+
+                        let mp_asset = MP_Asset {
+                            MP_asset_symbol: price.amount.ticker.to_owned(),
+                            MP_asset_timestamp: timestamp,
+                            MP_price_in_stable: value,
+                            Protocol: protocol.to_owned(),
+                        };
+                        mp_assets.push(mp_asset);
                     }
                 }
             }

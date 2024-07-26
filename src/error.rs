@@ -1,12 +1,15 @@
 use actix_web::{http::header::ToStrError as HEADER_TO_STR_ERROR, ResponseError};
+use anyhow::Error as ANYHOW_ERROR;
 use base64::DecodeError as BASE64_DECODE_ERROR;
 use bigdecimal::ParseBigDecimalError as BIG_DECIMAL_ERROR;
-use cosmos_sdk_proto::prost::DecodeError as DECODE_ERROR;
+use cosmos_sdk_proto::prost::{DecodeError as DECODE_ERROR, EncodeError as ENCODE_ERROR};
+use cosmrs::tx::ErrorReport;
 use reqwest::Error as REQWEST_ERROR;
 use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;
 use std::fmt::Error as FMT_ERROR;
 use std::num::TryFromIntError as TRY_FROM_INT_ERROR;
+use std::string::FromUtf8Error as FROM_UTF8_ERROR;
 use std::{
     env::VarError, io::Error as IO_ERROR, num::ParseIntError,
     str::ParseBoolError as PARSE_BOOL_ERROR, string::ParseError as StringParseError,
@@ -17,8 +20,6 @@ use tokio::time::error::Elapsed;
 use tokio_tungstenite::tungstenite::{http::Error as HTTP_ERROR, Error as WS_ERROR};
 use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
 use url::ParseError as URL_ERROR;
-
-use tonic::transport::Error as TONIC_ERROR;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -108,6 +109,18 @@ pub enum Error {
 
     #[error("Http error: {0}")]
     HttpError(#[from] HTTP_ERROR),
+
+    #[error("ANYHOW_ERROR error: {0}")]
+    AnyHowError(#[from] ANYHOW_ERROR),
+
+    #[error("Report error: {0}")]
+    Report(#[from] ErrorReport),
+
+    #[error("EncodeError error: {0}")]
+    EncodeError(#[from] ENCODE_ERROR),
+
+    #[error("FromUtf8Error error: {0}")]
+    FromUtf8Error(#[from] FROM_UTF8_ERROR),
 }
 
 impl ResponseError for Error {}

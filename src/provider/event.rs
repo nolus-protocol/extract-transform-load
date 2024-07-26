@@ -48,11 +48,11 @@ impl Event {
     async fn init(&mut self) -> Result<(), Error> {
         info!("WS connect successfully");
 
-        // let url = Url::parse(self.app_state.config.websocket_host.as_str())?;
         let req = (self.app_state.config.websocket_host.as_str()).into_client_request()?;
 
         let (socket, _response) = connect_async_with_config(
             req,
+            #[allow(deprecated)]
             Some(WebSocketConfig {
                 max_send_queue: None,
                 write_buffer_size: 256 * 1024,

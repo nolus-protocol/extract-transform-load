@@ -2,7 +2,7 @@ use crate::dao::get_path;
 use crate::error::Error;
 use crate::helpers::{formatter, parse_tuple_string, Formatter};
 use crate::model::{LP_Pool, MP_Asset_Mapping};
-use crate::provider::{DatabasePool, Grpc, QueryApi, HTTP};
+use crate::provider::{DatabasePool, Grpc, HTTP};
 use crate::types::{AdminProtocolExtendType, Currency};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
@@ -47,7 +47,6 @@ pub struct State {
     pub config: Config,
     pub database: DatabasePool,
     pub http: HTTP,
-    pub query_api: QueryApi,
     pub grpc: Grpc,
     pub protocols: HashMap<String, AdminProtocolExtendType>,
     pub cache: Mutex<Cache>,
@@ -59,17 +58,15 @@ impl State {
         database: DatabasePool,
         http: HTTP,
         grpc: Grpc,
-        query_api: QueryApi,
     ) -> Result<State, Error> {
         Self::init_migrations(&database).await?;
         Self::init_pools(&config.lp_pools, &database).await?;
         Self::init_mp_asset_mapping(&database, &http, &config.supported_currencies).await?;
-        let protocols = Self::init_admin_protocols(&query_api, &config).await?;
+        let protocols = Self::init_admin_protocols(&grpc, &config).await?;
         Ok(Self {
             config,
             database,
             http,
-            query_api,
             grpc,
             protocols,
             cache: Mutex::new(Cache {
@@ -119,8 +116,8 @@ impl State {
     ) -> Result<(), Error> {
         for (id, symbol) in pools {
             let pool = LP_Pool {
-                LP_Pool_id: id.to_string(),
-                LP_symbol: symbol.to_string(),
+                LP_Pool_id: id.to_owned(),
+                LP_symbol: symbol.to_owned(),
             };
             database.lp_pool.insert(pool).await?;
         }
@@ -148,26 +145,24 @@ impl State {
     }
 
     async fn init_admin_protocols(
-        query_api: &QueryApi,
+        grpc: &Grpc,
         config: &Config,
     ) -> Result<HashMap<String, AdminProtocolExtendType>, Error> {
-        let protocols = query_api
+        let protocols = grpc
             .get_admin_config(config.admin_contract.to_owned())
             .await?;
         let mut joins = vec![];
         let mut protocolsMap = HashMap::<String, AdminProtocolExtendType>::new();
 
-        if let Some(protocols) = protocols {
-            for p in protocols {
-                if !config.ignore_protocols.contains(&p) {
-                    joins.push(query_api.get_protocol_config(config.admin_contract.to_owned(), p))
-                }
+        for p in protocols {
+            if !config.ignore_protocols.contains(&p) {
+                joins.push(grpc.get_protocol_config(config.admin_contract.to_owned(), p))
             }
         }
 
         let result = join_all(joins).await;
 
-        for item in result.into_iter().flatten().flatten() {
+        for item in result.into_iter().flatten() {
             protocolsMap.insert(item.protocol.to_owned(), item);
         }
 
@@ -313,11 +308,11 @@ pub struct Config {
 impl Config {
     pub fn new_block_event(&self, id: u64) -> String {
         let event = &self.new_block_event;
-        formatter(event.to_string(), &[Formatter::NumberU64(id)])
+        formatter(event.to_owned(), &[Formatter::NumberU64(id)])
     }
 
     pub fn block_results_event(&self, height: i64, id: u64) -> String {
-        let event = self.block_results_event.to_string();
+        let event = self.block_results_event.to_owned();
         formatter(
             event,
             &[
@@ -330,22 +325,22 @@ impl Config {
     pub fn get_abci_info_url(&self) -> String {
         let url = &self.abci_info_url;
         let host_url = &self.host;
-        formatter(url.to_string(), &[Formatter::Str(host_url.to_string())])
+        formatter(url.to_owned(), &[Formatter::Str(host_url.to_owned())])
     }
 
     pub fn get_abci_query_url(&self) -> String {
         let url = &self.abci_query_url;
         let host_url = &self.host;
-        formatter(url.to_string(), &[Formatter::Str(host_url.to_string())])
+        formatter(url.to_owned(), &[Formatter::Str(host_url.to_owned())])
     }
 
     pub fn get_query_block_url(&self, block_height: String) -> String {
         let url = &self.query_block;
         let host_url = &self.host;
         formatter(
-            url.to_string(),
+            url.to_owned(),
             &[
-                Formatter::Str(host_url.to_string()),
+                Formatter::Str(host_url.to_owned()),
                 Formatter::Str(block_height),
             ],
         )
@@ -354,7 +349,7 @@ impl Config {
     pub fn get_coingecko_info_url(&self, coingeckoId: String) -> String {
         let url = &self.coingecko_info_url;
         formatter(
-            url.to_string(),
+            url.to_owned(),
             &[Formatter::Str(encode(coingeckoId.as_str()).to_string())],
         )
     }
@@ -364,7 +359,7 @@ impl Config {
         let ids = ids.join(",");
         let currency = self.stable_currency.to_owned();
         formatter(
-            url.to_string(),
+            url.to_owned(),
             &[Formatter::Str(ids), Formatter::Str(currency)],
         )
     }
@@ -372,10 +367,10 @@ impl Config {
     pub fn get_coingecko_market_data_range_url(&self, id: String, from: i64, to: i64) -> String {
         let url = &self.coingecko_market_data_range_url;
         formatter(
-            url.to_string(),
+            url.to_owned(),
             &[
                 Formatter::Str(id),
-                Formatter::Str(self.stable_currency.to_string()),
+                Formatter::Str(self.stable_currency.to_owned()),
                 Formatter::Number(from),
                 Formatter::Number(to),
             ],
@@ -409,14 +404,14 @@ pub fn get_configuration() -> Result<Config, Error> {
 
     let ignore_protocols = env::var("IGNORE_PROTOCOLS")?
         .split(',')
-        .map(|item| item.to_string())
+        .map(|item| item.to_owned())
         .collect::<Vec<String>>();
 
     let initial_protocol = env::var("INITIAL_PROTOCOL")?.parse()?;
     let lpn_price = env::var("LPN_PRICE")?.parse()?;
     let lpns = env::var("LPNS")?
         .split(',')
-        .map(|item| item.to_string())
+        .map(|item| item.to_owned())
         .collect::<Vec<String>>();
 
     let supported_currencies = get_supported_currencies()?;
@@ -428,7 +423,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     let port: u16 = env::var("PORT")?.parse()?;
     let allowed_origins = env::var("ALLOWED_ORIGINS")?
         .split(',')
-        .map(|item| item.to_string())
+        .map(|item| item.to_owned())
         .collect::<Vec<String>>();
     let static_dir = format!(
         "{}/{}",
@@ -441,13 +436,13 @@ pub fn get_configuration() -> Result<Config, Error> {
 
     for currency in &supported_currencies {
         let c = currency.clone();
-        hash_map_currencies.insert(currency.1.to_string(), c);
+        hash_map_currencies.insert(currency.1.to_owned(), c);
     }
 
     for pool in &lp_pools {
         if let Some(item) = hash_map_currencies.get(&pool.1) {
             let c = item.clone();
-            hash_map_pool_currency.insert(pool.0.to_string(), c);
+            hash_map_pool_currency.insert(pool.0.to_owned(), c);
         }
     }
 
@@ -532,9 +527,9 @@ fn parse_config_string(config: String) -> Result<(), Error> {
         let parsed_value = match key {
             "WEBSOCKET_HOST" => {
                 let host = env::var("HOST")?;
-                formatter(value.to_string(), &[Formatter::Str(host)])
+                formatter(value.to_owned(), &[Formatter::Str(host)])
             }
-            _ => value.to_string(),
+            _ => value.to_owned(),
         };
         std::env::set_var(key, parsed_value);
     }

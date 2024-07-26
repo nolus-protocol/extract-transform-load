@@ -24,12 +24,12 @@ pub async fn server_task(app_state: &AppState<State>) -> Result<(), Error> {
 }
 
 fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
-    let host = app_state.config.server_host.to_string();
+    let host = app_state.config.server_host.to_owned();
     let port = app_state.config.port;
 
     let server = HttpServer::new(move || {
         let app = app_state.clone();
-        let static_dir = app_state.config.static_dir.to_string();
+        let static_dir = app_state.config.static_dir.to_owned();
         let allowed_cors = String::from("*");
         let cors_access_all = app.config.allowed_origins.contains(&allowed_cors);
         let cors = Cors::default()
@@ -39,7 +39,7 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                 }
                 let allowed = &app.config.allowed_origins;
                 if let Ok(origin) = origin.to_str() {
-                    return allowed.contains(&origin.to_string());
+                    return allowed.contains(&origin.to_owned());
                 }
                 false
             })

@@ -9,7 +9,7 @@ use etl::{
     error::Error,
     handler::{aggregation_task, cache_state, mp_assets},
     model::Actions,
-    provider::{DatabasePool, Event, Grpc, QueryApi, HTTP},
+    provider::{DatabasePool, Event, Grpc, HTTP},
     server,
 };
 
@@ -52,10 +52,9 @@ async fn app_main() -> Result<(), Error> {
 
     let db_pool = database;
     let http = HTTP::new(config.clone())?;
-    let query_api = QueryApi::new(config.clone())?;
     let grpc = Grpc::new(config.clone()).await?;
 
-    let state = State::new(config.clone(), db_pool, http, grpc, query_api).await?;
+    let state = State::new(config.clone(), db_pool, http, grpc).await?;
     let app_state = AppState::new(state);
 
     mp_assets::fetch_insert(app_state.clone(), None).await?;
@@ -66,7 +65,7 @@ async fn app_main() -> Result<(), Error> {
         mp_assets::mp_assets_task(app_state.clone()),
         start_aggregation_tasks(app_state.clone()),
         server::server_task(&app_state),
-        cache_state::cache_state_tasks(app_state.clone())
+        cache_state::cache_state_tasks(app_state.clone()),
     )?;
 
     Ok(())
@@ -141,46 +140,27 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
     .await?
 }
 
-// async fn test2() -> Result<(), Error> {
-//     let mut interval = time::interval(Duration::from_secs(10));
-//     tokio::spawn(async move {
-//         interval.tick().await;
-//         loop {
-//             interval.tick().await;
-//             test().await.unwrap()
-//         }
-//     })
-//     .await?
-// }
+async fn test2(app_state: AppState<State>) -> Result<(), Error> {
+    let mut interval = time::interval(Duration::from_secs(10));
 
-// async fn test() -> Result<(), Error> {
-//     let uri: Uri = "https://pirin-cl.nolus.network:9090".parse().unwrap();
-//     let endpoint = Endpoint::from(uri.clone())
-//         .origin(uri.clone())
-//         .keep_alive_while_idle(true);
+    tokio::spawn(async move {
+        loop {
+            interval.tick().await;
+            let app = app_state.clone();
+            let grpc = &app.grpc;
 
-//     let c = endpoint
-//         .connect()
-//         .await
-//         .with_context(|| format!(r#"Failed to parse gRPC URI, "{uri}"!"#))
-//         .unwrap();
-//     let mut client = TendermintServiceClient::with_origin(c, uri);
-
-//     let data = client
-//         .get_latest_block(GetLatestBlockRequest {})
-//         .await
-//         .map(TonicResponse::into_inner)
-//         .unwrap();
-//     dbg!(data.block.unwrap().header.unwrap().height);
-
-//     let data = client
-//         .get_latest_block(GetLatestBlockRequest {})
-//         .await
-//         .map(TonicResponse::into_inner)
-//         .unwrap();
-//     dbg!(data.block.unwrap().header.unwrap().height);
-//     Ok(())
-//     // let mut grpc_client: GrpcClient<TonicChannel> = GrpcClient::new(rpc.clone());
-
-//     // grpc_client.ready().await?;
-// }
+            match grpc
+                .get_balances(String::from("nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q"))
+                .await
+            {
+                Ok(data) => {
+                    dbg!(data);
+                }
+                Err(err) => {
+                    dbg!(err);
+                }
+            };
+        }
+    })
+    .await?
+}

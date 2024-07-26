@@ -44,7 +44,7 @@ impl Synchronization {
         let block_model = &app_state.database.block;
         let first_block = block_model.get_first_block().await.ok();
         let last_block = block_model.get_last_block().await.ok();
-        let block_height = app_state.http.get_latest_block().await?;
+        let block_height = app_state.grpc.get_latest_block().await?;
         let missing_values = block_model.get_missing_blocks().await?;
         let threads_count = app_state.config.sync_threads;
 
@@ -158,6 +158,7 @@ impl Handler {
         let req = (self.app_state.config.websocket_host.as_str()).into_client_request()?;
         let (socket, _response) = connect_async_with_config(
             req,
+            #[allow(deprecated)]
             Some(WebSocketConfig {
                 max_send_queue: None,
                 write_buffer_size: 256 * 1024,
@@ -254,9 +255,6 @@ impl Handler {
 
     async fn to_json(&self, message: String) -> Result<bool, Error> {
         let item = serde_json::from_str::<BlockBody>(&message)?;
-        let height = item.result.height.to_owned();
-        let url = self.app_state.config.get_query_block_url(height);
-
         helpers::insert_block(self.app_state.clone(), item).await
     }
 

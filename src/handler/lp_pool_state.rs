@@ -2,7 +2,6 @@ use bigdecimal::{BigDecimal, FromPrimitive};
 use chrono::{DateTime, Utc};
 use std::str::FromStr;
 use tokio::task::{JoinHandle, JoinSet};
-use tracing::error;
 
 use crate::{
     configuration::{AppState, State},
@@ -55,34 +54,10 @@ async fn proceed(
     item: LP_Pool,
     timestsamp: DateTime<Utc>,
 ) -> Result<Option<LP_Pool_State>, Error> {
-    let (data, config) = tokio::try_join!(
-        state
-            .query_api
-            .lpp_balance_state(item.LP_Pool_id.to_string()),
-        state
-            .query_api
-            .lpp_config_state(item.LP_Pool_id.to_string())
+    let (lp_pool_state, lp_pool_config_state) = tokio::try_join!(
+        state.grpc.get_lpp_balance_state(item.LP_Pool_id.to_owned()),
+        state.grpc.get_lpp_config_state(item.LP_Pool_id.to_owned())
     )?;
-
-    let lp_pool_state = if let Some(d) = data {
-        d
-    } else {
-        error!(
-            "Lp_pool not exists {}, can not parse LP_Pool_State_Type",
-            item.LP_Pool_id.to_string()
-        );
-        return Ok(None);
-    };
-
-    let lp_pool_config_state = if let Some(c) = config {
-        c
-    } else {
-        error!(
-            "Lp_pool not exists {}, can not parse LP_Pool_Config_State_Type",
-            item.LP_Pool_id.to_string()
-        );
-        return Ok(None);
-    };
 
     let min_utilization_threshold =
         if let Some(c) = BigDecimal::from_u128(lp_pool_config_state.min_utilization) {
@@ -100,7 +75,7 @@ async fn proceed(
     let pool_id = item.LP_Pool_id;
 
     let lp_pool_state = LP_Pool_State {
-        LP_Pool_id: pool_id.to_string(),
+        LP_Pool_id: pool_id.to_owned(),
         LP_Pool_timestamp: timestsamp,
         LP_Pool_total_value_locked_stable: state
             .in_stabe_by_pool_id(&pool_id, &total_value_locked_asset)

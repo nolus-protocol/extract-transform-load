@@ -7,7 +7,6 @@ use crate::{
     configuration::{AppState, State},
     error::Error,
     model::LP_Lender_State,
-    types::Balance,
 };
 
 pub async fn parse_and_insert(
@@ -64,22 +63,19 @@ async fn proceed(
     let (LP_address_id, LP_Pool_id) = item;
     let (balance_task, lpp_price) = tokio::join!(
         state
-            .query_api
-            .balanace_state(LP_Pool_id.to_owned(), LP_address_id.to_owned()),
-        state.query_api.lpp_price_state(LP_Pool_id.to_owned())
+            .grpc
+            .get_balance_state(LP_Pool_id.to_owned(), LP_address_id.to_owned()),
+        state.grpc.get_lpp_price(LP_Pool_id.to_owned())
     );
 
-    let balance = balance_task?.unwrap_or(Balance {
-        balance: String::from("0"),
-    });
+    let balance = balance_task?;
+    let price = lpp_price?;
 
-    let lpp_price = if let Some(price) = lpp_price? {
+    let lpp_price = {
         let amount = BigDecimal::from_str(&price.amount.amount)?;
         let quote_amount = BigDecimal::from_str(&price.amount_quote.amount)?;
 
         &amount / &quote_amount
-    } else {
-        BigDecimal::from(0)
     };
 
     let lpp_balance = BigDecimal::from_str(&balance.balance)?;

@@ -41,7 +41,7 @@ pub fn formatter(mut parser: String, args: &[Formatter]) -> String {
                 parser = parser.replace(format!("${}", index).as_str(), &n.to_string());
             }
             Formatter::Str(n) => {
-                parser = parser.replace(format!("${}", index).as_str(), &n.to_string());
+                parser = parser.replace(format!("${}", index).as_str(), &n.to_owned());
             }
         }
     }
@@ -69,43 +69,43 @@ pub fn parse_wasm_ls_open(attributes: &Vec<Attributes>) -> Result<LS_Opening_Typ
         id: ls_open
             .get("id")
             .ok_or(Error::FieldNotExist(String::from("id")))?
-            .to_string(),
+            .to_owned(),
         customer: ls_open
             .get("customer")
             .ok_or(Error::FieldNotExist(String::from("customer")))?
-            .to_string(),
+            .to_owned(),
         currency: ls_open
             .get("currency")
             .ok_or(Error::FieldNotExist(String::from("currency")))?
-            .to_string(),
+            .to_owned(),
         air: ls_open
             .get("air")
             .ok_or(Error::FieldNotExist(String::from("air")))?
-            .to_string(),
+            .to_owned(),
         at: ls_open
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
+            .to_owned(),
         loan_pool_id: ls_open
             .get("loan-pool-id")
             .ok_or(Error::FieldNotExist(String::from("loan-pool-id")))?
-            .to_string(),
+            .to_owned(),
         loan_amount: ls_open
             .get("loan-amount")
             .ok_or(Error::FieldNotExist(String::from("loan-amount")))?
-            .to_string(),
+            .to_owned(),
         loan_symbol: ls_open
             .get("loan-symbol")
             .ok_or(Error::FieldNotExist(String::from("loan-symbol")))?
-            .to_string(),
+            .to_owned(),
         downpayment_amount: ls_open
             .get("downpayment-amount")
             .ok_or(Error::FieldNotExist(String::from("downpayment-amount")))?
-            .to_string(),
+            .to_owned(),
         downpayment_symbol: ls_open
             .get("downpayment-symbol")
             .ok_or(Error::FieldNotExist(String::from("downpayment-symbol")))?
-            .to_string(),
+            .to_owned(),
     };
 
     Ok(c)
@@ -117,11 +117,11 @@ pub fn parse_wasm_ls_close(attributes: &Vec<Attributes>) -> Result<LS_Closing_Ty
         id: ls_close
             .get("id")
             .ok_or(Error::FieldNotExist(String::from("id")))?
-            .to_string(),
+            .to_owned(),
         at: ls_close
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
+            .to_owned(),
     };
 
     Ok(c)
@@ -134,27 +134,27 @@ pub fn parse_wasm_ls_repayment(attributes: &Vec<Attributes>) -> Result<LS_Repaym
         height: ls_repayment
             .get("height")
             .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_string(),
+            .to_owned(),
         to: ls_repayment
             .get("to")
             .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_string(),
+            .to_owned(),
         payment_symbol: ls_repayment
             .get("payment-symbol")
             .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
-            .to_string(),
+            .to_owned(),
         payment_amount: ls_repayment
             .get("payment-amount")
             .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
-            .to_string(),
+            .to_owned(),
         at: ls_repayment
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
+            .to_owned(),
         loan_close: ls_repayment
             .get("loan-close")
             .ok_or(Error::FieldNotExist(String::from("loan-close")))?
-            .to_string(),
+            .to_owned(),
         prev_margin_interest: items.prev_margin_interest,
         prev_loan_interest: items.prev_loan_interest,
         curr_margin_interest: items.curr_margin_interest,
@@ -162,7 +162,7 @@ pub fn parse_wasm_ls_repayment(attributes: &Vec<Attributes>) -> Result<LS_Repaym
         principal: ls_repayment
             .get("principal")
             .ok_or(Error::FieldNotExist(String::from("principal")))?
-            .to_string(),
+            .to_owned(),
     };
 
     Ok(c)
@@ -178,39 +178,39 @@ pub fn parse_wasm_ls_close_position(
             height: ls_close_position
                 .get("height")
                 .ok_or(Error::FieldNotExist(String::from("height")))?
-                .to_string(),
+                .to_owned(),
             to: ls_close_position
                 .get("to")
                 .ok_or(Error::FieldNotExist(String::from("to")))?
-                .to_string(),
+                .to_owned(),
             change: ls_close_position
                 .get("change")
                 .ok_or(Error::FieldNotExist(String::from("change")))?
-                .to_string(),
+                .to_owned(),
             amount_amount: ls_close_position
                 .get("amount-amount")
                 .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
-                .to_string(),
+                .to_owned(),
             amount_symbol: ls_close_position
                 .get("amount-symbol")
                 .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
-                .to_string(),
+                .to_owned(),
             payment_symbol: ls_close_position
                 .get("payment-symbol")
                 .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
-                .to_string(),
+                .to_owned(),
             payment_amount: ls_close_position
                 .get("payment-amount")
                 .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
-                .to_string(),
+                .to_owned(),
             at: ls_close_position
                 .get("at")
                 .ok_or(Error::FieldNotExist(String::from("at")))?
-                .to_string(),
+                .to_owned(),
             loan_close: ls_close_position
                 .get("loan-close")
                 .ok_or(Error::FieldNotExist(String::from("loan_close")))?
-                .to_string(),
+                .to_owned(),
             prev_margin_interest: items.prev_margin_interest,
             prev_loan_interest: items.prev_loan_interest,
             curr_margin_interest: items.curr_margin_interest,
@@ -218,7 +218,7 @@ pub fn parse_wasm_ls_close_position(
             principal: ls_close_position
                 .get("principal")
                 .ok_or(Error::FieldNotExist(String::from("principal")))?
-                .to_string(),
+                .to_owned(),
         };
         return Ok(Some(c));
     }
@@ -235,27 +235,27 @@ pub fn parse_wasm_ls_liquidation(
         height: ls_liquidation
             .get("height")
             .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_string(),
+            .to_owned(),
         to: ls_liquidation
             .get("to")
             .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_string(),
+            .to_owned(),
         liquidation_symbol: ls_liquidation
             .get("amount-symbol")
             .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
-            .to_string(),
+            .to_owned(),
         liquidation_amount: ls_liquidation
             .get("amount-amount")
             .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
-            .to_string(),
+            .to_owned(),
         at: ls_liquidation
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
+            .to_owned(),
         r#type: ls_liquidation
             .get("cause")
             .ok_or(Error::FieldNotExist(String::from("cause")))?
-            .to_string(),
+            .to_owned(),
         prev_margin_interest: items.prev_margin_interest,
         prev_loan_interest: items.prev_loan_interest,
         curr_margin_interest: items.curr_margin_interest,
@@ -263,7 +263,7 @@ pub fn parse_wasm_ls_liquidation(
         principal: ls_liquidation
             .get("principal")
             .ok_or(Error::FieldNotExist(String::from("principal")))?
-            .to_string(),
+            .to_owned(),
     };
 
     Ok(c)
@@ -313,31 +313,31 @@ pub fn parse_wasm_lp_deposit(attributes: &Vec<Attributes>) -> Result<LP_Deposit_
         height: deposit
             .get("height")
             .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_string(),
+            .to_owned(),
         from: deposit
             .get("from")
             .ok_or(Error::FieldNotExist(String::from("from")))?
-            .to_string(),
+            .to_owned(),
         to: deposit
             .get("to")
             .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_string(),
+            .to_owned(),
         at: deposit
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
+            .to_owned(),
         deposit_amount: deposit
             .get("deposit-amount")
             .ok_or(Error::FieldNotExist(String::from("deposit-amount")))?
-            .to_string(),
+            .to_owned(),
         deposit_symbol: deposit
             .get("deposit-symbol")
             .ok_or(Error::FieldNotExist(String::from("deposit-symbol")))?
-            .to_string(),
+            .to_owned(),
         receipts: deposit
             .get("receipts")
             .ok_or(Error::FieldNotExist(String::from("receipts")))?
-            .to_string(),
+            .to_owned(),
     };
 
     Ok(c)
@@ -350,35 +350,35 @@ pub fn parse_wasm_lp_withdraw(attributes: &Vec<Attributes>) -> Result<LP_Withdra
         height: lp_withdraw
             .get("height")
             .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_string(),
+            .to_owned(),
         from: lp_withdraw
             .get("from")
             .ok_or(Error::FieldNotExist(String::from("from")))?
-            .to_string(),
+            .to_owned(),
         to: lp_withdraw
             .get("to")
             .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_string(),
+            .to_owned(),
         at: lp_withdraw
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
+            .to_owned(),
         withdraw_amount: lp_withdraw
             .get("withdraw-amount")
             .ok_or(Error::FieldNotExist(String::from("withdraw-amount")))?
-            .to_string(),
+            .to_owned(),
         withdraw_symbol: lp_withdraw
             .get("withdraw-symbol")
             .ok_or(Error::FieldNotExist(String::from("withdraw-symbol")))?
-            .to_string(),
+            .to_owned(),
         receipts: lp_withdraw
             .get("receipts")
             .ok_or(Error::FieldNotExist(String::from("receipts")))?
-            .to_string(),
+            .to_owned(),
         close: lp_withdraw
             .get("close")
             .ok_or(Error::FieldNotExist(String::from("close")))?
-            .to_string(),
+            .to_owned(),
     };
 
     Ok(c)
@@ -391,19 +391,19 @@ pub fn parse_wasm_tr_profit(attributes: &Vec<Attributes>) -> Result<TR_Profit_Ty
         height: tr_profit
             .get("height")
             .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_string(),
+            .to_owned(),
         at: tr_profit
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
+            .to_owned(),
         profit_symbol: tr_profit
             .get("profit-amount-symbol")
             .ok_or(Error::FieldNotExist(String::from("profit-symbol")))?
-            .to_string(),
+            .to_owned(),
         profit_amount: tr_profit
             .get("profit-amount-amount")
             .ok_or(Error::FieldNotExist(String::from("profit-amount")))?
-            .to_string(),
+            .to_owned(),
     };
 
     Ok(c)
@@ -418,23 +418,23 @@ pub fn parse_wasm_tr_rewards_distribution(
         height: tr_rewards_distribution
             .get("height")
             .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_string(),
+            .to_owned(),
         to: tr_rewards_distribution
             .get("to")
             .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_string(),
+            .to_owned(),
         at: tr_rewards_distribution
             .get("at")
             .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_string(),
+            .to_owned(),
         rewards_symbol: tr_rewards_distribution
             .get("rewards-symbol")
             .ok_or(Error::FieldNotExist(String::from("rewards-symbol")))?
-            .to_string(),
+            .to_owned(),
         rewards_amount: tr_rewards_distribution
             .get("rewards-amount")
             .ok_or(Error::FieldNotExist(String::from("rewards-amount")))?
-            .to_string(),
+            .to_owned(),
     };
 
     Ok(c)

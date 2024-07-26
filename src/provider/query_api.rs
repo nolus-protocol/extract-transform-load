@@ -240,6 +240,7 @@ impl QueryApi {
 
     pub async fn get_admin_config(&self, contract: String) -> Result<Option<Vec<String>>, Error> {
         let bytes = b"{\"protocols\": {}}";
+
         let res = self.query_state(bytes, contract, None).await?;
         if let Some(item) = res {
             let data = serde_json::from_str(&item)?;
