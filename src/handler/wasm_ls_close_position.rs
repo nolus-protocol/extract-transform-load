@@ -19,7 +19,10 @@ pub async fn parse_and_insert(
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
     let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
-        Error::DecodeDateTimeError(format!("Wasm_LS_Close_Position date parse {}", at_sec))
+        Error::DecodeDateTimeError(format!(
+            "Wasm_LS_Close_Position date parse {}",
+            at_sec
+        ))
     })?;
 
     let lease = app_state
@@ -29,7 +32,9 @@ pub async fn parse_and_insert(
         .await?;
 
     let protocol = match lease {
-        Some(lease) => app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id),
+        Some(lease) => {
+            app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id)
+        },
         None => None,
     };
 
@@ -42,14 +47,27 @@ pub async fn parse_and_insert(
         LS_amount_amount: BigDecimal::from_str(&item.amount_amount)?,
         LS_amount_symbol: item.amount_symbol,
         LS_amnt_stable: app_state
-            .in_stabe_by_date(&item.payment_symbol, &item.payment_amount, protocol, &at)
+            .in_stabe_by_date(
+                &item.payment_symbol,
+                &item.payment_amount,
+                protocol,
+                &at,
+            )
             .await?,
         LS_timestamp: at,
         LS_loan_close: item.loan_close.parse()?,
-        LS_prev_margin_stable: BigDecimal::from_str(&item.prev_margin_interest)?,
-        LS_prev_interest_stable: BigDecimal::from_str(&item.prev_loan_interest)?,
-        LS_current_margin_stable: BigDecimal::from_str(&item.curr_margin_interest)?,
-        LS_current_interest_stable: BigDecimal::from_str(&item.curr_loan_interest)?,
+        LS_prev_margin_stable: BigDecimal::from_str(
+            &item.prev_margin_interest,
+        )?,
+        LS_prev_interest_stable: BigDecimal::from_str(
+            &item.prev_loan_interest,
+        )?,
+        LS_current_margin_stable: BigDecimal::from_str(
+            &item.curr_margin_interest,
+        )?,
+        LS_current_interest_stable: BigDecimal::from_str(
+            &item.curr_loan_interest,
+        )?,
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
     };
 

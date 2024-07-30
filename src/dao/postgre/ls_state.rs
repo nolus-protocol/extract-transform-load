@@ -99,7 +99,10 @@ impl Table<LS_State> {
         Ok(())
     }
 
-    pub async fn count(&self, timestamp: DateTime<Utc>) -> Result<i64, crate::error::Error> {
+    pub async fn count(
+        &self,
+        timestamp: DateTime<Utc>,
+    ) -> Result<i64, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 

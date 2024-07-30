@@ -1,6 +1,8 @@
 use super::{DataBase, QueryResult};
 use crate::{
-    model::{LP_Pool_State, Supplied_Borrowed_Series, Table, Utilization_Level},
+    model::{
+        LP_Pool_State, Supplied_Borrowed_Series, Table, Utilization_Level,
+    },
     types::Max_LP_Ratio,
 };
 use chrono::{DateTime, Utc};
@@ -8,7 +10,10 @@ use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
 use std::str::FromStr;
 
 impl Table<LP_Pool_State> {
-    pub async fn insert(&self, data: LP_Pool_State) -> Result<QueryResult, Error> {
+    pub async fn insert(
+        &self,
+        data: LP_Pool_State,
+    ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
             INSERT INTO "LP_Pool_State" (
@@ -39,7 +44,10 @@ impl Table<LP_Pool_State> {
         .await
     }
 
-    pub async fn insert_many(&self, data: &Vec<LP_Pool_State>) -> Result<(), Error> {
+    pub async fn insert_many(
+        &self,
+        data: &Vec<LP_Pool_State>,
+    ) -> Result<(), Error> {
         if data.is_empty() {
             return Ok(());
         }
@@ -82,7 +90,11 @@ impl Table<LP_Pool_State> {
         &self,
         datetime: DateTime<Utc>,
     ) -> Result<(BigDecimal, BigDecimal, BigDecimal), crate::error::Error> {
-        let value: (Option<BigDecimal>, Option<BigDecimal>, Option<BigDecimal>) = sqlx::query_as(
+        let value: (
+            Option<BigDecimal>,
+            Option<BigDecimal>,
+            Option<BigDecimal>,
+        ) = sqlx::query_as(
             r#"
             SELECT 
                 SUM("LP_Pool_total_value_locked_stable"),
@@ -143,7 +155,8 @@ impl Table<LP_Pool_State> {
             params
         );
 
-        let mut query: sqlx::query::QueryAs<'_, _, _, _> = sqlx::query_as(&query_str);
+        let mut query: sqlx::query::QueryAs<'_, _, _, _> =
+            sqlx::query_as(&query_str);
 
         for i in protocols {
             query = query.bind(i);

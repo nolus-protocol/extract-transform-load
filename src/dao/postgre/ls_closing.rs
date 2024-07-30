@@ -4,7 +4,10 @@ use chrono::{DateTime, Utc};
 use sqlx::{error::Error, QueryBuilder, Transaction};
 
 impl Table<LS_Closing> {
-    pub async fn isExists(&self, ls_closing: &LS_Closing) -> Result<bool, crate::error::Error> {
+    pub async fn isExists(
+        &self,
+        ls_closing: &LS_Closing,
+    ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 

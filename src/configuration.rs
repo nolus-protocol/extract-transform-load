@@ -61,7 +61,12 @@ impl State {
     ) -> Result<State, Error> {
         Self::init_migrations(&database).await?;
         Self::init_pools(&config.lp_pools, &database).await?;
-        Self::init_mp_asset_mapping(&database, &http, &config.supported_currencies).await?;
+        Self::init_mp_asset_mapping(
+            &database,
+            &http,
+            &config.supported_currencies,
+        )
+        .await?;
         let protocols = Self::init_admin_protocols(&grpc, &config).await?;
         Ok(Self {
             config,
@@ -133,7 +138,8 @@ impl State {
             let mp_asset_mapping = &database.mp_asset_mapping;
             let c = mp_asset_mapping.get_one(symbol.to_owned()).await?;
             if c.is_none() {
-                let data = http.get_coingecko_info(coinGeckoId.to_owned()).await?;
+                let data =
+                    http.get_coingecko_info(coinGeckoId.to_owned()).await?;
                 let item = MP_Asset_Mapping {
                     MP_asset_symbol: symbol.to_owned(),
                     MP_asset_symbol_coingecko: data.id.to_owned(),
@@ -152,11 +158,17 @@ impl State {
             .get_admin_config(config.admin_contract.to_owned())
             .await?;
         let mut joins = vec![];
-        let mut protocolsMap = HashMap::<String, AdminProtocolExtendType>::new();
+        let mut protocolsMap =
+            HashMap::<String, AdminProtocolExtendType>::new();
 
         for p in protocols {
             if !config.ignore_protocols.contains(&p) {
-                joins.push(grpc.get_protocol_config(config.admin_contract.to_owned(), p))
+                joins.push(
+                    grpc.get_protocol_config(
+                        config.admin_contract.to_owned(),
+                        p,
+                    ),
+                )
             }
         }
 
@@ -177,7 +189,8 @@ impl State {
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
         let Currency(_, symbol, _) = currency;
-        let (stabe_price,) = self.database.mp_asset.get_price(symbol, protocol).await?;
+        let (stabe_price,) =
+            self.database.mp_asset.get_price(symbol, protocol).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
         Ok(val)
@@ -212,7 +225,8 @@ impl State {
         let Currency(_, symbol, _) = currency;
         let protocol = self.get_protocol_by_pool_id(pool_id);
 
-        let (stabe_price,) = self.database.mp_asset.get_price(symbol, protocol).await?;
+        let (stabe_price,) =
+            self.database.mp_asset.get_price(symbol, protocol).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
         Ok(val)
@@ -236,21 +250,28 @@ impl State {
         Ok(val)
     }
 
-    pub fn get_currency(&self, currency_symbol: &str) -> Result<&Currency, Error> {
-        let currency = match self.config.hash_map_currencies.get(currency_symbol) {
-            Some(c) => c,
-            None => {
-                return Err(Error::NotSupportedCurrency(format!(
-                    "Currency {} not found",
-                    currency_symbol
-                )));
-            }
-        };
+    pub fn get_currency(
+        &self,
+        currency_symbol: &str,
+    ) -> Result<&Currency, Error> {
+        let currency =
+            match self.config.hash_map_currencies.get(currency_symbol) {
+                Some(c) => c,
+                None => {
+                    return Err(Error::NotSupportedCurrency(format!(
+                        "Currency {} not found",
+                        currency_symbol
+                    )));
+                },
+            };
 
         Ok(currency)
     }
 
-    pub fn get_currency_by_pool_id(&self, pool_id: &str) -> Result<&Currency, Error> {
+    pub fn get_currency_by_pool_id(
+        &self,
+        pool_id: &str,
+    ) -> Result<&Currency, Error> {
         let currency = match self.config.hash_map_pool_currency.get(pool_id) {
             Some(c) => c,
             None => {
@@ -258,7 +279,7 @@ impl State {
                     "Pool with id {} not found",
                     pool_id
                 )));
-            }
+            },
         };
 
         Ok(currency)
@@ -364,7 +385,12 @@ impl Config {
         )
     }
 
-    pub fn get_coingecko_market_data_range_url(&self, id: String, from: i64, to: i64) -> String {
+    pub fn get_coingecko_market_data_range_url(
+        &self,
+        id: String,
+        from: i64,
+        to: i64,
+    ) -> String {
         let url = &self.coingecko_market_data_range_url;
         formatter(
             url.to_owned(),
@@ -390,16 +416,20 @@ pub fn get_configuration() -> Result<Config, Error> {
     let sync_threads: i16 = env::var("SYNC_THREADS")?.parse()?;
     let coingecko_info_url = env::var("COINGECKO_INFO_URL")?;
     let coingecko_prices_url = env::var("COINGECKO_PRICES_URL")?;
-    let coingecko_market_data_range_url = env::var("COINGECKO_MARKET_DATA_RANGE_URL")?;
+    let coingecko_market_data_range_url =
+        env::var("COINGECKO_MARKET_DATA_RANGE_URL")?;
     let stable_currency = env::var("STABLE_CURRENCY")?;
     let aggregation_interval = env::var("AGGREGATION_INTTERVAL")?.parse()?;
-    let mp_asset_interval = env::var("MP_ASSET_INTERVAL_IN_MINUTES")?.parse()?;
-    let cache_state_interval = env::var("CACHE_INTERVAL_IN_MINUTES")?.parse()?;
+    let mp_asset_interval =
+        env::var("MP_ASSET_INTERVAL_IN_MINUTES")?.parse()?;
+    let cache_state_interval =
+        env::var("CACHE_INTERVAL_IN_MINUTES")?.parse()?;
     let timeout = env::var("TIMEOUT")?.parse()?;
     let max_tasks = env::var("MAX_TASKS")?.parse()?;
     let admin_contract = env::var("ADMIN_CONTRACT")?.parse()?;
     let lpn_decimals = env::var("LPN_DECIMALS")?.parse()?;
-    let socket_reconnect_interval = env::var("SOCKET_RECONNECT_INTERVAL")?.parse()?;
+    let socket_reconnect_interval =
+        env::var("SOCKET_RECONNECT_INTERVAL")?.parse()?;
     let grpc_host = env::var("GRPC_HOST")?.parse()?;
 
     let ignore_protocols = env::var("IGNORE_PROTOCOLS")?
@@ -528,7 +558,7 @@ fn parse_config_string(config: String) -> Result<(), Error> {
             "WEBSOCKET_HOST" => {
                 let host = env::var("HOST")?;
                 formatter(value.to_owned(), &[Formatter::Str(host)])
-            }
+            },
             _ => value.to_owned(),
         };
         std::env::set_var(key, parsed_value);
@@ -539,7 +569,8 @@ fn parse_config_string(config: String) -> Result<(), Error> {
 
 fn get_supported_currencies() -> Result<Vec<Currency>, Error> {
     let mut data: Vec<Currency> = Vec::new();
-    let supported_currencies = parse_tuple_string(env::var("SUPPORTED_CURRENCIES")?);
+    let supported_currencies =
+        parse_tuple_string(env::var("SUPPORTED_CURRENCIES")?);
 
     for c in supported_currencies {
         let items: Vec<&str> = c.split(',').collect();

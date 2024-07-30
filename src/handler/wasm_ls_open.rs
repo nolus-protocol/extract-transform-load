@@ -19,15 +19,19 @@ pub async fn parse_and_insert(
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
 
-    let at = DateTime::from_timestamp(at_sec, 0)
-        .ok_or_else(|| Error::DecodeDateTimeError(format!("Wasm_LS_Open date parse {}", at_sec)))?;
+    let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
+        Error::DecodeDateTimeError(format!(
+            "Wasm_LS_Open date parse {}",
+            at_sec
+        ))
+    })?;
 
     let protocol = app_state.get_protocol_by_pool_id(&item.loan_pool_id);
-    let f1 =
-        app_state
-            .database
-            .mp_asset
-            .get_price_by_date(&item.loan_symbol, protocol.to_owned(), &at);
+    let f1 = app_state.database.mp_asset.get_price_by_date(
+        &item.loan_symbol,
+        protocol.to_owned(),
+        &at,
+    );
     let f2 = app_state.database.mp_asset.get_price_by_date(
         &item.downpayment_symbol,
         protocol.to_owned(),
@@ -46,11 +50,15 @@ pub async fn parse_and_insert(
         LS_interest: air,
         LS_timestamp: at,
         LS_loan_pool_id: item.loan_pool_id.to_owned(),
-        LS_loan_amnt_stable: app_state.in_stabe_calc(&l_price, &item.loan_amount)?,
+        LS_loan_amnt_stable: app_state
+            .in_stabe_calc(&l_price, &item.loan_amount)?,
         LS_loan_amnt_asset: BigDecimal::from_str(item.loan_amount.as_str())?,
         LS_cltr_symbol: item.downpayment_symbol.to_owned(),
-        LS_cltr_amnt_stable: app_state.in_stabe_calc(&d_price, &item.downpayment_amount)?,
-        LS_cltr_amnt_asset: BigDecimal::from_str(item.downpayment_amount.as_str())?,
+        LS_cltr_amnt_stable: app_state
+            .in_stabe_calc(&d_price, &item.downpayment_amount)?,
+        LS_cltr_amnt_asset: BigDecimal::from_str(
+            item.downpayment_amount.as_str(),
+        )?,
         LS_native_amnt_stable: BigDecimal::from(0),
         LS_native_amnt_nolus: BigDecimal::from(0),
     };

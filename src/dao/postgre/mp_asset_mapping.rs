@@ -3,7 +3,10 @@ use crate::model::{MP_Asset_Mapping, Table};
 use sqlx::error::Error;
 
 impl Table<MP_Asset_Mapping> {
-    pub async fn insert(&self, data: MP_Asset_Mapping) -> Result<QueryResult, Error> {
+    pub async fn insert(
+        &self,
+        data: MP_Asset_Mapping,
+    ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
             INSERT INTO "MP_Asset_Mapping" ("MP_asset_symbol", "MP_asset_symbol_coingecko")
@@ -16,7 +19,10 @@ impl Table<MP_Asset_Mapping> {
         .await
     }
 
-    pub async fn get_one(&self, asset_symbol: String) -> Result<Option<MP_Asset_Mapping>, Error> {
+    pub async fn get_one(
+        &self,
+        asset_symbol: String,
+    ) -> Result<Option<MP_Asset_Mapping>, Error> {
         sqlx::query_as(
             r#"
              SELECT * FROM "MP_Asset_Mapping" WHERE "MP_asset_symbol" = $1 LIMIT 1

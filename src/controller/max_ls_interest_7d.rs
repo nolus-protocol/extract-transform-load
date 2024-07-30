@@ -24,7 +24,7 @@ async fn index(
                 items.insert(item.date.to_string(), item.max_interest.into());
             }
             Ok(web::Json(items))
-        }
+        },
         None => Ok(web::Json(items)),
     }
 }

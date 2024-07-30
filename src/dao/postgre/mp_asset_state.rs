@@ -3,7 +3,10 @@ use crate::model::{MP_Asset_State, Table};
 use sqlx::error::Error;
 
 impl Table<MP_Asset_State> {
-    pub async fn insert(&self, data: MP_Asset_State) -> Result<QueryResult, Error> {
+    pub async fn insert(
+        &self,
+        data: MP_Asset_State,
+    ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
             INSERT INTO "MP_Asset_State" (

@@ -9,7 +9,9 @@ use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 
 #[get("/total-value-locked")]
-async fn index(state: web::Data<AppState<State>>) -> Result<impl Responder, Error> {
+async fn index(
+    state: web::Data<AppState<State>>,
+) -> Result<impl Responder, Error> {
     let total_value_locked = if let Ok(item) = state.cache.lock() {
         item.total_value_locked
             .to_owned()

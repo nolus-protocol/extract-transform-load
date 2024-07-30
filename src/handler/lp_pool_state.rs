@@ -59,19 +59,23 @@ async fn proceed(
         state.grpc.get_lpp_config_state(item.LP_Pool_id.to_owned())
     )?;
 
-    let min_utilization_threshold =
-        if let Some(c) = BigDecimal::from_u128(lp_pool_config_state.min_utilization) {
-            c
-        } else {
-            return Err(Error::ServerError(String::from(
-                "can not parse LP_Pool_Config_State_Type",
-            )));
-        };
+    let min_utilization_threshold = if let Some(c) =
+        BigDecimal::from_u128(lp_pool_config_state.min_utilization)
+    {
+        c
+    } else {
+        return Err(Error::ServerError(String::from(
+            "can not parse LP_Pool_Config_State_Type",
+        )));
+    };
 
     let balance = lp_pool_state.balance.amount.parse::<u128>()?;
-    let total_principal_due = lp_pool_state.total_principal_due.amount.parse::<u128>()?;
-    let total_interest_due = lp_pool_state.total_interest_due.amount.parse::<u128>()?;
-    let total_value_locked_asset = (balance + total_principal_due + total_interest_due).to_string();
+    let total_principal_due =
+        lp_pool_state.total_principal_due.amount.parse::<u128>()?;
+    let total_interest_due =
+        lp_pool_state.total_interest_due.amount.parse::<u128>()?;
+    let total_value_locked_asset =
+        (balance + total_principal_due + total_interest_due).to_string();
     let pool_id = item.LP_Pool_id;
 
     let lp_pool_state = LP_Pool_State {
@@ -80,10 +84,17 @@ async fn proceed(
         LP_Pool_total_value_locked_stable: state
             .in_stabe_by_pool_id(&pool_id, &total_value_locked_asset)
             .await?,
-        LP_Pool_total_value_locked_asset: BigDecimal::from_str(&total_value_locked_asset)?,
-        LP_Pool_total_issued_receipts: BigDecimal::from_str(&lp_pool_state.balance_nlpn.amount)?,
+        LP_Pool_total_value_locked_asset: BigDecimal::from_str(
+            &total_value_locked_asset,
+        )?,
+        LP_Pool_total_issued_receipts: BigDecimal::from_str(
+            &lp_pool_state.balance_nlpn.amount,
+        )?,
         LP_Pool_total_borrowed_stable: state
-            .in_stabe_by_pool_id(&pool_id, &lp_pool_state.total_principal_due.amount)
+            .in_stabe_by_pool_id(
+                &pool_id,
+                &lp_pool_state.total_principal_due.amount,
+            )
             .await?,
         LP_Pool_total_borrowed_asset: BigDecimal::from_str(
             &lp_pool_state.total_principal_due.amount,

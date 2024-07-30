@@ -128,7 +128,7 @@ impl Table<MP_Asset> {
                 .bind(date_time)
                 .fetch_one(&self.pool)
                 .await
-            }
+            },
             None => {
                 sqlx::query_as(
                     r#"
@@ -146,17 +146,17 @@ impl Table<MP_Asset> {
                 .bind(date_time)
                 .fetch_one(&self.pool)
                 .await
-            }
+            },
         };
 
         if let Err(err) = item {
             match err {
                 Error::RowNotFound => {
                     return self.get_price(key, None).await;
-                }
+                },
                 _ => {
                     return Err(err);
-                }
+                },
             }
         }
 

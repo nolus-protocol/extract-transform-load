@@ -1,25 +1,25 @@
 use crate::configuration::{AppState, State};
 use crate::dao::DataBase;
 use crate::handler::{
-    wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close, wasm_ls_close_position, wasm_ls_liquidation,
-    wasm_ls_open, wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards,
+    wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close, wasm_ls_close_position,
+    wasm_ls_liquidation, wasm_ls_open, wasm_ls_repay, wasm_tr_profit,
+    wasm_tr_rewards,
 };
 use crate::model::Block;
 use crate::{
     error::Error,
     types::{
-        Attributes, Interest_values, LP_Deposit_Type, LP_Withdraw_Type, LS_Closing_Type,
-        LS_Liquidation_Type, LS_Opening_Type, LS_Repayment_Type, TR_Profit_Type,
-        TR_Rewards_Distribution_Type,
+        Interest_values, LP_Deposit_Type, LP_Withdraw_Type, LS_Closing_Type,
+        LS_Liquidation_Type, LS_Opening_Type, LS_Repayment_Type,
+        TR_Profit_Type, TR_Rewards_Distribution_Type,
     },
 };
 
-use crate::types::{BlockBody, EventData, LS_Close_Position_Type};
+use crate::types::LS_Close_Position_Type;
 use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
 use cosmrs::proto::tendermint::v0_34::abci::{Event, EventAttribute};
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
-use tracing::error;
 
 #[derive(Debug)]
 pub enum Formatter {
@@ -34,17 +34,21 @@ pub fn formatter(mut parser: String, args: &[Formatter]) -> String {
         match value {
             Formatter::ParsedStr(s) => {
                 let parsed_string = format!(r#""{}""#, s);
-                parser = parser.replace(format!("${}", index).as_str(), &parsed_string);
-            }
+                parser = parser
+                    .replace(format!("${}", index).as_str(), &parsed_string);
+            },
             Formatter::Number(n) => {
-                parser = parser.replace(format!("${}", index).as_str(), &n.to_string());
-            }
+                parser = parser
+                    .replace(format!("${}", index).as_str(), &n.to_string());
+            },
             Formatter::NumberU64(n) => {
-                parser = parser.replace(format!("${}", index).as_str(), &n.to_string());
-            }
+                parser = parser
+                    .replace(format!("${}", index).as_str(), &n.to_string());
+            },
             Formatter::Str(n) => {
-                parser = parser.replace(format!("${}", index).as_str(), &n.to_owned());
-            }
+                parser = parser
+                    .replace(format!("${}", index).as_str(), &n.to_owned());
+            },
         }
     }
     parser
@@ -65,7 +69,9 @@ pub fn parse_tuple_string(data: String) -> Vec<String> {
     items
 }
 
-pub fn parse_wasm_ls_open(attributes: &Vec<EventAttribute>) -> Result<LS_Opening_Type, Error> {
+pub fn parse_wasm_ls_open(
+    attributes: &Vec<EventAttribute>,
+) -> Result<LS_Opening_Type, Error> {
     let ls_open = pasrse_data(attributes)?;
     let c = LS_Opening_Type {
         id: ls_open
@@ -113,7 +119,9 @@ pub fn parse_wasm_ls_open(attributes: &Vec<EventAttribute>) -> Result<LS_Opening
     Ok(c)
 }
 
-pub fn parse_wasm_ls_close(attributes: &Vec<EventAttribute>) -> Result<LS_Closing_Type, Error> {
+pub fn parse_wasm_ls_close(
+    attributes: &Vec<EventAttribute>,
+) -> Result<LS_Closing_Type, Error> {
     let ls_close = pasrse_data(attributes)?;
     let c = LS_Closing_Type {
         id: ls_close
@@ -273,13 +281,16 @@ pub fn parse_wasm_ls_liquidation(
     Ok(c)
 }
 
-pub fn parseInterestValues(value: &HashMap<String, String>) -> Result<Interest_values, Error> {
-    let prev_margin_interest = match value.get("prev-margin-interest") {
-        Some(prev_margin_interest) => prev_margin_interest,
-        None => value
-            .get("overdue-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("prev-margin-interest")))?,
-    };
+pub fn parseInterestValues(
+    value: &HashMap<String, String>,
+) -> Result<Interest_values, Error> {
+    let prev_margin_interest =
+        match value.get("prev-margin-interest") {
+            Some(prev_margin_interest) => prev_margin_interest,
+            None => value.get("overdue-margin-interest").ok_or(
+                Error::FieldNotExist(String::from("prev-margin-interest")),
+            )?,
+        };
 
     let prev_loan_interest = match value.get("prev-loan-interest") {
         Some(prev_loan_interest) => prev_loan_interest,
@@ -290,9 +301,13 @@ pub fn parseInterestValues(value: &HashMap<String, String>) -> Result<Interest_v
 
     let curr_margin_interest = match value.get("curr-margin-interest") {
         Some(curr_margin_interest) => curr_margin_interest,
-        None => value
-            .get("due-margin-interest")
-            .ok_or(Error::FieldNotExist(String::from("curr-margin-interest")))?,
+        None => {
+            value
+                .get("due-margin-interest")
+                .ok_or(Error::FieldNotExist(String::from(
+                    "curr-margin-interest",
+                )))?
+        },
     };
 
     let curr_loan_interest = match value.get("curr-loan-interest") {
@@ -310,7 +325,9 @@ pub fn parseInterestValues(value: &HashMap<String, String>) -> Result<Interest_v
     })
 }
 
-pub fn parse_wasm_lp_deposit(attributes: &Vec<EventAttribute>) -> Result<LP_Deposit_Type, Error> {
+pub fn parse_wasm_lp_deposit(
+    attributes: &Vec<EventAttribute>,
+) -> Result<LP_Deposit_Type, Error> {
     let deposit = pasrse_data(attributes)?;
 
     let c = LP_Deposit_Type {
@@ -347,7 +364,9 @@ pub fn parse_wasm_lp_deposit(attributes: &Vec<EventAttribute>) -> Result<LP_Depo
     Ok(c)
 }
 
-pub fn parse_wasm_lp_withdraw(attributes: &Vec<EventAttribute>) -> Result<LP_Withdraw_Type, Error> {
+pub fn parse_wasm_lp_withdraw(
+    attributes: &Vec<EventAttribute>,
+) -> Result<LP_Withdraw_Type, Error> {
     let lp_withdraw = pasrse_data(attributes)?;
 
     let c = LP_Withdraw_Type {
@@ -388,7 +407,9 @@ pub fn parse_wasm_lp_withdraw(attributes: &Vec<EventAttribute>) -> Result<LP_Wit
     Ok(c)
 }
 
-pub fn parse_wasm_tr_profit(attributes: &Vec<EventAttribute>) -> Result<TR_Profit_Type, Error> {
+pub fn parse_wasm_tr_profit(
+    attributes: &Vec<EventAttribute>,
+) -> Result<TR_Profit_Type, Error> {
     let tr_profit = pasrse_data(attributes)?;
 
     let c = TR_Profit_Type {
@@ -444,7 +465,9 @@ pub fn parse_wasm_tr_rewards_distribution(
     Ok(c)
 }
 
-fn pasrse_data(attributes: &Vec<EventAttribute>) -> Result<HashMap<String, String>, Error> {
+fn pasrse_data(
+    attributes: &Vec<EventAttribute>,
+) -> Result<HashMap<String, String>, Error> {
     let mut data: HashMap<String, String> = HashMap::new();
     for attribute in attributes {
         let value = String::from_utf8(attribute.value.to_vec())?;
@@ -468,38 +491,71 @@ pub async fn parse_event(
         match t {
             EventsType::LS_Opening => {
                 let wasm_ls_opening = parse_wasm_ls_open(&event.attributes)?;
-                wasm_ls_open::parse_and_insert(&app_state, wasm_ls_opening, tx).await?;
-            }
+                wasm_ls_open::parse_and_insert(&app_state, wasm_ls_opening, tx)
+                    .await?;
+            },
             EventsType::LS_Closing => {
                 let wasm_ls_closing = parse_wasm_ls_close(&event.attributes)?;
-                wasm_ls_close::parse_and_insert(&app_state, wasm_ls_closing, tx).await?;
-            }
+                wasm_ls_close::parse_and_insert(
+                    &app_state,
+                    wasm_ls_closing,
+                    tx,
+                )
+                .await?;
+            },
             EventsType::LS_Close_Position => {
-                let wasm_ls_close_position = parse_wasm_ls_close_position(&event.attributes)?;
+                let wasm_ls_close_position =
+                    parse_wasm_ls_close_position(&event.attributes)?;
                 if let Some(item) = wasm_ls_close_position {
-                    wasm_ls_close_position::parse_and_insert(&app_state, item, tx).await?;
+                    wasm_ls_close_position::parse_and_insert(
+                        &app_state, item, tx,
+                    )
+                    .await?;
                 }
-            }
+            },
             EventsType::LS_Repay => {
                 let wasm_ls_repay = parse_wasm_ls_repayment(&event.attributes)?;
-                wasm_ls_repay::parse_and_insert(&app_state, wasm_ls_repay, tx).await?;
-            }
+                wasm_ls_repay::parse_and_insert(&app_state, wasm_ls_repay, tx)
+                    .await?;
+            },
             EventsType::LS_Liquidation => {
-                let wasm_ls_liquidation = parse_wasm_ls_liquidation(&event.attributes)?;
-                wasm_ls_liquidation::parse_and_insert(&app_state, wasm_ls_liquidation, tx).await?;
-            }
+                let wasm_ls_liquidation =
+                    parse_wasm_ls_liquidation(&event.attributes)?;
+                wasm_ls_liquidation::parse_and_insert(
+                    &app_state,
+                    wasm_ls_liquidation,
+                    tx,
+                )
+                .await?;
+            },
             EventsType::LP_deposit => {
                 let wasm_lp_deposit = parse_wasm_lp_deposit(&event.attributes)?;
-                wasm_lp_deposit::parse_and_insert(&app_state, wasm_lp_deposit, tx).await?;
-            }
+                wasm_lp_deposit::parse_and_insert(
+                    &app_state,
+                    wasm_lp_deposit,
+                    tx,
+                )
+                .await?;
+            },
             EventsType::LP_Withdraw => {
-                let wasm_lp_withdraw = parse_wasm_lp_withdraw(&event.attributes)?;
-                wasm_lp_withdraw::parse_and_insert(&app_state, wasm_lp_withdraw, tx).await?;
-            }
+                let wasm_lp_withdraw =
+                    parse_wasm_lp_withdraw(&event.attributes)?;
+                wasm_lp_withdraw::parse_and_insert(
+                    &app_state,
+                    wasm_lp_withdraw,
+                    tx,
+                )
+                .await?;
+            },
             EventsType::TR_Profit => {
                 let wasm_tr_profit = parse_wasm_tr_profit(&event.attributes)?;
-                wasm_tr_profit::parse_and_insert(&app_state, wasm_tr_profit, tx).await?;
-            }
+                wasm_tr_profit::parse_and_insert(
+                    &app_state,
+                    wasm_tr_profit,
+                    tx,
+                )
+                .await?;
+            },
             EventsType::TR_Rewards_Distribution => {
                 let wasm_tr_rewards_distribution =
                     parse_wasm_tr_rewards_distribution(&event.attributes)?;
@@ -510,7 +566,7 @@ pub async fn parse_event(
                     tx,
                 )
                 .await?;
-            }
+            },
         }
     }
     Ok(())
@@ -632,7 +688,9 @@ impl fmt::Display for EventsType {
         match self {
             EventsType::LS_Opening => write!(f, "wasm-ls-open"),
             EventsType::LS_Closing => write!(f, "wasm-ls-close"),
-            EventsType::LS_Close_Position => write!(f, "wasm-ls-close-position"),
+            EventsType::LS_Close_Position => {
+                write!(f, "wasm-ls-close-position")
+            },
             EventsType::LS_Repay => write!(f, "wasm-ls-repay"),
             EventsType::LS_Liquidation => write!(f, "wasm-ls-liquidation"),
             EventsType::LP_deposit => write!(f, "wasm-lp-deposit"),
@@ -648,13 +706,17 @@ impl From<EventsType> for String {
         match value {
             EventsType::LS_Opening => String::from("wasm-ls-open"),
             EventsType::LS_Closing => String::from("wasm-ls-close"),
-            EventsType::LS_Close_Position => String::from("wasm-ls-close-position"),
+            EventsType::LS_Close_Position => {
+                String::from("wasm-ls-close-position")
+            },
             EventsType::LS_Repay => String::from("wasm-ls-repay"),
             EventsType::LS_Liquidation => String::from("wasm-ls-liquidation"),
             EventsType::LP_deposit => String::from("wasm-lp-deposit"),
             EventsType::LP_Withdraw => String::from("wasm-lp-withdraw"),
             EventsType::TR_Profit => String::from("wasm-tr-profit"),
-            EventsType::TR_Rewards_Distribution => String::from("wasm-tr-rewards"),
+            EventsType::TR_Rewards_Distribution => {
+                String::from("wasm-tr-rewards")
+            },
         }
     }
 }

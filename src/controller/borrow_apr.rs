@@ -28,7 +28,8 @@ async fn index(
                 .ls_opening
                 .get_borrow_apr(protocol.contracts.lpp.to_owned(), skip, limit)
                 .await?;
-            let items: Vec<BigDecimal> = data.iter().map(|item| item.APR.to_owned()).collect();
+            let items: Vec<BigDecimal> =
+                data.iter().map(|item| item.APR.to_owned()).collect();
             return Ok(web::Json(items));
         }
     }

@@ -38,7 +38,9 @@ impl From<LS_transactions> for String {
     fn from(value: LS_transactions) -> Self {
         match value {
             LS_transactions::Interest_Overdue_Liquidation => String::from("0"),
-            LS_transactions::Liability_Exceeded_Liquidation => String::from("1"),
+            LS_transactions::Liability_Exceeded_Liquidation => {
+                String::from("1")
+            },
         }
     }
 }

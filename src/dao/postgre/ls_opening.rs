@@ -8,7 +8,10 @@ use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
 
 impl Table<LS_Opening> {
-    pub async fn isExists(&self, ls_opening: &LS_Opening) -> Result<bool, crate::error::Error> {
+    pub async fn isExists(
+        &self,
+        ls_opening: &LS_Opening,
+    ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 
@@ -256,7 +259,10 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    pub async fn get_leased_assets(&self, protocol: String) -> Result<Vec<Leased_Asset>, Error> {
+    pub async fn get_leased_assets(
+        &self,
+        protocol: String,
+    ) -> Result<Vec<Leased_Asset>, Error> {
         let data = sqlx::query_as(
             r#"
             SELECT "LS_asset_symbol" AS "Asset", SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening" WHERE "LS_loan_pool_id" = $1 GROUP BY "Asset"
@@ -268,7 +274,9 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    pub async fn get_leased_assets_total(&self) -> Result<Vec<Leased_Asset>, Error> {
+    pub async fn get_leased_assets_total(
+        &self,
+    ) -> Result<Vec<Leased_Asset>, Error> {
         let data = sqlx::query_as(
             r#"
             SELECT "LS_asset_symbol" AS "Asset", SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening" GROUP BY "Asset"
@@ -279,7 +287,10 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    pub async fn get_earn_apr(&self, protocol: String) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_earn_apr(
+        &self,
+        protocol: String,
+    ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)> = sqlx::query_as(
             r#"
             WITH DateRange AS (
@@ -376,7 +387,10 @@ impl Table<LS_Opening> {
         Ok(amnt.0)
     }
 
-    pub async fn get(&self, LS_contract_id: String) -> Result<Option<LS_Opening>, Error> {
+    pub async fn get(
+        &self,
+        LS_contract_id: String,
+    ) -> Result<Option<LS_Opening>, Error> {
         sqlx::query_as(
             r#"
              SELECT * FROM "LS_Opening" WHERE "LS_contract_id" = $1
@@ -387,7 +401,10 @@ impl Table<LS_Opening> {
         .await
     }
 
-    pub async fn get_borrowed(&self, protocol: String) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_borrowed(
+        &self,
+        protocol: String,
+    ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)>   = sqlx::query_as(
             r#"
                 SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening" WHERE "LS_loan_pool_id" = $1
@@ -401,7 +418,9 @@ impl Table<LS_Opening> {
         Ok(amnt.0)
     }
 
-    pub async fn get_borrowed_total(&self) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_borrowed_total(
+        &self,
+    ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)> = sqlx::query_as(
             r#"
                 SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening"
@@ -414,7 +433,10 @@ impl Table<LS_Opening> {
         Ok(amnt.0)
     }
 
-    pub async fn get_leases(&self, leases: Vec<&str>) -> Result<Vec<LS_Opening>, Error> {
+    pub async fn get_leases(
+        &self,
+        leases: Vec<&str>,
+    ) -> Result<Vec<LS_Opening>, Error> {
         let mut params = String::from("$1");
 
         for i in 1..leases.len() {
@@ -427,7 +449,8 @@ impl Table<LS_Opening> {
         "#,
             params
         );
-        let mut query: sqlx::query::QueryAs<'_, _, _, _> = sqlx::query_as(&query_str);
+        let mut query: sqlx::query::QueryAs<'_, _, _, _> =
+            sqlx::query_as(&query_str);
 
         for i in leases {
             query = query.bind(i);
@@ -437,7 +460,9 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    pub async fn get_total_tx_value(&self) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_total_tx_value(
+        &self,
+    ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
           r#"
                 WITH Opened_Leases AS (

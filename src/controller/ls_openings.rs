@@ -45,7 +45,11 @@ async fn getData(
         let (downpayment_price,) = state
             .database
             .mp_asset
-            .get_price_by_date(&lease.LS_asset_symbol, protocol, &lease.LS_timestamp)
+            .get_price_by_date(
+                &lease.LS_asset_symbol,
+                protocol,
+                &lease.LS_timestamp,
+            )
             .await?;
         return Ok(Some(ResponseData {
             lease,

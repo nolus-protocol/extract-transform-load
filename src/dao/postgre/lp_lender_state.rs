@@ -4,7 +4,10 @@ use chrono::{DateTime, Utc};
 use sqlx::{error::Error, QueryBuilder};
 
 impl Table<LP_Lender_State> {
-    pub async fn insert(&self, data: LP_Lender_State) -> Result<QueryResult, Error> {
+    pub async fn insert(
+        &self,
+        data: LP_Lender_State,
+    ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
             INSERT INTO "LP_Lender_State" (
@@ -28,7 +31,9 @@ impl Table<LP_Lender_State> {
         .await
     }
 
-    pub async fn get_active_states(&self) -> Result<Vec<(String, String)>, Error> {
+    pub async fn get_active_states(
+        &self,
+    ) -> Result<Vec<(String, String)>, Error> {
         sqlx::query_as(
             r#"
             SELECT 
@@ -49,7 +54,10 @@ impl Table<LP_Lender_State> {
         .await
     }
 
-    pub async fn insert_many(&self, data: &Vec<LP_Lender_State>) -> Result<(), Error> {
+    pub async fn insert_many(
+        &self,
+        data: &Vec<LP_Lender_State>,
+    ) -> Result<(), Error> {
         if data.is_empty() {
             return Ok(());
         }
@@ -80,7 +88,10 @@ impl Table<LP_Lender_State> {
         Ok(())
     }
 
-    pub async fn count(&self, timestamp: DateTime<Utc>) -> Result<i64, crate::error::Error> {
+    pub async fn count(
+        &self,
+        timestamp: DateTime<Utc>,
+    ) -> Result<i64, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 

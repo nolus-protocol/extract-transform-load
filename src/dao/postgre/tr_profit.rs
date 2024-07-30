@@ -5,7 +5,10 @@ use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
 use std::str::FromStr;
 
 impl Table<TR_Profit> {
-    pub async fn isExists(&self, tr_profit: &TR_Profit) -> Result<bool, crate::error::Error> {
+    pub async fn isExists(
+        &self,
+        tr_profit: &TR_Profit,
+    ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 
@@ -107,7 +110,11 @@ impl Table<TR_Profit> {
         Ok((amnt, amnt_nolus))
     }
 
-    pub async fn get_buyback(&self, skip: i64, limit: i64) -> Result<Vec<Buyback>, Error> {
+    pub async fn get_buyback(
+        &self,
+        skip: i64,
+        limit: i64,
+    ) -> Result<Vec<Buyback>, Error> {
         let data = sqlx::query_as(
             r#"
                 SELECT "TR_Profit_timestamp" AS time, (SUM("TR_Profit_amnt_nls" / 1000000) OVER ( Order By "TR_Profit_timestamp")) AS "Bought-back" FROM "TR_Profit" OFFSET $1 LIMIT $2
@@ -120,7 +127,9 @@ impl Table<TR_Profit> {
         Ok(data)
     }
 
-    pub async fn get_buyback_total(&self) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_buyback_total(
+        &self,
+    ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
                 SELECT SUM("TR_Profit_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Profit"

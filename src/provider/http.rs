@@ -22,13 +22,16 @@ impl HTTP {
             Ok(c) => c,
             Err(e) => {
                 return Err(error::Error::REQWEST(e));
-            }
+            },
         };
 
         Ok(HTTP { config, http })
     }
 
-    pub async fn get_coingecko_info(&self, coinGeckoId: String) -> Result<CoinGeckoInfo, Error> {
+    pub async fn get_coingecko_info(
+        &self,
+        coinGeckoId: String,
+    ) -> Result<CoinGeckoInfo, Error> {
         let url = self.config.get_coingecko_info_url(coinGeckoId);
         let json = self
             .http
@@ -40,7 +43,10 @@ impl HTTP {
         Ok(json)
     }
 
-    pub async fn get_coingecko_prices(&self, ids: &[String]) -> Result<CoinGeckoPrice, Error> {
+    pub async fn get_coingecko_prices(
+        &self,
+        ids: &[String],
+    ) -> Result<CoinGeckoPrice, Error> {
         let url = self.config.get_coingecko_prices_url(ids);
         let json = self
             .http

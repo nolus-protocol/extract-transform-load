@@ -2,16 +2,18 @@
 name = "etl"
 version = "2.4.0"
 edition = "2021"
+rust-version = "1.79.0"
 
 [profile.dev]
 debug = 0
 
 [profile.release]
-opt-level = 3
-strip = true
-overflow-checks = true
-lto = true
 codegen-units = 1
+incremental = false
+lto = true
+opt-level = 3
+overflow-checks = true
+rpath = false
 
 [dependencies]
 
@@ -21,10 +23,9 @@ actix-files = "0.6"
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.38", features = ["full"] }
-tokio-tungstenite = { version = "0.23", features = ["rustls-tls-native-roots"] }
+tokio = { version = "1.39", features = ["full"] }
 futures = "0.3"
-sqlx = { version = "0.7", features = [
+sqlx = { version = "0.8", features = [
     "runtime-tokio-rustls",
     "postgres",
     "chrono",
@@ -46,11 +47,11 @@ tonic = { version = "0.11", default_features = false, features = [
     "zstd",
 ] }
 
-chrono = { version = "0.4.37", features = ["serde"] }
+chrono = { version = "0.4.38", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 cosmos-sdk-proto = { version = "0.22", features = ["cosmwasm", "grpc-transport"] }
 prost = { version = "0.13", features = ["derive"] }
-bigdecimal = { version = "0.3", features = ["serde"] }
+bigdecimal = { version = "0.4", features = ["serde"] }
 tendermint-rpc = { version = "0.38.1", features = ["websocket-client"] }
 
 url = "2.5"

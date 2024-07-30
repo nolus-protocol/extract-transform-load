@@ -26,7 +26,7 @@ async fn index(
                 items.insert(item.date.to_string(), value);
             }
             Ok(web::Json(items))
-        }
+        },
         None => Ok(web::Json(items)),
     }
 }

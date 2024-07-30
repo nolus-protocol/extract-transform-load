@@ -5,10 +5,11 @@ use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
 use crate::{
     configuration::{AppState, State},
     controller::{
-        blocks, borrow_apr, borrowed, buyback, buyback_total, deposit_suspension, distributed,
-        earn_apr, incentives_pool, leased_assets, ls_opening, ls_openings, max_lp_ratio,
-        max_ls_interest_7d, optimal, revenue, supplied_borrowed_series, total_tx_value,
-        total_value_locked, utilization_level, version,
+        blocks, borrow_apr, borrowed, buyback, buyback_total,
+        deposit_suspension, distributed, earn_apr, incentives_pool,
+        leased_assets, ls_opening, ls_openings, max_lp_ratio,
+        max_ls_interest_7d, optimal, revenue, supplied_borrowed_series,
+        total_tx_value, total_value_locked, utilization_level, version,
     },
     error::Error,
 };
@@ -31,7 +32,8 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
         let app = app_state.clone();
         let static_dir = app_state.config.static_dir.to_owned();
         let allowed_cors = String::from("*");
-        let cors_access_all = app.config.allowed_origins.contains(&allowed_cors);
+        let cors_access_all =
+            app.config.allowed_origins.contains(&allowed_cors);
         let cors = Cors::default()
             .allowed_origin_fn(move |origin, _| {
                 if cors_access_all {

@@ -4,21 +4,26 @@ use crate::{
 };
 use tokio::{time, time::Duration};
 
-pub async fn set_total_value_locked(app_state: AppState<State>) -> Result<(), Error> {
-    let osmosis_usdc = if let Some((osmosis_usdc, _)) = app_state.config.lp_pools.first() {
-        osmosis_usdc
-    } else {
-        return Err(Error::ProtocolError(String::from("osmosis_usdc")));
-    };
-
-    let neutron_usdc_axelar =
-        if let Some((neutron_usdc_axelar, _)) = app_state.config.lp_pools.get(1) {
-            neutron_usdc_axelar
+pub async fn set_total_value_locked(
+    app_state: AppState<State>,
+) -> Result<(), Error> {
+    let osmosis_usdc =
+        if let Some((osmosis_usdc, _)) = app_state.config.lp_pools.first() {
+            osmosis_usdc
         } else {
-            return Err(Error::ProtocolError(String::from("neutron_usdc_axelar")));
+            return Err(Error::ProtocolError(String::from("osmosis_usdc")));
         };
 
-    let osmosis_usdc_noble = if let Some((osmosis_usdc_noble, _)) = app_state.config.lp_pools.get(2)
+    let neutron_usdc_axelar = if let Some((neutron_usdc_axelar, _)) =
+        app_state.config.lp_pools.get(1)
+    {
+        neutron_usdc_axelar
+    } else {
+        return Err(Error::ProtocolError(String::from("neutron_usdc_axelar")));
+    };
+
+    let osmosis_usdc_noble = if let Some((osmosis_usdc_noble, _)) =
+        app_state.config.lp_pools.get(2)
     {
         osmosis_usdc_noble
     } else {
@@ -43,7 +48,9 @@ pub async fn set_total_value_locked(app_state: AppState<State>) -> Result<(), Er
     Ok(())
 }
 
-pub async fn cache_state_tasks(app_state: AppState<State>) -> Result<(), Error> {
+pub async fn cache_state_tasks(
+    app_state: AppState<State>,
+) -> Result<(), Error> {
     let interval: u64 = app_state.config.cache_state_interval.into();
     let interval: u64 = interval * 60;
 

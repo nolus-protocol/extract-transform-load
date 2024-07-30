@@ -88,7 +88,9 @@ impl Table<TR_State> {
         Ok(amnt)
     }
 
-    pub async fn get_incentives_pool(&self) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_incentives_pool(
+        &self,
+    ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)>   = sqlx::query_as(
             r#"
                 SELECT "TR_amnt_nls" / 1000000 AS "Incentives Pool" FROM "TR_State" ORDER BY "TR_timestamp" DESC LIMIT 1

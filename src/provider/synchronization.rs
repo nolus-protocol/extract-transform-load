@@ -71,7 +71,10 @@ impl Synchronization {
         Ok((threads_count, parts, total))
     }
 
-    pub async fn run<'a>(&self, app_state: AppState<State>) -> Result<(), Error> {
+    pub async fn run<'a>(
+        &self,
+        app_state: AppState<State>,
+    ) -> Result<(), Error> {
         let (threads_count, parts, total) = self.get_params(&app_state).await?;
 
         if !self.is_running() {
@@ -89,7 +92,8 @@ impl Synchronization {
         total: i64,
         app_state: AppState<State>,
     ) -> Result<(), Error> {
-        let mut thread_parts: Vec<Vec<(i64, i64)>> = vec![vec![]; (threads_count - 1) as usize];
+        let mut thread_parts: Vec<Vec<(i64, i64)>> =
+            vec![vec![]; (threads_count - 1) as usize];
         let mut hs = Vec::new();
         let counter = Arc::new(AtomicI64::new(0));
 
@@ -155,7 +159,8 @@ impl Handler {
         counter: Arc<AtomicI64>,
         total: i64,
     ) -> Result<(), Error> {
-        let req = (self.app_state.config.websocket_host.as_str()).into_client_request()?;
+        let req = (self.app_state.config.websocket_host.as_str())
+            .into_client_request()?;
         let (socket, _response) = connect_async_with_config(
             req,
             #[allow(deprecated)]
@@ -181,7 +186,10 @@ impl Handler {
     async fn stream_handler(
         &mut self,
         parts: &mut Vec<(i64, i64)>,
-        write: &mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+        write: &mut SplitSink<
+            WebSocketStream<MaybeTlsStream<TcpStream>>,
+            Message,
+        >,
         read: &mut SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
         counter: Arc<AtomicI64>,
         total: i64,
@@ -190,13 +198,17 @@ impl Handler {
         loop {
             match self.parse_message(read.next().await).await {
                 Ok(proceed) => {
-                    if proceed && !self.set_tasks(parts, write, counter.clone(), total).await? {
+                    if proceed
+                        && !self
+                            .set_tasks(parts, write, counter.clone(), total)
+                            .await?
+                    {
                         break;
                     }
-                }
+                },
                 Err(e) => {
                     return Err(Error::ParseMessage(e.to_string()));
-                }
+                },
             }
         }
 
@@ -206,7 +218,10 @@ impl Handler {
     async fn set_tasks(
         &mut self,
         parts: &mut Vec<(i64, i64)>,
-        write: &mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+        write: &mut SplitSink<
+            WebSocketStream<MaybeTlsStream<TcpStream>>,
+            Message,
+        >,
         counter: Arc<AtomicI64>,
         _total: i64,
     ) -> Result<bool, Error> {
@@ -239,14 +254,14 @@ impl Handler {
                     match msg_obj {
                         Message::Text(msg_obj) => {
                             return self.to_json(msg_obj).await;
-                        }
+                        },
                         Message::Binary(_)
                         | Message::Ping(_)
                         | Message::Pong(_)
                         | Message::Close(_)
-                        | Message::Frame(_) => {}
+                        | Message::Frame(_) => {},
                     };
-                }
+                },
                 Err(e) => return Err(Error::WS(e)),
             }
         };
@@ -272,11 +287,11 @@ pub async fn start_sync(app_state: AppState<State>) -> Result<(), Error> {
         match sync_manager.run(app_state).await {
             Ok(()) => {
                 sync_manager.set_running(false);
-            }
+            },
             Err(e) => {
                 sync_manager.set_running(false);
                 return Err(e);
-            }
+            },
         };
         info!("Synchronization completed");
         Ok(())

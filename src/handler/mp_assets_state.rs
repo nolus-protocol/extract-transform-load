@@ -59,12 +59,19 @@ async fn parse_and_insert(
     let from = to - interval * 60 * 60;
 
     let from_date = DateTime::from_timestamp(from, 0).ok_or_else(|| {
-        Error::DecodeDateTimeError(format!("MP_ASSETS_STATE date parse {}", from))
+        Error::DecodeDateTimeError(format!(
+            "MP_ASSETS_STATE date parse {}",
+            from
+        ))
     })?;
 
     let market_data = app_state
         .http
-        .get_coingecko_market_data_range(item.MP_asset_symbol_coingecko.to_owned(), from, to)
+        .get_coingecko_market_data_range(
+            item.MP_asset_symbol_coingecko.to_owned(),
+            from,
+            to,
+        )
         .await?;
 
     let mut volume: f64 = 0.0;
@@ -76,7 +83,11 @@ async fn parse_and_insert(
     let (min_value, max_value) = app_state
         .database
         .mp_asset
-        .get_min_max_from_range(item.MP_asset_symbol.to_owned(), from_date, timestsamp)
+        .get_min_max_from_range(
+            item.MP_asset_symbol.to_owned(),
+            from_date,
+            timestsamp,
+        )
         .await
         .unwrap_or(Some((BigDecimal::from(0), BigDecimal::from(0))))
         .unwrap_or((BigDecimal::from(0), BigDecimal::from(0)));

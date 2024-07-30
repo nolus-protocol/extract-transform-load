@@ -18,7 +18,8 @@ async fn index(
         limit = 100;
     }
 
-    let data: Vec<Buyback> = state.database.tr_profit.get_buyback(skip, limit).await?;
+    let data: Vec<Buyback> =
+        state.database.tr_profit.get_buyback(skip, limit).await?;
     Ok(web::Json(data))
 }
 

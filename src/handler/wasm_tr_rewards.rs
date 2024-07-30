@@ -21,7 +21,10 @@ pub async fn parse_and_insert(
     let at_sec = sec / 1_000_000_000;
 
     let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
-        Error::DecodeDateTimeError(format!("Wasm_TR_rewards date parse {}", at_sec))
+        Error::DecodeDateTimeError(format!(
+            "Wasm_TR_rewards date parse {}",
+            at_sec
+        ))
     })?;
     let protocol = app_state.get_protocol_by_pool_id(&item.to);
 
@@ -31,7 +34,12 @@ pub async fn parse_and_insert(
         TR_Rewards_Pool_id: item.to.to_owned(),
         TR_Rewards_timestamp: at,
         TR_Rewards_amnt_stable: app_state
-            .in_stabe_by_date(&item.rewards_symbol, &item.rewards_amount, protocol, &at)
+            .in_stabe_by_date(
+                &item.rewards_symbol,
+                &item.rewards_amount,
+                protocol,
+                &at,
+            )
             .await?,
         TR_Rewards_amnt_nls: BigDecimal::from_str(&item.rewards_amount)?,
         Event_Block_Index: index.try_into()?,

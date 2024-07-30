@@ -15,11 +15,12 @@ pub async fn parse_and_insert(
     last_action_timestamp: DateTime<Utc>,
     current_timestsamp: DateTime<Utc>,
 ) -> Result<(), Error> {
-    let (PL_pools_TVL_stable, PL_pools_borrowed_stable, PL_pools_yield_stable) = app_state
-        .database
-        .lp_pool_state
-        .get_total_value_locked_stable(current_timestsamp)
-        .await?;
+    let (PL_pools_TVL_stable, PL_pools_borrowed_stable, PL_pools_yield_stable) =
+        app_state
+            .database
+            .lp_pool_state
+            .get_total_value_locked_stable(current_timestsamp)
+            .await?;
 
     let PL_LS_count_open = app_state
         .database
@@ -42,7 +43,10 @@ pub async fn parse_and_insert(
     let PL_IN_LS_cltr_amnt_opened_stable = app_state
         .database
         .ls_opening
-        .get_cltr_amnt_opened_stable_sum(last_action_timestamp, current_timestsamp)
+        .get_cltr_amnt_opened_stable_sum(
+            last_action_timestamp,
+            current_timestsamp,
+        )
         .await?;
 
     let PL_LP_count_open = app_state
@@ -156,8 +160,9 @@ pub async fn parse_and_insert(
         - &PL_TR_profit_amnt_stable
         - TR_amnt_stable_prev;
 
-    let PL_TR_tax_amnt_nls =
-        TR_amnt_nls + &PL_OUT_TR_rewards_amnt_nls - &PL_TR_profit_amnt_nls - TR_amnt_nls_prev;
+    let PL_TR_tax_amnt_nls = TR_amnt_nls + &PL_OUT_TR_rewards_amnt_nls
+        - &PL_TR_profit_amnt_nls
+        - TR_amnt_nls_prev;
 
     let pl_state = PL_State {
         PL_timestamp: current_timestsamp,

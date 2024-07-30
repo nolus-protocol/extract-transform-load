@@ -2,8 +2,9 @@ use crate::{
     configuration::Config,
     error::{self, Error},
     types::{
-        AdminProtocolExtendType, AdminProtocolType, Balance, LPP_Price, LP_Pool_Config_State_Type,
-        LP_Pool_State_Type, LS_State_Type, Prices, QueryBody,
+        AdminProtocolExtendType, AdminProtocolType, Balance, LPP_Price,
+        LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type, Prices,
+        QueryBody,
     },
 };
 use base64::engine::general_purpose;
@@ -13,7 +14,9 @@ use cosmos_sdk_proto::{
         bank::v1beta1::{QueryAllBalancesRequest, QueryAllBalancesResponse},
         base::query::v1beta1::PageRequest,
     },
-    cosmwasm::wasm::v1::{QuerySmartContractStateRequest, QuerySmartContractStateResponse},
+    cosmwasm::wasm::v1::{
+        QuerySmartContractStateRequest, QuerySmartContractStateResponse,
+    },
     traits::Message,
 };
 use reqwest::Client;
@@ -35,13 +38,16 @@ impl QueryApi {
             Ok(c) => c,
             Err(e) => {
                 return Err(error::Error::REQWEST(e));
-            }
+            },
         };
 
         Ok(QueryApi { config, http })
     }
 
-    pub async fn lease_state(&self, contract: String) -> Result<Option<LS_State_Type>, Error> {
+    pub async fn lease_state(
+        &self,
+        contract: String,
+    ) -> Result<Option<LS_State_Type>, Error> {
         let bytes = b"{}";
         let res = self.query_state(bytes, contract, None).await?;
         if let Some(item) = res {
@@ -80,7 +86,10 @@ impl QueryApi {
         Ok(None)
     }
 
-    pub async fn lpp_price_state(&self, contract: String) -> Result<Option<LPP_Price>, Error> {
+    pub async fn lpp_price_state(
+        &self,
+        contract: String,
+    ) -> Result<Option<LPP_Price>, Error> {
         let bytes = b"{\"price\": []}";
         let res = self.query_state(bytes, contract, None).await?;
 
@@ -97,7 +106,8 @@ impl QueryApi {
         contract: String,
         address: String,
     ) -> Result<Option<Balance>, Error> {
-        let request = format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
+        let request =
+            format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
         let bytes = request.as_bytes();
         let res = self.query_state(bytes, contract, None).await?;
         if let Some(item) = res {
@@ -194,7 +204,11 @@ impl QueryApi {
         Ok(c.to_string())
     }
 
-    fn state_from_proto(&self, data: &[u8], contract_address: String) -> Result<String, Error> {
+    fn state_from_proto(
+        &self,
+        data: &[u8],
+        contract_address: String,
+    ) -> Result<String, Error> {
         let k = QuerySmartContractStateRequest {
             address: contract_address,
             query_data: data.to_vec(),
@@ -205,7 +219,10 @@ impl QueryApi {
         Ok(s)
     }
 
-    fn decode_balances(&self, state: &str) -> Result<QueryAllBalancesResponse, Error> {
+    fn decode_balances(
+        &self,
+        state: &str,
+    ) -> Result<QueryAllBalancesResponse, Error> {
         let data = general_purpose::STANDARD.decode(state)?;
         let response = QueryAllBalancesResponse::decode(data.as_ref())?;
         Ok(response)
@@ -238,7 +255,10 @@ impl QueryApi {
         Ok(s)
     }
 
-    pub async fn get_admin_config(&self, contract: String) -> Result<Option<Vec<String>>, Error> {
+    pub async fn get_admin_config(
+        &self,
+        contract: String,
+    ) -> Result<Option<Vec<String>>, Error> {
         let bytes = b"{\"protocols\": {}}";
 
         let res = self.query_state(bytes, contract, None).await?;

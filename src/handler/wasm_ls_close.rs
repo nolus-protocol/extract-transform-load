@@ -17,7 +17,10 @@ pub async fn parse_and_insert(
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
     let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
-        Error::DecodeDateTimeError(format!("Wasm_LS_close date parse {}", at_sec))
+        Error::DecodeDateTimeError(format!(
+            "Wasm_LS_close date parse {}",
+            at_sec
+        ))
     })?;
 
     let ls_closing = LS_Closing {

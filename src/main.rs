@@ -5,7 +5,9 @@ use tokio::time;
 use tracing::{error, Level};
 
 use etl::{
-    configuration::{get_configuration, set_configuration, AppState, Config, State},
+    configuration::{
+        get_configuration, set_configuration, AppState, Config, State,
+    },
     error::Error,
     handler::{aggregation_task, cache_state, mp_assets},
     model::Actions,
@@ -78,7 +80,9 @@ async fn init<'c>() -> Result<(Config, DatabasePool), Error> {
     Ok((config, database))
 }
 
-async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error> {
+async fn start_aggregation_tasks(
+    app_state: AppState<State>,
+) -> Result<(), Error> {
     let interval_value: u64 = app_state.config.aggregation_interval.into();
     let interval_value = interval_value * 60 * 60;
     let model = &app_state.database.action_history;
@@ -93,7 +97,7 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
             if let Some(item) = data {
                 dt_ms = item.created_at.timestamp_millis();
             }
-        }
+        },
         Err(e) => return Err(Error::SQL(e)),
     }
 
@@ -111,11 +115,12 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
 
     let mut init = false;
 
-    let mut interval = time::interval(Duration::from_secs(if tmp_interval > 0 {
-        tmp_interval
-    } else {
-        interval_value
-    }));
+    let mut interval =
+        time::interval(Duration::from_secs(if tmp_interval > 0 {
+            tmp_interval
+        } else {
+            interval_value
+        }));
 
     tokio::spawn(async move {
         if tmp_interval == 0 {

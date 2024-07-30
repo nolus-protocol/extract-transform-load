@@ -3,6 +3,7 @@ use std::time::Duration;
 use crate::configuration::{AppState, State};
 use crate::error::Error;
 use crate::helpers::insert_txs;
+use crate::provider::synchronization_new::start_sync;
 use anyhow::Context;
 use futures::StreamExt;
 use tendermint_rpc::client::WebSocketClient;
@@ -22,8 +23,13 @@ impl Event {
 
     pub async fn run(&mut self) -> Result<(), Error> {
         loop {
-            if let Err(e) = tokio::try_join!(self.init()) {
-                error!("WS disconnected with error {}, try to reconnecting...", e);
+            let app = self.app_state.clone();
+
+            if let Err(e) = tokio::try_join!(self.init(), start_sync(app)) {
+                error!(
+                    "WS disconnected with error {}, try to reconnecting...",
+                    e
+                );
             }
 
             sleep(Duration::from_secs(
@@ -62,7 +68,7 @@ impl Event {
                             .context("unable to parse header")?,
                     )
                     .await?;
-                }
+                },
                 tendermint_rpc::event::EventData::LegacyNewBlock {
                     block,
                     result_begin_block: _,
@@ -74,9 +80,9 @@ impl Event {
                             .context("unable to parse header")?,
                     )
                     .await?;
-                }
-                tendermint_rpc::event::EventData::Tx { tx_result: _ } => {}
-                tendermint_rpc::event::EventData::GenericJsonEvent(_) => {}
+                },
+                tendermint_rpc::event::EventData::Tx { tx_result: _ } => {},
+                tendermint_rpc::event::EventData::GenericJsonEvent(_) => {},
             };
         }
 

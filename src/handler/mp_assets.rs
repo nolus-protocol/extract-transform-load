@@ -12,7 +12,10 @@ use crate::{
 };
 use std::str::FromStr;
 
-pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) -> Result<(), Error> {
+pub async fn fetch_insert(
+    app_state: AppState<State>,
+    height: Option<String>,
+) -> Result<(), Error> {
     let mut joins = Vec::new();
     let mut mp_assets = vec![];
     let timestamp = Utc::now();
@@ -35,11 +38,15 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
                         .get(&price.amount.ticker)
                     {
                         let decimals = asset.2 - app_state.config.lpn_decimals;
-                        let mut value = BigDecimal::from_str(&price.amount_quote.amount)?
-                            / BigDecimal::from_str(&price.amount.amount)?;
+                        let mut value =
+                            BigDecimal::from_str(&price.amount_quote.amount)?
+                                / BigDecimal::from_str(&price.amount.amount)?;
                         let decimals_abs = decimals.abs();
 
-                        let power_value = BigDecimal::from(u64::pow(10, decimals_abs.try_into()?));
+                        let power_value = BigDecimal::from(u64::pow(
+                            10,
+                            decimals_abs.try_into()?,
+                        ));
 
                         if decimals > 0 {
                             value *= power_value;
@@ -56,10 +63,10 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
                         mp_assets.push(mp_asset);
                     }
                 }
-            }
+            },
             Err(err) => {
                 return Err(err);
-            }
+            },
         }
     }
 
@@ -80,10 +87,10 @@ pub async fn fetch_insert(app_state: AppState<State>, height: Option<String>) ->
                     Protocol: protocol.to_owned(),
                 };
                 mp_assets.push(mp_asset);
-            }
+            },
             None => {
                 error!("Lpn currency not found in protocol {}", &protocol);
-            }
+            },
         }
     }
 

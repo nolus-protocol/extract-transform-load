@@ -1,0 +1,14 @@
+binop_separator = "Front"
+format_code_in_doc_comments = true
+format_macro_bodies = true
+format_macro_matchers = true
+group_imports = "StdExternalCrate"
+hard_tabs = false
+imports_granularity = "Crate"
+match_block_trailing_comma = true
+max_width = 80
+newline_style = "Unix"
+tab_spaces = 4
+use_field_init_shorthand = true
+use_try_shorthand = true
+wrap_comments = true

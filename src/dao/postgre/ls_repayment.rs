@@ -7,7 +7,10 @@ use std::str::FromStr;
 type OptionDecimal = Option<BigDecimal>;
 
 impl Table<LS_Repayment> {
-    pub async fn isExists(&self, ls_repayment: &LS_Repayment) -> Result<bool, crate::error::Error> {
+    pub async fn isExists(
+        &self,
+        ls_repayment: &LS_Repayment,
+    ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 
@@ -119,8 +122,10 @@ impl Table<LS_Repayment> {
         &self,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<(BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal), crate::error::Error>
-    {
+    ) -> Result<
+        (BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal),
+        crate::error::Error,
+    > {
         let value: (
             OptionDecimal,
             OptionDecimal,
@@ -150,11 +155,16 @@ impl Table<LS_Repayment> {
             prinicap_stable,
         ) = value;
 
-        let prev_margin_stable = prev_margin_stable.unwrap_or(BigDecimal::from_str("0")?);
-        let prev_interest_stable = prev_interest_stable.unwrap_or(BigDecimal::from_str("0")?);
-        let current_margin_stable = current_margin_stable.unwrap_or(BigDecimal::from_str("0")?);
-        let current_interest_stable = current_interest_stable.unwrap_or(BigDecimal::from_str("0")?);
-        let prinicap_stable = prinicap_stable.unwrap_or(BigDecimal::from_str("0")?);
+        let prev_margin_stable =
+            prev_margin_stable.unwrap_or(BigDecimal::from_str("0")?);
+        let prev_interest_stable =
+            prev_interest_stable.unwrap_or(BigDecimal::from_str("0")?);
+        let current_margin_stable =
+            current_margin_stable.unwrap_or(BigDecimal::from_str("0")?);
+        let current_interest_stable =
+            current_interest_stable.unwrap_or(BigDecimal::from_str("0")?);
+        let prinicap_stable =
+            prinicap_stable.unwrap_or(BigDecimal::from_str("0")?);
 
         Ok((
             prev_margin_stable,

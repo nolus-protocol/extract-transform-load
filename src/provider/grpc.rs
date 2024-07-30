@@ -3,24 +3,29 @@ use std::str::FromStr;
 use crate::configuration::Config;
 use crate::error::Error;
 use crate::types::{
-    AdminProtocolExtendType, AdminProtocolType, Balance, LPP_Price, LP_Pool_Config_State_Type,
-    LP_Pool_State_Type, LS_State_Type, Prices,
+    AdminProtocolExtendType, AdminProtocolType, Balance, LPP_Price,
+    LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type, Prices,
 };
 
 use anyhow::{Context, Result};
 use cosmos_sdk_proto::cosmos::bank::v1beta1::{
-    query_client::QueryClient as BankQueryClient, QueryAllBalancesRequest, QueryAllBalancesResponse,
+    query_client::QueryClient as BankQueryClient, QueryAllBalancesRequest,
+    QueryAllBalancesResponse,
 };
 use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::GetTxRequest;
 use cosmos_sdk_proto::{
-    cosmos::base::{query::v1beta1::PageRequest, tendermint::v1beta1::GetBlockByHeightRequest},
+    cosmos::base::{
+        query::v1beta1::PageRequest,
+        tendermint::v1beta1::GetBlockByHeightRequest,
+    },
     cosmwasm::wasm::v1::QuerySmartContractStateRequest,
 };
 
 use cosmrs::{
     proto::cosmos::base::tendermint::v1beta1::{
-        service_client::ServiceClient as TendermintServiceClient, GetLatestBlockRequest,
+        service_client::ServiceClient as TendermintServiceClient,
+        GetLatestBlockRequest,
     },
     proto::cosmos::tx::v1beta1::service_client::ServiceClient as TxServiceClient,
     proto::cosmwasm::wasm::v1::query_client::QueryClient as WasmQueryClient,
@@ -48,15 +53,18 @@ impl Grpc {
             .origin(uri.clone())
             .keep_alive_while_idle(true);
 
-        let channel = endpoint
-            .connect()
-            .await
-            .with_context(|| format!(r#"Failed to parse gRPC URI, "{uri}"!"#))?;
+        let channel = endpoint.connect().await.with_context(|| {
+            format!(r#"Failed to parse gRPC URI, "{uri}"!"#)
+        })?;
 
-        let tendermint_client = TendermintServiceClient::with_origin(channel.clone(), uri.clone());
-        let wasm_query_client = WasmQueryClient::with_origin(channel.clone(), uri.clone());
-        let bank_query_client = BankQueryClient::with_origin(channel.clone(), uri.clone());
-        let tx_service_client = TxServiceClient::with_origin(channel.clone(), uri.clone());
+        let tendermint_client =
+            TendermintServiceClient::with_origin(channel.clone(), uri.clone());
+        let wasm_query_client =
+            WasmQueryClient::with_origin(channel.clone(), uri.clone());
+        let bank_query_client =
+            BankQueryClient::with_origin(channel.clone(), uri.clone());
+        let tx_service_client =
+            TxServiceClient::with_origin(channel.clone(), uri.clone());
 
         Ok(Grpc {
             config,
@@ -69,9 +77,11 @@ impl Grpc {
     }
 
     pub async fn get_latest_block(&self) -> Result<i64> {
-        const QUERY_NODE_INFO_ERROR: &str = "Failed to query node's latest block!";
+        const QUERY_NODE_INFO_ERROR: &str =
+            "Failed to query node's latest block!";
 
-        const MISSING_BLOCK_INFO_ERROR: &str = "Query response doesn't contain block information!";
+        const MISSING_BLOCK_INFO_ERROR: &str =
+            "Query response doesn't contain block information!";
 
         const MISSING_BLOCK_HEADER_INFO_ERROR: &str =
             "Query response doesn't contain block's header information!";
@@ -95,10 +105,14 @@ impl Grpc {
             })
     }
 
-    pub async fn get_block(&self, height: i64) -> Result<Vec<TxResponse>, Error> {
+    pub async fn get_block(
+        &self,
+        height: i64,
+    ) -> Result<Vec<TxResponse>, Error> {
         const QUERY_NODE_INFO_ERROR: &str = "Failed to query node's block!";
 
-        const MISSING_BLOCK_INFO_ERROR: &str = "Query response doesn't contain block information!";
+        const MISSING_BLOCK_INFO_ERROR: &str =
+            "Query response doesn't contain block information!";
 
         const MISSING_BLOCK_DATA_INFO_ERROR: &str =
             "Query response doesn't contain block's data information!";
@@ -114,7 +128,9 @@ impl Grpc {
                     .into_inner()
                     .sdk_block
                     .context(MISSING_BLOCK_INFO_ERROR)
-                    .and_then(|block| block.data.context(MISSING_BLOCK_DATA_INFO_ERROR))
+                    .and_then(|block| {
+                        block.data.context(MISSING_BLOCK_DATA_INFO_ERROR)
+                    })
                     .map(|item| item.txs)
             })?;
         let mut tasks = vec![];
@@ -167,7 +183,10 @@ impl Grpc {
         Ok(tx)
     }
 
-    pub async fn get_balances(&self, address: String) -> Result<QueryAllBalancesResponse, Error> {
+    pub async fn get_balances(
+        &self,
+        address: String,
+    ) -> Result<QueryAllBalancesResponse, Error> {
         const QUERY_NODE_INFO_ERROR: &str = "Failed to query all balances!";
 
         let data = QueryAllBalancesRequest {
@@ -200,8 +219,10 @@ impl Grpc {
         let bytes = format!(r#"{{"protocol": "{}"}}"#, protocol).to_owned();
         let bytes = bytes.as_bytes();
 
-        const QUERY_CONTRACT_ERROR: &str = "Failed to run query against contract!";
-        const PARCE_MESSAGE_ERROR: &str = "Failed to parse message query against contract!";
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against contract!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against contract!";
 
         let data = self
             .wasm_query_client
@@ -233,8 +254,10 @@ impl Grpc {
     ) -> Result<(Prices, String), Error> {
         let bytes = b"{\"prices\": {}}";
 
-        const QUERY_CONTRACT_ERROR: &str = "Failed to run query against oracle contract!";
-        const PARCE_MESSAGE_ERROR: &str = "Failed to parse message query against oracle contract!";
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against oracle contract!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against oracle contract!";
 
         let data = self
             .wasm_query_client
@@ -246,14 +269,20 @@ impl Grpc {
             .await
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
-            .and_then(|data| serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR))?;
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
         Ok((data, protocol))
     }
 
-    pub async fn get_admin_config(&self, contract: String) -> Result<Vec<String>, Error> {
+    pub async fn get_admin_config(
+        &self,
+        contract: String,
+    ) -> Result<Vec<String>, Error> {
         let bytes = b"{\"protocols\": {}}";
 
-        const QUERY_CONTRACT_ERROR: &str = "Failed to run query against admin config contract!";
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against admin config contract!";
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against admin config contract!";
 
@@ -267,16 +296,23 @@ impl Grpc {
             .await
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
-            .and_then(|data| serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR))?;
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
 
         Ok(data)
     }
 
-    pub async fn get_lease_state(&self, contract: String) -> Result<LS_State_Type, Error> {
+    pub async fn get_lease_state(
+        &self,
+        contract: String,
+    ) -> Result<LS_State_Type, Error> {
         let bytes = b"{}";
 
-        const QUERY_CONTRACT_ERROR: &str = "Failed to run query lease contract!";
-        const PARCE_MESSAGE_ERROR: &str = "Failed to parse message query lease contract!";
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query lease contract!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query lease contract!";
 
         let data = self
             .wasm_query_client
@@ -288,7 +324,9 @@ impl Grpc {
             .await
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
-            .and_then(|data| serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR))?;
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
 
         Ok(data)
     }
@@ -298,11 +336,14 @@ impl Grpc {
         contract: String,
         address: String,
     ) -> Result<Balance, Error> {
-        let request = format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
+        let request =
+            format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
         let bytes = request.as_bytes();
 
-        const QUERY_CONTRACT_ERROR: &str = "Failed to run query balance contract!";
-        const PARCE_MESSAGE_ERROR: &str = "Failed to parse message query balance contract!";
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query balance contract!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query balance contract!";
 
         let data = self
             .wasm_query_client
@@ -314,16 +355,22 @@ impl Grpc {
             .await
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
-            .and_then(|data| serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR))?;
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
 
         Ok(data)
     }
 
-    pub async fn get_lpp_price(&self, contract: String) -> Result<LPP_Price, Error> {
+    pub async fn get_lpp_price(
+        &self,
+        contract: String,
+    ) -> Result<LPP_Price, Error> {
         let bytes = b"{\"price\": []}";
 
         const QUERY_CONTRACT_ERROR: &str = "Failed to run query lpp contract!";
-        const PARCE_MESSAGE_ERROR: &str = "Failed to parse message query lpp contract!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query lpp contract!";
 
         let data = self
             .wasm_query_client
@@ -335,7 +382,9 @@ impl Grpc {
             .await
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
-            .and_then(|data| serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR))?;
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
 
         Ok(data)
     }
@@ -346,7 +395,8 @@ impl Grpc {
     ) -> Result<LP_Pool_State_Type, Error> {
         let bytes = b"{\"lpp_balance\": []}";
 
-        const QUERY_CONTRACT_ERROR: &str = "Failed to run query lpp balance state contract!";
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query lpp balance state contract!";
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp balance state contract!";
 
@@ -360,7 +410,9 @@ impl Grpc {
             .await
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
-            .and_then(|data| serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR))?;
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
 
         Ok(data)
     }
@@ -371,7 +423,8 @@ impl Grpc {
     ) -> Result<LP_Pool_Config_State_Type, Error> {
         let bytes = b"{\"config\": []}";
 
-        const QUERY_CONTRACT_ERROR: &str = "Failed to run query lpp config state contract!";
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query lpp config state contract!";
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp config state contract!";
 
@@ -385,7 +438,9 @@ impl Grpc {
             .await
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
-            .and_then(|data| serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR))?;
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
 
         Ok(data)
     }

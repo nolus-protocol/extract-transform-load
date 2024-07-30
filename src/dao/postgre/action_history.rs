@@ -4,7 +4,10 @@ use chrono::{DateTime, Utc};
 use sqlx::error::Error;
 
 impl Table<Action_History> {
-    pub async fn insert(&self, data: Action_History) -> Result<QueryResult, Error> {
+    pub async fn insert(
+        &self,
+        data: Action_History,
+    ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
             INSERT INTO action_history (action_type, created_at)

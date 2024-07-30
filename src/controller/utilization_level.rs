@@ -26,7 +26,11 @@ async fn index(
             let data = state
                 .database
                 .lp_pool_state
-                .get_utilization_level(protocol.contracts.lpp.to_owned(), skip, limit)
+                .get_utilization_level(
+                    protocol.contracts.lpp.to_owned(),
+                    skip,
+                    limit,
+                )
                 .await?;
             let items: Vec<BigDecimal> = data
                 .iter()

@@ -19,7 +19,10 @@ pub async fn parse_and_insert(
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
     let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
-        Error::DecodeDateTimeError(format!("Wasm_LS_Liquidation date parse {}", at_sec))
+        Error::DecodeDateTimeError(format!(
+            "Wasm_LS_Liquidation date parse {}",
+            at_sec
+        ))
     })?;
     let lease = app_state
         .database
@@ -28,7 +31,9 @@ pub async fn parse_and_insert(
         .await?;
 
     let protocol = match lease {
-        Some(lease) => app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id),
+        Some(lease) => {
+            app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id)
+        },
         None => None,
     };
 
@@ -47,10 +52,18 @@ pub async fn parse_and_insert(
             .await?,
         LS_timestamp: at,
         LS_transaction_type: item.r#type,
-        LS_prev_margin_stable: BigDecimal::from_str(&item.prev_margin_interest)?,
-        LS_prev_interest_stable: BigDecimal::from_str(&item.prev_loan_interest)?,
-        LS_current_margin_stable: BigDecimal::from_str(&item.curr_margin_interest)?,
-        LS_current_interest_stable: BigDecimal::from_str(&item.curr_loan_interest)?,
+        LS_prev_margin_stable: BigDecimal::from_str(
+            &item.prev_margin_interest,
+        )?,
+        LS_prev_interest_stable: BigDecimal::from_str(
+            &item.prev_loan_interest,
+        )?,
+        LS_current_margin_stable: BigDecimal::from_str(
+            &item.curr_margin_interest,
+        )?,
+        LS_current_interest_stable: BigDecimal::from_str(
+            &item.curr_loan_interest,
+        )?,
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
     };
 

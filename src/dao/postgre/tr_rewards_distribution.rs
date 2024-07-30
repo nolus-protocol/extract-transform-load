@@ -140,7 +140,9 @@ impl Table<TR_Rewards_Distribution> {
         Ok(amnt)
     }
 
-    pub async fn get_distributed(&self) -> Result<BigDecimal, crate::error::Error> {
+    pub async fn get_distributed(
+        &self,
+    ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,)  = sqlx::query_as(
             r#"
                 SELECT SUM("TR_Rewards_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Rewards_Distribution"

@@ -13,7 +13,9 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::{
     client::IntoClientRequest, error::Error as WS_ERROR, Message,
 };
-use tokio_tungstenite::{connect_async_with_config, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{
+    connect_async_with_config, MaybeTlsStream, WebSocketStream,
+};
 use tracing::{error, info};
 
 #[derive(Debug)]
@@ -35,7 +37,10 @@ impl Event {
             let res = tokio::try_join!(start_sync(app), self.init());
 
             if let Err(e) = res {
-                error!("WS disconnected with error {}, try to reconnecting...", e);
+                error!(
+                    "WS disconnected with error {}, try to reconnecting...",
+                    e
+                );
             }
 
             sleep(Duration::from_secs(
@@ -48,7 +53,8 @@ impl Event {
     async fn init(&mut self) -> Result<(), Error> {
         info!("WS connect successfully");
 
-        let req = (self.app_state.config.websocket_host.as_str()).into_client_request()?;
+        let req = (self.app_state.config.websocket_host.as_str())
+            .into_client_request()?;
 
         let (socket, _response) = connect_async_with_config(
             req,
@@ -72,8 +78,12 @@ impl Event {
         write.send(Message::Text(new_block_event)).await?;
 
         loop {
-            if (self.parse_message(read.next().await, &mut write).await).is_err() {
-                return Err(Error::ServerError(String::from("WS disconnected")));
+            if (self.parse_message(read.next().await, &mut write).await)
+                .is_err()
+            {
+                return Err(Error::ServerError(String::from(
+                    "WS disconnected",
+                )));
             };
         }
     }
@@ -87,7 +97,10 @@ impl Event {
     async fn parse_message(
         &self,
         message: Option<Result<Message, WS_ERROR>>,
-        write: &mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+        write: &mut SplitSink<
+            WebSocketStream<MaybeTlsStream<TcpStream>>,
+            Message,
+        >,
     ) -> Result<(), Error> {
         if let Some(message) = message {
             let message = message;
@@ -96,14 +109,14 @@ impl Event {
                     match msg_obj {
                         Message::Text(msg_obj) => {
                             self.to_json(msg_obj, write).await?;
-                        }
+                        },
                         Message::Binary(_)
                         | Message::Ping(_)
                         | Message::Pong(_)
                         | Message::Close(_)
-                        | Message::Frame(_) => {}
+                        | Message::Frame(_) => {},
                     };
-                }
+                },
                 Err(e) => return Err(Error::WS(e)),
             }
         };
@@ -113,14 +126,17 @@ impl Event {
     async fn to_json(
         &self,
         message: String,
-        write: &mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+        write: &mut SplitSink<
+            WebSocketStream<MaybeTlsStream<TcpStream>>,
+            Message,
+        >,
     ) -> Result<(), Error> {
         let item = serde_json::from_str::<BlockValue>(&message)?;
 
         match item {
             BlockValue::Block(block) => {
                 helpers::insert_block(self.app_state.clone(), block).await?;
-            }
+            },
             BlockValue::NewBlock(block) => {
                 if let Some(item) = block.result.data {
                     let height = item.value.block.header.height;
@@ -130,7 +146,7 @@ impl Event {
                         .block_results_event(height.parse()?, 0);
                     write.send(Message::Text(event)).await?;
                 }
-            }
+            },
         }
 
         Ok(())
