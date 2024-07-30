@@ -5,25 +5,33 @@ use crate::{
 use tokio::{time, time::Duration};
 
 pub async fn set_total_value_locked(app_state: AppState<State>) -> Result<(), Error> {
-    let osmosis_usdc = if let Some((osmosis_usdc, _)) = app_state.config.lp_pools.first() {
+    let neutron_usdc_noble = if let Some((neutron_usdc_noble, _)) = app_state.config.lp_pools.get(0)
+    {
+        neutron_usdc_noble
+    } else {
+        return Err(Error::ProtocolError(String::from("neutron_usdc_noble")));
+    };
+
+    let osmosis_usdc = if let Some((osmosis_usdc, _)) = app_state.config.lp_pools.get(1) {
         osmosis_usdc
     } else {
         return Err(Error::ProtocolError(String::from("osmosis_usdc")));
     };
 
     let neutron_usdc_axelar =
-        if let Some((neutron_usdc_axelar, _)) = app_state.config.lp_pools.get(1) {
+        if let Some((neutron_usdc_axelar, _)) = app_state.config.lp_pools.get(2) {
             neutron_usdc_axelar
         } else {
             return Err(Error::ProtocolError(String::from("neutron_usdc_axelar")));
         };
 
-    let osmosis_usdc_noble = if let Some((osmosis_usdc_noble, _)) = app_state.config.lp_pools.get(2)
+    let osmosis_usdc_noble = if let Some((osmosis_usdc_noble, _)) = app_state.config.lp_pools.get(3)
     {
         osmosis_usdc_noble
     } else {
         return Err(Error::ProtocolError(String::from("osmosis_usdc_noble")));
     };
+
     let data = app_state
         .database
         .ls_state
@@ -31,6 +39,7 @@ pub async fn set_total_value_locked(app_state: AppState<State>) -> Result<(), Er
             osmosis_usdc.to_owned(),
             neutron_usdc_axelar.to_owned(),
             osmosis_usdc_noble.to_owned(),
+            neutron_usdc_noble.to_owned(),
         )
         .await?;
     let cache = &app_state.clone().cache;
