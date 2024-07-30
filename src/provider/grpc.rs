@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::configuration::Config;
@@ -12,19 +11,21 @@ use anyhow::{Context, Result};
 use cosmos_sdk_proto::cosmos::bank::v1beta1::{
     query_client::QueryClient as BankQueryClient, QueryAllBalancesRequest, QueryAllBalancesResponse,
 };
+use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
+use cosmos_sdk_proto::cosmos::tx::v1beta1::GetTxRequest;
 use cosmos_sdk_proto::{
     cosmos::base::{query::v1beta1::PageRequest, tendermint::v1beta1::GetBlockByHeightRequest},
-    cosmwasm::wasm::v1::{MsgExecuteContract, QuerySmartContractStateRequest},
+    cosmwasm::wasm::v1::QuerySmartContractStateRequest,
 };
 
 use cosmrs::{
     proto::cosmos::base::tendermint::v1beta1::{
         service_client::ServiceClient as TendermintServiceClient, GetLatestBlockRequest,
     },
+    proto::cosmos::tx::v1beta1::service_client::ServiceClient as TxServiceClient,
     proto::cosmwasm::wasm::v1::query_client::QueryClient as WasmQueryClient,
-    Tx,
 };
-use serde_json::Value;
+use futures::future::join_all;
 use sha256::digest;
 use tonic::transport::{Channel, Endpoint, Uri};
 
@@ -32,46 +33,38 @@ use tonic::transport::{Channel, Endpoint, Uri};
 pub struct Grpc {
     pub config: Config,
     pub endpoint: Endpoint,
-    pub tendermint: TendermintServiceClient<Channel>,
+    pub tendermint_client: TendermintServiceClient<Channel>,
     pub wasm_query_client: WasmQueryClient<Channel>,
     pub bank_query_client: BankQueryClient<Channel>,
+    pub tx_service_client: TxServiceClient<Channel>,
 }
 
 impl Grpc {
     pub async fn new(config: Config) -> Result<Grpc, Error> {
         let host = config.grpc_host.to_owned();
-        let uri = match Uri::from_str(&host) {
-            Ok(uri) => uri,
-            Err(e) => {
-                return Err(Error::ServerError(format!("Invalid grpc uri: {}", e)));
-            }
-        };
+        let uri = Uri::from_str(&host).context("Invalid grpc url")?;
 
         let endpoint = Endpoint::from(uri.clone())
             .origin(uri.clone())
             .keep_alive_while_idle(true);
 
-        let channel = match endpoint
+        let channel = endpoint
             .connect()
             .await
-            .with_context(|| format!(r#"Failed to parse gRPC URI, "{uri}"!"#))
-        {
-            Ok(c) => c,
-            Err(e) => {
-                return Err(Error::ServerError(format!("Channel error: {}", e)));
-            }
-        };
+            .with_context(|| format!(r#"Failed to parse gRPC URI, "{uri}"!"#))?;
 
-        let tendermint = TendermintServiceClient::with_origin(channel.clone(), uri.clone());
+        let tendermint_client = TendermintServiceClient::with_origin(channel.clone(), uri.clone());
         let wasm_query_client = WasmQueryClient::with_origin(channel.clone(), uri.clone());
         let bank_query_client = BankQueryClient::with_origin(channel.clone(), uri.clone());
+        let tx_service_client = TxServiceClient::with_origin(channel.clone(), uri.clone());
 
         Ok(Grpc {
             config,
             endpoint,
-            tendermint: tendermint.clone(),
+            tendermint_client: tendermint_client.clone(),
             wasm_query_client: wasm_query_client.clone(),
             bank_query_client: bank_query_client.clone(),
+            tx_service_client: tx_service_client.clone(),
         })
     }
 
@@ -83,7 +76,7 @@ impl Grpc {
         const MISSING_BLOCK_HEADER_INFO_ERROR: &str =
             "Query response doesn't contain block's header information!";
 
-        self.tendermint
+        self.tendermint_client
             .clone()
             .get_latest_block(GetLatestBlockRequest {})
             .await
@@ -102,7 +95,7 @@ impl Grpc {
             })
     }
 
-    pub async fn get_block(&self) -> Result<(), Error> {
+    pub async fn get_block(&self, height: i64) -> Result<Vec<TxResponse>, Error> {
         const QUERY_NODE_INFO_ERROR: &str = "Failed to query node's block!";
 
         const MISSING_BLOCK_INFO_ERROR: &str = "Query response doesn't contain block information!";
@@ -110,9 +103,8 @@ impl Grpc {
         const MISSING_BLOCK_DATA_INFO_ERROR: &str =
             "Query response doesn't contain block's data information!";
 
-        let height = 6359919;
         let txs = self
-            .tendermint
+            .tendermint_client
             .clone()
             .get_block_by_height(GetBlockByHeightRequest { height })
             .await
@@ -125,22 +117,54 @@ impl Grpc {
                     .and_then(|block| block.data.context(MISSING_BLOCK_DATA_INFO_ERROR))
                     .map(|item| item.txs)
             })?;
+        let mut tasks = vec![];
+        let mut tx_responses = vec![];
 
         for tx in txs {
-            let k = digest(&tx);
-            let c = Tx::from_bytes(&tx)?;
+            let hash = digest(&tx);
+            tasks.push(self.get_tx(hash));
+            // let c = Tx::from_bytes(&tx)?;
+            // for msg in c.body.messages {
+            //     dbg!(&msg);
+            //     let m = msg.to_msg::<MsgExecuteContract>()?;
+            //     dbg!(&m);
+            //     let s = String::from_utf8(m.msg)?;
+            //     dbg!(&s);
+            //     let json: HashMap<String, Value> = serde_json::from_str(&s)?;
 
-            for msg in c.body.messages {
-                let m = msg.to_msg::<MsgExecuteContract>()?;
-                let s = String::from_utf8(m.msg)?;
-                let json: HashMap<String, Value> = serde_json::from_str(&s)?;
-                dbg!(json);
-            }
-            // dbg!(c);
+            //     dbg!(&json);
+            // }
+            // // dbg!(c);
             // dbg!(k);
         }
 
-        Ok(())
+        for item in join_all(tasks).await {
+            tx_responses.push(item?);
+        }
+
+        Ok(tx_responses)
+    }
+
+    pub async fn get_tx(&self, tx_hash: String) -> Result<TxResponse, Error> {
+        let hash = tx_hash.to_string();
+
+        let tx = self
+            .tx_service_client
+            .clone()
+            .get_tx(GetTxRequest { hash: tx_hash })
+            .await
+            .context(format!(
+                "Query response doesn't contain tx information {}",
+                hash
+            ))
+            .and_then(|response| {
+                response.into_inner().tx_response.context(format!(
+                    "Query response doesn't contain tx information tx_response {}",
+                    hash
+                ))
+            })?;
+
+        Ok(tx)
     }
 
     pub async fn get_balances(&self, address: String) -> Result<QueryAllBalancesResponse, Error> {

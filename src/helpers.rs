@@ -15,6 +15,8 @@ use crate::{
 };
 
 use crate::types::{BlockBody, EventData, LS_Close_Position_Type};
+use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
+use cosmrs::proto::tendermint::v0_34::abci::{Event, EventAttribute};
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
 use tracing::error;
@@ -63,7 +65,7 @@ pub fn parse_tuple_string(data: String) -> Vec<String> {
     items
 }
 
-pub fn parse_wasm_ls_open(attributes: &Vec<Attributes>) -> Result<LS_Opening_Type, Error> {
+pub fn parse_wasm_ls_open(attributes: &Vec<EventAttribute>) -> Result<LS_Opening_Type, Error> {
     let ls_open = pasrse_data(attributes)?;
     let c = LS_Opening_Type {
         id: ls_open
@@ -111,7 +113,7 @@ pub fn parse_wasm_ls_open(attributes: &Vec<Attributes>) -> Result<LS_Opening_Typ
     Ok(c)
 }
 
-pub fn parse_wasm_ls_close(attributes: &Vec<Attributes>) -> Result<LS_Closing_Type, Error> {
+pub fn parse_wasm_ls_close(attributes: &Vec<EventAttribute>) -> Result<LS_Closing_Type, Error> {
     let ls_close = pasrse_data(attributes)?;
     let c = LS_Closing_Type {
         id: ls_close
@@ -127,7 +129,9 @@ pub fn parse_wasm_ls_close(attributes: &Vec<Attributes>) -> Result<LS_Closing_Ty
     Ok(c)
 }
 
-pub fn parse_wasm_ls_repayment(attributes: &Vec<Attributes>) -> Result<LS_Repayment_Type, Error> {
+pub fn parse_wasm_ls_repayment(
+    attributes: &Vec<EventAttribute>,
+) -> Result<LS_Repayment_Type, Error> {
     let ls_repayment = pasrse_data(attributes)?;
     let items = parseInterestValues(&ls_repayment)?;
     let c = LS_Repayment_Type {
@@ -169,7 +173,7 @@ pub fn parse_wasm_ls_repayment(attributes: &Vec<Attributes>) -> Result<LS_Repaym
 }
 
 pub fn parse_wasm_ls_close_position(
-    attributes: &Vec<Attributes>,
+    attributes: &Vec<EventAttribute>,
 ) -> Result<Option<LS_Close_Position_Type>, Error> {
     let ls_close_position = pasrse_data(attributes)?;
     if ls_close_position.contains_key("height") {
@@ -227,7 +231,7 @@ pub fn parse_wasm_ls_close_position(
 }
 
 pub fn parse_wasm_ls_liquidation(
-    attributes: &Vec<Attributes>,
+    attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Liquidation_Type, Error> {
     let ls_liquidation = pasrse_data(attributes)?;
     let items = parseInterestValues(&ls_liquidation)?;
@@ -306,7 +310,7 @@ pub fn parseInterestValues(value: &HashMap<String, String>) -> Result<Interest_v
     })
 }
 
-pub fn parse_wasm_lp_deposit(attributes: &Vec<Attributes>) -> Result<LP_Deposit_Type, Error> {
+pub fn parse_wasm_lp_deposit(attributes: &Vec<EventAttribute>) -> Result<LP_Deposit_Type, Error> {
     let deposit = pasrse_data(attributes)?;
 
     let c = LP_Deposit_Type {
@@ -343,7 +347,7 @@ pub fn parse_wasm_lp_deposit(attributes: &Vec<Attributes>) -> Result<LP_Deposit_
     Ok(c)
 }
 
-pub fn parse_wasm_lp_withdraw(attributes: &Vec<Attributes>) -> Result<LP_Withdraw_Type, Error> {
+pub fn parse_wasm_lp_withdraw(attributes: &Vec<EventAttribute>) -> Result<LP_Withdraw_Type, Error> {
     let lp_withdraw = pasrse_data(attributes)?;
 
     let c = LP_Withdraw_Type {
@@ -384,7 +388,7 @@ pub fn parse_wasm_lp_withdraw(attributes: &Vec<Attributes>) -> Result<LP_Withdra
     Ok(c)
 }
 
-pub fn parse_wasm_tr_profit(attributes: &Vec<Attributes>) -> Result<TR_Profit_Type, Error> {
+pub fn parse_wasm_tr_profit(attributes: &Vec<EventAttribute>) -> Result<TR_Profit_Type, Error> {
     let tr_profit = pasrse_data(attributes)?;
 
     let c = TR_Profit_Type {
@@ -410,7 +414,7 @@ pub fn parse_wasm_tr_profit(attributes: &Vec<Attributes>) -> Result<TR_Profit_Ty
 }
 
 pub fn parse_wasm_tr_rewards_distribution(
-    attributes: &Vec<Attributes>,
+    attributes: &Vec<EventAttribute>,
 ) -> Result<TR_Rewards_Distribution_Type, Error> {
     let tr_rewards_distribution = pasrse_data(attributes)?;
 
@@ -440,11 +444,14 @@ pub fn parse_wasm_tr_rewards_distribution(
     Ok(c)
 }
 
-fn pasrse_data(attributes: &Vec<Attributes>) -> Result<HashMap<String, String>, Error> {
+fn pasrse_data(attributes: &Vec<EventAttribute>) -> Result<HashMap<String, String>, Error> {
     let mut data: HashMap<String, String> = HashMap::new();
     for attribute in attributes {
-        let value = attribute.value.to_owned().unwrap_or(String::from(""));
-        let key = attribute.key.to_owned();
+        let value = String::from_utf8(attribute.value.to_vec())?;
+        let key = String::from_utf8(attribute.key.to_vec())?;
+        if data.contains_key(&key) {
+            return Err(Error::DuplicateField(key));
+        }
         data.insert(key, value);
     }
 
@@ -453,7 +460,7 @@ fn pasrse_data(attributes: &Vec<Attributes>) -> Result<HashMap<String, String>, 
 
 pub async fn parse_event(
     app_state: AppState<State>,
-    event: &EventData,
+    event: &Event,
     index: usize,
     tx: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
@@ -509,27 +516,54 @@ pub async fn parse_event(
     Ok(())
 }
 
-pub async fn insert_block(app_state: AppState<State>, data: BlockBody) -> Result<bool, Error> {
-    if let Some(error) = data.error {
-        error!("Synchroniziation error: {}", &error.data);
-        return Err(Error::ProtocolError(format!(
-            "code: {}, message: {}, data: {}",
-            error.code, error.message, error.data
-        )));
-    }
+// pub async fn insert_block(app_state: AppState<State>, data: BlockBody) -> Result<bool, Error> {
+//     if let Some(error) = data.error {
+//         error!("Synchroniziation error: {}", &error.data);
+//         return Err(Error::ProtocolError(format!(
+//             "code: {}, message: {}, data: {}",
+//             error.code, error.message, error.data
+//         )));
+//     }
 
-    let height = data.result.height.parse::<i64>()?;
+//     let height = data.result.height.parse::<i64>()?;
+//     let block = app_state.database.block.get_one(height).await?;
+
+//     if block.is_none() {
+//         let mut tx = app_state.database.pool.begin().await?;
+//         if let Some(items) = data.result.txs_results {
+//             for tx_results in items {
+//                 if let Some(events) = tx_results.events {
+//                     for (index, event) in events.iter().enumerate() {
+//                         parse_event(app_state.clone(), event, index, &mut tx).await?;
+//                     }
+//                 }
+//             }
+//         }
+
+//         app_state
+//             .database
+//             .block
+//             .insert(Block { id: height }, &mut tx)
+//             .await?;
+
+//         tx.commit().await?;
+//     }
+
+//     Ok(true)
+// }
+
+pub async fn insert_txs(
+    app_state: AppState<State>,
+    txs: Vec<TxResponse>,
+    height: i64,
+) -> Result<bool, Error> {
     let block = app_state.database.block.get_one(height).await?;
 
     if block.is_none() {
         let mut tx = app_state.database.pool.begin().await?;
-        if let Some(items) = data.result.txs_results {
-            for tx_results in items {
-                if let Some(events) = tx_results.events {
-                    for (index, event) in events.iter().enumerate() {
-                        parse_event(app_state.clone(), event, index, &mut tx).await?;
-                    }
-                }
+        for tx_results in txs {
+            for (index, event) in tx_results.events.iter().enumerate() {
+                parse_event(app_state.clone(), event, index, &mut tx).await?;
             }
         }
 

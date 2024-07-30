@@ -4,7 +4,7 @@ use std::time::Duration;
 use crate::{
     configuration::Config,
     error::{self, Error},
-    types::{AbciBody, BlockQuery, CoinGeckoInfo, CoinGeckoMarketData, CoinGeckoPrice},
+    types::{CoinGeckoInfo, CoinGeckoMarketData, CoinGeckoPrice},
 };
 
 #[derive(Debug)]
@@ -80,15 +80,15 @@ impl HTTP {
     //     Ok(height)
     // }
 
-    pub async fn get_block(&self, url: &str) -> Result<BlockQuery, Error> {
-        let json = self
-            .http
-            .get(url)
-            .send()
-            .await?
-            .json::<BlockQuery>()
-            .await?;
+    // pub async fn get_block(&self, url: &str) -> Result<BlockQuery, Error> {
+    //     let json = self
+    //         .http
+    //         .get(url)
+    //         .send()
+    //         .await?
+    //         .json::<BlockQuery>()
+    //         .await?;
 
-        Ok(json)
-    }
+    //     Ok(json)
+    // }
 }

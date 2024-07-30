@@ -140,27 +140,24 @@ async fn start_aggregation_tasks(app_state: AppState<State>) -> Result<(), Error
     .await?
 }
 
-async fn test2(app_state: AppState<State>) -> Result<(), Error> {
-    let mut interval = time::interval(Duration::from_secs(10));
+// async fn test2(app_state: AppState<State>) -> Result<(), Error> {
+//     let mut interval = time::interval(Duration::from_secs(10));
 
-    tokio::spawn(async move {
-        loop {
-            interval.tick().await;
-            let app = app_state.clone();
-            let grpc = &app.grpc;
+//     tokio::spawn(async move {
+//         loop {
+//             interval.tick().await;
+//             let app = app_state.clone();
+//             let grpc = &app.grpc;
 
-            match grpc
-                .get_balances(String::from("nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q"))
-                .await
-            {
-                Ok(data) => {
-                    dbg!(data);
-                }
-                Err(err) => {
-                    dbg!(err);
-                }
-            };
-        }
-    })
-    .await?
-}
+//             match grpc.parse_block(6406972).await {
+//                 Ok(data) => {
+//                     dbg!(data);
+//                 }
+//                 Err(err) => {
+//                     dbg!(err);
+//                 }
+//             };
+//         }
+//     })
+//     .await?
+// }

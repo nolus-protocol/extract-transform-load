@@ -65,6 +65,9 @@ pub enum Error {
     #[error("Field not exists: {0}")]
     FieldNotExist(String),
 
+    #[error("Duplicate field: {0}")]
+    DuplicateField(String),
+
     #[error("Configuration error: {0}")]
     ConfigurationError(String),
 
@@ -110,7 +113,7 @@ pub enum Error {
     #[error("Http error: {0}")]
     HttpError(#[from] HTTP_ERROR),
 
-    #[error("ANYHOW_ERROR error: {0}")]
+    #[error("{0}")]
     AnyHowError(#[from] ANYHOW_ERROR),
 
     #[error("Report error: {0}")]
