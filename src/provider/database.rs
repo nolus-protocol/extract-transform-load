@@ -5,7 +5,7 @@ use crate::model::{
     Action_History, Block, LP_Deposit, LP_Lender_State, LP_Pool, LP_Pool_State,
     LP_Withdraw, LS_Closing, LS_Liquidation, LS_Opening, LS_Repayment,
     LS_State, MP_Asset, MP_Asset_Mapping, MP_Asset_State, MP_Yield, PL_State,
-    TR_Profit, TR_Rewards_Distribution, TR_State,
+    Raw_Message, TR_Profit, TR_Rewards_Distribution, TR_State,
 };
 use crate::model::{LS_Close_Position, Table};
 
@@ -32,6 +32,7 @@ pub struct DatabasePool {
     pub pl_state: Table<PL_State>,
     pub action_history: Table<Action_History>,
     pub ls_close_position: Table<LS_Close_Position>,
+    pub raw_message: Table<Raw_Message>,
     pub pool: PoolType,
 }
 
@@ -67,7 +68,8 @@ impl<'c> DatabasePool {
             mp_yield: Table::new(pool.clone()),
             pl_state: Table::new(pool.clone()),
             ls_close_position: Table::new(pool.clone()),
-            action_history: Table::new(pool),
+            action_history: Table::new(pool.clone()),
+            raw_message: Table::new(pool),
         })
     }
 

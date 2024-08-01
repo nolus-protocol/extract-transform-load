@@ -147,8 +147,8 @@ impl Handler {
     }
 
     async fn insert_tx(&mut self, height: i64) -> Result<(), Error> {
-        let txs = self.grpc.get_block(height).await?;
-        insert_txs(self.app_state.clone(), txs, height).await?;
+        let (txs, time_stamp) = self.grpc.get_block(height).await?;
+        insert_txs(self.app_state.clone(), txs, height, time_stamp).await?;
         Ok(())
     }
 }

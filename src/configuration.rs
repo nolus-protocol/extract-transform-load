@@ -103,6 +103,7 @@ impl State {
             "tr_rewards_distribution.sql",
             "tr_state.sql",
             "ls_close_position.sql",
+            "raw_message.sql",
         ];
 
         let dir = env!("CARGO_MANIFEST_DIR");

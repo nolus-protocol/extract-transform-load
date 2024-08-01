@@ -26,10 +26,7 @@ impl Event {
             let app = self.app_state.clone();
 
             if let Err(e) = tokio::try_join!(self.init(), start_sync(app)) {
-                error!(
-                    "WS disconnected with error {}, try to reconnecting...",
-                    e
-                );
+                error!("{}", e);
             }
 
             sleep(Duration::from_secs(
@@ -96,8 +93,9 @@ impl Event {
 
     async fn insert_tx(&mut self, height: u64) -> Result<(), Error> {
         let height = height.try_into()?;
-        let txs = self.app_state.grpc.get_block(height).await?;
-        insert_txs(self.app_state.clone(), txs, height).await?;
+        let (txs, time_stamp) =
+            self.app_state.grpc.prepare_block(height).await?;
+        insert_txs(self.app_state.clone(), txs, height, time_stamp).await?;
         Ok(())
     }
 }

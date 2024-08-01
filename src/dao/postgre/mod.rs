@@ -17,6 +17,7 @@ mod mp_asset_state;
 mod mp_yield;
 mod path;
 mod pl_state;
+mod raw_message;
 mod tr_profit;
 mod tr_rewards_distribution;
 mod tr_state;

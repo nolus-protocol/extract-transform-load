@@ -146,3 +146,6 @@ sudo -S systemctl daemon-reload
 sudo -S systemctl enable etl
 sudo systemctl start etl
 ```
+
+CREATE INDEX raw_message_from ON raw_message("from", "timestamp");
+CREATE INDEX raw_message_to ON raw_message("to", "timestamp");

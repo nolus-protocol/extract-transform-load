@@ -5,7 +5,7 @@ use crate::handler::{
     wasm_ls_liquidation, wasm_ls_open, wasm_ls_repay, wasm_tr_profit,
     wasm_tr_rewards,
 };
-use crate::model::Block;
+use crate::model::{Block, Raw_Message};
 use crate::{
     error::Error,
     types::{
@@ -16,8 +16,12 @@ use crate::{
 };
 
 use crate::types::LS_Close_Position_Type;
+use anyhow::Context;
 use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
+use cosmos_sdk_proto::Timestamp;
 use cosmrs::proto::tendermint::v0_34::abci::{Event, EventAttribute};
+
+use cosmrs::{Any, Tx};
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
 
@@ -612,12 +616,24 @@ pub async fn insert_txs(
     app_state: AppState<State>,
     txs: Vec<TxResponse>,
     height: i64,
+    time_stamp: Timestamp,
 ) -> Result<bool, Error> {
     let block = app_state.database.block.get_one(height).await?;
 
     if block.is_none() {
         let mut tx = app_state.database.pool.begin().await?;
         for tx_results in txs {
+            let tx_data =
+                tx_results.tx.context("could not find Any message")?;
+            parse_raw_tx(
+                app_state.clone(),
+                tx_results.txhash,
+                tx_data,
+                height,
+                time_stamp.clone(),
+                &mut tx,
+            )
+            .await?;
             for (index, event) in tx_results.events.iter().enumerate() {
                 parse_event(app_state.clone(), event, index, &mut tx).await?;
             }
@@ -633,6 +649,40 @@ pub async fn insert_txs(
     }
 
     Ok(true)
+}
+
+pub async fn parse_raw_tx(
+    app_state: AppState<State>,
+    tx_hash: String,
+    tx_data: Any,
+    height: i64,
+    time_stamp: Timestamp,
+    tx: &mut Transaction<'_, DataBase>,
+) -> Result<(), Error> {
+    let c = Tx::from_bytes(&tx_data.value)?;
+    for (index, msg) in c.body.messages.iter().enumerate() {
+        let fee = c.auth_info.fee.clone();
+        let memo = c.body.memo.to_owned();
+        let msg: Result<Raw_Message, anyhow::Error> = Raw_Message::from_any(
+            index.try_into()?,
+            msg.clone(),
+            tx_hash.to_owned(),
+            height,
+            time_stamp.clone(),
+            fee,
+            memo,
+        );
+
+        if let Ok(msg) = msg {
+            let isExists =
+                app_state.database.raw_message.isExists(&msg).await?;
+            if !isExists {
+                app_state.database.raw_message.insert(msg, tx).await?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Debug)]

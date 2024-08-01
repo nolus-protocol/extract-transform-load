@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::time::Duration;
 
 use crate::configuration::Config;
 use crate::error::Error;
@@ -7,13 +8,14 @@ use crate::types::{
     LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type, Prices,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use cosmos_sdk_proto::cosmos::bank::v1beta1::{
     query_client::QueryClient as BankQueryClient, QueryAllBalancesRequest,
     QueryAllBalancesResponse,
 };
 use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::GetTxRequest;
+use cosmos_sdk_proto::Timestamp;
 use cosmos_sdk_proto::{
     cosmos::base::{
         query::v1beta1::PageRequest,
@@ -32,6 +34,7 @@ use cosmrs::{
 };
 use futures::future::join_all;
 use sha256::digest;
+use tokio::time::sleep;
 use tonic::transport::{Channel, Endpoint, Uri};
 
 #[derive(Debug)]
@@ -76,6 +79,47 @@ impl Grpc {
         })
     }
 
+    pub async fn prepare_block(
+        &self,
+        height: i64,
+    ) -> Result<(Vec<TxResponse>, Timestamp), anyhow::Error> {
+        let mut sync = 5;
+        loop {
+            let blocks = self.get_block(height).await;
+            match blocks {
+                Ok((data, time_stamp)) => {
+                    return Ok((data, time_stamp));
+                },
+                Err(err) => {
+                    let s = tonic::Status::from_error(err.try_into()?);
+                    let message = s.message();
+                    match s.code() {
+                        tonic::Code::NotFound | tonic::Code::InvalidArgument => {},
+                        s => {
+                            return Err(anyhow!("Error")).with_context(|| {
+                                format!(
+                                "cloud not parse transaction block {}, message: {}, code {}",
+                                &height, &message, &s
+                            )
+                            })
+                        },
+                    }
+                },
+            };
+
+            if sync <= 0 {
+                break;
+            }
+
+            sync -= 1;
+            sleep(Duration::from_secs(1)).await;
+        }
+
+        return Err(anyhow!("Error")).with_context(|| {
+            format!("transaction not found in block in 5 getters {}", &height)
+        });
+    }
+
     pub async fn get_latest_block(&self) -> Result<i64> {
         const QUERY_NODE_INFO_ERROR: &str =
             "Failed to query node's latest block!";
@@ -108,7 +152,7 @@ impl Grpc {
     pub async fn get_block(
         &self,
         height: i64,
-    ) -> Result<Vec<TxResponse>, Error> {
+    ) -> Result<(Vec<TxResponse>, Timestamp), Error> {
         const QUERY_NODE_INFO_ERROR: &str = "Failed to query node's block!";
 
         const MISSING_BLOCK_INFO_ERROR: &str =
@@ -117,7 +161,7 @@ impl Grpc {
         const MISSING_BLOCK_DATA_INFO_ERROR: &str =
             "Query response doesn't contain block's data information!";
 
-        let txs = self
+        let block = self
             .tendermint_client
             .clone()
             .get_block_by_height(GetBlockByHeightRequest { height })
@@ -128,16 +172,22 @@ impl Grpc {
                     .into_inner()
                     .sdk_block
                     .context(MISSING_BLOCK_INFO_ERROR)
-                    .and_then(|block| {
-                        block.data.context(MISSING_BLOCK_DATA_INFO_ERROR)
-                    })
-                    .map(|item| item.txs)
             })?;
+
+        let time_stamp = block
+            .header
+            .context("Missing header in block")?
+            .time
+            .context("Missing header time in block")?;
+
+        let txs = block.data.context(MISSING_BLOCK_DATA_INFO_ERROR)?.txs;
+
         let mut tasks = vec![];
         let mut tx_responses = vec![];
 
         for tx in txs {
             let hash = digest(&tx);
+
             tasks.push(self.get_tx(hash));
             // let c = Tx::from_bytes(&tx)?;
             // for msg in c.body.messages {
@@ -158,7 +208,7 @@ impl Grpc {
             tx_responses.push(item?);
         }
 
-        Ok(tx_responses)
+        Ok((tx_responses, time_stamp))
     }
 
     pub async fn get_tx(&self, tx_hash: String) -> Result<TxResponse, Error> {
