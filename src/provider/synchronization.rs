@@ -1,25 +1,11 @@
 use crate::configuration::{AppState, State};
 use crate::error::Error;
-use crate::helpers;
-use crate::types::BlockBody;
+use crate::helpers::insert_txs;
+use crate::provider::Grpc;
 
-use futures::{
-    stream::{SplitSink, SplitStream},
-    SinkExt, StreamExt,
-};
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
-use std::sync::Arc;
-use tokio::net::TcpStream;
-use tokio_tungstenite::tungstenite::client::IntoClientRequest;
-use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
-use tokio_tungstenite::{
-    MaybeTlsStream, WebSocketStream,
-    {
-        connect_async_with_config,
-        tungstenite::{error::Error as WS_ERROR, Message},
-    },
-};
-use tracing::info;
+use anyhow::Context;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tracing::{error, info};
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
 
@@ -40,7 +26,7 @@ impl Synchronization {
     pub async fn get_params<'a>(
         &self,
         app_state: &AppState<State>,
-    ) -> Result<(i16, Vec<(i64, i64)>, i64), Error> {
+    ) -> Result<(i16, Vec<(i64, i64)>), Error> {
         let block_model = &app_state.database.block;
         let first_block = block_model.get_first_block().await.ok();
         let last_block = block_model.get_last_block().await.ok();
@@ -50,7 +36,6 @@ impl Synchronization {
 
         let mut parts: Vec<(i64, i64)> = Vec::new();
         let start_block = 1;
-        let mut total = 0;
 
         if first_block.is_none() {
             parts.push((start_block, block_height + 1));
@@ -64,21 +49,17 @@ impl Synchronization {
             }
         }
 
-        for (start, end) in &parts {
-            total = total + end - start;
-        }
-
-        Ok((threads_count, parts, total))
+        Ok((threads_count, parts))
     }
 
     pub async fn run<'a>(
         &self,
         app_state: AppState<State>,
     ) -> Result<(), Error> {
-        let (threads_count, parts, total) = self.get_params(&app_state).await?;
+        let (threads_count, parts) = self.get_params(&app_state).await?;
 
         if !self.is_running() {
-            self.start_tasks(threads_count, parts, total, app_state.clone())
+            self.start_tasks(threads_count, parts, app_state.clone())
                 .await?;
         }
 
@@ -89,13 +70,11 @@ impl Synchronization {
         &self,
         threads_count: i16,
         mut parts: Vec<(i64, i64)>,
-        total: i64,
         app_state: AppState<State>,
     ) -> Result<(), Error> {
         let mut thread_parts: Vec<Vec<(i64, i64)>> =
             vec![vec![]; (threads_count - 1) as usize];
         let mut hs = Vec::new();
-        let counter = Arc::new(AtomicI64::new(0));
 
         for range in &mut parts {
             let count = (range.1 - range.0) / threads_count as i64;
@@ -115,7 +94,6 @@ impl Synchronization {
 
         for p in thread_parts {
             let config = app_state.clone();
-            let counter = counter.clone();
             let mut child_total = 0;
 
             for (start, end) in &p {
@@ -126,8 +104,8 @@ impl Synchronization {
                 self.set_running(true);
 
                 hs.push(tokio::spawn(async move {
-                    let mut handler = Handler::new(config);
-                    handler.init(p, counter, total).await
+                    let mut handler = Handler::new(config).await?;
+                    handler.init(p).await
                 }));
             }
         }
@@ -145,139 +123,33 @@ impl Synchronization {
 
 #[derive(Debug)]
 struct Handler {
-    id: u64,
     pub app_state: AppState<State>,
+    pub grpc: Grpc,
 }
 
 impl Handler {
-    pub fn new(app_state: AppState<State>) -> Self {
-        Handler { app_state, id: 1 }
+    pub async fn new(app_state: AppState<State>) -> Result<Self, Error> {
+        let config = app_state.config.clone();
+        let grpc: Grpc =
+            Grpc::new(config).await.context("unable to start grpc")?;
+        Ok(Handler { app_state, grpc })
     }
-    async fn init(
-        &mut self,
-        mut parts: Vec<(i64, i64)>,
-        counter: Arc<AtomicI64>,
-        total: i64,
-    ) -> Result<(), Error> {
-        let req = (self.app_state.config.websocket_host.as_str())
-            .into_client_request()?;
-        let (socket, _response) = connect_async_with_config(
-            req,
-            #[allow(deprecated)]
-            Some(WebSocketConfig {
-                max_send_queue: None,
-                write_buffer_size: 256 * 1024,
-                max_write_buffer_size: usize::MAX,
-                max_message_size: Some(256 << 20),
-                max_frame_size: Some(64 << 20),
-                accept_unmasked_frames: false,
-            }),
-            false,
-        )
-        .await?;
-        let (mut write, mut read) = socket.split();
-
-        self.stream_handler(&mut parts, &mut write, &mut read, counter, total)
-            .await?;
-
-        Ok(())
-    }
-
-    async fn stream_handler(
-        &mut self,
-        parts: &mut Vec<(i64, i64)>,
-        write: &mut SplitSink<
-            WebSocketStream<MaybeTlsStream<TcpStream>>,
-            Message,
-        >,
-        read: &mut SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
-        counter: Arc<AtomicI64>,
-        total: i64,
-    ) -> Result<(), Error> {
-        self.set_tasks(parts, write, counter.clone(), total).await?;
-        loop {
-            match self.parse_message(read.next().await).await {
-                Ok(proceed) => {
-                    if proceed
-                        && !self
-                            .set_tasks(parts, write, counter.clone(), total)
-                            .await?
-                    {
-                        break;
-                    }
-                },
-                Err(e) => {
-                    return Err(Error::ParseMessage(e.to_string()));
-                },
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn set_tasks(
-        &mut self,
-        parts: &mut Vec<(i64, i64)>,
-        write: &mut SplitSink<
-            WebSocketStream<MaybeTlsStream<TcpStream>>,
-            Message,
-        >,
-        counter: Arc<AtomicI64>,
-        _total: i64,
-    ) -> Result<bool, Error> {
-        for range in &mut *parts {
+    pub async fn init(&mut self, parts: Vec<(i64, i64)>) -> Result<(), Error> {
+        for range in &parts {
             let (start, end) = range;
-            let mut r = *start..*end;
-            if let Some(i) = r.next() {
-                let id = self.get_id();
-                let event = self.app_state.config.block_results_event(i, id);
-
-                write.send(Message::Text(event)).await?;
-                counter.fetch_add(1, Ordering::SeqCst);
-
-                range.0 += 1;
-                return Ok(true);
+            let r = *start..*end;
+            for height in r {
+                self.insert_tx(height).await?;
             }
         }
 
-        Ok(false)
+        Ok(())
     }
 
-    async fn parse_message(
-        &self,
-        message: Option<Result<Message, WS_ERROR>>,
-    ) -> Result<bool, Error> {
-        if let Some(message) = message {
-            let message = message;
-            match message {
-                Ok(msg_obj) => {
-                    match msg_obj {
-                        Message::Text(msg_obj) => {
-                            return self.to_json(msg_obj).await;
-                        },
-                        Message::Binary(_)
-                        | Message::Ping(_)
-                        | Message::Pong(_)
-                        | Message::Close(_)
-                        | Message::Frame(_) => {},
-                    };
-                },
-                Err(e) => return Err(Error::WS(e)),
-            }
-        };
-        Ok(false)
-    }
-
-    async fn to_json(&self, message: String) -> Result<bool, Error> {
-        let item = serde_json::from_str::<BlockBody>(&message)?;
-        Ok(true)
-        // helpers::insert_block(self.app_state.clone(), item).await
-    }
-
-    fn get_id(&mut self) -> u64 {
-        let id = self.id;
-        self.id += 1;
-        id
+    async fn insert_tx(&mut self, height: i64) -> Result<(), Error> {
+        let (txs, time_stamp) = self.grpc.get_block(height).await?;
+        insert_txs(self.app_state.clone(), txs, height, time_stamp).await?;
+        Ok(())
     }
 }
 
@@ -287,13 +159,15 @@ pub async fn start_sync(app_state: AppState<State>) -> Result<(), Error> {
         match sync_manager.run(app_state).await {
             Ok(()) => {
                 sync_manager.set_running(false);
+                info!("Synchronization completed");
             },
             Err(e) => {
                 sync_manager.set_running(false);
+                error!("Synchronization error {}", e);
+
                 return Err(e);
             },
         };
-        info!("Synchronization completed");
         Ok(())
     })
     .await?

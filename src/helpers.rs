@@ -576,45 +576,9 @@ pub async fn parse_event(
     Ok(())
 }
 
-// pub async fn insert_block(app_state: AppState<State>, data: BlockBody) -> Result<bool, Error> {
-//     if let Some(error) = data.error {
-//         error!("Synchroniziation error: {}", &error.data);
-//         return Err(Error::ProtocolError(format!(
-//             "code: {}, message: {}, data: {}",
-//             error.code, error.message, error.data
-//         )));
-//     }
-
-//     let height = data.result.height.parse::<i64>()?;
-//     let block = app_state.database.block.get_one(height).await?;
-
-//     if block.is_none() {
-//         let mut tx = app_state.database.pool.begin().await?;
-//         if let Some(items) = data.result.txs_results {
-//             for tx_results in items {
-//                 if let Some(events) = tx_results.events {
-//                     for (index, event) in events.iter().enumerate() {
-//                         parse_event(app_state.clone(), event, index, &mut tx).await?;
-//                     }
-//                 }
-//             }
-//         }
-
-//         app_state
-//             .database
-//             .block
-//             .insert(Block { id: height }, &mut tx)
-//             .await?;
-
-//         tx.commit().await?;
-//     }
-
-//     Ok(true)
-// }
-
 pub async fn insert_txs(
     app_state: AppState<State>,
-    txs: Vec<TxResponse>,
+    txs: Vec<Option<TxResponse>>,
     height: i64,
     time_stamp: Timestamp,
 ) -> Result<bool, Error> {
@@ -623,19 +587,22 @@ pub async fn insert_txs(
     if block.is_none() {
         let mut tx = app_state.database.pool.begin().await?;
         for tx_results in txs {
-            let tx_data =
-                tx_results.tx.context("could not find Any message")?;
-            parse_raw_tx(
-                app_state.clone(),
-                tx_results.txhash,
-                tx_data,
-                height,
-                time_stamp.clone(),
-                &mut tx,
-            )
-            .await?;
-            for (index, event) in tx_results.events.iter().enumerate() {
-                parse_event(app_state.clone(), event, index, &mut tx).await?;
+            if let Some(tx_results) = tx_results {
+                let tx_data =
+                    tx_results.tx.context("could not find Any message")?;
+                parse_raw_tx(
+                    app_state.clone(),
+                    tx_results.txhash,
+                    tx_data,
+                    height,
+                    time_stamp.clone(),
+                    &mut tx,
+                )
+                .await?;
+                for (index, event) in tx_results.events.iter().enumerate() {
+                    parse_event(app_state.clone(), event, index, &mut tx)
+                        .await?;
+                }
             }
         }
 
@@ -684,41 +651,6 @@ pub async fn parse_raw_tx(
     }
 
     Ok(())
-}
-
-#[derive(Debug)]
-pub enum MessageType {
-    NewEvent,
-}
-
-impl fmt::Display for MessageType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            MessageType::NewEvent => write!(f, "tendermint/event/NewBlock"),
-        }
-    }
-}
-
-impl From<MessageType> for String {
-    fn from(value: MessageType) -> Self {
-        match value {
-            MessageType::NewEvent => String::from("tendermint/event/NewBlock"),
-        }
-    }
-}
-
-impl FromStr for MessageType {
-    type Err = io::Error;
-
-    fn from_str(value: &str) -> Result<MessageType, Self::Err> {
-        match value {
-            "tendermint/event/NewBlock" => Ok(MessageType::NewEvent),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Message Type not supported",
-            )),
-        }
-    }
 }
 
 #[derive(Debug)]

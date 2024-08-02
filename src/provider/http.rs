@@ -77,24 +77,4 @@ impl HTTP {
             .await?;
         Ok(json)
     }
-
-    // pub async fn get_latest_block(&self) -> Result<i64, Error> {
-    //     let url = self.config.get_abci_info_url();
-    //     let json = self.http.get(url).send().await?.json::<AbciBody>().await?;
-    //     let height: i64 = json.result.response.last_block_height.parse()?;
-
-    //     Ok(height)
-    // }
-
-    // pub async fn get_block(&self, url: &str) -> Result<BlockQuery, Error> {
-    //     let json = self
-    //         .http
-    //         .get(url)
-    //         .send()
-    //         .await?
-    //         .json::<BlockQuery>()
-    //         .await?;
-
-    //     Ok(json)
-    // }
 }

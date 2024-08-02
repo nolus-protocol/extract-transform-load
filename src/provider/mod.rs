@@ -1,11 +1,11 @@
 mod database;
-mod event_new;
+mod event;
 mod grpc;
 mod http;
-mod synchronization_new;
+mod synchronization;
 
 pub use database::DatabasePool;
-pub use event_new::Event;
+pub use event::Event;
 pub use grpc::Grpc;
 pub use http::HTTP;
-pub use synchronization_new::Synchronization;
+pub use synchronization::Synchronization;

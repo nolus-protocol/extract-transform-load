@@ -32,10 +32,10 @@ use cosmrs::{
     proto::cosmos::tx::v1beta1::service_client::ServiceClient as TxServiceClient,
     proto::cosmwasm::wasm::v1::query_client::QueryClient as WasmQueryClient,
 };
-use futures::future::join_all;
 use sha256::digest;
 use tokio::time::sleep;
 use tonic::transport::{Channel, Endpoint, Uri};
+use tracing::error;
 
 #[derive(Debug)]
 pub struct Grpc {
@@ -54,6 +54,7 @@ impl Grpc {
 
         let endpoint = Endpoint::from(uri.clone())
             .origin(uri.clone())
+            .concurrency_limit(1024)
             .keep_alive_while_idle(true);
 
         let channel = endpoint.connect().await.with_context(|| {
@@ -82,7 +83,7 @@ impl Grpc {
     pub async fn prepare_block(
         &self,
         height: i64,
-    ) -> Result<(Vec<TxResponse>, Timestamp), anyhow::Error> {
+    ) -> Result<(Vec<Option<TxResponse>>, Timestamp), anyhow::Error> {
         let mut sync = 5;
         loop {
             let blocks = self.get_block(height).await;
@@ -152,7 +153,7 @@ impl Grpc {
     pub async fn get_block(
         &self,
         height: i64,
-    ) -> Result<(Vec<TxResponse>, Timestamp), Error> {
+    ) -> Result<(Vec<Option<TxResponse>>, Timestamp), Error> {
         const QUERY_NODE_INFO_ERROR: &str = "Failed to query node's block!";
 
         const MISSING_BLOCK_INFO_ERROR: &str =
@@ -182,55 +183,52 @@ impl Grpc {
 
         let txs = block.data.context(MISSING_BLOCK_DATA_INFO_ERROR)?.txs;
 
-        let mut tasks = vec![];
         let mut tx_responses = vec![];
 
         for tx in txs {
             let hash = digest(&tx);
 
-            tasks.push(self.get_tx(hash));
-            // let c = Tx::from_bytes(&tx)?;
-            // for msg in c.body.messages {
-            //     dbg!(&msg);
-            //     let m = msg.to_msg::<MsgExecuteContract>()?;
-            //     dbg!(&m);
-            //     let s = String::from_utf8(m.msg)?;
-            //     dbg!(&s);
-            //     let json: HashMap<String, Value> = serde_json::from_str(&s)?;
-
-            //     dbg!(&json);
-            // }
-            // // dbg!(c);
-            // dbg!(k);
-        }
-
-        for item in join_all(tasks).await {
-            tx_responses.push(item?);
+            tx_responses.push(self.get_tx(hash).await?);
         }
 
         Ok((tx_responses, time_stamp))
     }
 
-    pub async fn get_tx(&self, tx_hash: String) -> Result<TxResponse, Error> {
+    pub async fn get_tx(
+        &self,
+        tx_hash: String,
+    ) -> Result<Option<TxResponse>, Error> {
         let hash = tx_hash.to_string();
 
         let tx = self
             .tx_service_client
             .clone()
             .get_tx(GetTxRequest { hash: tx_hash })
-            .await
+            .await;
+
+        if let Err(err) = &tx {
+            match err.code() {
+                tonic::Code::Internal => {
+                    error!("tx decode with internal error: {}", err);
+                    return Ok(None);
+                },
+                _ => {},
+            }
+        }
+        let tx = tx
             .context(format!(
                 "Query response doesn't contain tx information {}",
                 hash
             ))
             .and_then(|response| {
-                response.into_inner().tx_response.context(format!(
-                    "Query response doesn't contain tx information tx_response {}",
-                    hash
-                ))
+                let data = response.into_inner();
+                data.tx_response.context(format!(
+                "Query response doesn't contain tx information tx_response {}",
+                hash
+            ))
             })?;
 
-        Ok(tx)
+        Ok(Some(tx))
     }
 
     pub async fn get_balances(
