@@ -17,5 +17,6 @@ pub mod revenue;
 pub mod supplied_borrowed_series;
 pub mod total_tx_value;
 pub mod total_value_locked;
+pub mod txs;
 pub mod utilization_level;
 pub mod version;

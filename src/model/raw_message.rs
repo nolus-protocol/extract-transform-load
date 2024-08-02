@@ -1,6 +1,6 @@
 use std::{fmt, io, str::FromStr};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use base64::prelude::*;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
@@ -18,16 +18,14 @@ use cosmos_sdk_proto::{
     },
     Timestamp,
 };
-use cosmrs::{
-    tx::{Fee, MessageExt},
-    Any,
-};
-use serde_json::{json, Value};
+use cosmrs::{tx::Fee, Any};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::FromRow;
 
 use crate::types::MsgReceivePacket;
 
-#[derive(Debug, FromRow, Default)]
+#[derive(Debug, FromRow, Default, Serialize, Deserialize)]
 pub struct Raw_Message {
     pub index: i32,
     pub from: String,
@@ -51,6 +49,7 @@ impl Raw_Message {
         time_stamp: Timestamp,
         fee: Fee,
         memo: String,
+        events: Vec<String>,
     ) -> Result<Raw_Message, anyhow::Error> {
         let k = CosmosTypes::from_str(&value.type_url)?;
         let seconds = time_stamp.seconds.try_into()?;
@@ -222,7 +221,25 @@ impl Raw_Message {
             CosmosTypes::MsgExecuteContract => {
                 let m = value.to_msg::<MsgExecuteContract>()?;
                 let msg: Value = serde_json::from_slice(&m.msg)?;
-                todo!();
+                for event in events {
+                    if let Some(_) = msg.get(event) {
+                        return Ok(Raw_Message {
+                            index,
+                            from: m.sender,
+                            to: m.contract,
+                            r#type: value.type_url,
+                            tx_hash,
+                            block,
+                            fee_amount: BigDecimal::from(fee_amount),
+                            fee_denom,
+                            timestamp: DateTime::from_timestamp(seconds, nanos)
+                                .context("Could not parse time stamp")?,
+                            value: BASE64_STANDARD.encode(value.value),
+                            memo,
+                        });
+                    }
+                }
+                Err(anyhow!("Missing event for subscribe in CosmosTypes::MsgExecuteContract"))
             },
         }
     }
@@ -348,7 +365,7 @@ impl FromStr for CosmosTypes {
             },
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
-                "CosmosTypes message not supported",
+                format!("CosmosTypes message not supported: {}", &value),
             )),
         }
     }

@@ -55,4 +55,24 @@ impl Table<Raw_Message> {
 
         Ok(false)
     }
+
+    pub async fn get(
+        &self,
+        address: String,
+        skip: i64,
+        limit: i64,
+    ) -> Result<Vec<Raw_Message>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT * FROM "raw_message" WHERE "from" = $1 OR "to" = $2 ORDER BY "timestamp" DESC OFFSET $3 LIMIT $4
+            "#,
+        )
+        .bind(&address)
+        .bind(&address)
+        .bind(skip)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
 }

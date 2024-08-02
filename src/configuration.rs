@@ -325,6 +325,7 @@ pub struct Config {
     pub lpn_decimals: i16,
     pub socket_reconnect_interval: u64,
     pub grpc_host: String,
+    pub events_subscribe: Vec<String>,
 }
 
 impl Config {
@@ -432,6 +433,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     let socket_reconnect_interval =
         env::var("SOCKET_RECONNECT_INTERVAL")?.parse()?;
     let grpc_host = env::var("GRPC_HOST")?.parse()?;
+    let events_subscribe: String = env::var("EVENTS_SUBSCRIBE")?.parse()?;
 
     let ignore_protocols = env::var("IGNORE_PROTOCOLS")?
         .split(',')
@@ -477,6 +479,11 @@ pub fn get_configuration() -> Result<Config, Error> {
         }
     }
 
+    let events_subscribe = events_subscribe
+        .split(',')
+        .map(|item| item.to_owned())
+        .collect();
+
     let config = Config {
         host,
         websocket_host,
@@ -514,6 +521,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         lpn_decimals,
         socket_reconnect_interval,
         grpc_host,
+        events_subscribe,
     };
 
     Ok(config)

@@ -163,5 +163,27 @@
     "description": "Max lp ratio",
     "url": "/api/max_lp_ratio/nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf",
     "type": "GET"
+  },
+  {
+    "description": "Tx history",
+    "url": "/api/txs",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      },
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 10,
+        "max": 100
+      }
+    ]
   }
 ]

@@ -671,6 +671,7 @@ pub async fn parse_raw_tx(
             time_stamp.clone(),
             fee,
             memo,
+            app_state.config.events_subscribe.clone(),
         );
 
         if let Ok(msg) = msg {

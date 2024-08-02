@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS "raw_message" (
   "index" INT NOT NULL,
-  "from" VARCHAR(64) NOT NULL,
-  "to" VARCHAR(64) NOT NULL,
+  "from" VARCHAR(128) NOT NULL,
+  "to" VARCHAR(128) NOT NULL,
   "tx_hash" VARCHAR(64) NOT NULL,
   "type" VARCHAR(64) NOT NULL,
   "value" TEXT,

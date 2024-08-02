@@ -25,7 +25,8 @@ psql
 ### Test config:
 
 ```
-HOST=pirin-cl.nolus.network:26657
+HOST=pirin-cl-arc.nolus.network:26612
+GRPC_HOST=https://pirin-cl-arc.nolus.network:26615
 DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
 SYNC_THREADS=16
 SUPPORTED_CURRENCIES=(nolus,NLS,6),(usd-coin,USDC,6),(osmosis,OSMO,6),(stride-staked-osmo,ST_OSMO,6),(cosmos,ATOM,6),(stride-staked-atom,ST_ATOM,6),(weth,WETH,18),(wrapped-bitcoin,WBTC,8),(akash-network,AKT,6),(axelar,AXL,6),(juno-network,JUNO,6),(evmos,EVMOS,18),(stkatom,STK_ATOM,6),(secret,SCRT,6),(crypto-com-chain,CRO,8),(celestia,TIA,6),(stargaze,STARS,6),(cosmos,Q_ATOM,6),(neutron-3,NTRN,6),(usd-coin,USDC_AXELAR,6),(dydx-chain,DYDX,18),(stride,STRD,6),(injective-protocol,INJ,18),(stride-staked-tia,ST_TIA,6),(jackal-protocol,JKL,6),(milkyway-staked-tia,MILK_TIA,6),(levana-protocol,LVN,6),(quasar-2,QSR,6),(picasso,PICA,12),(dymension,DYM,18),(usd-coin,USDC_NOBLE,6),(cudos,CUDOS,18)
@@ -51,6 +52,7 @@ SOCKET_RECONNECT_INTERVAL=5
 COINGECKO_INFO_URL=https://pro-api.coingecko.com/api/v3/coins/$0?localization=false&market_data=false&tickers=false&developer_data=false&community_data=false&x_cg_pro_api_key=PRO_API_KEY
 COINGECKO_PRICES_URL=https://pro-api.coingecko.com/api/v3/simple/price?ids=$0&vs_currencies=$1&x_cg_pro_api_key=PRO_API_KEY
 COINGECKO_MARKET_DATA_RANGE_URL=https://pro-api.coingecko.com/api/v3/coins/$0/market_chart/range?vs_currency=$1&from=$2&to=$3&x_cg_pro_api_key=PRO_API_KEY
+EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay
 ```
 
 ### Testnet config:
@@ -82,6 +84,7 @@ SOCKET_RECONNECT_INTERVAL=5
 COINGECKO_INFO_URL=https://pro-api.coingecko.com/api/v3/coins/$0?localization=false&market_data=false&tickers=false&developer_data=false&community_data=false&x_cg_pro_api_key=PRO_API_KEY
 COINGECKO_PRICES_URL=https://pro-api.coingecko.com/api/v3/simple/price?ids=$0&vs_currencies=$1&x_cg_pro_api_key=PRO_API_KEY
 COINGECKO_MARKET_DATA_RANGE_URL=https://pro-api.coingecko.com/api/v3/coins/$0/market_chart/range?vs_currency=$1&from=$2&to=$3&x_cg_pro_api_key=PRO_API_KEY
+EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay
 ```
 
 TESTNET CURRENCIES WHEN FEEDERS NOT RETURN CORRECT DATA
@@ -118,7 +121,7 @@ sudo systemctl enable etl
 ### BUILD
 
 ```
-cargo 1.75.0 or higher
+cargo 1.79.0 or higher
 
 cargo build --release
 ```
