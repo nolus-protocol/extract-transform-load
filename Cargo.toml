@@ -32,16 +32,17 @@ sqlx = { version = "0.8", features = [
     "bigdecimal",
 ] }
 
-cosmrs = { version = "0.17", default-features = false, features = [
+cosmrs = { version = "0.18", default-features = false, features = [
     "grpc",
     "bip32",
     "cosmwasm"
 ] }
 
-tonic = { version = "0.11", default_features = false, features = [
+tonic = { version = "0.12", default-features = false, features = [
     "channel",
     "gzip",
     "prost",
+    "tls",
     "tls-roots",
     "transport",
     "zstd",
@@ -49,7 +50,7 @@ tonic = { version = "0.11", default_features = false, features = [
 
 chrono = { version = "0.4.38", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
-cosmos-sdk-proto = { version = "0.22", features = ["cosmwasm", "grpc-transport"] }
+cosmos-sdk-proto = { version = "0.23", features = ["cosmwasm", "grpc-transport"] }
 prost = { version = "0.13", features = ["derive"] }
 bigdecimal = { version = "0.4", features = ["serde"] }
 tendermint-rpc = { version = "0.38.1", features = ["websocket-client"] }

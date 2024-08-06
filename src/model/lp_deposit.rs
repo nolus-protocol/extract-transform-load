@@ -3,6 +3,7 @@ use sqlx::{types::BigDecimal, FromRow};
 
 #[derive(Debug, FromRow)]
 pub struct LP_Deposit {
+    pub Tx_Hash: Option<String>,
     pub LP_deposit_height: i64,
     pub LP_deposit_idx: Option<i32>,
     pub LP_address_id: String,

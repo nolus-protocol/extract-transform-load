@@ -2,8 +2,8 @@ use crate::configuration::{AppState, State};
 use crate::dao::DataBase;
 use crate::handler::{
     wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close, wasm_ls_close_position,
-    wasm_ls_liquidation, wasm_ls_open, wasm_ls_repay, wasm_tr_profit,
-    wasm_tr_rewards,
+    wasm_ls_liquidation, wasm_ls_liquidation_warning, wasm_ls_open,
+    wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards,
 };
 use crate::model::{Block, Raw_Message};
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-use crate::types::LS_Close_Position_Type;
+use crate::types::{LS_Close_Position_Type, LS_Liquidation_Warning_Type};
 use anyhow::Context;
 use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
 use cosmos_sdk_proto::Timestamp;
@@ -285,6 +285,36 @@ pub fn parse_wasm_ls_liquidation(
     Ok(c)
 }
 
+pub fn parse_wasm_ls_liquidation_warning(
+    attributes: &Vec<EventAttribute>,
+) -> Result<LS_Liquidation_Warning_Type, Error> {
+    let ls_liquidation_warning = pasrse_data(attributes)?;
+    let c = LS_Liquidation_Warning_Type {
+        customer: ls_liquidation_warning
+            .get("customer")
+            .ok_or(Error::FieldNotExist(String::from("customer")))?
+            .to_owned(),
+        lease: ls_liquidation_warning
+            .get("lease")
+            .ok_or(Error::FieldNotExist(String::from("lease")))?
+            .to_owned(),
+        lease_asset: ls_liquidation_warning
+            .get("lease-asset")
+            .ok_or(Error::FieldNotExist(String::from("lease-asset")))?
+            .to_owned(),
+        level: ls_liquidation_warning
+            .get("level")
+            .ok_or(Error::FieldNotExist(String::from("level")))?
+            .to_owned(),
+        ltv: ls_liquidation_warning
+            .get("ltv")
+            .ok_or(Error::FieldNotExist(String::from("ltv")))?
+            .to_owned(),
+    };
+
+    Ok(c)
+}
+
 pub fn parseInterestValues(
     value: &HashMap<String, String>,
 ) -> Result<Interest_values, Error> {
@@ -489,20 +519,28 @@ pub async fn parse_event(
     app_state: AppState<State>,
     event: &Event,
     index: usize,
+    time_stamp: Timestamp,
+    tx_hash: String,
     tx: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     if let Ok(t) = EventsType::from_str(&event.r#type) {
         match t {
             EventsType::LS_Opening => {
                 let wasm_ls_opening = parse_wasm_ls_open(&event.attributes)?;
-                wasm_ls_open::parse_and_insert(&app_state, wasm_ls_opening, tx)
-                    .await?;
+                wasm_ls_open::parse_and_insert(
+                    &app_state,
+                    wasm_ls_opening,
+                    tx_hash,
+                    tx,
+                )
+                .await?;
             },
             EventsType::LS_Closing => {
                 let wasm_ls_closing = parse_wasm_ls_close(&event.attributes)?;
                 wasm_ls_close::parse_and_insert(
                     &app_state,
                     wasm_ls_closing,
+                    tx_hash,
                     tx,
                 )
                 .await?;
@@ -512,15 +550,20 @@ pub async fn parse_event(
                     parse_wasm_ls_close_position(&event.attributes)?;
                 if let Some(item) = wasm_ls_close_position {
                     wasm_ls_close_position::parse_and_insert(
-                        &app_state, item, tx,
+                        &app_state, item, tx_hash, tx,
                     )
                     .await?;
                 }
             },
             EventsType::LS_Repay => {
                 let wasm_ls_repay = parse_wasm_ls_repayment(&event.attributes)?;
-                wasm_ls_repay::parse_and_insert(&app_state, wasm_ls_repay, tx)
-                    .await?;
+                wasm_ls_repay::parse_and_insert(
+                    &app_state,
+                    wasm_ls_repay,
+                    tx_hash,
+                    tx,
+                )
+                .await?;
             },
             EventsType::LS_Liquidation => {
                 let wasm_ls_liquidation =
@@ -528,6 +571,19 @@ pub async fn parse_event(
                 wasm_ls_liquidation::parse_and_insert(
                     &app_state,
                     wasm_ls_liquidation,
+                    tx_hash,
+                    tx,
+                )
+                .await?;
+            },
+            EventsType::LS_Liquidation_Warning => {
+                let ls_liquidation_warning =
+                    parse_wasm_ls_liquidation_warning(&event.attributes)?;
+                wasm_ls_liquidation_warning::parse_and_insert(
+                    &app_state,
+                    ls_liquidation_warning,
+                    time_stamp,
+                    tx_hash,
                     tx,
                 )
                 .await?;
@@ -537,6 +593,7 @@ pub async fn parse_event(
                 wasm_lp_deposit::parse_and_insert(
                     &app_state,
                     wasm_lp_deposit,
+                    tx_hash,
                     tx,
                 )
                 .await?;
@@ -547,6 +604,7 @@ pub async fn parse_event(
                 wasm_lp_withdraw::parse_and_insert(
                     &app_state,
                     wasm_lp_withdraw,
+                    tx_hash,
                     tx,
                 )
                 .await?;
@@ -556,6 +614,7 @@ pub async fn parse_event(
                 wasm_tr_profit::parse_and_insert(
                     &app_state,
                     wasm_tr_profit,
+                    tx_hash,
                     tx,
                 )
                 .await?;
@@ -567,6 +626,7 @@ pub async fn parse_event(
                     &app_state,
                     wasm_tr_rewards_distribution,
                     index,
+                    tx_hash,
                     tx,
                 )
                 .await?;
@@ -588,6 +648,7 @@ pub async fn insert_txs(
         let mut tx = app_state.database.pool.begin().await?;
         for tx_results in txs {
             if let Some(tx_results) = tx_results {
+                let hash = tx_results.txhash.to_owned();
                 let tx_data =
                     tx_results.tx.context("could not find Any message")?;
                 parse_raw_tx(
@@ -600,8 +661,15 @@ pub async fn insert_txs(
                 )
                 .await?;
                 for (index, event) in tx_results.events.iter().enumerate() {
-                    parse_event(app_state.clone(), event, index, &mut tx)
-                        .await?;
+                    parse_event(
+                        app_state.clone(),
+                        event,
+                        index,
+                        time_stamp.clone(),
+                        hash.to_owned(),
+                        &mut tx,
+                    )
+                    .await?;
                 }
             }
         }
@@ -660,6 +728,8 @@ pub enum EventsType {
     LS_Close_Position,
     LS_Repay,
     LS_Liquidation,
+    LS_Liquidation_Warning,
+
     LP_deposit,
     LP_Withdraw,
     TR_Profit,
@@ -680,6 +750,9 @@ impl fmt::Display for EventsType {
             EventsType::LP_Withdraw => write!(f, "wasm-lp-withdraw"),
             EventsType::TR_Profit => write!(f, "wasm-tr-profit"),
             EventsType::TR_Rewards_Distribution => write!(f, "wasm-tr-rewards"),
+            EventsType::LS_Liquidation_Warning => {
+                write!(f, "wasm-ls-liquidation-warning")
+            },
         }
     }
 }
@@ -700,6 +773,9 @@ impl From<EventsType> for String {
             EventsType::TR_Rewards_Distribution => {
                 String::from("wasm-tr-rewards")
             },
+            EventsType::LS_Liquidation_Warning => {
+                String::from("wasm-ls-liquidation-warning")
+            },
         }
     }
 }
@@ -718,6 +794,9 @@ impl FromStr for EventsType {
             "wasm-lp-withdraw" => Ok(EventsType::LP_Withdraw),
             "wasm-tr-profit" => Ok(EventsType::TR_Profit),
             "wasm-tr-rewards" => Ok(EventsType::TR_Rewards_Distribution),
+            "wasm-ls-liquidation-warning" => {
+                Ok(EventsType::LS_Liquidation_Warning)
+            },
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Message Type not supported",

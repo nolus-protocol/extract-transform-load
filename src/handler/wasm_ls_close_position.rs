@@ -14,6 +14,7 @@ use crate::{
 pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: LS_Close_Position_Type,
+    tx_hash: String,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -39,6 +40,7 @@ pub async fn parse_and_insert(
     };
 
     let ls_close_position = LS_Close_Position {
+        Tx_Hash: Some(tx_hash),
         LS_position_height: item.height.parse()?,
         LS_position_idx: None,
         LS_contract_id: item.to,

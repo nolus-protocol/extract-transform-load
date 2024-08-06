@@ -14,6 +14,7 @@ use crate::{
 pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: LP_Deposit_Type,
+    tx_hash: String,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -27,6 +28,7 @@ pub async fn parse_and_insert(
     let protocol = app_state.get_protocol_by_pool_id(&item.to);
 
     let lp_deposit = LP_Deposit {
+        Tx_Hash: Some(tx_hash),
         LP_deposit_idx: None,
         LP_deposit_height: item.height.parse()?,
         LP_address_id: item.from.to_owned(),

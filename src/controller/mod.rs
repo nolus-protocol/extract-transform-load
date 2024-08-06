@@ -8,6 +8,7 @@ pub mod distributed;
 pub mod earn_apr;
 pub mod incentives_pool;
 pub mod leased_assets;
+pub mod leases;
 pub mod ls_opening;
 pub mod ls_openings;
 pub mod max_lp_ratio;

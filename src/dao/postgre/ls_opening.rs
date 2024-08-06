@@ -26,6 +26,21 @@ impl Table<LS_Opening> {
         .await?;
 
         if value > 0 {
+            sqlx::query(
+                r#"
+                    UPDATE 
+                        "LS_Opening" 
+                    SET 
+                        "Tx_Hash" = $1
+                    WHERE 
+                        "LS_contract_id" = $2
+                "#,
+            )
+            .bind(&ls_opening.Tx_Hash)
+            .bind(&ls_opening.LS_contract_id)
+            .execute(&self.pool)
+            .await?;
+
             return Ok(true);
         }
 
@@ -52,9 +67,10 @@ impl Table<LS_Opening> {
                 "LS_cltr_amnt_stable",
                 "LS_cltr_amnt_asset",
                 "LS_native_amnt_stable",
-                "LS_native_amnt_nolus"
+                "LS_native_amnt_nolus",
+                "Tx_Hash"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             "#,
         )
         .bind(&data.LS_contract_id)
@@ -70,6 +86,7 @@ impl Table<LS_Opening> {
         .bind(&data.LS_cltr_amnt_asset)
         .bind(&data.LS_native_amnt_stable)
         .bind(&data.LS_native_amnt_nolus)
+        .bind(&data.Tx_Hash)
         .execute(&mut **transaction)
         .await
     }
@@ -98,7 +115,8 @@ impl Table<LS_Opening> {
                 "LS_cltr_amnt_stable",
                 "LS_cltr_amnt_asset",
                 "LS_native_amnt_stable",
-                "LS_native_amnt_nolus"
+                "LS_native_amnt_nolus",
+                "Tx_Hash"
             )"#,
         );
 
@@ -115,7 +133,8 @@ impl Table<LS_Opening> {
                 .push_bind(&ls.LS_cltr_amnt_stable)
                 .push_bind(&ls.LS_cltr_amnt_asset)
                 .push_bind(&ls.LS_native_amnt_stable)
-                .push_bind(&ls.LS_native_amnt_nolus);
+                .push_bind(&ls.LS_native_amnt_nolus)
+                .push_bind(&ls.Tx_Hash);
         });
 
         let query = query_builder.build();
@@ -526,6 +545,47 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(lpp_address)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_leases_by_address(
+        &self,
+        address: String,
+        skip: i64,
+        limit: i64,
+    ) -> Result<Vec<LS_Opening>, Error> {
+        let data = sqlx::query_as(
+            r#"
+                SELECT
+                    a."LS_contract_id",
+                    a."LS_address_id",
+                    a."LS_asset_symbol",
+                    a."LS_interest",
+                    a."LS_timestamp",
+                    a."LS_loan_pool_id",
+                    a."LS_loan_amnt_stable",
+                    a."LS_loan_amnt_asset",
+                    a."LS_cltr_symbol",
+                    a."LS_cltr_amnt_stable",
+                    a."LS_cltr_amnt_asset",
+                    a."LS_native_amnt_stable",
+                    a."LS_native_amnt_nolus"
+                FROM
+                    "LS_Opening" as a
+                LEFT JOIN 
+                    "LS_Closing" as b 
+                ON a."LS_contract_id" = b."LS_contract_id" 
+                WHERE
+                    a."LS_address_id" = $1
+                ORDER BY "LS_timestamp" DESC
+                OFFSET $2 LIMIT $3
+            "#,
+        )
+        .bind(address)
+        .bind(skip)
+        .bind(limit)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)

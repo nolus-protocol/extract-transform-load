@@ -3,9 +3,10 @@ use crate::dao::{PoolOption, PoolType};
 use crate::error::Error;
 use crate::model::{
     Action_History, Block, LP_Deposit, LP_Lender_State, LP_Pool, LP_Pool_State,
-    LP_Withdraw, LS_Closing, LS_Liquidation, LS_Opening, LS_Repayment,
-    LS_State, MP_Asset, MP_Asset_Mapping, MP_Asset_State, MP_Yield, PL_State,
-    Raw_Message, TR_Profit, TR_Rewards_Distribution, TR_State,
+    LP_Withdraw, LS_Closing, LS_Liquidation, LS_Liquidation_Warning,
+    LS_Opening, LS_Repayment, LS_State, MP_Asset, MP_Asset_Mapping,
+    MP_Asset_State, MP_Yield, PL_State, Raw_Message, TR_Profit,
+    TR_Rewards_Distribution, TR_State,
 };
 use crate::model::{LS_Close_Position, Table};
 
@@ -16,6 +17,7 @@ pub struct DatabasePool {
     pub ls_closing: Table<LS_Closing>,
     pub ls_repayment: Table<LS_Repayment>,
     pub ls_liquidation: Table<LS_Liquidation>,
+    pub ls_liquidation_warning: Table<LS_Liquidation_Warning>,
     pub ls_state: Table<LS_State>,
     pub lp_deposit: Table<LP_Deposit>,
     pub lp_withdraw: Table<LP_Withdraw>,
@@ -54,6 +56,7 @@ impl<'c> DatabasePool {
             ls_closing: Table::new(pool.clone()),
             ls_repayment: Table::new(pool.clone()),
             ls_liquidation: Table::new(pool.clone()),
+            ls_liquidation_warning: Table::new(pool.clone()),
             ls_state: Table::new(pool.clone()),
             lp_deposit: Table::new(pool.clone()),
             lp_withdraw: Table::new(pool.clone()),

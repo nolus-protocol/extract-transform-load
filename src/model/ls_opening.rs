@@ -17,4 +17,5 @@ pub struct LS_Opening {
     pub LS_cltr_amnt_asset: BigDecimal,
     pub LS_native_amnt_stable: BigDecimal,
     pub LS_native_amnt_nolus: BigDecimal,
+    pub Tx_Hash: Option<String>,
 }

@@ -5,6 +5,7 @@ use sqlx::{types::BigDecimal, FromRow};
 
 #[derive(Debug, FromRow)]
 pub struct LS_Liquidation {
+    pub Tx_Hash: Option<String>,
     pub LS_liquidation_height: i64,
     pub LS_liquidation_idx: Option<i32>,
     pub LS_contract_id: String,

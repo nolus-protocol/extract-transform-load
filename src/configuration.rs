@@ -104,6 +104,7 @@ impl State {
             "tr_state.sql",
             "ls_close_position.sql",
             "raw_message.sql",
+            "ls_liquidation_warning.sql",
         ];
 
         let dir = env!("CARGO_MANIFEST_DIR");

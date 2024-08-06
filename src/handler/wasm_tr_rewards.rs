@@ -15,6 +15,7 @@ pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: TR_Rewards_Distribution_Type,
     index: usize,
+    tx_hash: String,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -29,6 +30,7 @@ pub async fn parse_and_insert(
     let protocol = app_state.get_protocol_by_pool_id(&item.to);
 
     let tr_rewards_distribution = TR_Rewards_Distribution {
+        Tx_Hash: Some(tx_hash),
         TR_Rewards_height: item.height.parse()?,
         TR_Rewards_idx: None,
         TR_Rewards_Pool_id: item.to.to_owned(),

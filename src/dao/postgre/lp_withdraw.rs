@@ -29,6 +29,27 @@ impl Table<LP_Withdraw> {
         .await?;
 
         if value > 0 {
+            sqlx::query(
+                r#"
+                    UPDATE 
+                        "LP_Withdraw" 
+                    SET 
+                        "Tx_Hash" = $1
+                    WHERE 
+                        "LP_withdraw_height" = $2 AND
+                        "LP_address_id" = $3 AND
+                        "LP_timestamp" = $4 AND
+                        "LP_Pool_id" = $5
+                "#,
+            )
+            .bind(&lp_widthdraw.Tx_Hash)
+            .bind(lp_widthdraw.LP_withdraw_height)
+            .bind(&lp_widthdraw.LP_address_id)
+            .bind(lp_widthdraw.LP_timestamp)
+            .bind(&lp_widthdraw.LP_Pool_id)
+            .execute(&self.pool)
+            .await?;
+
             return Ok(true);
         }
 
@@ -50,9 +71,10 @@ impl Table<LP_Withdraw> {
                 "LP_amnt_stable",
                 "LP_amnt_asset",
                 "LP_amnt_receipts",
-                "LP_deposit_close"
+                "LP_deposit_close",
+                "Tx_Hash"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
         "#,
         )
         .bind(data.LP_withdraw_height)
@@ -63,6 +85,7 @@ impl Table<LP_Withdraw> {
         .bind(&data.LP_amnt_asset)
         .bind(&data.LP_amnt_receipts)
         .bind(data.LP_deposit_close)
+        .bind(data.Tx_Hash)
         .execute(&mut **transaction)
         .await
     }
@@ -86,7 +109,8 @@ impl Table<LP_Withdraw> {
                 "LP_amnt_stable",
                 "LP_amnt_asset",
                 "LP_amnt_receipts",
-                "LP_deposit_close"
+                "LP_deposit_close",
+                "Tx_Hash"
             )"#,
         );
 
@@ -98,7 +122,8 @@ impl Table<LP_Withdraw> {
                 .push_bind(&lp.LP_amnt_stable)
                 .push_bind(&lp.LP_amnt_asset)
                 .push_bind(&lp.LP_amnt_receipts)
-                .push_bind(lp.LP_deposit_close);
+                .push_bind(lp.LP_deposit_close)
+                .push_bind(&lp.Tx_Hash);
         });
 
         let query = query_builder.build();

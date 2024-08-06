@@ -8,7 +8,7 @@ impl Table<LP_Deposit> {
     pub async fn isExists(
         &self,
         ls_deposit: &LP_Deposit,
-    ) -> Result<bool, crate::error::Error> {
+    ) -> Result<bool, Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
             SELECT 
@@ -29,6 +29,27 @@ impl Table<LP_Deposit> {
         .await?;
 
         if value > 0 {
+            sqlx::query(
+                r#"
+                    UPDATE 
+                        "LP_Deposit" 
+                    SET 
+                        "Tx_Hash" = $1
+                    WHERE 
+                        "LP_deposit_height" = $2 AND
+                        "LP_address_id" = $3 AND
+                        "LP_timestamp" = $4 AND
+                        "LP_Pool_id" = $5
+                "#,
+            )
+            .bind(&ls_deposit.Tx_Hash)
+            .bind(ls_deposit.LP_deposit_height)
+            .bind(&ls_deposit.LP_address_id)
+            .bind(ls_deposit.LP_timestamp)
+            .bind(&ls_deposit.LP_Pool_id)
+            .execute(&self.pool)
+            .await?;
+
             return Ok(true);
         }
 
@@ -49,9 +70,10 @@ impl Table<LP_Deposit> {
                 "LP_Pool_id",
                 "LP_amnt_stable",
                 "LP_amnt_asset",
-                "LP_amnt_receipts"
+                "LP_amnt_receipts",
+                "Tx_Hash"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
         )
         .bind(data.LP_deposit_height)
@@ -61,6 +83,7 @@ impl Table<LP_Deposit> {
         .bind(&data.LP_amnt_stable)
         .bind(&data.LP_amnt_asset)
         .bind(&data.LP_amnt_receipts)
+        .bind(&data.Tx_Hash)
         .execute(&mut **transaction)
         .await
     }
@@ -83,7 +106,8 @@ impl Table<LP_Deposit> {
                 "LP_Pool_id",
                 "LP_amnt_stable",
                 "LP_amnt_asset",
-                "LP_amnt_receipts"
+                "LP_amnt_receipts",
+                "Tx_Hash"
             )"#,
         );
 
@@ -94,7 +118,8 @@ impl Table<LP_Deposit> {
                 .push_bind(&lp.LP_Pool_id)
                 .push_bind(&lp.LP_amnt_stable)
                 .push_bind(&lp.LP_amnt_asset)
-                .push_bind(&lp.LP_amnt_receipts);
+                .push_bind(&lp.LP_amnt_receipts)
+                .push_bind(&lp.Tx_Hash);
         });
 
         let query = query_builder.build();

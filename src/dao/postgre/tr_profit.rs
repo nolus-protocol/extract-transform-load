@@ -25,6 +25,23 @@ impl Table<TR_Profit> {
         .await?;
 
         if value > 0 {
+            sqlx::query(
+                r#"
+                    UPDATE 
+                        "TR_Profit" 
+                    SET 
+                        "Tx_Hash" = $1
+                    WHERE 
+                        "TR_Profit_height" = $2 AND
+                        "TR_Profit_timestamp" = $3
+                "#,
+            )
+            .bind(&tr_profit.Tx_Hash)
+            .bind(&tr_profit.TR_Profit_height)
+            .bind(&tr_profit.TR_Profit_timestamp)
+            .execute(&self.pool)
+            .await?;
+
             return Ok(true);
         }
 
@@ -42,15 +59,17 @@ impl Table<TR_Profit> {
                 "TR_Profit_height",
                 "TR_Profit_timestamp",
                 "TR_Profit_amnt_stable",
-                "TR_Profit_amnt_nls"
+                "TR_Profit_amnt_nls",
+                "Tx_Hash"
             )
-            VALUES($1, $2, $3, $4)
+            VALUES($1, $2, $3, $4, $5)
         "#,
         )
         .bind(data.TR_Profit_height)
         .bind(data.TR_Profit_timestamp)
         .bind(&data.TR_Profit_amnt_stable)
         .bind(&data.TR_Profit_amnt_nls)
+        .bind(&data.Tx_Hash)
         .execute(&mut **transaction)
         .await
     }
@@ -70,7 +89,8 @@ impl Table<TR_Profit> {
                 "TR_Profit_height",
                 "TR_Profit_timestamp",
                 "TR_Profit_amnt_stable",
-                "TR_Profit_amnt_nls"
+                "TR_Profit_amnt_nls",
+                "Tx_Hash"
             )"#,
         );
 
@@ -78,7 +98,8 @@ impl Table<TR_Profit> {
             b.push_bind(tr.TR_Profit_height)
                 .push_bind(tr.TR_Profit_timestamp)
                 .push_bind(&tr.TR_Profit_amnt_stable)
-                .push_bind(&tr.TR_Profit_amnt_nls);
+                .push_bind(&tr.TR_Profit_amnt_nls)
+                .push_bind(&tr.Tx_Hash);
         });
 
         let query = query_builder.build();

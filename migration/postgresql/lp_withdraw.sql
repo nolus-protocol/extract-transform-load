@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS "LP_Withdraw" (
   "LP_amnt_asset" DECIMAL(39, 0) NOT NULL,
   "LP_amnt_receipts" DECIMAL(39, 0) NOT NULL,
   "LP_deposit_close" BOOLEAN DEFAULT false NOT NULL,
+  "Tx_Hash" VARCHAR(64),
   PRIMARY KEY ("LP_withdraw_height", "LP_withdraw_idx"),
   FOREIGN KEY ("LP_Pool_id") REFERENCES "LP_Pool"("LP_Pool_id")
 );

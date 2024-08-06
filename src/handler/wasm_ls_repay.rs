@@ -14,6 +14,7 @@ use crate::{
 pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: LS_Repayment_Type,
+    tx_hash: String,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -38,6 +39,7 @@ pub async fn parse_and_insert(
     };
 
     let ls_repay = LS_Repayment {
+        Tx_Hash: Some(tx_hash),
         LS_repayment_height: item.height.parse()?,
         LS_repayment_idx: None,
         LS_contract_id: item.to.to_owned(),

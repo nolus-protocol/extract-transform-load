@@ -27,6 +27,25 @@ impl Table<TR_Rewards_Distribution> {
         .await?;
 
         if value > 0 {
+            sqlx::query(
+                r#"
+                    UPDATE 
+                        "TR_Rewards_Distribution" 
+                    SET 
+                        "Tx_Hash" = $1
+                    WHERE 
+                        "TR_Rewards_height" = $2 AND
+                        "TR_Rewards_Pool_id" = $3 AND
+                        "Event_Block_Index" = $4
+                "#,
+            )
+            .bind(&tr_reward.Tx_Hash)
+            .bind(tr_reward.TR_Rewards_height)
+            .bind(&tr_reward.TR_Rewards_Pool_id)
+            .bind(tr_reward.Event_Block_Index)
+            .execute(&self.pool)
+            .await?;
+
             return Ok(true);
         }
 
@@ -46,9 +65,10 @@ impl Table<TR_Rewards_Distribution> {
                 "TR_Rewards_timestamp",
                 "TR_Rewards_amnt_stable",
                 "TR_Rewards_amnt_nls",
-                "Event_Block_Index"
+                "Event_Block_Index",
+                "Tx_Hash"
             )
-            VALUES($1, $2, $3, $4, $5, $6)
+            VALUES($1, $2, $3, $4, $5, $6, $7)
         "#,
         )
         .bind(data.TR_Rewards_height)
@@ -57,6 +77,7 @@ impl Table<TR_Rewards_Distribution> {
         .bind(&data.TR_Rewards_amnt_stable)
         .bind(&data.TR_Rewards_amnt_nls)
         .bind(data.Event_Block_Index)
+        .bind(data.Tx_Hash)
         .execute(&mut **transaction)
         .await
     }
@@ -78,7 +99,8 @@ impl Table<TR_Rewards_Distribution> {
                 "TR_Rewards_timestamp",
                 "TR_Rewards_amnt_stable",
                 "TR_Rewards_amnt_nls",
-                "Event_Block_Index"
+                "Event_Block_Index",
+                 "Tx_Hash"
             )"#,
         );
 
@@ -88,7 +110,8 @@ impl Table<TR_Rewards_Distribution> {
                 .push_bind(tr.TR_Rewards_timestamp)
                 .push_bind(&tr.TR_Rewards_amnt_stable)
                 .push_bind(&tr.TR_Rewards_amnt_nls)
-                .push_bind(tr.Event_Block_Index);
+                .push_bind(tr.Event_Block_Index)
+                .push_bind(&tr.Tx_Hash);
         });
 
         let query = query_builder.build();

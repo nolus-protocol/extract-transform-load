@@ -11,5 +11,6 @@ CREATE TABLE IF NOT EXISTS "LS_Opening" (
   "LS_cltr_amnt_stable" DECIMAL(39, 0) NOT NULL,
   "LS_cltr_amnt_asset" DECIMAL(39, 0) NOT NULL,
   "LS_native_amnt_stable" DECIMAL(39, 0),
-  "LS_native_amnt_nolus" DECIMAL(39, 0)
+  "LS_native_amnt_nolus" DECIMAL(39, 0),
+  "Tx_Hash" VARCHAR(64)
 );

@@ -15,4 +15,5 @@ pub struct LS_Repayment {
     pub LS_current_margin_stable: BigDecimal,
     pub LS_current_interest_stable: BigDecimal,
     pub LS_principal_stable: BigDecimal,
+    pub Tx_Hash: Option<String>,
 }

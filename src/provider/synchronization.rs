@@ -4,6 +4,7 @@ use crate::helpers::insert_txs;
 use crate::provider::Grpc;
 
 use anyhow::Context;
+use futures::future::try_join_all;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{error, info};
 
@@ -110,8 +111,8 @@ impl Synchronization {
             }
         }
 
-        for h in hs {
-            h.await??;
+        for h in try_join_all(hs).await? {
+            h?;
         }
 
         self.set_running(false);

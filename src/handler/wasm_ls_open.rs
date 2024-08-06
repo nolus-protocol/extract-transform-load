@@ -14,6 +14,7 @@ use crate::{
 pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: LS_Opening_Type,
+    tx_hash: String,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -44,6 +45,7 @@ pub async fn parse_and_insert(
     let (l_price,) = loan_price;
     let (d_price,) = downpayment_price;
     let ls_opening = LS_Opening {
+        Tx_Hash: Some(tx_hash),
         LS_contract_id: item.id,
         LS_address_id: item.customer,
         LS_asset_symbol: item.currency,
@@ -62,7 +64,6 @@ pub async fn parse_and_insert(
         LS_native_amnt_stable: BigDecimal::from(0),
         LS_native_amnt_nolus: BigDecimal::from(0),
     };
-
     let isExists = app_state.database.ls_opening.isExists(&ls_opening).await?;
 
     if !isExists {

@@ -13,6 +13,7 @@ pub mod wasm_lp_withdraw;
 pub mod wasm_ls_close;
 pub mod wasm_ls_close_position;
 pub mod wasm_ls_liquidation;
+pub mod wasm_ls_liquidation_warning;
 pub mod wasm_ls_open;
 pub mod wasm_ls_repay;
 pub mod wasm_tr_profit;

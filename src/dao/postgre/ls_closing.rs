@@ -22,6 +22,21 @@ impl Table<LS_Closing> {
         .await?;
 
         if value > 0 {
+            sqlx::query(
+                r#"
+                    UPDATE 
+                        "LS_Closing" 
+                    SET 
+                        "Tx_Hash" = $1
+                    WHERE 
+                         "LS_contract_id" = $2
+                "#,
+            )
+            .bind(&ls_closing.Tx_Hash)
+            .bind(&ls_closing.LS_contract_id)
+            .execute(&self.pool)
+            .await?;
+
             return Ok(true);
         }
 
@@ -34,12 +49,14 @@ impl Table<LS_Closing> {
     ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
-            INSERT INTO "LS_Closing" ("LS_contract_id", "LS_timestamp")
-            VALUES($1, $2)
+            INSERT INTO "LS_Closing" ("LS_contract_id", "LS_timestamp", "Tx_Hash")
+            VALUES($1, $2, $3)
         "#,
         )
         .bind(&data.LS_contract_id)
         .bind(data.LS_timestamp)
+        .bind(data.Tx_Hash)
+
         .execute(&mut **transaction)
         .await
     }
@@ -56,12 +73,14 @@ impl Table<LS_Closing> {
         let mut query_builder: QueryBuilder<DataBase> = QueryBuilder::new(
             r#"
             INSERT INTO "LS_Closing" (
-                "LS_contract_id", "LS_timestamp"
+                "LS_contract_id", "LS_timestamp", "Tx_Hash"
             )"#,
         );
 
         query_builder.push_values(data, |mut b, ls| {
-            b.push_bind(&ls.LS_contract_id).push_bind(ls.LS_timestamp);
+            b.push_bind(&ls.LS_contract_id)
+                .push_bind(ls.LS_timestamp)
+                .push_bind(&ls.Tx_Hash);
         });
 
         let query = query_builder.build();

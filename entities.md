@@ -131,6 +131,7 @@ Config: time interval
 | -------------- | ---------------- | ---------------- | ----------------------- |
 | LS_contract_id | Alphanumeric(64) | wasm-ls-close.id | Lease Smart Contract ID |
 | LS_timestamp   | Timestamp        | wasm-ls-close.at | Close time of the lease |
+| Tx_Hash        | Alphanumeric(64) | tx hash          | Transaction hash        |
 
 ### **LS_Repayment** [Primary key = LS_repayment_height + LS_repayment_idx]
 
@@ -148,6 +149,7 @@ Config: time interval
 | LS_current_margin_stable   | Unsigned Int(128) | wasm-ls-repay.curr-margin-interest                   | The paid margin interest amount for the current period, if any  |
 | LS_current_interest_stable | Unsigned Int(128) | wasm-ls-repay.curr-loan-interest                     | The paid loan interest amount for the current period, if any    |
 | LS_principal_stable        | Unsigned Int(128) | wasm-ls-repay.principal                              | The paid principal, if any                                      |
+| Tx_Hash                    | Alphanumeric(64)  | tx hash                                              | Transaction hash                                                |
 
 ### **LS_Liquidation** [Primary key = LS_liquidation_height + LS_liquidation_idx]
 
@@ -167,6 +169,7 @@ In case of full liquidation, in addition to the liquidation event, the system is
 | LS_current_margin_stable   | Unsigned Int(128) | wasm-ls-liquidation.curr-margin-interest                       | The paid margin interest amount for the current period, if 1 - none, if 2 - optional    |
 | LS_current_interest_stable | Unsigned Int(128) | wasm-ls-liquidation.curr-loan-interest                         | The paid loan interest amount for the current period, if 1 - none, if 2 - optional      |
 | LS_principal_stable        | Unsigned Int(128) | wasm-ls-liquidation.principal                                  | The paid principal, if 1 - none, if 2 - optional                                        |
+| Tx_Hash                    | Alphanumeric(64)  | tx hash                                                        | Transaction hash                                                                        |
 
 ### **LS_State** [Primary key = LS_contract_id + LS_timestamp] - include all unclaimed/not closed leases
 
@@ -186,6 +189,7 @@ ETL generates a record for any lease instance that:
 | LS_current_margin_stable   | Unsigned Int(128) | in_stable(lease.status_query.margin_interest_due::0)     | The margin interest amount up to that point of time                                                     |
 | LS_current_interest_stable | Unsigned Int(128) | in_stable(lease.status_query.loan_interest_due::0)       | The loan interest amount up to that point of time                                                       |
 | LS_principal_stable        | Unsigned Int(128) | in_stable(lease.status_query.principal_due::0)           | The paid principal, if 1 - none, if 2 - optional                                                        |
+| Tx_Hash                    | Alphanumeric(64)  | tx hash                                                  | Transaction hash                                                                                        |
 
 ### **LP_Deposit** [Primary key = LP_deposit_height + LP_deposit_idx]
 
@@ -199,6 +203,7 @@ ETL generates a record for any lease instance that:
 | LP_amnt_stable    | Unsigned Int(128) | in_stable(wasm-lp-deposit.deposit-amount) | Deposited amount in stable. The currency symbol is carried with wasm-lp-deposit.deposit-symbol                             |
 | LP_amnt_asset     | Unsigned Int(128) | wasm-lp-deposit.deposit-amount            | Deposited amount in asset currency = LP_Pool.LP_symbol. The currency symbol is carried with wasm-lp-deposit.deposit-symbol |
 | LP_amnt_receipts  | Unsigned Int(128) | wasm-lp-deposit.receipts                  | Number of receipts issued, nLPN                                                                                            |
+| Tx_Hash           | Alphanumeric(64)  | tx hash                                   | Transaction hash                                                                                                           |
 
 ### **LP_Withdraw** [Primary key = LP_withdraw_height + LP_withdraw_idx]
 
@@ -213,6 +218,7 @@ ETL generates a record for any lease instance that:
 | LP_amnt_asset      | Unsigned Int(128) | wasm-lp-withdraw.withdraw-amount            | Withdrawn amount in asset currency = LP_Pool.LP_symbol. The currency symbol is carried with wasm-lp-withdraw.withdraw-symbol |
 | LP_amnt_receipts   | Unsigned Int(128) | wasm-lp-withdraw.receipts                   | Number of receipts burned, nLPN                                                                                              |
 | LP_deposit_close   | Boolean           | wasm-lp-withdraw.close                      | A flag indicating if this withdraw closes the deposited amounts                                                              |
+| Tx_Hash            | Alphanumeric(64)  | tx hash                                     | Transaction hash                                                                                                             |
 
 ### **LP_Lender_State** [Primary key = LP_Lender_id + LP_Pool_id + LP_timestamp]
 
@@ -272,6 +278,7 @@ ETL generates a record for any lender instance present in **LP_Pool**
 | TR_Profit_timestamp   | Timestamp         | wasm-tr-profit.at                       | Date time of the profit transfer                                                                   |
 | TR_Profit_amnt_stable | Unsigned Int(128) | in_stable(wasm-tr-profit.profit-amount) | The amount transferred in stable. The currency symbol is carried with wasm-tr-profit.profit-symbol |
 | TR_Profit_amnt_nls    | Unsigned Int(128) | wasm-tr-profit.profit-amount            | The amount transferred in NLS. The currency symbol is carried with wasm-tr-profit.profit-symbol    |
+| Tx_Hash               | Alphanumeric(64)  | tx hash                                 | Transaction hash                                                                                   |
 
 ### **TR_Rewards_Distribution - Transfers from Treasury to the Liquidity Pools** [Primary key = TR_Rewards_height + TR_Rewards_idx + TR_Rewards_Pool_id]
 
@@ -283,6 +290,7 @@ ETL generates a record for any lender instance present in **LP_Pool**
 | TR_Rewards_timestamp   | Timestamp         | wasm-tr-rewards.at                        | Date time of the reward distribution                                                                 |
 | TR_Rewards_amnt_stable | Unsigned Int(128) | in_stable(wasm-tr-rewards.rewards-amount) | The amount transferred in stable. The currency symbol is carried with wasm-tr-rewards.rewards-symbol |
 | TR_Rewards_amnt_nls    | Unsigned Int(128) | wasm-tr-rewards.rewards-amount            | The amount transferred in NLS. The currency symbol is carried with wasm-tr-rewards.rewards-symbol    |
+| Tx_Hash                | Alphanumeric(64)  | tx hash                                   | Transaction hash                                                                                     |
 
 ### **TR_State** [Primary Key = TR_timestamp]
 
@@ -350,6 +358,19 @@ Aggragation is done over all records pertaining to the same _aggregation interva
 | LS_current_margin_stable   | Unsigned Int(128) | wasm-ls-close.curr-margin-interest                   | The paid margin interest amount for the current period, if any  |
 | LS_current_interest_stable | Unsigned Int(128) | wasm-ls-close.curr-loan-interest                     | The paid loan interest amount for the current period, if any    |
 | LS_principal_stable        | Unsigned Int(128) | wasm-ls-close.principal                              | The paid principal, if any                                      |
+| Tx_Hash                    | Alphanumeric(64)  | tx hash                                              | Transaction hash                                                |
+
+### **LS_Liquidation_Warning** - Historical Aggregated Data [Primary key = Tx_Hash + LS_contract_id + LS_timestamp]
+
+| Property Name   | Type              | Query API                               | Description                                    |
+| --------------- | ----------------- | ----------------------------------------| ---------------------------------------------- |
+| LS_contract_id  | Alphanumeric(64)  | wasm-ls-liquidation-warning.lease       | Lease address                                  |
+| LS_address_id   | Alphanumeric(44)  | wasm-ls-liquidation-warning.customer    | User address                                   |
+| LS_asset_symbol | Alphanumeric(20)  | wasm-ls-liquidation-warning.lease-asset | Lease currency symbol                          |
+| LS_level        | SMALLINT          | wasm-ls-liquidation-warning.level       | Lease level                                    |
+| LS_ltv          | SMALLINT          | wasm-ls-liquidation-warning.ltv         | Lease ltv                                      |
+| LS_timestamp    | Timestamp         | timestamp | Block timestsamp            | Timestamp                                      |
+| Tx_Hash         | Alphanumeric(64)  | tx hash                                 | Transaction hash                               |
 
 #### Database types
 

@@ -34,7 +34,7 @@ use cosmrs::{
 };
 use sha256::digest;
 use tokio::time::sleep;
-use tonic::transport::{Channel, Endpoint, Uri};
+use tonic::transport::{Channel, ClientTlsConfig, Endpoint, Uri};
 use tracing::error;
 
 #[derive(Debug)]
@@ -51,24 +51,34 @@ impl Grpc {
     pub async fn new(config: Config) -> Result<Grpc, Error> {
         let host = config.grpc_host.to_owned();
         let uri = Uri::from_str(&host).context("Invalid grpc url")?;
+        let tls_config = ClientTlsConfig::new().with_native_roots();
+        let limit = 10 * 1024 * 1024;
 
         let endpoint = Endpoint::from(uri.clone())
-            .origin(uri.clone())
-            .concurrency_limit(1024)
-            .keep_alive_while_idle(true);
+            .keep_alive_while_idle(true)
+            .tls_config(tls_config)
+            .context("Could not parse tls config")?;
 
         let channel = endpoint.connect().await.with_context(|| {
             format!(r#"Failed to parse gRPC URI, "{uri}"!"#)
         })?;
 
         let tendermint_client =
-            TendermintServiceClient::with_origin(channel.clone(), uri.clone());
+            TendermintServiceClient::with_origin(channel.clone(), uri.clone())
+                .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
+                .max_decoding_message_size(limit);
         let wasm_query_client =
-            WasmQueryClient::with_origin(channel.clone(), uri.clone());
+            WasmQueryClient::with_origin(channel.clone(), uri.clone())
+                .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
+                .max_decoding_message_size(limit);
         let bank_query_client =
-            BankQueryClient::with_origin(channel.clone(), uri.clone());
+            BankQueryClient::with_origin(channel.clone(), uri.clone())
+                .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
+                .max_decoding_message_size(limit);
         let tx_service_client =
-            TxServiceClient::with_origin(channel.clone(), uri.clone());
+            TxServiceClient::with_origin(channel.clone(), uri.clone())
+                .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
+                .max_decoding_message_size(limit);
 
         Ok(Grpc {
             config,
@@ -131,8 +141,9 @@ impl Grpc {
         const MISSING_BLOCK_HEADER_INFO_ERROR: &str =
             "Query response doesn't contain block's header information!";
 
-        self.tendermint_client
-            .clone()
+        let mut client = self.tendermint_client.clone();
+
+        client
             .get_latest_block(GetLatestBlockRequest {})
             .await
             .context(QUERY_NODE_INFO_ERROR)
@@ -162,9 +173,8 @@ impl Grpc {
         const MISSING_BLOCK_DATA_INFO_ERROR: &str =
             "Query response doesn't contain block's data information!";
 
-        let block = self
-            .tendermint_client
-            .clone()
+        let mut client = self.tendermint_client.clone();
+        let block = client
             .get_block_by_height(GetBlockByHeightRequest { height })
             .await
             .context(QUERY_NODE_INFO_ERROR)
@@ -200,15 +210,12 @@ impl Grpc {
     ) -> Result<Option<TxResponse>, Error> {
         let hash = tx_hash.to_string();
 
-        let tx = self
-            .tx_service_client
-            .clone()
-            .get_tx(GetTxRequest { hash: tx_hash })
-            .await;
+        let mut client = self.tx_service_client.clone();
+        let tx = client.get_tx(GetTxRequest { hash: tx_hash }).await;
 
         if let Err(err) = &tx {
             match err.code() {
-                tonic::Code::Internal => {
+                tonic::Code::Internal | tonic::Code::Unknown => {
                     error!("tx decode with internal error: {}", err);
                     return Ok(None);
                 },
@@ -248,9 +255,9 @@ impl Grpc {
             }),
         };
 
-        let data = self
-            .bank_query_client
-            .clone()
+        let mut client = self.bank_query_client.clone();
+
+        let data = client
             .all_balances(data)
             .await
             .map(|response| response.into_inner())
@@ -272,9 +279,8 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against contract!";
 
-        let data = self
-            .wasm_query_client
-            .clone()
+        let mut client = self.wasm_query_client.clone();
+        let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
                 query_data: bytes.to_vec(),
@@ -307,9 +313,8 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against oracle contract!";
 
-        let data = self
-            .wasm_query_client
-            .clone()
+        let mut client = self.wasm_query_client.clone();
+        let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
                 query_data: bytes.to_vec(),
@@ -334,9 +339,8 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against admin config contract!";
 
-        let data = self
-            .wasm_query_client
-            .clone()
+        let mut client = self.wasm_query_client.clone();
+        let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
                 query_data: bytes.to_vec(),
@@ -362,9 +366,8 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lease contract!";
 
-        let data = self
-            .wasm_query_client
-            .clone()
+        let mut client = self.wasm_query_client.clone();
+        let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
                 query_data: bytes.to_vec(),
@@ -393,9 +396,8 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query balance contract!";
 
-        let data = self
-            .wasm_query_client
-            .clone()
+        let mut client = self.wasm_query_client.clone();
+        let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
                 query_data: bytes.to_vec(),
@@ -420,9 +422,8 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp contract!";
 
-        let data = self
-            .wasm_query_client
-            .clone()
+        let mut client = self.wasm_query_client.clone();
+        let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
                 query_data: bytes.to_vec(),
@@ -448,9 +449,8 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp balance state contract!";
 
-        let data = self
-            .wasm_query_client
-            .clone()
+        let mut client = self.wasm_query_client.clone();
+        let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
                 query_data: bytes.to_vec(),
@@ -476,9 +476,8 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp config state contract!";
 
-        let data = self
-            .wasm_query_client
-            .clone()
+        let mut client = self.wasm_query_client.clone();
+        let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
                 query_data: bytes.to_vec(),

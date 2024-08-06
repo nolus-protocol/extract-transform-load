@@ -29,6 +29,25 @@ impl Table<LS_Repayment> {
         .await?;
 
         if value > 0 {
+            sqlx::query(
+                r#"
+                    UPDATE 
+                        "LS_Repayment" 
+                    SET 
+                        "Tx_Hash" = $1
+                    WHERE 
+                        "LS_repayment_height" = $2 AND
+                        "LS_contract_id" = $3 AND
+                        "LS_timestamp" = $4
+                "#,
+            )
+            .bind(&ls_repayment.Tx_Hash)
+            .bind(ls_repayment.LS_repayment_height)
+            .bind(&ls_repayment.LS_contract_id)
+            .bind(ls_repayment.LS_timestamp)
+            .execute(&self.pool)
+            .await?;
+
             return Ok(true);
         }
 
@@ -53,9 +72,10 @@ impl Table<LS_Repayment> {
                 "LS_prev_interest_stable",
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
-                "LS_principal_stable"
+                "LS_principal_stable",
+                "Tx_Hash"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         "#,
         )
         .bind(data.LS_repayment_height)
@@ -69,6 +89,7 @@ impl Table<LS_Repayment> {
         .bind(&data.LS_current_margin_stable)
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
+        .bind(&data.Tx_Hash)
         .execute(&mut **transaction)
         .await
     }
@@ -95,7 +116,8 @@ impl Table<LS_Repayment> {
                 "LS_prev_interest_stable",
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
-                "LS_principal_stable"
+                "LS_principal_stable",
+                "Tx_Hash"
             )"#,
         );
 
@@ -110,7 +132,8 @@ impl Table<LS_Repayment> {
                 .push_bind(&ls.LS_prev_interest_stable)
                 .push_bind(&ls.LS_current_margin_stable)
                 .push_bind(&ls.LS_current_interest_stable)
-                .push_bind(&ls.LS_principal_stable);
+                .push_bind(&ls.LS_principal_stable)
+                .push_bind(&ls.Tx_Hash);
         });
 
         let query = query_builder.build();

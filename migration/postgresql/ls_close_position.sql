@@ -14,5 +14,6 @@ CREATE TABLE IF NOT EXISTS "LS_Close_Position" (
   "LS_current_margin_stable" DECIMAL(39, 0),
   "LS_current_interest_stable" DECIMAL(39, 0),
   "LS_principal_stable" DECIMAL(39, 0),
+  "Tx_Hash" VARCHAR(64),
   PRIMARY KEY ("LS_position_height", "LS_position_idx")
 );

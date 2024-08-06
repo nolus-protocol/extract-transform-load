@@ -8,6 +8,7 @@ mod lp_withdraw;
 mod ls_close_position;
 mod ls_closing;
 mod ls_liquidation;
+mod ls_liquidation_warning;
 mod ls_opening;
 mod ls_repayment;
 mod ls_state;
