@@ -571,7 +571,8 @@ impl Table<LS_Opening> {
                     a."LS_cltr_amnt_stable",
                     a."LS_cltr_amnt_asset",
                     a."LS_native_amnt_stable",
-                    a."LS_native_amnt_nolus"
+                    a."LS_native_amnt_nolus",
+                    a."Tx_Hash"
                 FROM
                     "LS_Opening" as a
                 LEFT JOIN 

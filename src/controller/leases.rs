@@ -13,8 +13,8 @@ async fn index(
     let skip = data.skip.unwrap_or(0);
     let mut limit = data.limit.unwrap_or(10);
 
-    if limit > 100 {
-        limit = 100;
+    if limit > 10 {
+        limit = 10;
     }
 
     let address = data.address.to_lowercase().to_owned();
