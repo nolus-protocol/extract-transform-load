@@ -11,7 +11,7 @@ use etl::{
     error::Error,
     handler::{aggregation_task, cache_state, mp_assets},
     model::Actions,
-    provider::{DatabasePool, Event, Grpc, HTTP},
+    provider::{DatabasePool, Event, Grpc},
     server,
 };
 
@@ -53,10 +53,9 @@ async fn app_main() -> Result<(), Error> {
     };
 
     let db_pool = database;
-    let http = HTTP::new(config.clone())?;
     let grpc = Grpc::new(config.clone()).await?;
 
-    let state = State::new(config.clone(), db_pool, http, grpc).await?;
+    let state = State::new(config.clone(), db_pool, grpc).await?;
     let app_state = AppState::new(state);
 
     mp_assets::fetch_insert(app_state.clone(), None).await?;

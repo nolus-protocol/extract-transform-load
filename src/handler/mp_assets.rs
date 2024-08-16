@@ -69,7 +69,7 @@ pub async fn fetch_insert(
                         .hash_map_currencies
                         .get(&price.amount.ticker)
                     {
-                        let decimals = asset.2 - lpn_decimals;
+                        let decimals = asset.1 - lpn_decimals;
                         let mut value =
                             BigDecimal::from_str(&price.amount_quote.amount)?
                                 / BigDecimal::from_str(&price.amount.amount)?
@@ -102,30 +102,6 @@ pub async fn fetch_insert(
             },
         }
     }
-
-    // for (protocol, config) in &app_state.protocols {
-    //     let item = app_state
-    //         .config
-    //         .lp_pools
-    //         .iter()
-    //         .find(|(contract, _currency)| contract == &config.contracts.lpp);
-
-    //     match item {
-    //         Some((_contract, currency)) => {
-    //             let value = app_state.config.lpn_price.to_owned();
-    //             let mp_asset = MP_Asset {
-    //                 MP_asset_symbol: currency.to_owned(),
-    //                 MP_asset_timestamp: timestamp,
-    //                 MP_price_in_stable: value,
-    //                 Protocol: protocol.to_owned(),
-    //             };
-    //             mp_assets.push(mp_asset);
-    //         },
-    //         None => {
-    //             error!("Lpn currency not found in protocol {}", &protocol);
-    //         },
-    //     }
-    // }
 
     app_state.database.mp_asset.insert_many(&mp_assets).await?;
 
@@ -191,7 +167,7 @@ pub async fn get_lpn_data(
         .hash_map_currencies
         .get(&base_currency)
         .context(format!("currency not found {}", &base_currency))?
-        .2;
+        .1;
 
     Ok((protocol, base_currency, lpn_price, lpn_decimals))
 }

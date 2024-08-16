@@ -4,9 +4,8 @@ use crate::error::Error;
 use crate::model::{
     Action_History, Block, LP_Deposit, LP_Lender_State, LP_Pool, LP_Pool_State,
     LP_Withdraw, LS_Closing, LS_Liquidation, LS_Liquidation_Warning,
-    LS_Opening, LS_Repayment, LS_State, MP_Asset, MP_Asset_Mapping,
-    MP_Asset_State, MP_Yield, PL_State, Raw_Message, TR_Profit,
-    TR_Rewards_Distribution, TR_State,
+    LS_Opening, LS_Repayment, LS_State, MP_Asset, MP_Yield, PL_State,
+    Raw_Message, TR_Profit, TR_Rewards_Distribution, TR_State,
 };
 use crate::model::{LS_Close_Position, Table};
 
@@ -28,8 +27,6 @@ pub struct DatabasePool {
     pub tr_rewards_distribution: Table<TR_Rewards_Distribution>,
     pub tr_state: Table<TR_State>,
     pub mp_asset: Table<MP_Asset>,
-    pub mp_asset_state: Table<MP_Asset_State>,
-    pub mp_asset_mapping: Table<MP_Asset_Mapping>,
     pub mp_yield: Table<MP_Yield>,
     pub pl_state: Table<PL_State>,
     pub action_history: Table<Action_History>,
@@ -46,7 +43,6 @@ impl<'c> DatabasePool {
             .await?;
 
         let lp_pool = Table::new(pool.clone());
-        let mp_asset_mapping = Table::new(pool.clone());
 
         Ok(DatabasePool {
             pool: pool.clone(),
@@ -66,8 +62,6 @@ impl<'c> DatabasePool {
             tr_rewards_distribution: Table::new(pool.clone()),
             tr_state: Table::new(pool.clone()),
             mp_asset: Table::new(pool.clone()),
-            mp_asset_state: Table::new(pool.clone()),
-            mp_asset_mapping,
             mp_yield: Table::new(pool.clone()),
             pl_state: Table::new(pool.clone()),
             ls_close_position: Table::new(pool.clone()),

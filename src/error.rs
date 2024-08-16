@@ -8,7 +8,6 @@ use cosmos_sdk_proto::prost::{
     DecodeError as DECODE_ERROR, EncodeError as ENCODE_ERROR,
 };
 use cosmrs::tx::ErrorReport;
-use reqwest::Error as REQWEST_ERROR;
 use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;
 use std::fmt::Error as FMT_ERROR;
@@ -35,9 +34,6 @@ pub enum Error {
 
     #[error("{0}")]
     INT(#[from] ParseIntError),
-
-    #[error("{0}")]
-    REQWEST(#[from] REQWEST_ERROR),
 
     #[error("{0}")]
     SQL(#[from] SQL_ERROR),

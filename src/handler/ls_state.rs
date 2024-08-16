@@ -75,7 +75,7 @@ async fn proceed(
             state
                 .database
                 .mp_asset
-                .get_price(&pool_currency.1, protocol.to_owned()),
+                .get_price(&pool_currency.0, protocol.to_owned()),
         );
 
         let (price,) = price?;
@@ -84,42 +84,42 @@ async fn proceed(
         let previous_margin_due =
             status.previous_margin_due.unwrap_or(AmountTicker {
                 amount: "0".to_owned(),
-                ticker: pool_currency.1.to_owned(),
+                ticker: pool_currency.0.to_owned(),
             });
         let overdue_margin = status.overdue_margin.unwrap_or(AmountTicker {
             amount: "0".to_owned(),
-            ticker: pool_currency.1.to_owned(),
+            ticker: pool_currency.0.to_owned(),
         });
 
         let previous_interest_due =
             status.previous_interest_due.unwrap_or(AmountTicker {
                 amount: "0".to_owned(),
-                ticker: pool_currency.1.to_owned(),
+                ticker: pool_currency.0.to_owned(),
             });
         let overdue_interest =
             status.overdue_interest.unwrap_or(AmountTicker {
                 amount: "0".to_owned(),
-                ticker: pool_currency.1.to_owned(),
+                ticker: pool_currency.0.to_owned(),
             });
 
         let current_margin_due =
             status.current_margin_due.unwrap_or(AmountTicker {
                 amount: "0".to_owned(),
-                ticker: pool_currency.1.to_owned(),
+                ticker: pool_currency.0.to_owned(),
             });
         let due_margin = status.due_margin.unwrap_or(AmountTicker {
             amount: "0".to_owned(),
-            ticker: pool_currency.1.to_owned(),
+            ticker: pool_currency.0.to_owned(),
         });
 
         let current_interest_due =
             status.current_interest_due.unwrap_or(AmountTicker {
                 amount: "0".to_owned(),
-                ticker: pool_currency.1.to_owned(),
+                ticker: pool_currency.0.to_owned(),
             });
         let due_interest = status.due_interest.unwrap_or(AmountTicker {
             amount: "0".to_owned(),
-            ticker: pool_currency.1.to_owned(),
+            ticker: pool_currency.0.to_owned(),
         });
 
         let previous_margin_due_stable = state

@@ -4,8 +4,6 @@ pub mod lp_lender_state;
 pub mod lp_pool_state;
 pub mod ls_state;
 pub mod mp_assets;
-pub mod mp_assets_state;
-pub mod mp_map_assets;
 pub mod pl_state;
 pub mod tr_state;
 pub mod wasm_lp_deposit;

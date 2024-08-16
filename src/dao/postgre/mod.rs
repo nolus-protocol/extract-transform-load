@@ -13,8 +13,6 @@ mod ls_opening;
 mod ls_repayment;
 mod ls_state;
 mod mp_asset;
-mod mp_asset_mapping;
-mod mp_asset_state;
 mod mp_yield;
 mod path;
 mod pl_state;

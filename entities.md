@@ -94,6 +94,7 @@ Config: time interval
 | MP_asset_timestamp | Timestamp        | Date time at which the information is relevant |
 | MP_price_in_stable | Decimal          | The price of the asset at this moment          |
 
+# DEPRECATED
 ### **MP_Asset_State** - Historical Aggregated Data [Primary key = MP_asset_symbol + MP_timestamp]
 
 | Property Name   | Type              | Query API                           | Description                                    |
