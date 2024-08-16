@@ -12,13 +12,12 @@ use cosmos_sdk_proto::{
         staking::v1beta1::{MsgBeginRedelegate, MsgDelegate, MsgUndelegate},
     },
     cosmwasm::wasm::v1::MsgExecuteContract,
-    ibc::{
-        applications::transfer::v1::MsgTransfer,
-        core::channel::v1::MsgRecvPacket,
-    },
     Timestamp,
 };
 use cosmrs::{tx::Fee, Any};
+use ibc_proto::ibc::{
+    apps::transfer::v1::MsgTransfer, core::channel::v1::MsgRecvPacket,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;

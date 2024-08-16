@@ -1,3 +1,4 @@
+use anyhow::Context;
 use chrono::Utc;
 use futures::future::join_all;
 use sqlx::types::BigDecimal;
@@ -10,37 +11,69 @@ use crate::{
     model::Actions,
     model::{Action_History, MP_Asset},
 };
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 pub async fn fetch_insert(
     app_state: AppState<State>,
     height: Option<String>,
 ) -> Result<(), Error> {
-    let mut joins = Vec::new();
+    let mut joins = vec![];
+    let mut protocl_data_joins = vec![];
     let mut mp_assets = vec![];
     let timestamp = Utc::now();
+    let mut lpns = HashMap::new();
 
     for protocol in app_state.protocols.values() {
+        protocl_data_joins.push(get_lpn_data(
+            app_state.clone(),
+            protocol.protocol.to_owned(),
+        ));
         joins.push(app_state.grpc.get_prices(
             protocol.contracts.oracle.to_owned(),
             protocol.protocol.to_owned(),
             height.to_owned(),
         ));
     }
+
+    for result in join_all(protocl_data_joins).await {
+        match result {
+            Ok((protocol, base_currency, price, decimal)) => {
+                let mp_asset = MP_Asset {
+                    MP_asset_symbol: base_currency.to_owned(),
+                    MP_asset_timestamp: timestamp,
+                    MP_price_in_stable: price.to_owned(),
+                    Protocol: protocol.to_owned(),
+                };
+                mp_assets.push(mp_asset);
+                lpns.insert(protocol, (base_currency, price, decimal));
+            },
+            Err(err) => {
+                return Err(err);
+            },
+        }
+    }
+
     for result in join_all(joins).await {
         match result {
             Ok(data) => {
                 let (assets, protocol) = data;
+                let (_base_currency, lpn_price, lpn_decimals) =
+                    lpns.get(&protocol).context(format!(
+                        "lpn not found in protocol {}",
+                        &protocol
+                    ))?;
+
                 for price in assets.prices {
                     if let Some(asset) = app_state
                         .config
                         .hash_map_currencies
                         .get(&price.amount.ticker)
                     {
-                        let decimals = asset.2 - app_state.config.lpn_decimals;
+                        let decimals = asset.2 - lpn_decimals;
                         let mut value =
                             BigDecimal::from_str(&price.amount_quote.amount)?
-                                / BigDecimal::from_str(&price.amount.amount)?;
+                                / BigDecimal::from_str(&price.amount.amount)?
+                                * lpn_price;
                         let decimals_abs = decimals.abs();
 
                         let power_value = BigDecimal::from(u64::pow(
@@ -70,29 +103,29 @@ pub async fn fetch_insert(
         }
     }
 
-    for (protocol, config) in &app_state.protocols {
-        let item = app_state
-            .config
-            .lp_pools
-            .iter()
-            .find(|(contract, _currency)| contract == &config.contracts.lpp);
+    // for (protocol, config) in &app_state.protocols {
+    //     let item = app_state
+    //         .config
+    //         .lp_pools
+    //         .iter()
+    //         .find(|(contract, _currency)| contract == &config.contracts.lpp);
 
-        match item {
-            Some((_contract, currency)) => {
-                let value = app_state.config.lpn_price.to_owned();
-                let mp_asset = MP_Asset {
-                    MP_asset_symbol: currency.to_owned(),
-                    MP_asset_timestamp: timestamp,
-                    MP_price_in_stable: value,
-                    Protocol: protocol.to_owned(),
-                };
-                mp_assets.push(mp_asset);
-            },
-            None => {
-                error!("Lpn currency not found in protocol {}", &protocol);
-            },
-        }
-    }
+    //     match item {
+    //         Some((_contract, currency)) => {
+    //             let value = app_state.config.lpn_price.to_owned();
+    //             let mp_asset = MP_Asset {
+    //                 MP_asset_symbol: currency.to_owned(),
+    //                 MP_asset_timestamp: timestamp,
+    //                 MP_price_in_stable: value,
+    //                 Protocol: protocol.to_owned(),
+    //             };
+    //             mp_assets.push(mp_asset);
+    //         },
+    //         None => {
+    //             error!("Lpn currency not found in protocol {}", &protocol);
+    //         },
+    //     }
+    // }
 
     app_state.database.mp_asset.insert_many(&mp_assets).await?;
 
@@ -126,4 +159,39 @@ pub async fn mp_assets_task(app_state: AppState<State>) -> Result<(), Error> {
         }
     })
     .await?
+}
+
+pub async fn get_lpn_data(
+    app_state: AppState<State>,
+    protocol: String,
+) -> Result<(String, String, BigDecimal, i16), Error> {
+    let prtcs = app_state
+        .protocols
+        .get(&protocol)
+        .context(format!("protocol not found {}", &protocol))?;
+
+    let base_currency = app_state
+        .grpc
+        .get_base_currency(prtcs.contracts.oracle.to_owned())
+        .await?;
+
+    let lpn_price = app_state
+        .grpc
+        .get_stable_price(
+            prtcs.contracts.oracle.to_owned(),
+            base_currency.to_owned(),
+        )
+        .await?;
+
+    let lpn_price = BigDecimal::from_str(&lpn_price.amount_quote.amount)?
+        / BigDecimal::from_str(&lpn_price.amount.amount)?;
+
+    let lpn_decimals = app_state
+        .config
+        .hash_map_currencies
+        .get(&base_currency)
+        .context(format!("currency not found {}", &base_currency))?
+        .2;
+
+    Ok((protocol, base_currency, lpn_price, lpn_decimals))
 }

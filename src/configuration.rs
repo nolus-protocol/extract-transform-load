@@ -321,9 +321,6 @@ pub struct Config {
     pub admin_contract: String,
     pub ignore_protocols: Vec<String>,
     pub initial_protocol: String,
-    pub lpn_price: BigDecimal,
-    pub lpns: Vec<String>,
-    pub lpn_decimals: i16,
     pub socket_reconnect_interval: u64,
     pub grpc_host: String,
     pub events_subscribe: Vec<String>,
@@ -430,7 +427,6 @@ pub fn get_configuration() -> Result<Config, Error> {
     let timeout = env::var("TIMEOUT")?.parse()?;
     let max_tasks = env::var("MAX_TASKS")?.parse()?;
     let admin_contract = env::var("ADMIN_CONTRACT")?.parse()?;
-    let lpn_decimals = env::var("LPN_DECIMALS")?.parse()?;
     let socket_reconnect_interval =
         env::var("SOCKET_RECONNECT_INTERVAL")?.parse()?;
     let grpc_host = env::var("GRPC_HOST")?.parse()?;
@@ -442,11 +438,6 @@ pub fn get_configuration() -> Result<Config, Error> {
         .collect::<Vec<String>>();
 
     let initial_protocol = env::var("INITIAL_PROTOCOL")?.parse()?;
-    let lpn_price = env::var("LPN_PRICE")?.parse()?;
-    let lpns = env::var("LPNS")?
-        .split(',')
-        .map(|item| item.to_owned())
-        .collect::<Vec<String>>();
 
     let supported_currencies = get_supported_currencies()?;
     let lp_pools = get_lp_pools()?;
@@ -517,9 +508,6 @@ pub fn get_configuration() -> Result<Config, Error> {
         admin_contract,
         ignore_protocols,
         initial_protocol,
-        lpn_price,
-        lpns,
-        lpn_decimals,
         socket_reconnect_interval,
         grpc_host,
         events_subscribe,

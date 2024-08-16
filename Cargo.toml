@@ -17,7 +17,7 @@ rpath = false
 
 [dependencies]
 
-actix-web = { version = "4.8" }
+actix-web = { version = "4.9" }
 actix-cors = "0.7"
 actix-files = "0.6"
 
@@ -32,7 +32,7 @@ sqlx = { version = "0.8", features = [
     "bigdecimal",
 ] }
 
-cosmrs = { version = "0.18", default-features = false, features = [
+cosmrs = { version = "0.19", default-features = false, features = [
     "grpc",
     "bip32",
     "cosmwasm"
@@ -50,10 +50,10 @@ tonic = { version = "0.12", default-features = false, features = [
 
 chrono = { version = "0.4.38", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
-cosmos-sdk-proto = { version = "0.23", features = ["cosmwasm", "grpc-transport"] }
-prost = { version = "0.13", features = ["derive"] }
+cosmos-sdk-proto = { version = "0.24", features = ["cosmwasm", "grpc-transport",] }
+prost = { version = "0.13", features = ["derive",] }
 bigdecimal = { version = "0.4", features = ["serde"] }
-tendermint-rpc = { version = "0.38.1", features = ["websocket-client"] }
+tendermint-rpc = { version = "0.39.1", features = ["websocket-client"] }
 
 url = "2.5"
 base64 = "0.22"
@@ -63,6 +63,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 anyhow = "1.0"
 sha256 = "1.5.0"
+ibc-proto = "0.47.0"
 
 [features]
 default = ["testnet"]

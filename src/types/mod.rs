@@ -66,7 +66,7 @@ pub use ls_state_type::LS_State_Type;
 pub use max_lp_ratio::Max_LP_Ratio;
 pub use msg_receive_packet::MsgReceivePacket;
 pub use new_block_response::{NewBlockBody, NewBlockData};
-pub use prices_type::Prices;
+pub use prices_type::{AmountObject, Prices};
 pub use query_response::QueryBody;
 pub use tr_profit_type::TR_Profit_Type;
 pub use tr_rewards_distribution_type::TR_Rewards_Distribution_Type;

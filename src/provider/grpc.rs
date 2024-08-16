@@ -4,8 +4,9 @@ use std::time::Duration;
 use crate::configuration::Config;
 use crate::error::Error;
 use crate::types::{
-    AdminProtocolExtendType, AdminProtocolType, Balance, LPP_Price,
-    LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type, Prices,
+    AdminProtocolExtendType, AdminProtocolType, AmountObject, Balance,
+    LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type,
+    Prices,
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -253,6 +254,7 @@ impl Grpc {
                 count_total: true,
                 reverse: false,
             }),
+            resolve_denom: false,
         };
 
         let mut client = self.bank_query_client.clone();
@@ -262,7 +264,6 @@ impl Grpc {
             .await
             .map(|response| response.into_inner())
             .context(QUERY_NODE_INFO_ERROR)?;
-
         Ok(data)
     }
 
@@ -326,6 +327,62 @@ impl Grpc {
                 serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
             })?;
         Ok((data, protocol))
+    }
+
+    pub async fn get_base_currency(
+        &self,
+        contract: String,
+    ) -> Result<String, Error> {
+        let bytes = b"{\"base_currency\": {}}";
+
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against oracle base_currency contract!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against oracle base_currency contract!";
+
+        let mut client = self.wasm_query_client.clone();
+        let data = client
+            .smart_contract_state(QuerySmartContractStateRequest {
+                address: contract,
+                query_data: bytes.to_vec(),
+            })
+            .await
+            .map(|response| response.into_inner().data)
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
+        Ok(data)
+    }
+
+    pub async fn get_stable_price(
+        &self,
+        contract: String,
+        ticker: String,
+    ) -> Result<AmountObject, Error> {
+        let bytes =
+            format!(r#"{{"stable_price": {{ "currency": "{}" }} }}"#, ticker)
+                .to_owned();
+        let bytes = bytes.as_bytes();
+
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against oracle stable_price contract!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against oracle stable_price contract!";
+
+        let mut client = self.wasm_query_client.clone();
+        let data = client
+            .smart_contract_state(QuerySmartContractStateRequest {
+                address: contract,
+                query_data: bytes.to_vec(),
+            })
+            .await
+            .map(|response| response.into_inner().data)
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
+        Ok(data)
     }
 
     pub async fn get_admin_config(
