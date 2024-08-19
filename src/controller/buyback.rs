@@ -1,7 +1,6 @@
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    model::Buyback,
 };
 use actix_web::{get, web, Responder, Result};
 use serde::Deserialize;
@@ -18,8 +17,7 @@ async fn index(
         limit = 100;
     }
 
-    let data: Vec<Buyback> =
-        state.database.tr_profit.get_buyback(skip, limit).await?;
+    let data = state.database.tr_profit.get_buyback(skip, limit).await?;
     Ok(web::Json(data))
 }
 

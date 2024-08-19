@@ -207,5 +207,24 @@
         "max": 100
       }
     ]
+  },
+  {
+    "description": "Get prices",
+    "url": "/api/prices",
+    "type": "GET",
+    "params": [
+      {
+        "name": "interval",
+        "type": "Number"
+      },
+      {
+        "name": "key",
+        "type": "String"
+      },
+      {
+        "name": "protocol",
+        "type": "String"
+      }
+    ]
   }
 ]
