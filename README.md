@@ -47,6 +47,9 @@ SOCKET_RECONNECT_INTERVAL=5
 EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay
 ```
 
+HOST=pirin-cl.nolus.network:26657
+GRPC_HOST=https://pirin-cl.nolus.network:9090
+
 ### Testnet config:
 
 ```
@@ -78,16 +81,16 @@ TESTNET CURRENCIES WHEN FEEDERS NOT RETURN CORRECT DATA
 INSERT INTO "MP_Asset"
 ("MP_asset_symbol", "MP_asset_timestamp", "MP_price_in_stable", "Protocol")
 VALUES
-('OSMO', NOW(), 0, 'OSMOSIS'),
-('USDC', NOW(), 0, 'OSMOSIS'),
-('ATOM', NOW(), 0, 'OSMOSIS'),
-('NLS', NOW(), 0, 'OSMOSIS'),
-('AKT', NOW(), 0, 'OSMOSIS'),
-('JUNO', NOW(), 0, 'OSMOSIS'),
-('NTRN', NOW(), 0, 'NEUTRON'),
-('NLS', NOW(), 0, 'NEUTRON'),
-('USDC_AXELAR', NOW(), 0, 'NEUTRON'),
-('ATOM', NOW(), 0, 'NEUTRON');
+('OSMO', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
+('USDC', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
+('ATOM', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
+('NLS', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
+('AKT', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
+('JUNO', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
+('NTRN', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
+('NLS', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
+('USDC_AXELAR', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
+('ATOM', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL');
 
 DO $FN$
 BEGIN

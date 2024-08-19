@@ -64,6 +64,6 @@ sha256 = "1.5.0"
 ibc-proto = "0.47.0"
 
 [features]
-default = ["testnet"]
+default = ["mainnet"]
 mainnet = []
 testnet = []
