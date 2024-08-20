@@ -48,7 +48,7 @@ pub async fn parse_and_insert(
         Tx_Hash: Some(tx_hash),
         LS_contract_id: item.id,
         LS_address_id: item.customer,
-        LS_asset_symbol: item.currency,
+        LS_asset_symbol: item.loan_symbol,
         LS_interest: air,
         LS_timestamp: at,
         LS_loan_pool_id: item.loan_pool_id.to_owned(),
