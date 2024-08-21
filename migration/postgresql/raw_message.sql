@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS "raw_message" (
   "value" TEXT,
   "block" BIGINT NOT NULL,
   "fee_amount" DECIMAL(39, 0),
-  "fee_denom" VARCHAR(20),
+  "fee_denom" VARCHAR(68),
   "memo" TEXT,
   "timestamp" TIMESTAMPTZ NOT NULL,
   PRIMARY KEY ("index", "tx_hash")
