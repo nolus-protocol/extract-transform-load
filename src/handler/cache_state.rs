@@ -78,20 +78,12 @@ pub async fn set_total_value_locked(
             return Err(Error::ProtocolError(String::from("osmosis_usdc")));
         };
 
-    let osmosis_osmo =
-        if let Some((osmosis_osmo, _)) = app_state.config.lp_pools.get(2) {
-            osmosis_osmo
-        } else {
-            return Err(Error::ProtocolError(String::from("osmosis_osmo")));
-        };
-
     let data = app_state
         .database
         .ls_state
         .get_total_value_locked(
             osmosis_usdc.to_owned(),
             neutron_usdc_axelar.to_owned(),
-            osmosis_osmo.to_owned(),
         )
         .await?;
     let cache = &app_state.clone().cache;

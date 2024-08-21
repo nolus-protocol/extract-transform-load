@@ -212,7 +212,6 @@ impl Table<LS_State> {
         &self,
         osmosis_usdc_protocol: String,
         neutron_axelar_protocol: String,
-        osmosis_osmo_protocol: String,
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
@@ -253,26 +252,17 @@ impl Table<LS_State> {
             WHERE "LP_Pool_id" = $2
             ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
           ),
-          Available_Osmosis_Osmo AS (
-            SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
-            FROM
-              "LP_Pool_State"
-            WHERE "LP_Pool_id" = $3
-            ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
-          ),
           Lease_Value_Sum AS (
             SELECT SUM("Lease Value") AS "Total Lease Value" FROM Lease_Value
           )
           SELECT
             (SELECT "Total Lease Value" FROM Lease_Value_Sum) +
             (SELECT "Available Assets" FROM Available_Assets_Osmosis) +
-            (SELECT "Available Assets" FROM Available_Assets_Neutron) +
-            (SELECT "Available Assets" FROM Available_Osmosis_Osmo) AS "TVL"
+            (SELECT "Available Assets" FROM Available_Assets_Neutron) AS "TVL"
             "#,
         )
         .bind(osmosis_usdc_protocol)
         .bind(neutron_axelar_protocol)
-        .bind(osmosis_osmo_protocol)
 
         .fetch_optional(&self.pool)
         .await?;
