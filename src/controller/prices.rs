@@ -49,9 +49,9 @@ pub struct Query {
 
 pub fn getIntervalGroup(interval: i64) -> i32 {
     if interval <= 7 {
-        return 5;
+        return 1;
     } else if interval > 7 && interval < 30 {
-        return 10;
+        return 5;
     }
 
     60
