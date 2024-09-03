@@ -60,7 +60,7 @@ SUPPORTED_CURRENCIES=(NLS,6),(USDC,6),(USDC_AXELAR,6),(OSMO,6),(ATOM,6),(AKT,6),
 AGGREGATION_INTTERVAL=1
 MP_ASSET_INTERVAL_IN_MINUTES=1
 CACHE_INTERVAL_IN_MINUTES=60
-LP_POOLS=(nolus184vpz5tng9gy236uu4hf8gqq5rk0ylk27uds72cczz05q0vrwvvsy9mfkp,USDC_AXELAR),(nolus1urdpfxrj7m9r70mv5tdrlnmn02eta6ksaxak8ejsc7pshu83qlzsyqf004,USDC_AXELAR),(nolus1k58ffjs4cnymw9xs8cgk66q6dxssd0epw6zzp9p5lylehmfys6tqjqfm7k,OSMO)
+LP_POOLS=(nolus184vpz5tng9gy236uu4hf8gqq5rk0ylk27uds72cczz05q0vrwvvsy9mfkp,USDC_AXELAR),(nolus1urdpfxrj7m9r70mv5tdrlnmn02eta6ksaxak8ejsc7pshu83qlzsyqf004,USDC_AXELAR)
 NATIVE_CURRENCY=NLS
 TREASURY_CONTRACT=nolus1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqrr2r7y
 SERVER_HOST=127.0.0.1
@@ -105,7 +105,7 @@ VALUES
 
 DO $FN$
 BEGIN
-FOR counter IN 1..880188 LOOP
+FOR counter IN 1..1433217 LOOP
 EXECUTE $$ INSERT INTO block(id) VALUES ($1) RETURNING id $$
 USING counter;
 END LOOP;
