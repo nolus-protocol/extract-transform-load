@@ -4,6 +4,7 @@ use crate::{
     model::LS_Opening,
 };
 use actix_web::{get, web, Responder, Result};
+use anyhow::Context;
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 
@@ -14,19 +15,45 @@ async fn index(
 ) -> Result<impl Responder, Error> {
     let result = state.database.ls_opening.get(data.lease.to_owned()).await?;
     if let Some(lease) = result {
-        let protocol = state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
-        let (downpayment_price,) = state
-            .database
-            .mp_asset
-            .get_price_by_date(
+        let protocol = state
+            .get_protocol_by_pool_id(&lease.LS_loan_pool_id)
+            .context(format!(
+                "protocol not found {}",
+                &lease.LS_loan_pool_id
+            ))?;
+
+        let base_currency = state
+            .config
+            .hash_map_pool_currency
+            .get(&lease.LS_loan_pool_id)
+            .context(format!(
+                "currency not found in hash map pool in protocol {}",
+                &protocol
+            ))?;
+
+        let base_currency = &base_currency.0;
+
+        let ((downpayment_price,), (lpn_price,)) = tokio::try_join!(
+            state.database.mp_asset.get_price_by_date(
                 &lease.LS_asset_symbol,
-                protocol,
+                Some(protocol.to_owned()),
+                &lease.LS_timestamp,
+            ),
+            state.database.mp_asset.get_price_by_date(
+                base_currency,
+                Some(protocol.to_owned()),
                 &lease.LS_timestamp,
             )
-            .await?;
+        )
+        .context(format!(
+            "could not parse currencies in lease {}",
+            &lease.LS_contract_id
+        ))?;
+
         return Ok(web::Json(Some(ResponseData {
             lease,
             downpayment_price,
+            lpn_price,
         })));
     }
 
@@ -42,4 +69,5 @@ pub struct Query {
 pub struct ResponseData {
     pub lease: LS_Opening,
     pub downpayment_price: BigDecimal,
+    pub lpn_price: BigDecimal,
 }
