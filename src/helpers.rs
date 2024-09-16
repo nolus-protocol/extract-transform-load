@@ -1,9 +1,9 @@
 use crate::configuration::{AppState, State};
 use crate::dao::DataBase;
 use crate::handler::{
-    wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close, wasm_ls_close_position,
-    wasm_ls_liquidation, wasm_ls_liquidation_warning, wasm_ls_open,
-    wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards,
+    wams_reserve_cover_loss, wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close,
+    wasm_ls_close_position, wasm_ls_liquidation, wasm_ls_liquidation_warning,
+    wasm_ls_open, wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards,
 };
 use crate::model::{Block, Raw_Message};
 use crate::{
@@ -15,11 +15,14 @@ use crate::{
     },
 };
 
-use crate::types::{LS_Close_Position_Type, LS_Liquidation_Warning_Type};
+use crate::types::{
+    LS_Close_Position_Type, LS_Liquidation_Warning_Type,
+    Reserve_Cover_Loss_Type,
+};
 use anyhow::Context;
 use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
+use cosmos_sdk_proto::tendermint::abci::{Event, EventAttribute};
 use cosmos_sdk_proto::Timestamp;
-use cosmrs::proto::tendermint::v0_34::abci::{Event, EventAttribute};
 
 use cosmrs::{Any, Tx};
 use sqlx::Transaction;
@@ -247,6 +250,7 @@ pub fn parse_wasm_ls_liquidation(
 ) -> Result<LS_Liquidation_Type, Error> {
     let ls_liquidation = pasrse_data(attributes)?;
     let items = parseInterestValues(&ls_liquidation)?;
+
     let c = LS_Liquidation_Type {
         height: ls_liquidation
             .get("height")
@@ -256,13 +260,21 @@ pub fn parse_wasm_ls_liquidation(
             .get("to")
             .ok_or(Error::FieldNotExist(String::from("to")))?
             .to_owned(),
-        liquidation_symbol: ls_liquidation
+        amount_symbol: ls_liquidation
             .get("amount-symbol")
             .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
             .to_owned(),
-        liquidation_amount: ls_liquidation
+        amount_amount: ls_liquidation
             .get("amount-amount")
             .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
+            .to_owned(),
+        payment_symbol: ls_liquidation
+            .get("payment-symbol")
+            .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
+            .to_owned(),
+        payment_amount: ls_liquidation
+            .get("payment-amount")
+            .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
             .to_owned(),
         at: ls_liquidation
             .get("at")
@@ -271,6 +283,10 @@ pub fn parse_wasm_ls_liquidation(
         r#type: ls_liquidation
             .get("cause")
             .ok_or(Error::FieldNotExist(String::from("cause")))?
+            .to_owned(),
+        loan_close: ls_liquidation
+            .get("loan-close")
+            .ok_or(Error::FieldNotExist(String::from("loan_close")))?
             .to_owned(),
         prev_margin_interest: items.prev_margin_interest,
         prev_loan_interest: items.prev_loan_interest,
@@ -309,6 +325,27 @@ pub fn parse_wasm_ls_liquidation_warning(
         ltv: ls_liquidation_warning
             .get("ltv")
             .ok_or(Error::FieldNotExist(String::from("ltv")))?
+            .to_owned(),
+    };
+
+    Ok(c)
+}
+pub fn parse_wasm_reserve_cover_loss(
+    attributes: &Vec<EventAttribute>,
+) -> Result<Reserve_Cover_Loss_Type, Error> {
+    let reserve_cover_loss = pasrse_data(attributes)?;
+    let c = Reserve_Cover_Loss_Type {
+        to: reserve_cover_loss
+            .get("to")
+            .ok_or(Error::FieldNotExist(String::from("to")))?
+            .to_owned(),
+        payment_symbol: reserve_cover_loss
+            .get("payment-symbol")
+            .ok_or(Error::FieldNotExist(String::from("payment_symbol")))?
+            .to_owned(),
+        payment_amount: reserve_cover_loss
+            .get("payment-amount")
+            .ok_or(Error::FieldNotExist(String::from("payment_amount")))?
             .to_owned(),
     };
 
@@ -504,8 +541,8 @@ fn pasrse_data(
 ) -> Result<HashMap<String, String>, Error> {
     let mut data: HashMap<String, String> = HashMap::new();
     for attribute in attributes {
-        let value = String::from_utf8(attribute.value.to_vec())?;
-        let key = String::from_utf8(attribute.key.to_vec())?;
+        let value = attribute.value.to_owned();
+        let key = attribute.key.to_owned();
         if data.contains_key(&key) {
             return Err(Error::DuplicateField(key));
         }
@@ -521,6 +558,7 @@ pub async fn parse_event(
     index: usize,
     time_stamp: Timestamp,
     tx_hash: String,
+    height: i64,
     tx: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     if let Ok(t) = EventsType::from_str(&event.r#type) {
@@ -561,6 +599,7 @@ pub async fn parse_event(
                     &app_state,
                     wasm_ls_repay,
                     tx_hash,
+                    height,
                     tx,
                 )
                 .await?;
@@ -582,6 +621,19 @@ pub async fn parse_event(
                 wasm_ls_liquidation_warning::parse_and_insert(
                     &app_state,
                     ls_liquidation_warning,
+                    time_stamp,
+                    tx_hash,
+                    tx,
+                )
+                .await?;
+            },
+            EventsType::Reserve_Cover_Loss => {
+                let reserve_cover_loss =
+                    parse_wasm_reserve_cover_loss(&event.attributes)?;
+                wams_reserve_cover_loss::parse_and_insert(
+                    &app_state,
+                    reserve_cover_loss,
+                    index,
                     time_stamp,
                     tx_hash,
                     tx,
@@ -667,6 +719,7 @@ pub async fn insert_txs(
                         index,
                         time_stamp.clone(),
                         hash.to_owned(),
+                        height,
                         &mut tx,
                     )
                     .await?;
@@ -729,6 +782,7 @@ pub enum EventsType {
     LS_Repay,
     LS_Liquidation,
     LS_Liquidation_Warning,
+    Reserve_Cover_Loss,
 
     LP_deposit,
     LP_Withdraw,
@@ -746,6 +800,9 @@ impl fmt::Display for EventsType {
             },
             EventsType::LS_Repay => write!(f, "wasm-ls-repay"),
             EventsType::LS_Liquidation => write!(f, "wasm-ls-liquidation"),
+            EventsType::Reserve_Cover_Loss => {
+                write!(f, "wasm-reserve-cover-loss")
+            },
             EventsType::LP_deposit => write!(f, "wasm-lp-deposit"),
             EventsType::LP_Withdraw => write!(f, "wasm-lp-withdraw"),
             EventsType::TR_Profit => write!(f, "wasm-tr-profit"),
@@ -767,6 +824,10 @@ impl From<EventsType> for String {
             },
             EventsType::LS_Repay => String::from("wasm-ls-repay"),
             EventsType::LS_Liquidation => String::from("wasm-ls-liquidation"),
+            EventsType::Reserve_Cover_Loss => {
+                String::from("wasm-reserve-cover-loss")
+            },
+
             EventsType::LP_deposit => String::from("wasm-lp-deposit"),
             EventsType::LP_Withdraw => String::from("wasm-lp-withdraw"),
             EventsType::TR_Profit => String::from("wasm-tr-profit"),
@@ -790,6 +851,8 @@ impl FromStr for EventsType {
             "wasm-ls-close-position" => Ok(EventsType::LS_Close_Position),
             "wasm-ls-repay" => Ok(EventsType::LS_Repay),
             "wasm-ls-liquidation" => Ok(EventsType::LS_Liquidation),
+            "wasm-reserve-cover-loss" => Ok(EventsType::Reserve_Cover_Loss),
+
             "wasm-lp-deposit" => Ok(EventsType::LP_deposit),
             "wasm-lp-withdraw" => Ok(EventsType::LP_Withdraw),
             "wasm-tr-profit" => Ok(EventsType::TR_Profit),
@@ -800,6 +863,51 @@ impl FromStr for EventsType {
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Message Type not supported",
+            )),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Loan_Closing_Status {
+    Reypay,
+    Liquidation,
+    MarketClose,
+}
+
+impl fmt::Display for Loan_Closing_Status {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Loan_Closing_Status::Reypay => write!(f, "repay"),
+            Loan_Closing_Status::Liquidation => write!(f, "liquidation"),
+            Loan_Closing_Status::MarketClose => {
+                write!(f, "market-close")
+            },
+        }
+    }
+}
+
+impl From<Loan_Closing_Status> for String {
+    fn from(value: Loan_Closing_Status) -> Self {
+        match value {
+            Loan_Closing_Status::Reypay => String::from("repay"),
+            Loan_Closing_Status::Liquidation => String::from("liquidation"),
+            Loan_Closing_Status::MarketClose => String::from("market-close"),
+        }
+    }
+}
+
+impl FromStr for Loan_Closing_Status {
+    type Err = io::Error;
+
+    fn from_str(value: &str) -> Result<Loan_Closing_Status, Self::Err> {
+        match value {
+            "repay" => Ok(Loan_Closing_Status::Reypay),
+            "liquidation" => Ok(Loan_Closing_Status::Liquidation),
+            "market-close" => Ok(Loan_Closing_Status::MarketClose),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Loan_Closing_Status not supported",
             )),
         }
     }

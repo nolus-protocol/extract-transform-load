@@ -35,7 +35,9 @@ use cosmrs::{
 };
 use sha256::digest;
 use tokio::time::sleep;
-use tonic::transport::{Channel, ClientTlsConfig, Endpoint, Uri};
+use tonic::codegen::http::Uri;
+use tonic::transport::{Channel, ClientTlsConfig, Endpoint};
+use tonic::IntoRequest;
 use tracing::error;
 
 #[derive(Debug)]
@@ -429,6 +431,40 @@ impl Grpc {
                 address: contract,
                 query_data: bytes.to_vec(),
             })
+            .await
+            .map(|response| response.into_inner().data)
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+            })?;
+
+        Ok(data)
+    }
+
+    pub async fn get_lease_state_by_block(
+        &self,
+        contract: String,
+        height: i64,
+    ) -> Result<LS_State_Type, Error> {
+        let bytes = b"{}";
+
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query lease contract!";
+
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query lease contract!";
+        let mut request = QuerySmartContractStateRequest {
+            address: contract,
+            query_data: bytes.to_vec(),
+        }
+        .into_request();
+
+        let metetadata = request.metadata_mut();
+        metetadata.append("x-cosmos-block-height", height.into());
+
+        let mut client = self.wasm_query_client.clone();
+        let data = client
+            .smart_contract_state(request)
             .await
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)

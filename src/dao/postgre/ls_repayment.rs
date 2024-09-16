@@ -34,14 +34,16 @@ impl Table<LS_Repayment> {
                     UPDATE 
                         "LS_Repayment" 
                     SET 
-                        "Tx_Hash" = $1
+                        "Tx_Hash" = $1,
+                        "LS_amnt" = $2
                     WHERE 
-                        "LS_repayment_height" = $2 AND
-                        "LS_contract_id" = $3 AND
-                        "LS_timestamp" = $4
+                        "LS_repayment_height" = $3 AND
+                        "LS_contract_id" = $4 AND
+                        "LS_timestamp" = $5
                 "#,
             )
             .bind(&ls_repayment.Tx_Hash)
+            .bind(&ls_repayment.LS_amnt)
             .bind(ls_repayment.LS_repayment_height)
             .bind(&ls_repayment.LS_contract_id)
             .bind(ls_repayment.LS_timestamp)
@@ -65,6 +67,7 @@ impl Table<LS_Repayment> {
                 "LS_repayment_height",
                 "LS_contract_id",
                 "LS_symbol",
+                "LS_amnt",
                 "LS_amnt_stable",
                 "LS_timestamp",
                 "LS_loan_close",
@@ -75,12 +78,13 @@ impl Table<LS_Repayment> {
                 "LS_principal_stable",
                 "Tx_Hash"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         "#,
         )
         .bind(data.LS_repayment_height)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_symbol)
+        .bind(&data.LS_amnt)
         .bind(&data.LS_amnt_stable)
         .bind(data.LS_timestamp)
         .bind(data.LS_loan_close)
@@ -109,6 +113,7 @@ impl Table<LS_Repayment> {
                 "LS_repayment_height",
                 "LS_contract_id",
                 "LS_symbol",
+                "LS_amnt",
                 "LS_amnt_stable",
                 "LS_timestamp",
                 "LS_loan_close",
@@ -125,6 +130,7 @@ impl Table<LS_Repayment> {
             b.push_bind(ls.LS_repayment_height)
                 .push_bind(&ls.LS_contract_id)
                 .push_bind(&ls.LS_symbol)
+                .push_bind(&ls.LS_amnt)
                 .push_bind(&ls.LS_amnt_stable)
                 .push_bind(ls.LS_timestamp)
                 .push_bind(ls.LS_loan_close)

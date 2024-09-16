@@ -117,3 +117,21 @@ ALTER TABLE "TR_Rewards_Distribution" ADD COLUMN "Tx_Hash" VARCHAR(64);
 21.08.2024
 
 ALTER TABLE "raw_message" ALTER COLUMN "fee_denom" TYPE VARCHAR(68);
+
+15.09.2024
+
+ALTER TABLE "LS_Repayment" ADD COLUMN "LS_amnt" DECIMAL(39, 0);
+
+ALTER TABLE "LS_Liquidation" ADD COLUMN "LS_amnt" DECIMAL(39, 0);
+ALTER TABLE "LS_Liquidation" ADD COLUMN "LS_payment_amnt" DECIMAL(39, 0);
+ALTER TABLE "LS_Liquidation" ADD COLUMN "LS_payment_amnt_stable" DECIMAL(39, 0);
+ALTER TABLE "LS_Liquidation" ADD COLUMN "LS_loan_close" BOOLEAN;
+
+ALTER TABLE "LS_Liquidation"
+  RENAME COLUMN "LS_symbol" TO "LS_payment_symbol";
+
+ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amnt_stable" TO "LS_payment_amnt_stable";
+ALTER TABLE "LS_Close_Position" ADD COLUMN "LS_amnt_stable" DECIMAL(39, 0);
+ALTER TABLE "LS_Close_Position" ADD COLUMN "LS_payment_amnt" DECIMAL(39, 0);
+
+

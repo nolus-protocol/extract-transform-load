@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS "LS_Repayment" (
   "LS_repayment_idx" SERIAL,
   "LS_contract_id" VARCHAR(64) NOT NULL,
   "LS_symbol" VARCHAR(20) NOT NULL,
+  "LS_amnt" DECIMAL(39, 0),
   "LS_amnt_stable" DECIMAL(39, 0) NOT NULL,
   "LS_timestamp" TIMESTAMPTZ NOT NULL,
   "LS_loan_close" BOOLEAN NOT NULL DEFAULT false,

@@ -505,7 +505,7 @@ impl Table<LS_Opening> {
                     UNION ALL 
                     SELECT SUM("LP_amnt_asset" / 1000000) AS "Volume" FROM "LP_Withdraw"
                     UNION ALL
-                    SELECT SUM("LS_amnt_stable" / 1000000) AS "Volume" FROM "LS_Close_Position"
+                    SELECT SUM("LS_payment_amnt_stable" / 1000000) AS "Volume" FROM "LS_Close_Position"
                     UNION ALL
                     SELECT SUM("LS_amnt_stable" / 1000000) AS "Volume" FROM "LS_Repayment"
                 ) AS combined_data;

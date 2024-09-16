@@ -34,6 +34,7 @@ mod query_response;
 mod tr_profit_type;
 mod tr_rewards_distribution_type;
 mod tr_state_type;
+mod wams_reserve_cover_loss_type;
 
 pub use abci_response::AbciBody;
 pub use admin_protocol_type::{AdminProtocolExtendType, AdminProtocolType};
@@ -71,3 +72,4 @@ pub use query_response::QueryBody;
 pub use tr_profit_type::TR_Profit_Type;
 pub use tr_rewards_distribution_type::TR_Rewards_Distribution_Type;
 pub use tr_state_type::TR_State_Type;
+pub use wams_reserve_cover_loss_type::Reserve_Cover_Loss_Type;

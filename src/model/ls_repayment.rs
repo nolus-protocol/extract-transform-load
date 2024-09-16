@@ -7,6 +7,7 @@ pub struct LS_Repayment {
     pub LS_repayment_idx: Option<i32>,
     pub LS_contract_id: String,
     pub LS_symbol: String,
+    pub LS_amnt: Option<BigDecimal>,
     pub LS_amnt_stable: BigDecimal,
     pub LS_timestamp: DateTime<Utc>,
     pub LS_loan_close: bool,

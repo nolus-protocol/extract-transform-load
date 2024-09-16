@@ -28,13 +28,19 @@ impl Table<LS_Close_Position> {
                     UPDATE 
                         "LS_Close_Position" 
                     SET 
-                        "Tx_Hash" = $1
+                        "Tx_Hash" = $1,
+                        "LS_amnt_stable" = $2,
+                        "LS_payment_amnt" = $3,
+                        "LS_payment_symbol" = $4
                     WHERE 
-                         "LS_position_height" = $2 AND
-                         "LS_contract_id" = $3
+                         "LS_position_height" = $5 AND
+                         "LS_contract_id" = $6
                 "#,
             )
             .bind(&ls_close_position.Tx_Hash)
+            .bind(&ls_close_position.LS_amnt_stable)
+            .bind(&ls_close_position.LS_payment_amnt)
+            .bind(&ls_close_position.LS_payment_symbol)
             .bind(ls_close_position.LS_position_height)
             .bind(&ls_close_position.LS_contract_id)
             .execute(&self.pool)
@@ -56,8 +62,7 @@ impl Table<LS_Close_Position> {
             INSERT INTO "LS_Close_Position" (
                 "LS_position_height",
                 "LS_contract_id",
-                "LS_symbol",
-                "LS_amnt_stable",
+                "LS_payment_amnt_stable",
                 "LS_change",
                 "LS_amount_amount" ,
                 "LS_amount_symbol",
@@ -68,15 +73,17 @@ impl Table<LS_Close_Position> {
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
                 "LS_principal_stable",
-                "Tx_Hash"
+                "Tx_Hash",
+                "LS_amnt_stable",
+                "LS_payment_amnt",
+                "LS_payment_symbol"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         "#,
         )
         .bind(data.LS_position_height)
         .bind(&data.LS_contract_id)
-        .bind(&data.LS_symbol)
-        .bind(&data.LS_amnt_stable)
+        .bind(&data.LS_payment_amnt_stable)
         .bind(&data.LS_change)
         .bind(&data.LS_amount_amount)
         .bind(&data.LS_amount_symbol)
@@ -88,6 +95,9 @@ impl Table<LS_Close_Position> {
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
         .bind(&data.Tx_Hash)
+        .bind(&data.LS_amnt_stable)
+        .bind(&data.LS_payment_amnt)
+        .bind(&data.LS_payment_symbol)
         .execute(&mut **transaction)
         .await
     }
@@ -106,8 +116,7 @@ impl Table<LS_Close_Position> {
             INSERT INTO "LS_Repayment" (
                 "LS_position_height",
                 "LS_contract_id",
-                "LS_symbol",
-                "LS_amnt_stable",
+                "LS_payment_amnt_stable",
                 "LS_change",
                 "LS_amount_amount" ,
                 "LS_amount_symbol",
@@ -118,15 +127,17 @@ impl Table<LS_Close_Position> {
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
                 "LS_principal_stable",
-                "Tx_Hash"
+                "Tx_Hash",
+                "LS_amnt_stable",
+                "LS_payment_amnt",
+                "LS_payment_symbol"
             )"#,
         );
 
         query_builder.push_values(data, |mut b, ls| {
             b.push_bind(ls.LS_position_height)
                 .push_bind(&ls.LS_contract_id)
-                .push_bind(&ls.LS_symbol)
-                .push_bind(&ls.LS_amnt_stable)
+                .push_bind(&ls.LS_payment_amnt_stable)
                 .push_bind(&ls.LS_change)
                 .push_bind(&ls.LS_amount_amount)
                 .push_bind(&ls.LS_amount_symbol)
@@ -137,7 +148,10 @@ impl Table<LS_Close_Position> {
                 .push_bind(&ls.LS_current_margin_stable)
                 .push_bind(&ls.LS_current_interest_stable)
                 .push_bind(&ls.LS_principal_stable)
-                .push_bind(&ls.Tx_Hash);
+                .push_bind(&ls.Tx_Hash)
+                .push_bind(&ls.LS_amnt_stable)
+                .push_bind(&ls.LS_payment_amnt)
+                .push_bind(&ls.LS_payment_symbol);
         });
 
         let query = query_builder.build();

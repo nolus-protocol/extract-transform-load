@@ -28,13 +28,23 @@ impl Table<LS_Liquidation> {
                     UPDATE 
                         "LS_Liquidation" 
                     SET 
-                        "Tx_Hash" = $1
+                        "Tx_Hash" = $1,
+                        "LS_amnt" = $2,
+                        "LS_payment_symbol" = $3,
+                        "LS_payment_amnt" = $4,
+                        "LS_payment_amnt_stable" = $5,
+                        "LS_loan_close" = $6
                     WHERE 
-                        "LS_liquidation_height" = $2 AND
-                        "LS_contract_id" = $3
+                        "LS_liquidation_height" = $7 AND
+                        "LS_contract_id" = $8
                 "#,
             )
             .bind(&ls_liquidatiion.Tx_Hash)
+            .bind(&ls_liquidatiion.LS_amnt)
+            .bind(&ls_liquidatiion.LS_payment_symbol)
+            .bind(&ls_liquidatiion.LS_payment_amnt)
+            .bind(&ls_liquidatiion.LS_payment_amnt_stable)
+            .bind(&ls_liquidatiion.LS_loan_close)
             .bind(ls_liquidatiion.LS_liquidation_height)
             .bind(&ls_liquidatiion.LS_contract_id)
             .execute(&self.pool)
@@ -65,9 +75,14 @@ impl Table<LS_Liquidation> {
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
                 "LS_principal_stable",
-                "Tx_Hash"
+                "Tx_Hash",
+                "LS_amnt",
+                "LS_payment_symbol",
+                "LS_payment_amnt",
+                "LS_payment_amnt_stable",
+                "LS_loan_close"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         "#,
         )
         .bind(data.LS_liquidation_height)
@@ -82,6 +97,11 @@ impl Table<LS_Liquidation> {
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
         .bind(&data.Tx_Hash)
+        .bind(&data.LS_amnt)
+        .bind(&data.LS_payment_symbol)
+        .bind(&data.LS_payment_amnt)
+        .bind(&data.LS_payment_amnt_stable)
+        .bind(&data.LS_loan_close)
         .execute(&mut **transaction)
         .await
     }
@@ -109,7 +129,12 @@ impl Table<LS_Liquidation> {
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
                 "LS_principal_stable",
-                "Tx_Hash"
+                "Tx_Hash",
+                "LS_amnt",
+                "LS_payment_symbol",
+                "LS_payment_amnt",
+                "LS_payment_amnt_stable",
+                "LS_loan_close"
             )"#,
         );
 
@@ -125,7 +150,12 @@ impl Table<LS_Liquidation> {
                 .push_bind(&ls.LS_current_margin_stable)
                 .push_bind(&ls.LS_current_interest_stable)
                 .push_bind(&ls.LS_principal_stable)
-                .push_bind(&ls.Tx_Hash);
+                .push_bind(&ls.Tx_Hash)
+                .push_bind(&ls.LS_amnt)
+                .push_bind(&ls.LS_payment_symbol)
+                .push_bind(&ls.LS_payment_amnt)
+                .push_bind(&ls.LS_payment_amnt_stable)
+                .push_bind(&ls.LS_loan_close);
         });
 
         let query = query_builder.build();
