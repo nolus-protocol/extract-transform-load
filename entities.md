@@ -166,8 +166,8 @@ In case of full liquidation, in addition to the liquidation event, the system is
 | LS_amnt_stable             | Unsigned Int(128) | in_stable(wasm-ls-liquidation.amount-amount)                   | The amount of the transaction in stable                                                 |
 | LS_liquidation_symbol      | Alphanumeric(20)  | wasm-ls-liquidation.liquidation-symbol                         | Liquidation currency symbol                                                             |
 | LS_amnt                    | Unsigned Int(128) | wasm-ls-liquidation.amount-amount                              | The amount of the transaction                                                           |
-| LS_liquidation_amnt        | Unsigned Int(128) | in_stable(wasm-ls-liquidation.liquidation-amount)              | The amount of the transaction liquidated                                                |
-| LS_liquidation_amnt_stable | Unsigned Int(128) | in_stable(wasm-ls-liquidation.liquidation-amount)              | The amount of the transaction in liquidation stable                                     |
+| LS_payment_amnt            | Unsigned Int(128) | in_stable(wasm-ls-liquidation.payment-amount)                      | The amount of the transaction liquidated                                                |
+| LS_payment_amnt_stable     | Unsigned Int(128) | in_stable(wasm-ls-liquidation.payment-amount)                      | The amount of the transaction in liquidation stable                                     |
 | LS_timestamp               | Timestamp         | wasm-ls-liquidation.at                                         | Liquidation time                                                                        |
 | LS_transaction_type        | Char(1)           | wasm-ls-liquidation.type                                       | 1 - Interest Overdue Liquidation, and 2 - Liability Exceeded Liquidation                |
 | LS_prev_margin_stable      | Unsigned Int(128) | wasm-ls-liquidation.prev-margin-interest                       | The paid margin interest amount for the previous period, if 1 - always, if 2 - optional |

@@ -2,7 +2,6 @@ CREATE TABLE IF NOT EXISTS "LS_Close_Position" (
   "LS_position_height" BIGINT NOT NULL,
   "LS_position_idx" SERIAL,
   "LS_contract_id" VARCHAR(64) NOT NULL,
-  "LS_symbol" VARCHAR(20) NOT NULL,
   "LS_change" DECIMAL(39, 0) NOT NULL,
   "LS_amount_amount" DECIMAL(39, 0) NOT NULL,
   "LS_amount_symbol" VARCHAR(20) NOT NULL,

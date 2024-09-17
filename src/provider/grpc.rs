@@ -201,7 +201,7 @@ impl Grpc {
         for tx in txs {
             let hash = digest(&tx);
 
-            tx_responses.push(self.get_tx(hash).await?);
+            tx_responses.push(self.get_tx(hash, height).await?);
         }
 
         Ok((tx_responses, time_stamp))
@@ -210,6 +210,7 @@ impl Grpc {
     pub async fn get_tx(
         &self,
         tx_hash: String,
+        height: i64,
     ) -> Result<Option<TxResponse>, Error> {
         let hash = tx_hash.to_string();
 
@@ -227,14 +228,16 @@ impl Grpc {
         }
         let tx = tx
             .context(format!(
-                "Query response doesn't contain tx information {}",
-                hash
+                "Query response doesn't contain tx information {}, block {}",
+                hash,
+                height
             ))
             .and_then(|response| {
                 let data = response.into_inner();
                 data.tx_response.context(format!(
-                "Query response doesn't contain tx information tx_response {}",
-                hash
+                "Query response doesn't contain tx information tx_response {}, block {}",
+                hash,
+                height
             ))
             })?;
 
