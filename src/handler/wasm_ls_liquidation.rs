@@ -91,8 +91,7 @@ pub async fn parse_and_insert(
         let ls_loan_closing = LS_Loan_Closing {
             LS_contract_id: ls_liquidation.LS_contract_id.to_owned(),
             LS_symbol: ls_liquidation.LS_symbol.to_owned(),
-            LS_amnt: BigDecimal::from_str(&item.amount_amount)?,
-            LS_amnt_stable: ls_liquidation.LS_amnt_stable.to_owned(),
+            LS_amnt_stable: BigDecimal::from_str("0")?,
             LS_timestamp: ls_liquidation.LS_timestamp.to_owned(),
             Type: String::from(Loan_Closing_Status::Liquidation),
         };

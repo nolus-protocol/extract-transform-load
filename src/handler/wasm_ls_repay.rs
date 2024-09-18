@@ -90,7 +90,6 @@ pub async fn parse_and_insert(
         let ls_loan_closing = LS_Loan_Closing {
             LS_contract_id: ls_repay.LS_contract_id.to_owned(),
             LS_symbol: ls_data.amount.ticker.to_owned(),
-            LS_amnt: BigDecimal::from_str(&ls_data.amount.amount)?,
             LS_amnt_stable: app_state
                 .in_stabe_by_date(
                     &ls_data.amount.ticker,

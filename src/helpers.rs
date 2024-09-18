@@ -191,6 +191,7 @@ pub fn parse_wasm_ls_close_position(
     attributes: &Vec<EventAttribute>,
 ) -> Result<Option<LS_Close_Position_Type>, Error> {
     let ls_close_position = pasrse_data(attributes)?;
+
     if ls_close_position.contains_key("height") {
         let items = parseInterestValues(&ls_close_position)?;
         let c = LS_Close_Position_Type {
