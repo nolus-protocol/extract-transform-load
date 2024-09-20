@@ -9,7 +9,7 @@ use crate::{
     dao::DataBase,
     error::Error,
     helpers::Loan_Closing_Status,
-    model::{LS_Liquidation, LS_Loan_Closing},
+    model::LS_Liquidation,
     types::LS_Liquidation_Type,
 };
 
@@ -56,16 +56,16 @@ pub async fn parse_and_insert(
     );
 
     let (LS_amnt_stable, LS_payment_amnt_stable) = tokio::try_join!(f1, f2)?;
-
+    let amount = BigDecimal::from_str(&item.amount_amount)?;
     let ls_liquidation = LS_Liquidation {
         Tx_Hash: Some(tx_hash),
         LS_liquidation_height: item.height.parse()?,
         LS_liquidation_idx: None,
-        LS_contract_id: item.to,
+        LS_contract_id: item.to.to_owned(),
         LS_symbol: item.amount_symbol.to_owned(),
         LS_amnt_stable,
 
-        LS_amnt: Some(BigDecimal::from_str(&item.amount_amount)?),
+        LS_amnt: Some(amount.to_owned()),
         LS_payment_symbol: Some(item.payment_symbol.to_owned()),
         LS_payment_amnt: Some(BigDecimal::from_str(&item.payment_amount)?),
         LS_payment_amnt_stable: Some(LS_payment_amnt_stable),
@@ -87,22 +87,6 @@ pub async fn parse_and_insert(
         LS_loan_close: Some(loan_close),
     };
 
-    if loan_close {
-        let ls_loan_closing = LS_Loan_Closing {
-            LS_contract_id: ls_liquidation.LS_contract_id.to_owned(),
-            LS_symbol: ls_liquidation.LS_symbol.to_owned(),
-            LS_amnt_stable: BigDecimal::from_str("0")?,
-            LS_timestamp: ls_liquidation.LS_timestamp.to_owned(),
-            Type: String::from(Loan_Closing_Status::Liquidation),
-        };
-        ls_loan_closing_handler::parse_and_insert(
-            app_state,
-            ls_loan_closing,
-            transaction,
-        )
-        .await?;
-    }
-
     let isExists = app_state
         .database
         .ls_liquidation
@@ -116,6 +100,34 @@ pub async fn parse_and_insert(
             .insert(ls_liquidation, transaction)
             .await?;
     }
+
+    if loan_close {
+        ls_loan_closing_handler::parse_and_insert(
+            app_state,
+            item.to.to_owned(),
+            Loan_Closing_Status::Liquidation,
+            at.to_owned(),
+            amount.to_owned(),
+            transaction,
+        )
+        .await?;
+    }
+
+    // if loan_close {
+    //     let ls_loan_closing = LS_Loan_Closing {
+    //         LS_contract_id: item.to.to_owned(),
+    //         LS_symbol: item.amount_symbol.to_owned(),
+    //         LS_amnt_stable: BigDecimal::from_str("0")?,
+    //         LS_timestamp: at.to_owned(),
+    //         Type: String::from(Loan_Closing_Status::Liquidation),
+    //     };
+    //     ls_loan_closing_handler::parse_and_insert(
+    //         app_state,
+    //         ls_loan_closing,
+    //         transaction,
+    //     )
+    //     .await?;
+    // }
 
     Ok(())
 }

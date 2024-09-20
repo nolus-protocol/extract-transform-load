@@ -570,6 +570,7 @@ pub async fn parse_event(
                     &app_state,
                     wasm_ls_opening,
                     tx_hash,
+                    height,
                     tx,
                 )
                 .await?;
@@ -600,7 +601,6 @@ pub async fn parse_event(
                     &app_state,
                     wasm_ls_repay,
                     tx_hash,
-                    height,
                     tx,
                 )
                 .await?;

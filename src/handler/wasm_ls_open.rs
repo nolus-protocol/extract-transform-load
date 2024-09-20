@@ -1,5 +1,6 @@
 use bigdecimal::BigDecimal;
 use chrono::DateTime;
+use futures::TryFutureExt;
 use sqlx::Transaction;
 use std::str::FromStr;
 
@@ -15,6 +16,7 @@ pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: LS_Opening_Type,
     tx_hash: String,
+    height: i64,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -28,19 +30,30 @@ pub async fn parse_and_insert(
     })?;
 
     let protocol = app_state.get_protocol_by_pool_id(&item.loan_pool_id);
-    let f1 = app_state.database.mp_asset.get_price_by_date(
-        &item.loan_symbol,
-        protocol.to_owned(),
-        &at,
-    );
-    let f2 = app_state.database.mp_asset.get_price_by_date(
-        &item.downpayment_symbol,
-        protocol.to_owned(),
-        &at,
-    );
+    let f1 = app_state
+        .database
+        .mp_asset
+        .get_price_by_date(&item.loan_symbol, protocol.to_owned(), &at)
+        .map_err(Error::from);
 
-    let (loan_price, downpayment_price) = tokio::try_join!(f1, f2)?;
+    let f2 = app_state
+        .database
+        .mp_asset
+        .get_price_by_date(&item.downpayment_symbol, protocol.to_owned(), &at)
+        .map_err(Error::from);
+
+    let f3 = app_state
+        .grpc
+        .get_lease_state_by_block(item.id.to_owned(), height);
+
+    let (loan_price, downpayment_price, lease_state) =
+        tokio::try_join!(f1, f2, f3)?;
     let air: i16 = item.air.parse()?;
+
+    let LS_loan_amnt = match lease_state.opened {
+        Some(item) => item.amount.amount,
+        None => String::from("0"),
+    };
 
     let (l_price,) = loan_price;
     let (d_price,) = downpayment_price;
@@ -49,6 +62,7 @@ pub async fn parse_and_insert(
         LS_contract_id: item.id,
         LS_address_id: item.customer,
         LS_asset_symbol: item.currency,
+        LS_loan_amnt: BigDecimal::from_str(&LS_loan_amnt)?,
         LS_interest: air,
         LS_timestamp: at,
         LS_loan_pool_id: item.loan_pool_id.to_owned(),

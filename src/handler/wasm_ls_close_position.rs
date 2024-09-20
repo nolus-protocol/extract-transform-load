@@ -1,4 +1,3 @@
-use anyhow::Context;
 use bigdecimal::BigDecimal;
 use chrono::DateTime;
 use sqlx::Transaction;
@@ -9,7 +8,7 @@ use crate::{
     dao::DataBase,
     error::Error,
     helpers::Loan_Closing_Status,
-    model::{LS_Close_Position, LS_Loan_Closing},
+    model::LS_Close_Position,
     types::LS_Close_Position_Type,
 };
 
@@ -58,18 +57,19 @@ pub async fn parse_and_insert(
     );
 
     let (LS_payment_amnt_stable, LS_amnt_stable) = tokio::try_join!(f1, f2)?;
-
+    let loan_close: bool = item.loan_close.parse()?;
+    let amount = BigDecimal::from_str(&item.amount_amount)?;
     let ls_close_position = LS_Close_Position {
         Tx_Hash: Some(tx_hash),
         LS_position_height: item.height.parse()?,
         LS_position_idx: None,
         LS_contract_id: item.to.to_owned(),
         LS_change: BigDecimal::from_str(&item.change)?,
-        LS_amount_amount: BigDecimal::from_str(&item.amount_amount)?,
+        LS_amount_amount: amount.to_owned(),
         LS_amount_symbol: item.amount_symbol.to_owned(),
         LS_payment_amnt_stable,
         LS_timestamp: at,
-        LS_loan_close: item.loan_close.parse()?,
+        LS_loan_close: loan_close,
         LS_prev_margin_stable: BigDecimal::from_str(
             &item.prev_margin_interest,
         )?,
@@ -88,42 +88,42 @@ pub async fn parse_and_insert(
         LS_payment_symbol: Some(item.payment_symbol.to_owned()),
     };
 
-    if ls_close_position.LS_loan_close {
-        let currency = app_state
-            .config
-            .hash_map_currencies
-            .get(&item.payment_symbol)
-            .context(format!(
-                "could not get currency {}",
-                &item.payment_symbol
-            ))?;
-        let power_value =
-            BigDecimal::from(u64::pow(10, currency.1.try_into()?));
+    // if ls_close_position.LS_loan_close {
+    //     let currency = app_state
+    //         .config
+    //         .hash_map_currencies
+    //         .get(&item.payment_symbol)
+    //         .context(format!(
+    //             "could not get currency {}",
+    //             &item.payment_symbol
+    //         ))?;
+    //     let power_value =
+    //         BigDecimal::from(u64::pow(10, currency.1.try_into()?));
 
-        let amount = &ls_close_position.LS_payment_amnt_stable / &power_value;
-        let loan = app_state
-            .database
-            .ls_loan_closing
-            .get_lease_amount(ls_close_position.LS_contract_id.to_owned())
-            .await?;
+    //     let amount = &ls_close_position.LS_payment_amnt_stable / &power_value;
+    //     let loan = app_state
+    //         .database
+    //         .ls_loan_closing
+    //         .get_lease_amount(ls_close_position.LS_contract_id.to_owned())
+    //         .await?;
 
-        let rest = (loan - amount) * &power_value;
+    //     let rest = (loan - amount) * &power_value;
 
-        let ls_loan_closing = LS_Loan_Closing {
-            LS_contract_id: ls_close_position.LS_contract_id.to_owned(),
-            LS_symbol: ls_close_position.LS_amount_symbol.to_owned(),
-            LS_amnt_stable: rest,
-            LS_timestamp: ls_close_position.LS_timestamp.to_owned(),
-            Type: String::from(Loan_Closing_Status::MarketClose),
-        };
+    //     let ls_loan_closing = LS_Loan_Closing {
+    //         LS_contract_id: ls_close_position.LS_contract_id.to_owned(),
+    //         LS_symbol: ls_close_position.LS_amount_symbol.to_owned(),
+    //         LS_amnt_stable: rest,
+    //         LS_timestamp: ls_close_position.LS_timestamp.to_owned(),
+    //         Type: String::from(Loan_Closing_Status::MarketClose),
+    //     };
 
-        ls_loan_closing_handler::parse_and_insert(
-            app_state,
-            ls_loan_closing,
-            transaction,
-        )
-        .await?;
-    }
+    //     ls_loan_closing_handler::parse_and_insert(
+    //         app_state,
+    //         ls_loan_closing,
+    //         transaction,
+    //     )
+    //     .await?;
+    // }
 
     let isExists = app_state
         .database
@@ -137,6 +137,18 @@ pub async fn parse_and_insert(
             .ls_close_position
             .insert(ls_close_position, transaction)
             .await?;
+    }
+
+    if loan_close {
+        ls_loan_closing_handler::parse_and_insert(
+            app_state,
+            item.to.to_owned(),
+            Loan_Closing_Status::MarketClose,
+            at.to_owned(),
+            amount.to_owned(),
+            transaction,
+        )
+        .await?;
     }
 
     Ok(())

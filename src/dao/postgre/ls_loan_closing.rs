@@ -8,7 +8,7 @@ use sqlx::{error::Error, Transaction};
 impl Table<LS_Loan_Closing> {
     pub async fn isExists(
         &self,
-        ls_loan_closing: &LS_Loan_Closing,
+        contract: String,
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
@@ -19,7 +19,7 @@ impl Table<LS_Loan_Closing> {
                 "LS_contract_id" = $1
             "#,
         )
-        .bind(&ls_loan_closing.LS_contract_id)
+        .bind(contract)
         .fetch_one(&self.pool)
         .await?;
 
@@ -40,16 +40,20 @@ impl Table<LS_Loan_Closing> {
             INSERT INTO "LS_Loan_Closing" (
                 "LS_contract_id",
                 "LS_symbol",
+                "LS_amnt",
                 "LS_amnt_stable",
+                "LS_pnl",
                 "LS_timestamp",
                 "Type"
             )
-            VALUES($1, $2, $3, $4, $5)
+            VALUES($1, $2, $3, $4, $5, $6, $7)
         "#,
         )
         .bind(&data.LS_contract_id)
         .bind(&data.LS_symbol)
+        .bind(&data.LS_amnt)
         .bind(&data.LS_amnt_stable)
+        .bind(&data.LS_pnl)
         .bind(&data.LS_timestamp)
         .bind(&data.Type)
         .execute(&mut **transaction)
@@ -62,66 +66,28 @@ impl Table<LS_Loan_Closing> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            SELECT SUM("Amount") as "Total" FROM (
-                WITH Opened_Leases AS (
+                SELECT SUM("Amount") as "Total" FROM (
+
                     SELECT
-                    CASE
-                    WHEN 
-                        "LS_cltr_symbol" IN ('WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000 
-                    WHEN 
-                        "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000 
-                    WHEN 
-                        "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_cltr_amnt_stable" / 1000000000000000000
-                    ELSE 
-                        "LS_cltr_amnt_stable" / 1000000
-                    END AS 
-                        "Downpayment",
-                    "LS_loan_amnt_asset" / 1000000 AS "Loan"
+                    SUM("LS_loan_amnt") as "Amount"
                     FROM "LS_Opening"
                     WHERE "LS_contract_id" = $1
-                )
-                SELECT
-                SUM ("Volume") AS "Amount"
-                FROM (
-                    SELECT ("Downpayment" + "Loan") AS "Volume" FROM Opened_Leases
-                )
 
                 UNION ALL
 
                     SELECT
-                    -CASE
-                    WHEN 
-                        "LS_payment_symbol" IN ('WBTC', 'CRO') THEN "LS_payment_amnt_stable" / 100000000 
-                    WHEN 
-                        "LS_payment_symbol" IN ('PICA') THEN "LS_payment_amnt_stable" / 1000000000000 
-                    WHEN 
-                        "LS_payment_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_payment_amnt_stable" / 1000000000000000000
-                    ELSE 
-                        "LS_payment_amnt_stable" / 1000000
-                    END AS 
-                        "Amount"
-
+                    -SUM("LS_amount_amount") as "Amount"
                     FROM "LS_Close_Position"
                     WHERE "LS_contract_id" = $1
 
                 UNION ALL
 
                     SELECT
-                    -CASE
-                    WHEN 
-                        "LS_symbol" IN ('WBTC', 'CRO') THEN "LS_amnt_stable" / 100000000 
-                    WHEN 
-                        "LS_symbol" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000 
-                    WHEN 
-                        "LS_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_amnt_stable" / 1000000000000000000
-                    ELSE 
-                        "LS_amnt_stable" / 1000000
-                    END AS 
-                        "Amount"
-
+                    -SUM("LS_amnt") as "Amount"
                     FROM "LS_Liquidation"
                     WHERE "LS_contract_id" = $1
-            )
+                    
+                )
             "#,
         )
         .bind(contract_id)

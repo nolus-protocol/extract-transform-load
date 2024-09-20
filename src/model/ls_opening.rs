@@ -10,6 +10,7 @@ pub struct LS_Opening {
     pub LS_interest: i16,
     pub LS_timestamp: DateTime<Utc>,
     pub LS_loan_pool_id: String,
+    pub LS_loan_amnt: BigDecimal,
     pub LS_loan_amnt_stable: BigDecimal,
     pub LS_loan_amnt_asset: BigDecimal,
     pub LS_cltr_symbol: String,

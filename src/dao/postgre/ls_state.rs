@@ -52,7 +52,8 @@ impl Table<LS_State> {
                     a."LS_cltr_amnt_asset",
                     a."LS_native_amnt_stable",
                     a."LS_native_amnt_nolus",
-                    a."Tx_Hash"
+                    a."Tx_Hash",
+                    a."LS_loan_amnt"
                 FROM "LS_Opening" as a 
                 LEFT JOIN "LS_Closing" as b 
                 ON a."LS_contract_id" = b."LS_contract_id" 

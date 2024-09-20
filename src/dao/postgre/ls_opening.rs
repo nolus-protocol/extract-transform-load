@@ -31,12 +31,14 @@ impl Table<LS_Opening> {
                     UPDATE 
                         "LS_Opening" 
                     SET 
-                        "Tx_Hash" = $1
+                        "Tx_Hash" = $1,
+                        "LS_loan_amnt" = $2
                     WHERE 
-                        "LS_contract_id" = $2
+                        "LS_contract_id" = $3
                 "#,
             )
             .bind(&ls_opening.Tx_Hash)
+            .bind(&ls_opening.LS_loan_amnt)
             .bind(&ls_opening.LS_contract_id)
             .execute(&self.pool)
             .await?;
@@ -68,9 +70,10 @@ impl Table<LS_Opening> {
                 "LS_cltr_amnt_asset",
                 "LS_native_amnt_stable",
                 "LS_native_amnt_nolus",
-                "Tx_Hash"
+                "Tx_Hash",
+                "LS_loan_amnt"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             "#,
         )
         .bind(&data.LS_contract_id)
@@ -87,6 +90,7 @@ impl Table<LS_Opening> {
         .bind(&data.LS_native_amnt_stable)
         .bind(&data.LS_native_amnt_nolus)
         .bind(&data.Tx_Hash)
+        .bind(&data.LS_loan_amnt)
         .execute(&mut **transaction)
         .await
     }
@@ -116,7 +120,8 @@ impl Table<LS_Opening> {
                 "LS_cltr_amnt_asset",
                 "LS_native_amnt_stable",
                 "LS_native_amnt_nolus",
-                "Tx_Hash"
+                "Tx_Hash",
+                "LS_loan_amnt"
             )"#,
         );
 
@@ -134,7 +139,8 @@ impl Table<LS_Opening> {
                 .push_bind(&ls.LS_cltr_amnt_asset)
                 .push_bind(&ls.LS_native_amnt_stable)
                 .push_bind(&ls.LS_native_amnt_nolus)
-                .push_bind(&ls.Tx_Hash);
+                .push_bind(&ls.Tx_Hash)
+                .push_bind(&ls.LS_loan_amnt);
         });
 
         let query = query_builder.build();
@@ -572,7 +578,8 @@ impl Table<LS_Opening> {
                     a."LS_cltr_amnt_asset",
                     a."LS_native_amnt_stable",
                     a."LS_native_amnt_nolus",
-                    a."Tx_Hash"
+                    a."Tx_Hash",
+                    a."LS_loan_amnt"
                 FROM
                     "LS_Opening" as a
                 LEFT JOIN 
