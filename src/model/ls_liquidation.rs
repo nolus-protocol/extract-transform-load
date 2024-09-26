@@ -9,7 +9,7 @@ pub struct LS_Liquidation {
     pub LS_liquidation_height: i64,
     pub LS_liquidation_idx: Option<i32>,
     pub LS_contract_id: String,
-    pub LS_symbol: String,
+    pub LS_amnt_symbol: String,
     pub LS_amnt_stable: BigDecimal,
 
     pub LS_amnt: Option<BigDecimal>,

@@ -452,7 +452,7 @@ impl Grpc {
         let bytes = b"{}";
 
         const QUERY_CONTRACT_ERROR: &str =
-            "Failed to run query lease contract!";
+            "Failed to run query lease contract by block!";
 
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lease contract!";

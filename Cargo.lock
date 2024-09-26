@@ -1445,12 +1445,13 @@ dependencies = [
 
 [[package]]
 name = "ibc-proto"
-version = "0.48.0"
+version = "0.49.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fee1e9f73be6120f99e93e12f125c5991d4885e3ee48323bc4592612484e9d34"
+checksum = "873b573edee1ac325770ae1db824702e1c3b63b0db91edaeeed263a2d72d7643"
 dependencies = [
  "base64 0.22.1",
  "bytes",
+ "cosmos-sdk-proto",
  "flex-error",
  "ics23",
  "informalsystems-pbjson",

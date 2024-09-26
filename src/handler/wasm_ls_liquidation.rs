@@ -3,7 +3,9 @@ use chrono::DateTime;
 use sqlx::Transaction;
 use std::str::FromStr;
 
-use super::ls_loan_closing as ls_loan_closing_handler;
+use super::ls_loan_closing::{
+    self as ls_loan_closing_handler, get_liquidation_fee,
+};
 use crate::{
     configuration::{AppState, State},
     dao::DataBase,
@@ -17,6 +19,7 @@ pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: LS_Liquidation_Type,
     tx_hash: String,
+    block: i64,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -62,7 +65,7 @@ pub async fn parse_and_insert(
         LS_liquidation_height: item.height.parse()?,
         LS_liquidation_idx: None,
         LS_contract_id: item.to.to_owned(),
-        LS_symbol: item.amount_symbol.to_owned(),
+        LS_amnt_symbol: item.amount_symbol.to_owned(),
         LS_amnt_stable,
 
         LS_amnt: Some(amount.to_owned()),
@@ -97,37 +100,26 @@ pub async fn parse_and_insert(
         app_state
             .database
             .ls_liquidation
-            .insert(ls_liquidation, transaction)
+            .insert(&ls_liquidation, transaction)
             .await?;
     }
 
     if loan_close {
+        let items = vec![ls_liquidation];
+        let taxes = get_liquidation_fee(app_state, items)?;
+
         ls_loan_closing_handler::parse_and_insert(
             app_state,
             item.to.to_owned(),
             Loan_Closing_Status::Liquidation,
             at.to_owned(),
             amount.to_owned(),
+            taxes,
+            block,
             transaction,
         )
         .await?;
     }
-
-    // if loan_close {
-    //     let ls_loan_closing = LS_Loan_Closing {
-    //         LS_contract_id: item.to.to_owned(),
-    //         LS_symbol: item.amount_symbol.to_owned(),
-    //         LS_amnt_stable: BigDecimal::from_str("0")?,
-    //         LS_timestamp: at.to_owned(),
-    //         Type: String::from(Loan_Closing_Status::Liquidation),
-    //     };
-    //     ls_loan_closing_handler::parse_and_insert(
-    //         app_state,
-    //         ls_loan_closing,
-    //         transaction,
-    //     )
-    //     .await?;
-    // }
 
     Ok(())
 }

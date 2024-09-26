@@ -30,7 +30,7 @@ impl Table<LS_Liquidation> {
                     SET 
                         "Tx_Hash" = $1,
                         "LS_amnt" = $2,
-                        "LS_payment_symbol" = $3,
+                        "LS_amnt_symbol" = $3,
                         "LS_payment_amnt" = $4,
                         "LS_payment_amnt_stable" = $5,
                         "LS_loan_close" = $6
@@ -41,7 +41,7 @@ impl Table<LS_Liquidation> {
             )
             .bind(&ls_liquidatiion.Tx_Hash)
             .bind(&ls_liquidatiion.LS_amnt)
-            .bind(&ls_liquidatiion.LS_payment_symbol)
+            .bind(&ls_liquidatiion.LS_amnt_symbol)
             .bind(&ls_liquidatiion.LS_payment_amnt)
             .bind(&ls_liquidatiion.LS_payment_amnt_stable)
             .bind(&ls_liquidatiion.LS_loan_close)
@@ -58,7 +58,7 @@ impl Table<LS_Liquidation> {
 
     pub async fn insert(
         &self,
-        data: LS_Liquidation,
+        data: &LS_Liquidation,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<QueryResult, Error> {
         sqlx::query(
@@ -66,7 +66,7 @@ impl Table<LS_Liquidation> {
             INSERT INTO "LS_Liquidation" (
                 "LS_liquidation_height",
                 "LS_contract_id",
-                "LS_symbol",
+                "LS_amnt_symbol",
                 "LS_timestamp",
                 "LS_amnt_stable",
                 "LS_transaction_type",
@@ -85,9 +85,9 @@ impl Table<LS_Liquidation> {
             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         "#,
         )
-        .bind(data.LS_liquidation_height)
+        .bind(&data.LS_liquidation_height)
         .bind(&data.LS_contract_id)
-        .bind(&data.LS_symbol)
+        .bind(&data.LS_amnt_symbol)
         .bind(data.LS_timestamp)
         .bind(&data.LS_amnt_stable)
         .bind(&data.LS_transaction_type)
@@ -120,7 +120,7 @@ impl Table<LS_Liquidation> {
             INSERT INTO "LS_Liquidation" (
                 "LS_liquidation_height",
                 "LS_contract_id",
-                "LS_symbol",
+                "LS_amnt_symbol",
                 "LS_timestamp",
                 "LS_amnt_stable",
                 "LS_transaction_type",
@@ -141,7 +141,7 @@ impl Table<LS_Liquidation> {
         query_builder.push_values(data, |mut b, ls| {
             b.push_bind(ls.LS_liquidation_height)
                 .push_bind(&ls.LS_contract_id)
-                .push_bind(&ls.LS_symbol)
+                .push_bind(&ls.LS_amnt_symbol)
                 .push_bind(ls.LS_timestamp)
                 .push_bind(&ls.LS_amnt_stable)
                 .push_bind(&ls.LS_transaction_type)
@@ -161,5 +161,20 @@ impl Table<LS_Liquidation> {
         let query = query_builder.build();
         query.execute(&mut **transaction).await?;
         Ok(())
+    }
+
+    pub async fn get_by_contract(
+        &self,
+        contract: String,
+    ) -> Result<Vec<LS_Liquidation>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT * FROM "LS_Liquidation" WHERE "LS_contract_id" = $1;
+            "#,
+        )
+        .bind(&contract)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
     }
 }

@@ -17,6 +17,7 @@ pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: LS_Repayment_Type,
     tx_hash: String,
+    block: i64,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let sec: i64 = item.at.parse()?;
@@ -47,9 +48,9 @@ pub async fn parse_and_insert(
         LS_repayment_height: item.height.parse()?,
         LS_repayment_idx: None,
         LS_contract_id: item.to.to_owned(),
-        LS_symbol: item.payment_symbol.to_owned(),
-        LS_amnt: Some(BigDecimal::from_str(&item.payment_amount)?),
-        LS_amnt_stable: app_state
+        LS_payment_symbol: item.payment_symbol.to_owned(),
+        LS_payment_amnt: Some(BigDecimal::from_str(&item.payment_amount)?),
+        LS_payment_amnt_stable: app_state
             .in_stabe_by_date(
                 &item.payment_symbol,
                 &item.payment_amount,
@@ -74,40 +75,6 @@ pub async fn parse_and_insert(
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
     };
 
-    // if loan_close {
-    //     let ls_data = app_state
-    //         .grpc
-    //         .get_lease_state_by_block(
-    //             ls_repay.LS_contract_id.to_owned(),
-    //             height,
-    //         )
-    //         .await?
-    //         .paid
-    //         .context("Could not get paid status in lease")?;
-
-    //     let ls_loan_closing = LS_Loan_Closing {
-    //         LS_contract_id: ls_repay.LS_contract_id.to_owned(),
-    //         LS_symbol: ls_data.amount.ticker.to_owned(),
-    //         LS_amnt_stable: app_state
-    //             .in_stabe_by_date(
-    //                 &ls_data.amount.ticker,
-    //                 &ls_data.amount.amount,
-    //                 protocol.to_owned(),
-    //                 &at,
-    //             )
-    //             .await?,
-    //         LS_timestamp: ls_repay.LS_timestamp.to_owned(),
-    //         Type: String::from(Loan_Closing_Status::Reypay),
-    //     };
-
-    //     ls_loan_closing_handler::parse_and_insert(
-    //         app_state,
-    //         ls_loan_closing,
-    //         transaction,
-    //     )
-    //     .await?;
-    // }
-
     let isExists = app_state.database.ls_repayment.isExists(&ls_repay).await?;
 
     if !isExists {
@@ -125,6 +92,8 @@ pub async fn parse_and_insert(
             Loan_Closing_Status::Reypay,
             at.to_owned(),
             BigDecimal::from(0),
+            BigDecimal::from(0),
+            block,
             transaction,
         )
         .await?;

@@ -35,7 +35,7 @@ impl Table<LS_Repayment> {
                         "LS_Repayment" 
                     SET 
                         "Tx_Hash" = $1,
-                        "LS_amnt" = $2
+                        "LS_payment_amnt" = $2
                     WHERE 
                         "LS_repayment_height" = $3 AND
                         "LS_contract_id" = $4 AND
@@ -43,7 +43,7 @@ impl Table<LS_Repayment> {
                 "#,
             )
             .bind(&ls_repayment.Tx_Hash)
-            .bind(&ls_repayment.LS_amnt)
+            .bind(&ls_repayment.LS_payment_amnt)
             .bind(ls_repayment.LS_repayment_height)
             .bind(&ls_repayment.LS_contract_id)
             .bind(ls_repayment.LS_timestamp)
@@ -66,9 +66,9 @@ impl Table<LS_Repayment> {
             INSERT INTO "LS_Repayment" (
                 "LS_repayment_height",
                 "LS_contract_id",
-                "LS_symbol",
-                "LS_amnt",
-                "LS_amnt_stable",
+                "LS_payment_symbol",
+                "LS_payment_amnt",
+                "LS_payment_amnt_stable",
                 "LS_timestamp",
                 "LS_loan_close",
                 "LS_prev_margin_stable",
@@ -83,9 +83,9 @@ impl Table<LS_Repayment> {
         )
         .bind(data.LS_repayment_height)
         .bind(&data.LS_contract_id)
-        .bind(&data.LS_symbol)
-        .bind(&data.LS_amnt)
-        .bind(&data.LS_amnt_stable)
+        .bind(&data.LS_payment_symbol)
+        .bind(&data.LS_payment_amnt)
+        .bind(&data.LS_payment_amnt_stable)
         .bind(data.LS_timestamp)
         .bind(data.LS_loan_close)
         .bind(&data.LS_prev_margin_stable)
@@ -112,9 +112,9 @@ impl Table<LS_Repayment> {
             INSERT INTO "LS_Repayment" (
                 "LS_repayment_height",
                 "LS_contract_id",
-                "LS_symbol",
-                "LS_amnt",
-                "LS_amnt_stable",
+                "LS_payment_symbol",
+                "LS_payment_amnt",
+                "LS_payment_amnt_stable",
                 "LS_timestamp",
                 "LS_loan_close",
                 "LS_prev_margin_stable",
@@ -129,9 +129,9 @@ impl Table<LS_Repayment> {
         query_builder.push_values(data, |mut b, ls| {
             b.push_bind(ls.LS_repayment_height)
                 .push_bind(&ls.LS_contract_id)
-                .push_bind(&ls.LS_symbol)
-                .push_bind(&ls.LS_amnt)
-                .push_bind(&ls.LS_amnt_stable)
+                .push_bind(&ls.LS_payment_symbol)
+                .push_bind(&ls.LS_payment_amnt)
+                .push_bind(&ls.LS_payment_amnt_stable)
                 .push_bind(ls.LS_timestamp)
                 .push_bind(ls.LS_loan_close)
                 .push_bind(&ls.LS_prev_margin_stable)

@@ -11,4 +11,6 @@ pub struct LS_Loan_Closing {
     pub LS_pnl: BigDecimal,
     pub LS_timestamp: DateTime<Utc>,
     pub Type: String,
+    pub Block: i64,
+    pub Active: bool,
 }

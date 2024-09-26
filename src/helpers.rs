@@ -590,7 +590,7 @@ pub async fn parse_event(
                     parse_wasm_ls_close_position(&event.attributes)?;
                 if let Some(item) = wasm_ls_close_position {
                     wasm_ls_close_position::parse_and_insert(
-                        &app_state, item, tx_hash, tx,
+                        &app_state, item, tx_hash, height, tx,
                     )
                     .await?;
                 }
@@ -601,6 +601,7 @@ pub async fn parse_event(
                     &app_state,
                     wasm_ls_repay,
                     tx_hash,
+                    height,
                     tx,
                 )
                 .await?;
@@ -612,6 +613,7 @@ pub async fn parse_event(
                     &app_state,
                     wasm_ls_liquidation,
                     tx_hash,
+                    height,
                     tx,
                 )
                 .await?;

@@ -3,9 +3,9 @@ CREATE TABLE IF NOT EXISTS "LS_Close_Position" (
   "LS_position_idx" SERIAL,
   "LS_contract_id" VARCHAR(64) NOT NULL,
   "LS_change" DECIMAL(39, 0) NOT NULL,
-  "LS_amount_amount" DECIMAL(39, 0) NOT NULL,
-  "LS_amount_symbol" VARCHAR(20) NOT NULL,
-  "LS_payment_amnt_stable" DECIMAL(39, 0) NOT NULL,
+  "LS_amnt" DECIMAL(39, 0) NOT NULL,
+  "LS_amnt_symbol" VARCHAR(20) NOT NULL,
+  "LS_amnt_stable" DECIMAL(39, 0),
   "LS_timestamp" TIMESTAMPTZ NOT NULL,
   "LS_loan_close" BOOLEAN NOT NULL DEFAULT false,
   "LS_prev_margin_stable" DECIMAL(39, 0),
@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS "LS_Close_Position" (
   "LS_current_interest_stable" DECIMAL(39, 0),
   "LS_principal_stable" DECIMAL(39, 0),
   "Tx_Hash" VARCHAR(64),
-  "LS_amnt_stable" DECIMAL(39, 0),
   "LS_payment_amnt" DECIMAL(39, 0) ,
+  "LS_payment_amnt_stable" DECIMAL(39, 0) NOT NULL,
   "LS_payment_symbol" VARCHAR(20) NOT NULL,
   PRIMARY KEY ("LS_position_height", "LS_position_idx")
 );

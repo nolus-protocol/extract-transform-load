@@ -54,7 +54,7 @@ impl Table<LS_Close_Position> {
 
     pub async fn insert(
         &self,
-        data: LS_Close_Position,
+        data: &LS_Close_Position,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<QueryResult, Error> {
         sqlx::query(
@@ -64,8 +64,8 @@ impl Table<LS_Close_Position> {
                 "LS_contract_id",
                 "LS_payment_amnt_stable",
                 "LS_change",
-                "LS_amount_amount" ,
-                "LS_amount_symbol",
+                "LS_amnt" ,
+                "LS_amnt_symbol",
                 "LS_timestamp",
                 "LS_loan_close",
                 "LS_prev_margin_stable",
@@ -81,12 +81,12 @@ impl Table<LS_Close_Position> {
             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         "#,
         )
-        .bind(data.LS_position_height)
+        .bind(&data.LS_position_height)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_payment_amnt_stable)
         .bind(&data.LS_change)
-        .bind(&data.LS_amount_amount)
-        .bind(&data.LS_amount_symbol)
+        .bind(&data.LS_amnt)
+        .bind(&data.LS_amnt_symbol)
         .bind(data.LS_timestamp)
         .bind(data.LS_loan_close)
         .bind(&data.LS_prev_margin_stable)
@@ -113,13 +113,13 @@ impl Table<LS_Close_Position> {
 
         let mut query_builder: QueryBuilder<DataBase> = QueryBuilder::new(
             r#"
-            INSERT INTO "LS_Repayment" (
+            INSERT INTO "LS_Close_Position" (
                 "LS_position_height",
                 "LS_contract_id",
                 "LS_payment_amnt_stable",
                 "LS_change",
-                "LS_amount_amount" ,
-                "LS_amount_symbol",
+                "LS_amnt" ,
+                "LS_amnt_symbol",
                 "LS_timestamp",
                 "LS_loan_close",
                 "LS_prev_margin_stable",
@@ -139,8 +139,8 @@ impl Table<LS_Close_Position> {
                 .push_bind(&ls.LS_contract_id)
                 .push_bind(&ls.LS_payment_amnt_stable)
                 .push_bind(&ls.LS_change)
-                .push_bind(&ls.LS_amount_amount)
-                .push_bind(&ls.LS_amount_symbol)
+                .push_bind(&ls.LS_amnt)
+                .push_bind(&ls.LS_amnt_symbol)
                 .push_bind(ls.LS_timestamp)
                 .push_bind(ls.LS_loan_close)
                 .push_bind(&ls.LS_prev_margin_stable)
@@ -157,5 +157,20 @@ impl Table<LS_Close_Position> {
         let query = query_builder.build();
         query.execute(&mut **transaction).await?;
         Ok(())
+    }
+
+    pub async fn get_by_contract(
+        &self,
+        contract: String,
+    ) -> Result<Vec<LS_Close_Position>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT * FROM "LS_Close_Position" WHERE "LS_contract_id" = $1;
+            "#,
+        )
+        .bind(&contract)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
     }
 }

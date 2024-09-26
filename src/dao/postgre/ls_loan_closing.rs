@@ -76,7 +76,7 @@ impl Table<LS_Loan_Closing> {
                 UNION ALL
 
                     SELECT
-                    -SUM("LS_amount_amount") as "Amount"
+                    -SUM("LS_amnt") as "Amount"
                     FROM "LS_Close_Position"
                     WHERE "LS_contract_id" = $1
 

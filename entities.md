@@ -141,9 +141,9 @@ Config: time interval
 | LS_repayment_height        | Int(64)           | wasm-ls-repay.height                                 | Height of the block this transaction is in                      |
 | LS_repayment_idx           | Int(32)           | wasm-ls-repay.idx                                    | Index in the block this transaction is at                       |
 | LS_contract_id             | Alphanumeric(64)  | wasm-ls-repay.to                                     | Lease Smart Contract ID                                         |
-| LS_symbol                  | Alphanumeric(20)  | _supported currencies_[wasm-ls-repay.payment-symbol] | Repayment currency symbol                                       |
-| LS_amnt                    | Unsigned Int(128) | wasm-ls-repay.payment-amount                         | The amount of the transaction                                   |
-| LS_amnt_stable             | Unsigned Int(128) | in_stable(wasm-ls-repay.payment-amount)              | The amount of the transaction in stable                         |
+| LS_payment_symbol                  | Alphanumeric(20)  | _supported currencies_[wasm-ls-repay.payment-symbol] | Repayment currency symbol                                       |
+| LS_payment_amnt                    | Unsigned Int(128) | wasm-ls-repay.payment-amount                         | The amount of the transaction                                   |
+| LS_payment_amnt_stable             | Unsigned Int(128) | in_stable(wasm-ls-repay.payment-amount)              | The amount of the transaction in stable                         |
 | LS_timestamp               | Timestamp         | wasm-ls-repay.at                                     | Repay time                                                      |
 | LS_loan_close              | Boolean           | wasm-ls-repay.loan-close                             | A flag indicating if this repayment closes the loan             |
 | LS_prev_margin_stable      | Unsigned Int(128) | wasm-ls-repay.prev-margin-interest                   | The paid margin interest amount for the previous period, if any |
@@ -162,7 +162,7 @@ In case of full liquidation, in addition to the liquidation event, the system is
 | LS_liquidation_height      | Int(64)           | wasm-ls-liquidation.height                                     | Height of the block this transaction is in                                              |
 | LS_liquidation_idx         | Int(32)           | wasm-ls-liquidation.idx                                        | Index in the block this transaction is at                                               |
 | LS_contract_id             | Alphanumeric(64)  | wasm-ls-liquidation.of                                         | Lease Smart Contract ID                                                                 |
-| LS_symbol                  | Alphanumeric(20)  | _supported currencies_[wasm-ls-liquidation.amount-symbol]      | Liquidation currency symbol                                                             |
+| LS_amnt_symbol             | Alphanumeric(20)  | _supported currencies_[wasm-ls-liquidation.amount-symbol]      | Liquidation currency symbol                                                             |
 | LS_amnt_stable             | Unsigned Int(128) | in_stable(wasm-ls-liquidation.amount-amount)                   | The amount of the transaction in stable                                                 |
 | LS_liquidation_symbol      | Alphanumeric(20)  | wasm-ls-liquidation.liquidation-symbol                         | Liquidation currency symbol                                                             |
 | LS_amnt                    | Unsigned Int(128) | wasm-ls-liquidation.amount-amount                              | The amount of the transaction                                                           |
@@ -353,10 +353,10 @@ Aggragation is done over all records pertaining to the same _aggregation interva
 | LS_position_idx            | Int(32)           | wasm-ls-close.idx                                    | Index in the block this transaction is at                       |
 | LS_contract_id             | Alphanumeric(64)  | wasm-ls-close.to                                     | Lease Smart Contract ID                                         |
 | LS_change                  | Unsigned Int(128) | wasm-ls-close.change                                 | change after market close position                              |
-| LS_amount_amount           | Unsigned Int(128) | wasm-ls-close.amount_amount                          |
-| LS_amount_symbol           | Alphanumeric(20)  | wasm-ls-close.LS_amount_symbol                       |
+| LS_amnt                    | Unsigned Int(128) | wasm-ls-close.amount_amount                          |
+| LS_amnt_symbol             | Alphanumeric(20)  | wasm-ls-close.LS_amount_symbol                       |
 | LS_amnt_stable             | Unsigned Int(128) | in_stable(wasm-ls-close.amount_amount)               | The amount of the transaction in stable                         |
-| LS_payment_amount          | Unsigned Int(128) | wasm-ls-close.payment_amount                         |
+| LS_payment_amnt            | Unsigned Int(128) | wasm-ls-close.payment_amount                         |
 | LS_payment_symbol          | Alphanumeric(20)  | wasm-ls-close.LS_payment_symbol                      |
 | LS_payment_amnt_stable     | Unsigned Int(128) | in_stable(wasm-ls-close.payment_amount)              | The amount of the payment transaction in stable                 |
 | LS_timestamp               | Timestamp         | wasm-ls-close.at                                     | Open time of the lease                                          |

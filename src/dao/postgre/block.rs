@@ -82,4 +82,21 @@ impl Table<Block> {
         .await?;
         Ok(count)
     }
+
+    pub async fn is_synced_to_block(&self, block: i64) -> Result<bool, Error> {
+        let (count,): (i64,) = sqlx::query_as(
+            r#"
+             SELECT COUNT(*) FROM "block" WHERE id <= $1
+            "#,
+        )
+        .bind(block)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if block == count {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
 }
