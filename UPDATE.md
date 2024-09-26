@@ -140,3 +140,4 @@ ALTER TABLE "LS_Close_Position" ADD COLUMN "LS_amnt_stable" DECIMAL(39, 0);
 ALTER TABLE "LS_Close_Position" ADD COLUMN "LS_payment_amnt" DECIMAL(39, 0);
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amount_amount" TO "LS_amnt";
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amount_symbol" TO "LS_amnt_symbol";
+ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_symbol" TO "LS_payment_symbol";
