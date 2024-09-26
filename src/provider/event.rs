@@ -25,7 +25,10 @@ impl Event {
         loop {
             let app = self.app_state.clone();
 
-            if let Err(e) = tokio::try_join!(self.init(), start_sync(app)) {
+            if let Err(e) = tokio::try_join!(
+                // self.init(),
+                start_sync(app)
+            ) {
                 error!("{}", e);
             }
 
