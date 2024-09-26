@@ -1,5 +1,6 @@
 use crate::configuration::{AppState, State};
 use crate::error::Error;
+use crate::handler::ls_loan_closing;
 use crate::helpers::insert_txs;
 use crate::provider::Grpc;
 
@@ -155,11 +156,12 @@ impl Handler {
 }
 
 pub async fn start_sync(app_state: AppState<State>) -> Result<(), Error> {
-    tokio::spawn(async {
+    tokio::spawn(async move {
         let sync_manager = Synchronization {};
-        match sync_manager.run(app_state).await {
+        match sync_manager.run(app_state.clone()).await {
             Ok(()) => {
                 sync_manager.set_running(false);
+                ls_loan_closing::proceed_leases(app_state.clone()).await?;
                 info!("Synchronization completed");
             },
             Err(e) => {

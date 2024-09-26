@@ -400,6 +400,8 @@ Aggragation is done over all records pertaining to the same _aggregation interva
 | LS_amnt_stable    | Unsigned Int(128) |                                         | The amount in transaction in stable            |
 | LS_timestamp      | Timestamp         | timestamp | Block timestsamp            | Timestamp                                      |
 | Type              | Alphanumeric(64)  |                                         | Closing event type                             |
+| Block             | Int(64)           |                                         | Block when loan is closed                      |
+| Active            | Boolean           |                                         | Indicates if loan is synced with blochain      |
 
 #### Database types
 

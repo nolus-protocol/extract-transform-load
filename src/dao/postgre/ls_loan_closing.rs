@@ -44,9 +44,11 @@ impl Table<LS_Loan_Closing> {
                 "LS_amnt_stable",
                 "LS_pnl",
                 "LS_timestamp",
-                "Type"
+                "Type",
+                "Block",
+                "Active"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
         "#,
         )
         .bind(&data.LS_contract_id)
@@ -56,6 +58,8 @@ impl Table<LS_Loan_Closing> {
         .bind(&data.LS_pnl)
         .bind(&data.LS_timestamp)
         .bind(&data.Type)
+        .bind(&data.Block)
+        .bind(&data.Active)
         .execute(&mut **transaction)
         .await
     }
@@ -97,5 +101,45 @@ impl Table<LS_Loan_Closing> {
         let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
 
         Ok(amnt)
+    }
+
+    pub async fn update(
+        &self,
+        data: LS_Loan_Closing,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            UPDATE 
+                "LS_Loan_Closing"
+            SET
+                "LS_amnt" = $1,
+                "LS_amnt_stable" = $2,
+                "LS_pnl" = $3,
+                "Active" = $4
+            WHERE 
+                "LS_contract_id" = $5
+
+        "#,
+        )
+        .bind(&data.LS_amnt)
+        .bind(&data.LS_amnt_stable)
+        .bind(&data.LS_pnl)
+        .bind(&data.Active)
+        .bind(&data.LS_contract_id)
+        .execute(&self.pool)
+        .await
+    }
+
+    pub async fn get_leases_to_proceed(
+        &self,
+    ) -> Result<Vec<LS_Loan_Closing>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT * FROM "LS_Loan_Closing" WHERE "Active" = false;
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
     }
 }

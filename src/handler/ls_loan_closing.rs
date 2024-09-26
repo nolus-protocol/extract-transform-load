@@ -3,6 +3,8 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use futures::TryFutureExt;
 use sqlx::Transaction;
+use tokio::task::JoinSet;
+use tracing::info;
 
 use crate::{
     configuration::{AppState, State},
@@ -70,6 +72,12 @@ pub async fn parse_and_insert(
             )?;
 
             let pnl = &close_amount - &open_amount - fee - &taxes;
+            let active = app_state
+                .database
+                .block
+                .is_synced_to_block(block - 1)
+                .await?;
+
             let ls_loan_closing = LS_Loan_Closing {
                 LS_contract_id: contract.to_owned(),
                 LS_symbol: lease.LS_asset_symbol.to_owned(),
@@ -79,7 +87,7 @@ pub async fn parse_and_insert(
                 LS_amnt: loan,
                 LS_pnl: pnl,
                 Block: block,
-                Active: false,
+                Active: active,
             };
 
             app_state
@@ -90,6 +98,113 @@ pub async fn parse_and_insert(
         }
     }
 
+    Ok(())
+}
+
+pub async fn proceed_leases(app_state: AppState<State>) -> Result<(), Error> {
+    let items = app_state
+        .database
+        .ls_loan_closing
+        .get_leases_to_proceed()
+        .await?;
+    let mut tasks = vec![];
+    let max_tasks = app_state.config.max_tasks;
+
+    for item in items {
+        tasks.push(proceed(app_state.clone(), item));
+    }
+
+    while !tasks.is_empty() {
+        let mut st = JoinSet::new();
+        let range = if tasks.len() > max_tasks {
+            max_tasks
+        } else {
+            tasks.len()
+        };
+
+        for _t in 0..range {
+            if let Some(item) = tasks.pop() {
+                st.spawn(item);
+            }
+        }
+
+        while let Some(item) = st.join_next().await {
+            item??;
+        }
+    }
+    info!("Loans Synchronization completed");
+
+    Ok(())
+}
+
+async fn proceed(
+    app_state: AppState<State>,
+    item: LS_Loan_Closing,
+) -> Result<(), Error> {
+    let lease = app_state
+        .database
+        .ls_opening
+        .get(item.LS_contract_id.to_owned())
+        .await?;
+
+    if let Some(lease) = lease {
+        let loan = app_state
+            .database
+            .ls_loan_closing
+            .get_lease_amount(item.LS_contract_id.to_owned())
+            .await?;
+
+        let protocol =
+            app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
+
+        let symbol = lease.LS_asset_symbol.to_owned();
+        let loan_str = &loan.to_string();
+
+        let f1 = app_state.in_stabe_by_date(
+            &symbol,
+            loan_str,
+            protocol.to_owned(),
+            &lease.LS_timestamp,
+        );
+
+        let f2 = app_state.in_stabe_by_date(
+            &symbol,
+            loan_str,
+            protocol.to_owned(),
+            &item.LS_timestamp,
+        );
+
+        let (open_amount, close_amount, fee) = tokio::try_join!(
+            f1,
+            f2,
+            get_fees(&app_state, &lease, protocol.to_owned())
+        )?;
+
+        let pnl = &close_amount - &open_amount - fee;
+        let active = app_state
+            .database
+            .block
+            .is_synced_to_block(item.Block - 1)
+            .await?;
+
+        let ls_loan_closing = LS_Loan_Closing {
+            LS_contract_id: item.LS_contract_id.to_owned(),
+            LS_symbol: item.LS_symbol.to_owned(),
+            LS_amnt_stable: close_amount,
+            LS_timestamp: item.LS_timestamp,
+            Type: item.Type,
+            LS_amnt: loan,
+            LS_pnl: pnl,
+            Block: item.Block,
+            Active: active,
+        };
+
+        app_state
+            .database
+            .ls_loan_closing
+            .update(ls_loan_closing)
+            .await?;
+    }
     Ok(())
 }
 
