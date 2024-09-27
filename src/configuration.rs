@@ -284,6 +284,7 @@ pub struct Config {
     pub socket_reconnect_interval: u64,
     pub grpc_host: String,
     pub events_subscribe: Vec<String>,
+    pub enable_sync: bool,
 }
 
 impl Config {}
@@ -329,7 +330,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         env!("CARGO_MANIFEST_DIR"),
         env::var("STATIC_DIRECTORY")?
     );
-
+    let enable_sync = env::var("ENABLE_SYNC")?.parse()?;
     let mut hash_map_currencies: HashMap<String, Currency> = HashMap::new();
     let mut hash_map_pool_currency: HashMap<String, Currency> = HashMap::new();
 
@@ -376,6 +377,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         socket_reconnect_interval,
         grpc_host,
         events_subscribe,
+        enable_sync,
     };
 
     Ok(config)

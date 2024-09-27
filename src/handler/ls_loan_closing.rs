@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::{Context, Result};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
@@ -31,71 +33,21 @@ pub async fn parse_and_insert(
         .await?;
 
     if !isExists {
-        let lease = app_state
+        let ls_loan_closing = get_loan(
+            app_state.clone(),
+            contract,
+            r#type,
+            at,
+            block,
+            change_amount,
+            taxes,
+        )
+        .await?;
+        app_state
             .database
-            .ls_opening
-            .get(contract.to_owned())
+            .ls_loan_closing
+            .insert(ls_loan_closing, transaction)
             .await?;
-
-        if let Some(lease) = lease {
-            let loan = app_state
-                .database
-                .ls_loan_closing
-                .get_lease_amount(contract.to_owned())
-                .await?
-                - change_amount;
-
-            let protocol =
-                app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
-
-            let symbol = lease.LS_asset_symbol.to_owned();
-            let loan_str = &loan.to_string();
-
-            let f1 = app_state.in_stabe_by_date(
-                &symbol,
-                loan_str,
-                protocol.to_owned(),
-                &lease.LS_timestamp,
-            );
-
-            let f2 = app_state.in_stabe_by_date(
-                &symbol,
-                loan_str,
-                protocol.to_owned(),
-                &at,
-            );
-
-            let (open_amount, close_amount, fee) = tokio::try_join!(
-                f1,
-                f2,
-                get_fees(app_state, &lease, protocol.to_owned())
-            )?;
-
-            let pnl = &close_amount - &open_amount - fee - &taxes;
-            let active = app_state
-                .database
-                .block
-                .is_synced_to_block(block - 1)
-                .await?;
-
-            let ls_loan_closing = LS_Loan_Closing {
-                LS_contract_id: contract.to_owned(),
-                LS_symbol: lease.LS_asset_symbol.to_owned(),
-                LS_amnt_stable: close_amount,
-                LS_timestamp: at,
-                Type: String::from(r#type),
-                LS_amnt: loan,
-                LS_pnl: pnl,
-                Block: block,
-                Active: active,
-            };
-
-            app_state
-                .database
-                .ls_loan_closing
-                .insert(ls_loan_closing, transaction)
-                .await?;
-        }
     }
 
     Ok(())
@@ -141,71 +93,123 @@ async fn proceed(
     app_state: AppState<State>,
     item: LS_Loan_Closing,
 ) -> Result<(), Error> {
-    let lease = app_state
-        .database
-        .ls_opening
-        .get(item.LS_contract_id.to_owned())
-        .await?;
+    let ls_loan_closing = get_loan(
+        app_state.clone(),
+        item.LS_contract_id,
+        Loan_Closing_Status::from_str(&item.Type)?,
+        item.LS_timestamp,
+        item.Block,
+        BigDecimal::from(0),
+        BigDecimal::from(0),
+    )
+    .await?;
 
-    if let Some(lease) = lease {
-        let loan = app_state
-            .database
-            .ls_loan_closing
-            .get_lease_amount(item.LS_contract_id.to_owned())
-            .await?;
-
-        let protocol =
-            app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
-
-        let symbol = lease.LS_asset_symbol.to_owned();
-        let loan_str = &loan.to_string();
-
-        let f1 = app_state.in_stabe_by_date(
-            &symbol,
-            loan_str,
-            protocol.to_owned(),
-            &lease.LS_timestamp,
-        );
-
-        let f2 = app_state.in_stabe_by_date(
-            &symbol,
-            loan_str,
-            protocol.to_owned(),
-            &item.LS_timestamp,
-        );
-
-        let (open_amount, close_amount, fee) = tokio::try_join!(
-            f1,
-            f2,
-            get_fees(&app_state, &lease, protocol.to_owned())
-        )?;
-
-        let pnl = &close_amount - &open_amount - fee;
-        let active = app_state
-            .database
-            .block
-            .is_synced_to_block(item.Block - 1)
-            .await?;
-
-        let ls_loan_closing = LS_Loan_Closing {
-            LS_contract_id: item.LS_contract_id.to_owned(),
-            LS_symbol: item.LS_symbol.to_owned(),
-            LS_amnt_stable: close_amount,
-            LS_timestamp: item.LS_timestamp,
-            Type: item.Type,
-            LS_amnt: loan,
-            LS_pnl: pnl,
-            Block: item.Block,
-            Active: active,
-        };
-
+    if ls_loan_closing.Active {
         app_state
             .database
             .ls_loan_closing
             .update(ls_loan_closing)
             .await?;
     }
+
     Ok(())
+}
+
+async fn get_loan(
+    app_state: AppState<State>,
+    contract: String,
+    r#type: Loan_Closing_Status,
+    at: DateTime<Utc>,
+    block: i64,
+    change_amount: BigDecimal,
+    taxes: BigDecimal,
+) -> Result<LS_Loan_Closing, Error> {
+    let active = app_state
+        .database
+        .block
+        .is_synced_to_block(block - 1)
+        .await?;
+
+    if !active {
+        return Ok(LS_Loan_Closing {
+            LS_contract_id: contract.to_owned(),
+            LS_amnt_stable: BigDecimal::from(0),
+            LS_timestamp: at,
+            Type: String::from(r#type),
+            LS_amnt: BigDecimal::from(0),
+            LS_pnl: BigDecimal::from(0),
+            Block: block,
+            Active: false,
+        });
+    }
+
+    let lease = app_state
+        .database
+        .ls_opening
+        .get(contract.to_owned())
+        .await?;
+
+    match lease {
+        Some(lease) => {
+            let loan = app_state
+                .database
+                .ls_loan_closing
+                .get_lease_amount(contract.to_owned())
+                .await?
+                - change_amount;
+
+            let protocol =
+                app_state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
+
+            let symbol = lease.LS_asset_symbol.to_owned();
+            let loan_str = &loan.to_string();
+
+            let f1 = app_state.in_stabe_by_date(
+                &symbol,
+                loan_str,
+                protocol.to_owned(),
+                &lease.LS_timestamp,
+            );
+
+            let f2 = app_state.in_stabe_by_date(
+                &symbol,
+                loan_str,
+                protocol.to_owned(),
+                &at,
+            );
+
+            let (open_amount, close_amount, fee) = tokio::try_join!(
+                f1,
+                f2,
+                get_fees(&app_state, &lease, protocol.to_owned())
+            )?;
+
+            let pnl = &close_amount - &open_amount - fee - &taxes;
+
+            return Ok(LS_Loan_Closing {
+                LS_contract_id: contract.to_owned(),
+                LS_amnt_stable: close_amount,
+                LS_timestamp: at,
+                Type: String::from(r#type),
+                LS_amnt: loan,
+                LS_pnl: pnl,
+                Block: block,
+                Active: true,
+            });
+        },
+        None => {
+            return Ok(LS_Loan_Closing {
+                LS_contract_id: contract.to_owned(),
+                LS_amnt_stable: BigDecimal::from(0),
+                LS_timestamp: at,
+                Type: String::from(r#type),
+                LS_amnt: BigDecimal::from(0),
+                LS_pnl: BigDecimal::from(0),
+                Block: block,
+                Active: false,
+            });
+        },
+    };
 }
 
 async fn get_fees(

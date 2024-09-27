@@ -39,7 +39,6 @@ impl Table<LS_Loan_Closing> {
             r#"
             INSERT INTO "LS_Loan_Closing" (
                 "LS_contract_id",
-                "LS_symbol",
                 "LS_amnt",
                 "LS_amnt_stable",
                 "LS_pnl",
@@ -48,11 +47,10 @@ impl Table<LS_Loan_Closing> {
                 "Block",
                 "Active"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
         )
         .bind(&data.LS_contract_id)
-        .bind(&data.LS_symbol)
         .bind(&data.LS_amnt)
         .bind(&data.LS_amnt_stable)
         .bind(&data.LS_pnl)
@@ -138,6 +136,43 @@ impl Table<LS_Loan_Closing> {
             SELECT * FROM "LS_Loan_Closing" WHERE "Active" = false;
             "#,
         )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_leases(
+        &self,
+        address: String,
+        skip: i64,
+        limit: i64,
+    ) -> Result<Vec<LS_Loan_Closing>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT 
+                * 
+            FROM 
+                "LS_Loan_Closing" 
+            INNER JOIN 
+                "LS_Opening" 
+            ON 
+                "LS_Loan_Closing"."LS_contract_id" = "LS_Opening"."LS_contract_id"  
+            WHERE 
+                "LS_Loan_Closing"."Active" = true
+            AND
+                "LS_Opening"."LS_address_id" = $1
+            ORDER BY 
+               "LS_Loan_Closing"."LS_timestamp" 
+            DESC 
+            OFFSET 
+                $2 
+            LIMIT 
+                $3;
+            "#,
+        )
+        .bind(address)
+        .bind(skip)
+        .bind(limit)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)

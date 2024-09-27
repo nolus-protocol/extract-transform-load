@@ -9,10 +9,9 @@ use etl::{
         get_configuration, set_configuration, AppState, Config, State,
     },
     error::Error,
-    handler::{aggregation_task, cache_state, mp_assets},
+    handler::aggregation_task,
     model::Actions,
     provider::{DatabasePool, Event, Grpc},
-    server,
 };
 
 #[tokio::main]
@@ -61,7 +60,7 @@ async fn app_main() -> Result<(), Error> {
     // mp_assets::fetch_insert(app_state.clone(), None).await?;
     let mut event_manager = Event::new(app_state.clone());
 
-    let (_) = tokio::try_join!(event_manager.run(),)?;
+    let _ = tokio::try_join!(event_manager.run(),)?;
 
     // let (_, _, _, _, _) = tokio::try_join!(
     //     event_manager.run(),
@@ -81,7 +80,7 @@ async fn init<'c>() -> Result<(Config, DatabasePool), Error> {
     Ok((config, database))
 }
 
-async fn start_aggregation_tasks(
+async fn _start_aggregation_tasks(
     app_state: AppState<State>,
 ) -> Result<(), Error> {
     let interval_value: u64 = app_state.config.aggregation_interval.into();
@@ -145,25 +144,3 @@ async fn start_aggregation_tasks(
     })
     .await?
 }
-
-// async fn test2(app_state: AppState<State>) -> Result<(), Error> {
-//     let mut interval = time::interval(Duration::from_secs(10));
-
-//     tokio::spawn(async move {
-//         loop {
-//             interval.tick().await;
-//             let app = app_state.clone();
-//             let grpc = &app.grpc;
-
-//             match grpc.parse_block(6406972).await {
-//                 Ok(data) => {
-//                     dbg!(data);
-//                 }
-//                 Err(err) => {
-//                     dbg!(err);
-//                 }
-//             };
-//         }
-//     })
-//     .await?
-// }
