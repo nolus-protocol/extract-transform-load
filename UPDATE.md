@@ -155,11 +155,14 @@ ALTER TABLE "LS_State" ADD COLUMN "LS_lpn_loan_amnt" DECIMAL(39, 0) NOT NULL DEF
 ./nolusd q tx c178f256d36c5c1f58221d81358544da6c761baec2a8cc9b66c81421de526464 --output json --node https://nolus.rpc.kjnodes.com
 ./nolusd q tx c178f256d36c5c1f58221d81358544da6c761baec2a8cc9b66c81421de526464 --output json --node https://rpc.lavenderfive.com:443/nolus
 
+./nolusd q tx c178f256d36c5c1f58221d81358544da6c761baec2a8cc9b66c81421de526464 --output json --node https://pirin-cl-arc.nolus.network:26612
+./nolusd q tx C1BD58BBDB12351E881FD73C65D4664571266CE38392982D6C0E9B9A3812B829 --output json --node https://pirin-cl-arc.nolus.network:26612
+
 https://pirin-cl.nolus.network:26657/tx?hash=%22c178f256d36c5c1f58221d81358544da6c761baec2a8cc9b66c81421de526464%22&prove=true
 
+delete from block where id < 6871800;
 insert into block(id) values (1994921);
 insert into block(id) values (3659894);
-insert into block(id) values (6896464);
 insert into block(id) values (6896464);
 
 insert into 
