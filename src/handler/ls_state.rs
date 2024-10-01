@@ -22,7 +22,6 @@ pub async fn parse_and_insert(
     let mut tasks = vec![];
     let mut data = vec![];
     let max_tasks = app_state.config.max_tasks;
-
     for item in items {
         tasks.push(proceed(app_state.clone(), item, timestsamp));
     }
@@ -48,7 +47,6 @@ pub async fn parse_and_insert(
             }
         }
     }
-
     app_state.database.ls_state.insert_many(&data).await?;
 
     Ok(())
