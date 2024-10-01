@@ -126,6 +126,7 @@ ALTER TABLE "LS_Repayment" RENAME COLUMN "LS_amnt_stable" TO "LS_payment_amnt_st
 ALTER TABLE "LS_Repayment" RENAME COLUMN "LS_payment" TO "LS_payment_amnt";
 
 ALTER TABLE "LS_Opening" ADD COLUMN "LS_loan_amnt" DECIMAL(39, 0) NOT NULL DEFAULT 0;
+ALTER TABLE "LS_Opening" ADD COLUMN "LS_lpn_loan_amnt" DECIMAL(39, 0) NOT NULL DEFAULT 0;
 
 ALTER TABLE "LS_Liquidation" ADD COLUMN "LS_amnt" DECIMAL(39, 0);
 ALTER TABLE "LS_Liquidation" ADD COLUMN "LS_payment_amnt" DECIMAL(39, 0);
@@ -141,6 +142,8 @@ ALTER TABLE "LS_Close_Position" ADD COLUMN "LS_payment_amnt" DECIMAL(39, 0);
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amount_amount" TO "LS_amnt";
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amount_symbol" TO "LS_amnt_symbol";
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_symbol" TO "LS_payment_symbol";
+
+ALTER TABLE "LS_State" ADD COLUMN "LS_lpn_loan_amnt" DECIMAL(39, 0) NOT NULL DEFAULT 0;
 
 ./nolusd q wasm contract-state smart nolus1x8dyqec8kx75rf5zfmfs0lyatw24fasssygrdq7kpaw86te9emwsp8xeqf '{}' --output json --node http://10.133.133.41:26602 --height 793010
 ./nolusd q wasm contract-state smart nolus1x8dyqec8kx75rf5zfmfs0lyatw24fasssygrdq7kpaw86te9emwsp8xeqf '{}' --output json --node http://10.133.133.41:26602 --height 3658999

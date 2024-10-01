@@ -48,7 +48,7 @@ pub async fn parse_and_insert(
         }
     }
     app_state.database.ls_state.insert_many(&data).await?;
-
+    dbg!("end");
     Ok(())
 }
 
@@ -144,6 +144,10 @@ async fn proceed(
         let due_interest_stable =
             state.in_stabe_calc(&pool_currency_price, &due_interest.amount)?;
 
+        let LS_lpn_loan_amnt = BigDecimal::from_str(&status.amount.amount)?
+            * &price
+            / &pool_currency_price;
+
         let ls_state = LS_State {
             LS_contract_id: item.LS_contract_id,
             LS_timestamp: timestsamp,
@@ -162,6 +166,7 @@ async fn proceed(
                 &pool_currency_price,
                 &status.principal_due.amount,
             )?,
+            LS_lpn_loan_amnt,
         };
         return Ok(Some(ls_state));
     }
