@@ -33,7 +33,7 @@ impl Table<Reserve_Cover_Loss> {
                         "Tx_Hash" = $1
                     WHERE 
                         "LS_contract_id" = $2 AND
-                        "Event_Block_Index" = $ AND
+                        "Event_Block_Index" = $3 AND
                         "Tx_Hash" = $4
                 "#,
             )

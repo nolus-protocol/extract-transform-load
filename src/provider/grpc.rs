@@ -451,13 +451,10 @@ impl Grpc {
     ) -> Result<LS_State_Type, Error> {
         let bytes = b"{}";
 
-        const QUERY_CONTRACT_ERROR: &str =
-            "Failed to run query lease contract by block!";
-
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lease contract!";
         let mut request = QuerySmartContractStateRequest {
-            address: contract,
+            address: contract.to_owned(),
             query_data: bytes.to_vec(),
         }
         .into_request();
@@ -466,14 +463,21 @@ impl Grpc {
         metetadata.append("x-cosmos-block-height", height.into());
 
         let mut client = self.wasm_query_client.clone();
-        let data = client
-            .smart_contract_state(request)
-            .await
+        let data = client.smart_contract_state(request).await;
+
+        let data = data
             .map(|response| response.into_inner().data)
-            .context(QUERY_CONTRACT_ERROR)
+            .context(format!(
+                "Failed to run query lease contract by block! {}",
+                &height
+            ))
             .and_then(|data| {
                 serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
-            })?;
+            })
+            .unwrap_or(LS_State_Type {
+                opened: None,
+                paid: None,
+            });
 
         Ok(data)
     }

@@ -31,13 +31,19 @@ impl Synchronization {
     ) -> Result<(i16, Vec<(i64, i64)>), Error> {
         let block_model = &app_state.database.block;
         let first_block = block_model.get_first_block().await.ok();
-        let last_block = block_model.get_last_block().await.ok();
-        let block_height = app_state.grpc.get_latest_block().await?;
+        let mut last_block = block_model.get_last_block().await.ok();
+        let block_height = 6871800;
         let missing_values = block_model.get_missing_blocks().await?;
         let threads_count = app_state.config.sync_threads;
 
         let mut parts: Vec<(i64, i64)> = Vec::new();
         let start_block = 1;
+
+        if let Some((item,)) = last_block {
+            if item > 6871799 {
+                last_block = Some((6871799,));
+            }
+        }
 
         if first_block.is_none() {
             parts.push((start_block, block_height + 1));
@@ -101,10 +107,8 @@ impl Synchronization {
             for (start, end) in &p {
                 child_total = child_total + end - start;
             }
-
             if child_total > 0 {
                 self.set_running(true);
-
                 hs.push(tokio::spawn(async move {
                     let mut handler = Handler::new(config).await?;
                     handler.init(p).await
@@ -144,7 +148,6 @@ impl Handler {
                 self.insert_tx(height).await?;
             }
         }
-
         Ok(())
     }
 

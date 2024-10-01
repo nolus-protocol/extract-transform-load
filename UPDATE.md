@@ -141,3 +141,20 @@ ALTER TABLE "LS_Close_Position" ADD COLUMN "LS_payment_amnt" DECIMAL(39, 0);
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amount_amount" TO "LS_amnt";
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amount_symbol" TO "LS_amnt_symbol";
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_symbol" TO "LS_payment_symbol";
+
+./nolusd q wasm contract-state smart nolus1x8dyqec8kx75rf5zfmfs0lyatw24fasssygrdq7kpaw86te9emwsp8xeqf '{}' --output json --node http://10.133.133.41:26602 --height 793010
+./nolusd q wasm contract-state smart nolus1x8dyqec8kx75rf5zfmfs0lyatw24fasssygrdq7kpaw86te9emwsp8xeqf '{}' --output json --node http://10.133.133.41:26602 --height 3658999
+./nolusd q wasm contract-state smart nolus1x8dyqec8kx75rf5zfmfs0lyatw24fasssygrdq7kpaw86te9emwsp8xeqf '{}' --output json --node http://10.133.133.41:26602 --height 3659000
+
+./nolusd q wasm contract-state smart nolus1p4lqunauqgstt6ydszx59y3pg2tkaxlnujl9m5ldz7nqcrn6tjzq3geava '{}' --output json --node http://10.133.133.41:26602 --height 402768
+
+./nolusd q tx 3D3F23B67706B32183DEC9B480DC5054D4BFB06C90958EA66B92ADF8F86C7014 --output json --node http://10.133.133.41:26602
+./nolusd q block 1994921 --output json --node http://10.133.133.41:26602
+./nolusd q tx 17E4F89760D5DEBC10745CFD795C4298332A1268A36762B7C15ABD21736CFF35 --output json --node http://10.133.133.41:26602
+
+insert into block(id) values (1994921);
+insert into block(id) values (3659894);
+insert into block(id) values (6871802);
+
+end 6871800;
+
