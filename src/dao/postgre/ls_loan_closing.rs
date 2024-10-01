@@ -69,27 +69,21 @@ impl Table<LS_Loan_Closing> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
                 SELECT SUM("Amount") as "Total" FROM (
-
                     SELECT
                     SUM("LS_loan_amnt") as "Amount"
                     FROM "LS_Opening"
                     WHERE "LS_contract_id" = $1
-
                 UNION ALL
-
                     SELECT
                     -SUM("LS_amnt") as "Amount"
                     FROM "LS_Close_Position"
                     WHERE "LS_contract_id" = $1
-
                 UNION ALL
-
                     SELECT
                     -SUM("LS_amnt") as "Amount"
                     FROM "LS_Liquidation"
                     WHERE "LS_contract_id" = $1
-                    
-                )
+                ) AS combined_data
             "#,
         )
         .bind(contract_id)
