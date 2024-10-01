@@ -126,6 +126,7 @@ ALTER TABLE "LS_Repayment" RENAME COLUMN "LS_amnt_stable" TO "LS_payment_amnt_st
 ALTER TABLE "LS_Repayment" RENAME COLUMN "LS_payment" TO "LS_payment_amnt";
 
 ALTER TABLE "LS_Opening" ADD COLUMN "LS_loan_amnt" DECIMAL(39, 0) NOT NULL DEFAULT 0;
+ALTER TABLE "LS_Opening" ADD COLUMN "LS_lpn_loan_amnt" DECIMAL(39, 0) NOT NULL DEFAULT 0;
 
 ALTER TABLE "LS_Liquidation" ADD COLUMN "LS_amnt" DECIMAL(39, 0);
 ALTER TABLE "LS_Liquidation" ADD COLUMN "LS_payment_amnt" DECIMAL(39, 0);
@@ -142,19 +143,62 @@ ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amount_amount" TO "LS_amnt";
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_amount_symbol" TO "LS_amnt_symbol";
 ALTER TABLE "LS_Close_Position" RENAME COLUMN "LS_symbol" TO "LS_payment_symbol";
 
+ALTER TABLE "LS_State" ADD COLUMN "LS_lpn_loan_amnt" DECIMAL(39, 0) NOT NULL DEFAULT 0;
+
 ./nolusd q wasm contract-state smart nolus1x8dyqec8kx75rf5zfmfs0lyatw24fasssygrdq7kpaw86te9emwsp8xeqf '{}' --output json --node http://10.133.133.41:26602 --height 793010
 ./nolusd q wasm contract-state smart nolus1x8dyqec8kx75rf5zfmfs0lyatw24fasssygrdq7kpaw86te9emwsp8xeqf '{}' --output json --node http://10.133.133.41:26602 --height 3658999
 ./nolusd q wasm contract-state smart nolus1x8dyqec8kx75rf5zfmfs0lyatw24fasssygrdq7kpaw86te9emwsp8xeqf '{}' --output json --node http://10.133.133.41:26602 --height 3659000
-
 ./nolusd q wasm contract-state smart nolus1p4lqunauqgstt6ydszx59y3pg2tkaxlnujl9m5ldz7nqcrn6tjzq3geava '{}' --output json --node http://10.133.133.41:26602 --height 402768
-
 ./nolusd q tx 3D3F23B67706B32183DEC9B480DC5054D4BFB06C90958EA66B92ADF8F86C7014 --output json --node http://10.133.133.41:26602
 ./nolusd q block 1994921 --output json --node http://10.133.133.41:26602
-./nolusd q tx 17E4F89760D5DEBC10745CFD795C4298332A1268A36762B7C15ABD21736CFF35 --output json --node http://10.133.133.41:26602
+
+./nolusd q tx c178f256d36c5c1f58221d81358544da6c761baec2a8cc9b66c81421de526464 --output json --node https://nolus.rpc.kjnodes.com
+./nolusd q tx c178f256d36c5c1f58221d81358544da6c761baec2a8cc9b66c81421de526464 --output json --node https://rpc.lavenderfive.com:443/nolus
+
+https://pirin-cl.nolus.network:26657/tx?hash=%22c178f256d36c5c1f58221d81358544da6c761baec2a8cc9b66c81421de526464%22&prove=true
 
 insert into block(id) values (1994921);
 insert into block(id) values (3659894);
-insert into block(id) values (6871802);
+insert into block(id) values (6896464);
+insert into block(id) values (6896464);
+
+insert into 
+  "LS_Repayment"
+  (
+    "LS_repayment_height",
+    "LS_contract_id",
+    "LS_payment_symbol",
+    "LS_payment_amnt",
+    "LS_payment_amnt_stable",
+    "LS_timestamp",
+    "LS_loan_close",
+    "LS_prev_margin_stable",
+    "LS_prev_interest_stable",
+    "LS_current_margin_stable",
+    "LS_current_interest_stable",
+    "LS_principal_stable",
+    "Tx_Hash"
+  )
+  
+  values
+
+  (  
+  1994921,
+  'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47',
+  'USDC',
+  '6905',
+  '6905',
+  to_timestamp(1696388400363/ 1000),
+  false,
+  0,
+  0,
+  1959,
+  4946,
+  0,
+  '17E4F89760D5DEBC10745CFD795C4298332A1268A36762B7C15ABD21736CFF35'
+  )
 
 end 6871800;
 
+HOST=nolus.rpc.kjnodes.com
+GRPC_HOST=https://nolus.grpc.kjnodes.com

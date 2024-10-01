@@ -71,9 +71,10 @@ impl Table<LS_Opening> {
                 "LS_native_amnt_stable",
                 "LS_native_amnt_nolus",
                 "Tx_Hash",
-                "LS_loan_amnt"
+                "LS_loan_amnt",
+                "LS_lpn_loan_amnt"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
             "#,
         )
         .bind(&data.LS_contract_id)
@@ -91,6 +92,7 @@ impl Table<LS_Opening> {
         .bind(&data.LS_native_amnt_nolus)
         .bind(&data.Tx_Hash)
         .bind(&data.LS_loan_amnt)
+        .bind(&data.LS_lpn_loan_amnt)
         .execute(&mut **transaction)
         .await
     }
@@ -121,7 +123,8 @@ impl Table<LS_Opening> {
                 "LS_native_amnt_stable",
                 "LS_native_amnt_nolus",
                 "Tx_Hash",
-                "LS_loan_amnt"
+                "LS_loan_amnt",
+                "LS_lpn_loan_amnt"
             )"#,
         );
 
@@ -140,7 +143,8 @@ impl Table<LS_Opening> {
                 .push_bind(&ls.LS_native_amnt_stable)
                 .push_bind(&ls.LS_native_amnt_nolus)
                 .push_bind(&ls.Tx_Hash)
-                .push_bind(&ls.LS_loan_amnt);
+                .push_bind(&ls.LS_loan_amnt)
+                .push_bind(&ls.LS_lpn_loan_amnt);
         });
 
         let query = query_builder.build();
@@ -579,7 +583,8 @@ impl Table<LS_Opening> {
                     a."LS_native_amnt_stable",
                     a."LS_native_amnt_nolus",
                     a."Tx_Hash",
-                    a."LS_loan_amnt"
+                    a."LS_loan_amnt",
+                    a."LS_lpn_loan_amnt"
                 FROM
                     "LS_Opening" as a
                 LEFT JOIN 

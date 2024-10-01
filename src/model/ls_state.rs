@@ -12,4 +12,5 @@ pub struct LS_State {
     pub LS_current_margin_stable: BigDecimal,
     pub LS_current_interest_stable: BigDecimal,
     pub LS_principal_stable: BigDecimal,
+    pub LS_lpn_loan_amnt: BigDecimal,
 }

@@ -17,9 +17,10 @@ impl Table<LS_State> {
                 "LS_prev_interest_stable",
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
-                "LS_principal_stable"
+                "LS_principal_stable",
+                "LS_lpn_loan_amnt"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
             "#,
         )
         .bind(&data.LS_contract_id)
@@ -31,6 +32,7 @@ impl Table<LS_State> {
         .bind(&data.LS_current_margin_stable)
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
+        .bind(&data.LS_lpn_loan_amnt)
         .execute(&self.pool)
         .await
     }
@@ -53,7 +55,8 @@ impl Table<LS_State> {
                     a."LS_native_amnt_stable",
                     a."LS_native_amnt_nolus",
                     a."Tx_Hash",
-                    a."LS_loan_amnt"
+                    a."LS_loan_amnt",
+                    a."LS_lpn_loan_amnt"
                 FROM "LS_Opening" as a 
                 LEFT JOIN "LS_Closing" as b 
                 ON a."LS_contract_id" = b."LS_contract_id" 
@@ -80,7 +83,8 @@ impl Table<LS_State> {
                 "LS_prev_interest_stable",
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
-                "LS_principal_stable"
+                "LS_principal_stable",
+                "LS_lpn_loan_amnt"
             )"#,
         );
 
@@ -93,7 +97,8 @@ impl Table<LS_State> {
                 .push_bind(&data.LS_prev_interest_stable)
                 .push_bind(&data.LS_current_margin_stable)
                 .push_bind(&data.LS_current_interest_stable)
-                .push_bind(&data.LS_principal_stable);
+                .push_bind(&data.LS_principal_stable)
+                .push_bind(&data.LS_lpn_loan_amnt);
         });
 
         let query = query_builder.build();
