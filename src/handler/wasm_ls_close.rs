@@ -25,7 +25,7 @@ pub async fn parse_and_insert(
     })?;
 
     let ls_closing = LS_Closing {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         LS_contract_id: item.id,
         LS_timestamp: at,
     };

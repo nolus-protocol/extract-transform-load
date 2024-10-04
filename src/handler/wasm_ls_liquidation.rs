@@ -61,17 +61,17 @@ pub async fn parse_and_insert(
     let (LS_amnt_stable, LS_payment_amnt_stable) = tokio::try_join!(f1, f2)?;
     let amount = BigDecimal::from_str(&item.amount_amount)?;
     let ls_liquidation = LS_Liquidation {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         LS_liquidation_height: item.height.parse()?,
         LS_liquidation_idx: None,
         LS_contract_id: item.to.to_owned(),
         LS_amnt_symbol: item.amount_symbol.to_owned(),
         LS_amnt_stable,
 
-        LS_amnt: Some(amount.to_owned()),
-        LS_payment_symbol: Some(item.payment_symbol.to_owned()),
-        LS_payment_amnt: Some(BigDecimal::from_str(&item.payment_amount)?),
-        LS_payment_amnt_stable: Some(LS_payment_amnt_stable),
+        LS_amnt: amount.to_owned(),
+        LS_payment_symbol: item.payment_symbol.to_owned(),
+        LS_payment_amnt: BigDecimal::from_str(&item.payment_amount)?,
+        LS_payment_amnt_stable,
         LS_timestamp: at,
         LS_transaction_type: item.r#type,
         LS_prev_margin_stable: BigDecimal::from_str(
@@ -87,7 +87,7 @@ pub async fn parse_and_insert(
             &item.curr_loan_interest,
         )?,
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
-        LS_loan_close: Some(loan_close),
+        LS_loan_close: loan_close,
     };
 
     let isExists = app_state

@@ -28,7 +28,7 @@ pub async fn parse_and_insert(
     let protocol = &app_state.config.initial_protocol;
 
     let tr_profit = TR_Profit {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         TR_Profit_height: item.height.parse()?,
         TR_Profit_idx: None,
         TR_Profit_timestamp: at,

@@ -27,7 +27,7 @@ pub async fn parse_and_insert(
         .context("Could not parse time stamp")?;
 
     let reserve_cover_loss = Reserve_Cover_Loss {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         LS_contract_id: item.to,
         LS_symbol: item.payment_symbol,
         LS_amnt: BigDecimal::from_str(&item.payment_amount)?,

@@ -159,7 +159,8 @@ https://pirin-cl.nolus.network:26657/tx?hash=%22c178f256d36c5c1f58221d81358544da
 
 insert into block(id) values (1994921);
 insert into block(id) values (3659894);
-insert into block(id) values (6896464);
+
+DELETE FROM "block" WHERE "id" >= 6871800;
 insert into block(id) values (6896464);
 
 insert into 
@@ -184,7 +185,7 @@ insert into
 
   (  
   1994921,
-  'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47',
+  'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47',f
   'USDC',
   '6905',
   '6905',
@@ -202,3 +203,49 @@ end 6871800;
 
 HOST=nolus.rpc.kjnodes.com
 GRPC_HOST=https://nolus.grpc.kjnodes.com
+
+1.10.2024
+SELECT * FROM "s" WHERE  "LS_repayment_height" = 1994921 AND "LS_contract_id" = 'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47';
+
+UPDATE "LS_Repayment" SET "Tx_Hash" = '17E4F89760D5DEBC10745CFD795C4298332A1268A36762B7C15ABD21736CFF35' WHERE  "LS_repayment_height" = 1994921 AND "LS_contract_id" = 'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47';
+
+ALTER TABLE "LP_Deposit" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+ALTER TABLE "LP_Withdraw" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+
+ALTER TABLE "LS_Close_Position" ALTER COLUMN "LS_amnt_stable" SET NOT NULL;
+ALTER TABLE "LS_Close_Position" ALTER COLUMN "LS_payment_amnt" SET NOT NULL;
+ALTER TABLE "LS_Close_Position" ALTER COLUMN "LS_payment_symbol" SET NOT NULL;
+ALTER TABLE "LS_Close_Position" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+
+ALTER TABLE "LS_Liquidation" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+ALTER TABLE "LS_Liquidation" ALTER COLUMN "LS_amnt" SET NOT NULL;
+ALTER TABLE "LS_Liquidation" ALTER COLUMN "LS_payment_symbol" SET NOT NULL;
+ALTER TABLE "LS_Liquidation" ALTER COLUMN "LS_payment_amnt" SET NOT NULL;
+ALTER TABLE "LS_Liquidation" ALTER COLUMN "LS_payment_amnt_stable" SET NOT NULL;
+ALTER TABLE "LS_Liquidation" ALTER COLUMN "LS_loan_close" SET NOT NULL;
+
+ALTER TABLE "LS_Opening" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+ALTER TABLE "LS_Opening" ALTER COLUMN "LS_loan_amnt" DROP DEFAULT;
+ALTER TABLE "LS_Opening" ALTER COLUMN "LS_lpn_loan_amnt" DROP DEFAULT;
+
+ALTER TABLE "LS_Repayment" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+ALTER TABLE "LS_Repayment" ALTER COLUMN "LS_payment_amnt" SET NOT NULL;
+
+ALTER TABLE "LS_State" ALTER COLUMN "LS_lpn_loan_amnt" DROP DEFAULT;
+
+ALTER TABLE "Reserve_Cover_Loss" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+
+ALTER TABLE "MP_Asset" ALTER COLUMN "MP_price_in_stable" SET NOT NULL;
+
+ALTER TABLE "TR_Profit" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+
+ALTER TABLE "TR_Rewards_Distribution" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+
+ALTER TABLE "LS_Closing" ALTER COLUMN "Tx_Hash" SET NOT NULL;
+
+update/v3/ls_loan_amnt
+update/v3/ls_lpn_loan_amnt
+
+UPDATE "LS_Loan_Closing" SET "Active" = false;
+
+UPDATE "LS_Loan_Closing" SET "Active" = false WHERE "LS_contract_id" = 'nolus16wpqsayglk9pkcvwuswsvxpl5gzv6uwmseq0lw8pvg6vkyp0wfaq9kgnq0';

@@ -86,7 +86,7 @@ pub async fn parse_and_insert(
     let LS_lpn_loan_amnt = &LS_loan_amnt * lease_currency_price / lpn_price;
 
     let ls_opening = LS_Opening {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         LS_contract_id: item.id,
         LS_address_id: item.customer,
         LS_asset_symbol: item.currency,

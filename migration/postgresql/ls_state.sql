@@ -8,6 +8,6 @@ CREATE TABLE IF NOT EXISTS "LS_State" (
   "LS_current_margin_stable" DECIMAL(39, 0),
   "LS_current_interest_stable" DECIMAL(39, 0),
   "LS_principal_stable" DECIMAL(39, 0),
-  "LS_lpn_loan_amnt" DECIMAL(39, 0) NOT NULL DEFAULT 0,
+  "LS_lpn_loan_amnt" DECIMAL(39, 0) NOT NULL,
   PRIMARY KEY ("LS_contract_id", "LS_timestamp")
 );

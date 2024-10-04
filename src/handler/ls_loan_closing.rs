@@ -217,6 +217,7 @@ async fn get_fees(
     lease: &LS_Opening,
     protocol: Option<String>,
 ) -> Result<BigDecimal, Error> {
+    let symbol = &lease.LS_asset_symbol.to_owned();
     let ctrl_currency = app_state
         .config
         .hash_map_currencies
@@ -229,11 +230,8 @@ async fn get_fees(
     let loan_currency = app_state
         .config
         .hash_map_currencies
-        .get(&lease.LS_asset_symbol)
-        .context(format!(
-            "LS_asset_symbol not found {}",
-            &lease.LS_asset_symbol
-        ))?;
+        .get(&symbol.to_owned())
+        .context(format!("LS_asset_symbol not found {}", &symbol))?;
 
     let market_closings_fn = app_state
         .database
@@ -255,7 +253,6 @@ async fn get_fees(
 
     let loan_amnt =
         (&lease.LS_loan_amnt / &loan_amount_symbol_decimals).to_string();
-    let symbol = &lease.LS_asset_symbol.to_owned();
 
     let f1 = app_state
         .in_stabe_by_date(&symbol, &loan_amnt, protocol, &lease.LS_timestamp)
@@ -267,9 +264,12 @@ async fn get_fees(
     let market_close_fee = get_market_close_fee(app_state, market_closings)?;
     let liquidation_fee = get_liquidation_fee(app_state, liquidations)?;
 
+    let lpn_currency =
+        app_state.get_currency_by_pool_id(&lease.LS_loan_pool_id)?;
+
     let loan_amount = (loan_amount * &loan_amount_symbol_decimals).round(0);
-    let loan_amount_stable =
-        &lease.LS_loan_amnt_stable / &loan_amount_symbol_decimals;
+    let loan_amount_stable = &lease.LS_loan_amnt_stable
+        / BigDecimal::from(u64::pow(10, lpn_currency.1.try_into()?));
 
     let total_loan_stable = ((loan_amount_stable + ctrl_amount_stable)
         * &loan_amount_symbol_decimals)
@@ -287,35 +287,30 @@ pub fn get_market_close_fee(
 ) -> Result<BigDecimal, Error> {
     let mut fee = BigDecimal::from(0);
     for market_close in market_closings {
-        if let Some(LS_payment_symbol) = market_close.LS_payment_symbol {
-            let c1 = app_state
-                .config
-                .hash_map_currencies
-                .get(&market_close.LS_amnt_symbol)
-                .context(format!(
-                    "market_close.LS_amount_symbol not found {}",
-                    &market_close.LS_amnt_symbol
-                ))?;
+        let c1 = app_state
+            .config
+            .hash_map_currencies
+            .get(&market_close.LS_amnt_symbol)
+            .context(format!(
+                "market_close.LS_amount_symbol not found {}",
+                &market_close.LS_amnt_symbol
+            ))?;
 
-            let c2 = app_state
-                .config
-                .hash_map_currencies
-                .get(&LS_payment_symbol)
-                .context(format!(
-                    "LS_payment_symbol not found {}",
-                    &LS_payment_symbol
-                ))?;
-            let decimals = BigDecimal::from(u64::pow(10, c2.1.try_into()?));
-            let payment_amount =
-                &market_close.LS_payment_amnt_stable / &decimals;
+        let c2 = app_state
+            .config
+            .hash_map_currencies
+            .get(&market_close.LS_payment_symbol)
+            .context(format!(
+                "LS_payment_symbol not found {}",
+                &market_close.LS_payment_symbol
+            ))?;
+        let decimals = BigDecimal::from(u64::pow(10, c2.1.try_into()?));
+        let payment_amount = &market_close.LS_payment_amnt_stable / &decimals;
 
-            let amount_amount =
-                &market_close.LS_amnt_stable.unwrap_or(BigDecimal::from(0))
-                    / BigDecimal::from(u64::pow(10, c1.1.try_into()?));
-            let amount =
-                ((amount_amount - payment_amount) * &decimals).round(0);
-            fee += amount;
-        }
+        let amount_amount = &market_close.LS_amnt_stable
+            / BigDecimal::from(u64::pow(10, c1.1.try_into()?));
+        let amount = ((amount_amount - payment_amount) * &decimals).round(0);
+        fee += amount;
     }
 
     Ok(fee)
@@ -327,36 +322,30 @@ pub fn get_liquidation_fee(
 ) -> Result<BigDecimal, Error> {
     let mut fee = BigDecimal::from(0);
     for liquidation in liquidations {
-        if let Some(LS_payment_symbol) = liquidation.LS_payment_symbol {
-            let c1 = app_state
-                .config
-                .hash_map_currencies
-                .get(&liquidation.LS_amnt_symbol)
-                .context(format!(
-                    "liquidation.LS_amnt_symbol not found {}",
-                    &liquidation.LS_amnt_symbol
-                ))?;
+        let c1 = app_state
+            .config
+            .hash_map_currencies
+            .get(&liquidation.LS_amnt_symbol)
+            .context(format!(
+                "liquidation.LS_amnt_symbol not found {}",
+                &liquidation.LS_amnt_symbol
+            ))?;
 
-            let c2 = app_state
-                .config
-                .hash_map_currencies
-                .get(&LS_payment_symbol)
-                .context(format!(
-                    "LS_payment_symbol not found {}",
-                    &LS_payment_symbol
-                ))?;
-            let decimals = BigDecimal::from(u64::pow(10, c2.1.try_into()?));
-            let payment_amount = &liquidation
-                .LS_payment_amnt_stable
-                .unwrap_or(BigDecimal::from(0))
-                / &decimals;
+        let c2 = app_state
+            .config
+            .hash_map_currencies
+            .get(&liquidation.LS_payment_symbol)
+            .context(format!(
+                "liquidation.LS_payment_symbol not found {}",
+                &liquidation.LS_payment_symbol
+            ))?;
+        let decimals = BigDecimal::from(u64::pow(10, c2.1.try_into()?));
+        let payment_amount = &liquidation.LS_payment_amnt_stable / &decimals;
 
-            let amount_amount = &liquidation.LS_amnt_stable
-                / BigDecimal::from(u64::pow(10, c1.1.try_into()?));
-            let amount =
-                ((amount_amount - payment_amount) * &decimals).round(0);
-            fee += amount;
-        }
+        let amount_amount = &liquidation.LS_amnt_stable
+            / BigDecimal::from(u64::pow(10, c1.1.try_into()?));
+        let amount = ((amount_amount - payment_amount) * &decimals).round(0);
+        fee += amount;
     }
 
     Ok(fee)

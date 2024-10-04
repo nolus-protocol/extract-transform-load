@@ -125,6 +125,7 @@ Config: time interval
 | LS_cltr_amnt_asset    | Unsigned Int(128) | wasm-ls-open.downpayment-amount                         | Collateral amount in asset currency. The currency symbol is carried with wasm-ls-open.downpayment-symbol |
 | LS_native_amnt_stable | Unsigned Int(128) | n/a                                                     | NLS amount in stable used to get discount [Rila version = 0]                                             |
 | LS_native_amnt_nolus  | Unsigned Int(128) | n/a                                                     | NLS amount used to get discount [Rila version = 0]                                                       |
+| LS_lpn_loan_amnt      | Unsigned Int(128) | n/a                                                     | lease amount in lpn                                                                                      |
 
 ### **LS_Closing** [Primary key = LS_contract_id] - claiming lease
 
@@ -196,6 +197,7 @@ ETL generates a record for any lease instance that:
 | LS_current_interest_stable | Unsigned Int(128) | in_stable(lease.status_query.loan_interest_due::0)       | The loan interest amount up to that point of time                                                       |
 | LS_principal_stable        | Unsigned Int(128) | in_stable(lease.status_query.principal_due::0)           | The paid principal, if 1 - none, if 2 - optional                                                        |
 | Tx_Hash                    | Alphanumeric(64)  | tx hash                                                  | Transaction hash                                                                                        |
+| Tx_Hash                    | Alphanumeric(64)  | tx hash                                                  | Transaction hash                                                                                        |
 
 ### **LP_Deposit** [Primary key = LP_deposit_height + LP_deposit_idx]
 
@@ -209,7 +211,7 @@ ETL generates a record for any lease instance that:
 | LP_amnt_stable    | Unsigned Int(128) | in_stable(wasm-lp-deposit.deposit-amount) | Deposited amount in stable. The currency symbol is carried with wasm-lp-deposit.deposit-symbol                             |
 | LP_amnt_asset     | Unsigned Int(128) | wasm-lp-deposit.deposit-amount            | Deposited amount in asset currency = LP_Pool.LP_symbol. The currency symbol is carried with wasm-lp-deposit.deposit-symbol |
 | LP_amnt_receipts  | Unsigned Int(128) | wasm-lp-deposit.receipts                  | Number of receipts issued, nLPN                                                                                            |
-| Tx_Hash           | Alphanumeric(64)  | tx hash                                   | Transaction hash                                                                                                           |
+| LS_lpn_loan_amnt  | Unsigned Int(128) | n/a                                       | lease amount in lpn                                                                                                        |
 
 ### **LP_Withdraw** [Primary key = LP_withdraw_height + LP_withdraw_idx]
 

@@ -27,7 +27,7 @@ pub async fn parse_and_insert(
     })?;
     let protocol = app_state.get_protocol_by_pool_id(&item.from);
     let lp_withdraw = LP_Withdraw {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         LP_withdraw_height: item.height.parse()?,
         LP_withdraw_idx: None,
         LP_address_id: item.to.to_owned(),

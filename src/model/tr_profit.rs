@@ -8,5 +8,5 @@ pub struct TR_Profit {
     pub TR_Profit_timestamp: DateTime<Utc>,
     pub TR_Profit_amnt_stable: BigDecimal,
     pub TR_Profit_amnt_nls: BigDecimal,
-    pub Tx_Hash: Option<String>,
+    pub Tx_Hash: String,
 }

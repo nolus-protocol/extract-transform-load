@@ -3,7 +3,7 @@ use sqlx::{types::BigDecimal, FromRow};
 
 #[derive(Debug, FromRow, Clone)]
 pub struct LS_Close_Position {
-    pub Tx_Hash: Option<String>,
+    pub Tx_Hash: String,
     pub LS_position_height: i64,
     pub LS_position_idx: Option<i32>,
     pub LS_contract_id: String,
@@ -11,9 +11,9 @@ pub struct LS_Close_Position {
     pub LS_amnt: BigDecimal,
     pub LS_amnt_symbol: String,
 
-    pub LS_amnt_stable: Option<BigDecimal>,
-    pub LS_payment_amnt: Option<BigDecimal>,
-    pub LS_payment_symbol: Option<String>,
+    pub LS_amnt_stable: BigDecimal,
+    pub LS_payment_amnt: BigDecimal,
+    pub LS_payment_symbol: String,
     pub LS_payment_amnt_stable: BigDecimal,
 
     pub LS_timestamp: DateTime<Utc>,

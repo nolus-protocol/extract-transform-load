@@ -44,12 +44,12 @@ pub async fn parse_and_insert(
     let loan_close: bool = item.loan_close.parse()?;
 
     let ls_repay = LS_Repayment {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         LS_repayment_height: item.height.parse()?,
         LS_repayment_idx: None,
         LS_contract_id: item.to.to_owned(),
         LS_payment_symbol: item.payment_symbol.to_owned(),
-        LS_payment_amnt: Some(BigDecimal::from_str(&item.payment_amount)?),
+        LS_payment_amnt: BigDecimal::from_str(&item.payment_amount)?,
         LS_payment_amnt_stable: app_state
             .in_stabe_by_date(
                 &item.payment_symbol,

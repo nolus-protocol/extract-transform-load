@@ -603,4 +603,71 @@ impl Table<LS_Opening> {
         .await?;
         Ok(data)
     }
+
+    //TODO: delete
+    pub async fn get_leases_data(&self) -> Result<Vec<LS_Opening>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT * FROM "LS_Opening" WHERE "LS_loan_amnt" = 0
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_leases_data_lpn_amnt(
+        &self,
+    ) -> Result<Vec<LS_Opening>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT * FROM "LS_Opening" WHERE "LS_lpn_loan_amnt" = 0
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn update_ls_loan_amnt(
+        &self,
+        ls_opening: &LS_Opening,
+    ) -> Result<(), crate::error::Error> {
+        sqlx::query(
+            r#"
+                    UPDATE 
+                        "LS_Opening" 
+                    SET 
+                        "LS_loan_amnt" = $1
+                    WHERE 
+                        "LS_contract_id" = $2
+                "#,
+        )
+        .bind(&ls_opening.LS_loan_amnt)
+        .bind(&ls_opening.LS_contract_id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn update_ls_lpn_loan_amnt(
+        &self,
+        ls_opening: &LS_Opening,
+    ) -> Result<(), crate::error::Error> {
+        sqlx::query(
+            r#"
+                    UPDATE 
+                        "LS_Opening" 
+                    SET 
+                        "LS_lpn_loan_amnt" = $1
+                    WHERE 
+                        "LS_contract_id" = $2
+                "#,
+        )
+        .bind(&ls_opening.LS_lpn_loan_amnt)
+        .bind(&ls_opening.LS_contract_id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
 }

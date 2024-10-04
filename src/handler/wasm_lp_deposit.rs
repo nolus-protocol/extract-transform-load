@@ -28,7 +28,7 @@ pub async fn parse_and_insert(
     let protocol = app_state.get_protocol_by_pool_id(&item.to);
 
     let lp_deposit = LP_Deposit {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         LP_deposit_idx: None,
         LP_deposit_height: item.height.parse()?,
         LP_address_id: item.from.to_owned(),

@@ -30,7 +30,7 @@ pub async fn parse_and_insert(
     let protocol = app_state.get_protocol_by_pool_id(&item.to);
 
     let tr_rewards_distribution = TR_Rewards_Distribution {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         TR_Rewards_height: item.height.parse()?,
         TR_Rewards_idx: None,
         TR_Rewards_Pool_id: item.to.to_owned(),

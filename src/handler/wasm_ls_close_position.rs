@@ -63,7 +63,7 @@ pub async fn parse_and_insert(
     let loan_close: bool = item.loan_close.parse()?;
     let amount = BigDecimal::from_str(&item.amount_amount)?;
     let ls_close_position = LS_Close_Position {
-        Tx_Hash: Some(tx_hash),
+        Tx_Hash: tx_hash,
         LS_position_height: item.height.parse()?,
         LS_position_idx: None,
         LS_contract_id: item.to.to_owned(),
@@ -86,9 +86,9 @@ pub async fn parse_and_insert(
             &item.curr_loan_interest,
         )?,
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
-        LS_amnt_stable: Some(LS_amnt_stable),
-        LS_payment_amnt: Some(BigDecimal::from_str(&item.payment_amount)?),
-        LS_payment_symbol: Some(item.payment_symbol.to_owned()),
+        LS_amnt_stable,
+        LS_payment_amnt: BigDecimal::from_str(&item.payment_amount)?,
+        LS_payment_symbol: item.payment_symbol.to_owned(),
     };
 
     let isExists = app_state

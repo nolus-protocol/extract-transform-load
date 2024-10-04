@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS "Reserve_Cover_Loss" (
-  "Tx_Hash" VARCHAR(64),
+  "Tx_Hash" VARCHAR(64) NOT NULL,
   "LS_contract_id" VARCHAR(64) NOT NULL,
   "LS_symbol" VARCHAR(20) NOT NULL,
   "LS_amnt" DECIMAL(39, 0) NOT NULL,

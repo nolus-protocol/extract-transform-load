@@ -5,17 +5,17 @@ use sqlx::{types::BigDecimal, FromRow};
 
 #[derive(Debug, FromRow)]
 pub struct LS_Liquidation {
-    pub Tx_Hash: Option<String>,
+    pub Tx_Hash: String,
     pub LS_liquidation_height: i64,
     pub LS_liquidation_idx: Option<i32>,
     pub LS_contract_id: String,
     pub LS_amnt_symbol: String,
     pub LS_amnt_stable: BigDecimal,
 
-    pub LS_amnt: Option<BigDecimal>,
-    pub LS_payment_symbol: Option<String>,
-    pub LS_payment_amnt: Option<BigDecimal>,
-    pub LS_payment_amnt_stable: Option<BigDecimal>,
+    pub LS_amnt: BigDecimal,
+    pub LS_payment_symbol: String,
+    pub LS_payment_amnt: BigDecimal,
+    pub LS_payment_amnt_stable: BigDecimal,
 
     pub LS_timestamp: DateTime<Utc>,
     pub LS_transaction_type: String,
@@ -24,7 +24,7 @@ pub struct LS_Liquidation {
     pub LS_current_margin_stable: BigDecimal,
     pub LS_current_interest_stable: BigDecimal,
     pub LS_principal_stable: BigDecimal,
-    pub LS_loan_close: Option<bool>,
+    pub LS_loan_close: bool,
 }
 
 #[derive(sqlx::Type, Debug)]
