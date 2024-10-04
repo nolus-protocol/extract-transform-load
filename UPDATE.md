@@ -205,9 +205,9 @@ HOST=nolus.rpc.kjnodes.com
 GRPC_HOST=https://nolus.grpc.kjnodes.com
 
 1.10.2024
-SELECT * FROM "s" WHERE  "LS_repayment_height" = 1994921 AND "LS_contract_id" = 'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47';
+SELECT * FROM "LS_Repayment" WHERE  "LS_repayment_height" = 1994921 AND "LS_contract_id" = 'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47';
 
-UPDATE "LS_Repayment" SET "Tx_Hash" = '17E4F89760D5DEBC10745CFD795C4298332A1268A36762B7C15ABD21736CFF35' WHERE  "LS_repayment_height" = 1994921 AND "LS_contract_id" = 'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47';
+UPDATE "LS_Repayment" SET "Tx_Hash" = '17E4F89760D5DEBC10745CFD795C4298332A1268A36762B7C15ABD21736CFF35', "LS_payment_amnt" = 6905 WHERE  "LS_repayment_height" = 1994921 AND "LS_contract_id" = 'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47';
 
 ALTER TABLE "LP_Deposit" ALTER COLUMN "Tx_Hash" SET NOT NULL;
 ALTER TABLE "LP_Withdraw" ALTER COLUMN "Tx_Hash" SET NOT NULL;
@@ -249,3 +249,4 @@ update/v3/ls_lpn_loan_amnt
 UPDATE "LS_Loan_Closing" SET "Active" = false;
 
 UPDATE "LS_Loan_Closing" SET "Active" = false WHERE "LS_contract_id" = 'nolus16wpqsayglk9pkcvwuswsvxpl5gzv6uwmseq0lw8pvg6vkyp0wfaq9kgnq0';
+SELECT FROM "LS_Repayment" WHERE "LS_payment_amnt" IS NULL;
