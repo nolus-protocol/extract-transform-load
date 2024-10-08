@@ -138,7 +138,8 @@ impl Table<LS_State> {
             SELECT
               "LS_asset_symbol",
               CASE
-                WHEN "LS_asset_symbol" IN ('WBTC', 'CRO') THEN 100000000
+                WHEN "LS_asset_symbol" IN ('WBTC', 'ALL_BTC', 'CRO') THEN 100000000
+                WHEN "LS_asset_symbol" IN ('ALL_SOL') THEN 1000000000
                 WHEN "LS_asset_symbol" IN ('PICA') THEN 1000000000000
                 WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
                 ELSE 1000000
@@ -185,6 +186,13 @@ impl Table<LS_State> {
             WHERE "LP_Pool_id" = $4
             ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
           ),
+          Available_ST_ATOM_OSMOSIS AS (
+            SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
+            FROM
+              "LP_Pool_State"
+            WHERE "LP_Pool_id" = $5
+            ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+          ),
           Lease_Value_Sum AS (
             SELECT SUM("Lease Value") AS "Total Lease Value" FROM Lease_Value
           )
@@ -193,7 +201,8 @@ impl Table<LS_State> {
             (SELECT "Available Assets" FROM Available_Assets_Osmosis) +
             (SELECT "Available Assets" FROM Available_Assets_Neutron) +
             (SELECT "Available Assets" FROM Available_Osmosis_Noble) +
-            (SELECT "Available Assets" FROM Available_Neutron_Noble) AS "TVL"
+            (SELECT "Available Assets" FROM Available_Neutron_Noble) +
+            (SELECT "Available Assets" FROM Available_ST_ATOM_OSMOSIS) AS "TVL"
             "#,
         )
         .bind(osmosis_usdc_protocol)
