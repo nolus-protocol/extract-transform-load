@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::{DataBase, QueryResult};
-use crate::model::{LS_Loan_Closing, Table};
+use crate::model::{LS_Loan_Closing, Pnl_Result, Table};
 use bigdecimal::BigDecimal;
 use sqlx::{error::Error, Transaction};
 
@@ -140,11 +140,19 @@ impl Table<LS_Loan_Closing> {
         address: String,
         skip: i64,
         limit: i64,
-    ) -> Result<Vec<LS_Loan_Closing>, Error> {
+    ) -> Result<Vec<Pnl_Result>, Error> {
         let data = sqlx::query_as(
             r#"
             SELECT 
-                * 
+                "LS_Loan_Closing"."LS_contract_id",
+                "LS_Loan_Closing"."LS_amnt",
+                "LS_Loan_Closing"."LS_amnt_stable",
+                "LS_Loan_Closing"."LS_pnl",
+                "LS_Loan_Closing"."LS_timestamp",
+                "LS_Loan_Closing"."Type",
+                "LS_Loan_Closing"."Block",
+                "LS_Opening"."LS_asset_symbol",
+                "LS_Opening"."LS_loan_pool_id"
             FROM 
                 "LS_Loan_Closing" 
             INNER JOIN 

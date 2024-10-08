@@ -226,5 +226,27 @@
         "type": "String"
       }
     ]
+  },
+  {
+    "description": "Lease pnl",
+    "url": "/api/ls-loan-closing",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      },
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 10,
+        "max": 100
+      }
+    ]
   }
 ]
