@@ -159,15 +159,34 @@ pub async fn get_lpn_data(
         )
         .await?;
 
-    let lpn_price = BigDecimal::from_str(&lpn_price.amount_quote.amount)?
-        / BigDecimal::from_str(&lpn_price.amount.amount)?;
-
     let lpn_decimals = app_state
         .config
         .hash_map_currencies
         .get(&base_currency)
         .context(format!("currency not found {}", &base_currency))?
         .1;
+
+    let asset = app_state
+        .config
+        .hash_map_currencies
+        .get(&lpn_price.amount_quote.ticker)
+        .context(format!(
+            "could not find currency {}",
+            &lpn_price.amount_quote.ticker,
+        ))?;
+
+    let decimals = asset.1 - lpn_decimals;
+    let decimals_abs = decimals.abs();
+    let power_value = BigDecimal::from(u64::pow(10, decimals_abs.try_into()?));
+
+    let mut lpn_price = BigDecimal::from_str(&lpn_price.amount_quote.amount)?
+        / BigDecimal::from_str(&lpn_price.amount.amount)?;
+
+    if decimals > 0 {
+        lpn_price = lpn_price / power_value;
+    } else {
+        lpn_price *= power_value;
+    }
 
     Ok((protocol, base_currency, lpn_price, lpn_decimals))
 }
