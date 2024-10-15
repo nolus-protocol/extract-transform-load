@@ -10,5 +10,6 @@ CREATE TABLE IF NOT EXISTS "raw_message" (
   "fee_denom" VARCHAR(68),
   "memo" TEXT,
   "timestamp" TIMESTAMPTZ NOT NULL,
+  "rewards" TEXT DEFAULT NULL,
   PRIMARY KEY ("index", "tx_hash")
 );

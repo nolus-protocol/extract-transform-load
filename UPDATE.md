@@ -250,3 +250,8 @@ UPDATE "LS_Loan_Closing" SET "Active" = false;
 
 UPDATE "LS_Loan_Closing" SET "Active" = false WHERE "LS_contract_id" = 'nolus16wpqsayglk9pkcvwuswsvxpl5gzv6uwmseq0lw8pvg6vkyp0wfaq9kgnq0';
 SELECT FROM "LS_Repayment" WHERE "LS_payment_amnt" IS NULL;
+
+
+15.10.2024
+
+ALTER TABLE "raw_message" ADD COLUMN "rewards" TEXT DEFAULT NULL;

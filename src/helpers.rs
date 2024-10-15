@@ -712,6 +712,7 @@ pub async fn insert_txs(
                     tx_data,
                     height,
                     time_stamp.clone(),
+                    &tx_results.events,
                     &mut tx,
                 )
                 .await?;
@@ -748,6 +749,7 @@ pub async fn parse_raw_tx(
     tx_data: Any,
     height: i64,
     time_stamp: Timestamp,
+    tx_events: &Vec<Event>,
     tx: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let c = Tx::from_bytes(&tx_data.value)?;
@@ -763,6 +765,7 @@ pub async fn parse_raw_tx(
             fee,
             memo,
             app_state.config.events_subscribe.clone(),
+            tx_events,
         );
 
         if let Ok(msg) = msg {

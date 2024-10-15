@@ -12,6 +12,7 @@ use cosmos_sdk_proto::{
         staking::v1beta1::{MsgBeginRedelegate, MsgDelegate, MsgUndelegate},
     },
     cosmwasm::wasm::v1::MsgExecuteContract,
+    tendermint::abci::Event,
     Timestamp,
 };
 use cosmrs::{tx::Fee, Any};
@@ -22,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;
 
-use crate::types::MsgReceivePacket;
+use crate::{error::Error, types::MsgReceivePacket};
 
 #[derive(Debug, FromRow, Default, Serialize, Deserialize)]
 pub struct Raw_Message {
@@ -37,6 +38,7 @@ pub struct Raw_Message {
     pub fee_denom: Option<String>,
     pub memo: String,
     pub timestamp: DateTime<Utc>,
+    pub rewards: Option<String>,
 }
 
 impl Raw_Message {
@@ -49,6 +51,7 @@ impl Raw_Message {
         fee: Fee,
         memo: String,
         events: Vec<String>,
+        tx_events: &Vec<Event>,
     ) -> Result<Raw_Message, anyhow::Error> {
         let k = CosmosTypes::from_str(&value.type_url)?;
         let seconds = time_stamp.seconds.try_into()?;
@@ -75,6 +78,7 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: None,
                 })
             },
             CosmosTypes::MsgTransfer => {
@@ -92,6 +96,7 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: None,
                 })
             },
             CosmosTypes::MsgVoteLegacy => {
@@ -109,6 +114,7 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: None,
                 })
             },
             CosmosTypes::MsgVote => {
@@ -126,6 +132,7 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: None,
                 })
             },
             CosmosTypes::MsgRecvPacket => {
@@ -147,10 +154,16 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: None,
                 })
             },
             CosmosTypes::MsgWithdrawDelegatorReward => {
                 let m = value.to_msg::<MsgWithdrawDelegatorReward>()?;
+                let amount = get_withdraw_delegator_rewards(
+                    m.validator_address.to_owned(),
+                    m.delegator_address.to_owned(),
+                    tx_events,
+                )?;
                 Ok(Raw_Message {
                     index,
                     from: m.delegator_address,
@@ -164,6 +177,7 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: amount,
                 })
             },
             CosmosTypes::MsgDelegate => {
@@ -181,6 +195,7 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: None,
                 })
             },
             CosmosTypes::MsgBeginRedelegate => {
@@ -198,6 +213,7 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: None,
                 })
             },
             CosmosTypes::MsgUndelegate => {
@@ -215,13 +231,27 @@ impl Raw_Message {
                         .context("Could not parse time stamp")?,
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
+                    rewards: None,
                 })
             },
             CosmosTypes::MsgExecuteContract => {
                 let m = value.to_msg::<MsgExecuteContract>()?;
                 let msg: Value = serde_json::from_slice(&m.msg)?;
+
                 for event in events {
-                    if let Some(_) = msg.get(event) {
+                    if let Some(_) = msg.get(&event) {
+                        let rewards = {
+                            if &event == "claim_rewards" {
+                                get_msg_execute_contract_rewards(
+                                    m.sender.to_owned(),
+                                    m.contract.to_owned(),
+                                    tx_events,
+                                )?
+                            } else {
+                                None
+                            }
+                        };
+
                         return Ok(Raw_Message {
                             index,
                             from: m.sender,
@@ -235,6 +265,7 @@ impl Raw_Message {
                                 .context("Could not parse time stamp")?,
                             value: BASE64_STANDARD.encode(value.value),
                             memo,
+                            rewards,
                         });
                     }
                 }
@@ -242,6 +273,77 @@ impl Raw_Message {
             },
         }
     }
+}
+
+pub fn get_withdraw_delegator_rewards(
+    validator: String,
+    delegator: String,
+    tx_events: &Vec<Event>,
+) -> Result<Option<String>, Error> {
+    const EVENT: &str = "withdraw_rewards";
+
+    for (_index, event) in tx_events.iter().enumerate() {
+        if event.r#type == EVENT {
+            let attributes = event.attributes.iter();
+            let amount = attributes
+                .clone()
+                .find(|item| item.key == "amount")
+                .context("could not found amount in tx_events")?;
+            let validator_ev = attributes
+                .clone()
+                .find(|item| item.key == "validator")
+                .context("could not found validator_ev in tx_events")?;
+            let delegator_ev = attributes
+                .clone()
+                .find(|item| item.key == "delegator")
+                .context("could not found v in tx_events")?;
+            if validator == validator_ev.value
+                && delegator_ev.value == delegator
+            {
+                return Ok(Some(amount.value.to_owned()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+pub fn get_msg_execute_contract_rewards(
+    recipient: String,
+    sender: String,
+    tx_events: &Vec<Event>,
+) -> Result<Option<String>, Error> {
+    const EVENT: &str = "transfer";
+    for event in tx_events.iter() {
+        if event.r#type == EVENT {
+            let attributes = event.attributes.iter();
+
+            let amount = attributes
+                .clone()
+                .find(|item| item.key == "amount")
+                .context(
+                "could not found amount in msg_execute_contract_rewards",
+            )?;
+
+            let recipient_ev = attributes
+                .clone()
+                .find(|item| item.key == "recipient")
+                .context(
+                    "could not found recipient_ev in msg_execute_contract_rewards",
+                )?;
+
+            let sender_ev = attributes
+                .clone()
+                .find(|item| item.key == "sender")
+                .context(
+                    "could not found sender_ev in msg_execute_contract_rewards",
+                )?;
+
+            if recipient == recipient_ev.value && sender_ev.value == sender {
+                return Ok(Some(amount.value.to_owned()));
+            }
+        }
+    }
+    Ok(None)
 }
 
 #[derive(Debug)]

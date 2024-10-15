@@ -48,6 +48,8 @@ pub async fn parse_and_insert(
         }
     }
     app_state.database.ls_state.insert_many(&data).await?;
+    dbg!("end");
+
     Ok(())
 }
 
@@ -169,7 +171,6 @@ async fn proceed(
         };
         return Ok(Some(ls_state));
     }
-
     Ok(None)
 }
 

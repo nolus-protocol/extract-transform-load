@@ -10,8 +10,8 @@ impl Table<Raw_Message> {
     ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
-            INSERT INTO "raw_message" ("index", "from", "to", "tx_hash", "type", "value", "block", "fee_amount", "fee_denom", "memo", "timestamp")
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            INSERT INTO "raw_message" ("index", "from", "to", "tx_hash", "type", "value", "block", "fee_amount", "fee_denom", "memo", "timestamp", "rewards")
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             "#,
         )
         .bind(data.index)
@@ -25,6 +25,7 @@ impl Table<Raw_Message> {
         .bind(&data.fee_denom)
         .bind(&data.memo)
         .bind(&data.timestamp)
+        .bind(&data.rewards)
 
         .execute(&mut **transaction)
         .await
