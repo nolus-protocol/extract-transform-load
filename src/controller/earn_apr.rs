@@ -21,7 +21,8 @@ async fn index(
                 .database
                 .ls_opening
                 .get_earn_apr(protocol.contracts.lpp.to_owned())
-                .await?;
+                .await
+                .unwrap_or(BigDecimal::from(0));
             return Ok(web::Json(Response { earn_apr: data }));
         }
     }
