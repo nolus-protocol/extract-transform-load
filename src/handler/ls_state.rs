@@ -25,7 +25,6 @@ pub async fn parse_and_insert(
     for item in items {
         tasks.push(proceed(app_state.clone(), item, timestsamp));
     }
-
     while !tasks.is_empty() {
         let mut st = JoinSet::new();
         let range = if tasks.len() > max_tasks {
