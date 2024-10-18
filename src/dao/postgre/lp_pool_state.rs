@@ -120,7 +120,30 @@ impl Table<LP_Pool_State> {
     ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
         let data = sqlx::query_as(
             r#"
-                SELECT "LP_Pool_timestamp", "LP_Pool_total_value_locked_stable" / 1000000 AS "Supplied", "LP_Pool_total_borrowed_stable" / 1000000 AS "Borrowed" FROM "LP_Pool_State" WHERE "LP_Pool_id" = $1 ORDER BY "LP_Pool_timestamp" 
+            WITH Lease_Value_Divisor AS (
+            SELECT
+                "LP_symbol",
+                CASE
+                WHEN "LP_symbol" IN ('WBTC', 'ALL_BTC', 'CRO') THEN 100000000
+                WHEN "LP_symbol" IN ('ALL_SOL') THEN 1000000000
+                WHEN "LP_symbol" IN ('PICA') THEN 1000000000000
+                WHEN "LP_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
+                ELSE 1000000
+                END AS "Divisor"
+            FROM
+                "LP_Pool"
+            )
+            SELECT 
+                "LP_Pool_State"."LP_Pool_timestamp", SUM("LP_Pool_State"."LP_Pool_total_value_locked_stable" / "Divisor") AS "Supplied", SUM("LP_Pool_State"."LP_Pool_total_borrowed_stable" / "Divisor") AS "Borrowed" 
+            FROM
+                "LP_Pool_State"
+            LEFT JOIN "LP_Pool" ON "LP_Pool"."LP_Pool_id" = "LP_Pool_State"."LP_Pool_id"
+            LEFT JOIN Lease_Value_Divisor d ON "LP_Pool"."LP_symbol" = d."LP_symbol"
+            WHERE "LP_Pool_State"."LP_Pool_id" = $1
+            GROUP BY 
+                "LP_Pool_State"."LP_Pool_timestamp"
+            ORDER BY 
+                "LP_Pool_State"."LP_Pool_timestamp" DESC
             "#,
         )
         .bind(protocol)
@@ -141,16 +164,30 @@ impl Table<LP_Pool_State> {
 
         let query_str = format!(
             r#"
+            WITH Lease_Value_Divisor AS (
+            SELECT
+                "LP_symbol",
+                CASE
+                WHEN "LP_symbol" IN ('WBTC', 'ALL_BTC', 'CRO') THEN 100000000
+                WHEN "LP_symbol" IN ('ALL_SOL') THEN 1000000000
+                WHEN "LP_symbol" IN ('PICA') THEN 1000000000000
+                WHEN "LP_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
+                ELSE 1000000
+                END AS "Divisor"
+            FROM
+                "LP_Pool"
+            )
             SELECT 
-                "LP_Pool_timestamp", SUM("LP_Pool_total_value_locked_stable" / 1000000) AS "Supplied", SUM("LP_Pool_total_borrowed_stable" / 1000000) AS "Borrowed" 
+                "LP_Pool_State"."LP_Pool_timestamp", SUM("LP_Pool_State"."LP_Pool_total_value_locked_stable" / "Divisor") AS "Supplied", SUM("LP_Pool_State"."LP_Pool_total_borrowed_stable" / "Divisor") AS "Borrowed" 
             FROM
                 "LP_Pool_State"
-            WHERE
-                "LP_Pool_id" IN ({}) 
+            LEFT JOIN "LP_Pool" ON "LP_Pool"."LP_Pool_id" = "LP_Pool_State"."LP_Pool_id"
+            LEFT JOIN Lease_Value_Divisor d ON "LP_Pool"."LP_symbol" = d."LP_symbol"
+            WHERE "LP_Pool_State"."LP_Pool_id" IN ({})
             GROUP BY 
-                "LP_Pool_timestamp"
+                "LP_Pool_State"."LP_Pool_timestamp"
             ORDER BY 
-                "LP_Pool_timestamp" DESC
+                "LP_Pool_State"."LP_Pool_timestamp" DESC
             "#,
             params
         );
