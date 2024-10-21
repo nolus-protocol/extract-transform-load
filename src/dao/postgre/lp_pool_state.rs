@@ -120,25 +120,20 @@ impl Table<LP_Pool_State> {
     ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
         let data = sqlx::query_as(
             r#"
-            WITH Lease_Value_Divisor AS (
-            SELECT
-                "LP_symbol",
-                CASE
-                WHEN "LP_symbol" IN ('WBTC', 'ALL_BTC', 'CRO') THEN 100000000
-                WHEN "LP_symbol" IN ('ALL_SOL') THEN 1000000000
-                WHEN "LP_symbol" IN ('PICA') THEN 1000000000000
-                WHEN "LP_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
-                ELSE 1000000
-                END AS "Divisor"
-            FROM
-                "LP_Pool"
-            )
             SELECT 
-                "LP_Pool_State"."LP_Pool_timestamp", SUM("LP_Pool_State"."LP_Pool_total_value_locked_stable" / "Divisor") AS "Supplied", SUM("LP_Pool_State"."LP_Pool_total_borrowed_stable" / "Divisor") AS "Borrowed" 
+                "LP_Pool_State"."LP_Pool_timestamp", 
+                SUM(CASE 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000 
+                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000 
+                END) AS "Supplied", 
+                SUM(CASE 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000 
+                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000 
+                END) AS "Borrowed" 
             FROM
                 "LP_Pool_State"
-            LEFT JOIN "LP_Pool" ON "LP_Pool"."LP_Pool_id" = "LP_Pool_State"."LP_Pool_id"
-            LEFT JOIN Lease_Value_Divisor d ON "LP_Pool"."LP_symbol" = d."LP_symbol"
             WHERE "LP_Pool_State"."LP_Pool_id" = $1
             GROUP BY 
                 "LP_Pool_State"."LP_Pool_timestamp"
@@ -164,25 +159,20 @@ impl Table<LP_Pool_State> {
 
         let query_str = format!(
             r#"
-            WITH Lease_Value_Divisor AS (
-            SELECT
-                "LP_symbol",
-                CASE
-                WHEN "LP_symbol" IN ('WBTC', 'ALL_BTC', 'CRO') THEN 100000000
-                WHEN "LP_symbol" IN ('ALL_SOL') THEN 1000000000
-                WHEN "LP_symbol" IN ('PICA') THEN 1000000000000
-                WHEN "LP_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
-                ELSE 1000000
-                END AS "Divisor"
-            FROM
-                "LP_Pool"
-            )
             SELECT 
-                "LP_Pool_State"."LP_Pool_timestamp", SUM("LP_Pool_State"."LP_Pool_total_value_locked_stable" / "Divisor") AS "Supplied", SUM("LP_Pool_State"."LP_Pool_total_borrowed_stable" / "Divisor") AS "Borrowed" 
+                "LP_Pool_State"."LP_Pool_timestamp", 
+                SUM(CASE 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000 
+                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000 
+                END) AS "Supplied", 
+                SUM(CASE 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000 
+                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000 
+                END) AS "Borrowed" 
             FROM
                 "LP_Pool_State"
-            LEFT JOIN "LP_Pool" ON "LP_Pool"."LP_Pool_id" = "LP_Pool_State"."LP_Pool_id"
-            LEFT JOIN Lease_Value_Divisor d ON "LP_Pool"."LP_symbol" = d."LP_symbol"
             WHERE "LP_Pool_State"."LP_Pool_id" IN ({})
             GROUP BY 
                 "LP_Pool_State"."LP_Pool_timestamp"

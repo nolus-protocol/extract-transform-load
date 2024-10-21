@@ -43,7 +43,7 @@ ADMIN_CONTRACT=nolus1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jsqxf8nd
 IGNORE_PROTOCOLS=
 INITIAL_PROTOCOL=OSMOSIS-OSMOSIS-USDC_AXELAR
 SOCKET_RECONNECT_INTERVAL=5
-EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards
+EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
 ENABLE_SYNC=true
 ```
 
@@ -73,7 +73,7 @@ ADMIN_CONTRACT=nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq
 IGNORE_PROTOCOLS=
 INITIAL_PROTOCOL=OSMOSIS-OSMOSIS-USDC_AXELAR
 SOCKET_RECONNECT_INTERVAL=5
-EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards
+EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
 ENABLE_SYNC=true
 ```
 
