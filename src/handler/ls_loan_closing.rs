@@ -183,10 +183,7 @@ async fn get_loan(
                 f2,
                 get_fees(&app_state, &lease, protocol.to_owned())
             )?;
-            dbg!(&close_amount.to_string());
-            dbg!(&open_amount.to_string());
-            dbg!(&fee.to_string());
-            dbg!(&taxes.to_string());
+
             let pnl = &close_amount - &open_amount - fee - &taxes;
 
             return Ok(LS_Loan_Closing {
