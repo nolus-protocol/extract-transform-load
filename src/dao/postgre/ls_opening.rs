@@ -390,7 +390,7 @@ impl Table<LS_Opening> {
                             "LP_Pool_State"
                         WHERE
                             "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
-                            AND "LP_Pool_id" = $2
+                            AND "LP_Pool_id" = $1
                     ) ranked
                 WHERE
                     ranked.rank = 1
@@ -408,7 +408,94 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(&protocol)
+        .fetch_optional(&self.pool)
+        .await?;
+        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
+
+        Ok(amnt.0)
+    }
+
+    pub async fn get_earn_apr_interest(
+        &self,
+        protocol: String,
+        max_interest: i32,
+    ) -> Result<BigDecimal, crate::error::Error> {
+        let value: Option<(BigDecimal,)> = sqlx::query_as(
+            r#"
+                WITH DateRange AS (
+                    SELECT
+                        generate_series(
+                        CURRENT_DATE - INTERVAL '7 days',
+                        CURRENT_DATE,
+                        '1 day'
+                        ) :: date AS date
+                    ),
+                    DailyInterest AS (
+                    SELECT
+                        DATE("LS_timestamp") AS date,
+                        MAX("LS_interest") AS max_interest
+                    FROM
+                        "LS_Opening"
+                    WHERE
+                        "LS_timestamp" >= CURRENT_DATE - INTERVAL '7 days' AND "LS_loan_pool_id" = $1
+                    GROUP BY
+                        DATE("LS_timestamp")
+                    ),
+                    MaxLSInterest AS (
+                    SELECT
+                        dr.date,
+                        COALESCE(
+                        di.max_interest,
+                        FIRST_VALUE(di.max_interest) OVER (
+                            ORDER BY
+                            dr.date ROWS BETWEEN UNBOUNDED PRECEDING
+                            AND 1 PRECEDING
+                        )
+                        ) AS max_interest
+                    FROM
+                        DateRange dr
+                        LEFT JOIN DailyInterest di ON dr.date = di.date
+                    ),
+                    MaxLPRatio AS (
+                    SELECT
+                        DATE("LP_Pool_timestamp") AS date,
+                        (
+                        "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
+                        ) AS ratio
+                    FROM
+                        (
+                        SELECT
+                            *,
+                            RANK() OVER (
+                            PARTITION BY DATE("LP_Pool_timestamp")
+                            ORDER BY
+                                (
+                                "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
+                                ) DESC
+                            ) AS rank
+                        FROM
+                            "LP_Pool_State"
+                        WHERE
+                            "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days' AND "LP_Pool_id" = $1
+                        ) ranked
+                    WHERE
+                        ranked.rank = 1
+                    ),
+                    APRCalc AS (
+                    SELECT
+                        AVG((mli.max_interest - $2) * mlr.ratio) / 10 AS "allBTC APR"
+                    FROM
+                        MaxLSInterest mli
+                        JOIN MaxLPRatio mlr ON mli.date = mlr.date
+                    )
+                    SELECT
+                        (POWER((1 + ("allBTC APR" / 100 / 365)), 365) - 1) * 100 AS "ALL_BTC_OSMOSIS"
+                    FROM APRCalc
+                        
+            "#,
+        )
         .bind(&protocol)
+        .bind(&max_interest)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
@@ -497,30 +584,76 @@ impl Table<LS_Opening> {
                 WITH Opened_Leases AS (
                     SELECT
                     CASE
-                    WHEN "LS_cltr_symbol" IN ('WBTC', 'ALL_BTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000 
-                    WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
-                    WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000 
-                    WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_cltr_amnt_stable" / 1000000000000000000
-                    ELSE "LS_cltr_amnt_stable" / 1000000
+                        WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
+                        WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
+                        WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000 
+                        WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_cltr_amnt_stable" / 1000000000000000000
+                        ELSE "LS_cltr_amnt_stable" / 1000000
                     END AS "Down Payment Amount",
-                    "LS_loan_amnt_asset" / 1000000 AS "Loan"
+                    CASE
+                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
+                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
+                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
+                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN "LS_loan_amnt_stable" / 1000000
+                        ELSE "LS_loan_amnt_asset" / 1000000
+                        END AS "Loan"
                     FROM "LS_Opening"
-                )
-                
-                SELECT
-                    SUM ("Volume") AS "Tx Value"
-                FROM (
-                    SELECT ("Down Payment Amount" + "Loan") AS "Volume" FROM Opened_Leases
-                    UNION ALL
-                    SELECT SUM("LP_amnt_asset" / 1000000) AS "Volume" FROM "LP_Deposit"
-                    UNION ALL 
-                    SELECT SUM("LP_amnt_asset" / 1000000) AS "Volume" FROM "LP_Withdraw"
-                    UNION ALL
-                    SELECT SUM("LS_payment_amnt_stable" / 1000000) AS "Volume" FROM "LS_Close_Position"
-                    UNION ALL
-                    SELECT SUM("LS_payment_amnt_stable" / 1000000) AS "Volume" FROM "LS_Repayment"
-                ) AS combined_data;
-          
+                    ),
+                    LP_Deposits AS (
+                    SELECT
+                        CASE
+                        WHEN "LP_address_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_amnt_stable" / 100000000    -- Example for ALL_BTC or similar
+                        WHEN "LP_address_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_amnt_stable" / 1000000000   -- Example for ALL_SOL
+                        ELSE "LP_amnt_stable" / 1000000    -- Default divisor
+                        END AS "Volume"
+                    FROM "LP_Deposit"
+                    ),
+
+                    LP_Withdrawals AS (
+                    SELECT
+                        CASE
+                        WHEN "LP_address_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_amnt_stable" / 100000000    -- Example for ALL_BTC or similar
+                        WHEN "LP_address_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_amnt_stable" / 1000000000   -- Example for ALL_SOL
+                        ELSE "LP_amnt_stable" / 1000000    -- Default divisor
+                        END AS "Volume"
+                    FROM "LP_Withdraw"
+                    ),
+                    LS_Close AS (
+                    SELECT
+                        CASE
+                        WHEN "LS_payment_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_payment_amnt_stable" / 100000000
+                        WHEN "LS_payment_symbol" IN ('ALL_SOL') THEN "LS_payment_amnt_stable" / 1000000000
+                        WHEN "LS_payment_symbol" IN ('PICA') THEN "LS_payment_amnt_stable" / 1000000000000 
+                        WHEN "LS_payment_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_payment_amnt_stable" / 1000000000000000000
+                        ELSE "LS_payment_amnt_stable" / 1000000
+                        END AS "Volume"
+                    FROM "LS_Close_Position"
+                    ),
+                    LS_Repayment AS (
+                    SELECT
+                        CASE
+                        WHEN "LS_payment_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_payment_amnt_stable" / 100000000
+                        WHEN "LS_payment_symbol" IN ('ALL_SOL') THEN "LS_payment_amnt_stable" / 1000000000
+                        WHEN "LS_payment_symbol" IN ('PICA') THEN "LS_payment_amnt_stable" / 1000000000000 
+                        WHEN "LS_payment_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_payment_amnt_stable" / 1000000000000000000
+                        ELSE "LS_payment_amnt_stable" / 1000000
+                        END AS "Volume"
+                    FROM "LS_Repayment"
+                    )
+
+                    SELECT
+                        SUM ("Volume") AS "Tx Value"
+                    FROM (
+                        SELECT ("Down Payment Amount" + "Loan") AS "Volume" FROM Opened_Leases
+                        UNION ALL
+                        SELECT "Volume" FROM LP_Deposits
+                        UNION ALL 
+                        SELECT "Volume" FROM LP_Withdrawals
+                        UNION ALL
+                    SELECT "Volume" FROM LS_Close
+                        UNION ALL
+                        SELECT "Volume" FROM LS_Repayment
+                    ) AS combined_data
               "#,
           )
           .fetch_optional(&self.pool)

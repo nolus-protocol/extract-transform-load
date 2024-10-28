@@ -36,7 +36,7 @@
             }).catch((error) => console.log(error));
         }
 
-        function parseView(query, endpoints) {
+        function parseView(queries, endpoints) {
             for (const item of endpoints) {
                 const query = document.createElement('div');
                 query.classList.add('query');

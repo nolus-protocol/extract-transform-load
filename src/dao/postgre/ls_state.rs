@@ -131,6 +131,9 @@ impl Table<LS_State> {
         osmosis_usdc_noble_protocol: String,
         neutron_usdc_noble_protocol: String,
         osmosis_st_atom: String,
+        osmosis_all_btc: String,
+        osmosis_all_sol: String,
+        osmosis_akt: String,
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
@@ -193,6 +196,27 @@ impl Table<LS_State> {
             WHERE "LP_Pool_id" = $5
             ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
           ),
+          Available_ALL_BTC_OSMOSIS AS (
+            SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 100000000 AS "Available Assets"
+            FROM
+              "LP_Pool_State"
+            WHERE "LP_Pool_id" = $6
+            ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+          ),
+          Available_ALL_SOL_OSMOSIS AS (
+            SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000000 AS "Available Assets"
+            FROM
+              "LP_Pool_State"
+            WHERE "LP_Pool_id" = $7
+            ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+          ),
+          Available_AKT_OSMOSIS AS (
+            SELECT ("LP_Pool_total_value_locked_stable" - "LP_Pool_total_borrowed_stable") / 1000000 AS "Available Assets"
+            FROM
+              "LP_Pool_State"
+            WHERE "LP_Pool_id" = $8
+            ORDER BY "LP_Pool_timestamp" DESC LIMIT 1
+          ),
           Lease_Value_Sum AS (
             SELECT SUM("Lease Value") AS "Total Lease Value" FROM Lease_Value
           )
@@ -202,7 +226,10 @@ impl Table<LS_State> {
             (SELECT "Available Assets" FROM Available_Assets_Neutron) +
             (SELECT "Available Assets" FROM Available_Osmosis_Noble) +
             (SELECT "Available Assets" FROM Available_Neutron_Noble) +
-            (SELECT "Available Assets" FROM Available_ST_ATOM_OSMOSIS) AS "TVL"
+            (SELECT "Available Assets" FROM Available_ST_ATOM_OSMOSIS) +
+            (SELECT "Available Assets" FROM Available_ALL_BTC_OSMOSIS) +
+            (SELECT "Available Assets" FROM Available_ALL_SOL_OSMOSIS) +
+            (SELECT "Available Assets" FROM Available_AKT_OSMOSIS) AS "TVL"
             "#,
         )
         .bind(osmosis_usdc_protocol)
@@ -210,6 +237,9 @@ impl Table<LS_State> {
         .bind(osmosis_usdc_noble_protocol)
         .bind(neutron_usdc_noble_protocol)
         .bind(osmosis_st_atom)
+        .bind(osmosis_all_btc)
+        .bind(osmosis_all_sol)
+        .bind(osmosis_akt)
         .fetch_optional(&self.pool)
         .await?;
 

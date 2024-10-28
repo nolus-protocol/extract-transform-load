@@ -46,6 +46,27 @@ pub async fn set_total_value_locked(
             return Err(Error::ProtocolError(String::from("osmosis_st_atom")));
         };
 
+    let osmosis_all_btc =
+        if let Some((osmosis_all_btc, _)) = app_state.config.lp_pools.get(5) {
+            osmosis_all_btc
+        } else {
+            return Err(Error::ProtocolError(String::from("osmosis_all_btc")));
+        };
+
+    let osmosis_all_sol =
+        if let Some((osmosis_all_sol, _)) = app_state.config.lp_pools.get(6) {
+            osmosis_all_sol
+        } else {
+            return Err(Error::ProtocolError(String::from("osmosis_all_sol")));
+        };
+
+    let osmosis_akt =
+        if let Some((osmosis_akt, _)) = app_state.config.lp_pools.get(7) {
+            osmosis_akt
+        } else {
+            return Err(Error::ProtocolError(String::from("osmosis_akt")));
+        };
+
     let data = app_state
         .database
         .ls_state
@@ -55,6 +76,9 @@ pub async fn set_total_value_locked(
             osmosis_usdc_noble.to_owned(),
             neutron_usdc_noble.to_owned(),
             osmosis_st_atom.to_owned(),
+            osmosis_all_btc.to_owned(),
+            osmosis_all_sol.to_owned(),
+            osmosis_akt.to_owned(),
         )
         .await?;
     let cache = &app_state.clone().cache;

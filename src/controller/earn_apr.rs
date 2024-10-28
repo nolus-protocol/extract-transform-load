@@ -17,12 +17,32 @@ async fn index(
         let protocolKey = protocolKey.to_uppercase();
         let admin = state.protocols.get(&protocolKey);
         if let Some(protocol) = admin {
-            let data = state
-                .database
-                .ls_opening
-                .get_earn_apr(protocol.contracts.lpp.to_owned())
-                .await
-                .unwrap_or(BigDecimal::from(0));
+            let data = match protocolKey.as_str() {
+                "OSMOSIS-OSMOSIS-ALL_BTC" => state
+                    .database
+                    .ls_opening
+                    .get_earn_apr_interest(
+                        protocol.contracts.lpp.to_owned(),
+                        15,
+                    )
+                    .await
+                    .unwrap_or(BigDecimal::from(0)),
+                "OSMOSIS-OSMOSIS-ALL_SOL" | "OSMOSIS-OSMOSIS-АКТ" => state
+                    .database
+                    .ls_opening
+                    .get_earn_apr_interest(
+                        protocol.contracts.lpp.to_owned(),
+                        20,
+                    )
+                    .await
+                    .unwrap_or(BigDecimal::from(0)),
+                _ => state
+                    .database
+                    .ls_opening
+                    .get_earn_apr(protocol.contracts.lpp.to_owned())
+                    .await
+                    .unwrap_or(BigDecimal::from(0)),
+            };
             return Ok(web::Json(Response { earn_apr: data }));
         }
     }
