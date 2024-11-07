@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs};
 
 use crate::{
     configuration::{AppState, State},
@@ -64,7 +64,16 @@ async fn ls_loan_amnt_task(state: &AppState<State>) -> Result<(), Error> {
         hash.insert(c.0, c);
     }
 
-    let leases = state.database.ls_opening.get_leases_data().await?;
+    let dir = env!("CARGO_MANIFEST_DIR");
+    let data = fs::read_to_string(format!("{}/leases.json", dir))?;
+    let ls: Vec<String> = serde_json::from_str(&data)?;
+
+    let leases = state
+        .database
+        .ls_opening
+        .get_leases_data(ls.clone())
+        .await?;
+
     let mut tasks = vec![];
     let max_tasks = state.config.max_tasks;
 
@@ -158,7 +167,15 @@ async fn ls_lpn_loan_amnt(
 }
 
 async fn ls_lpn_loan_amnt_task(state: AppState<State>) -> Result<(), Error> {
-    let leases = state.database.ls_opening.get_leases_data_lpn_amnt().await?;
+    let dir = env!("CARGO_MANIFEST_DIR");
+    let data = fs::read_to_string(format!("{}/leases.json", dir))?;
+    let ls: Vec<String> = serde_json::from_str(&data)?;
+
+    let leases = state
+        .database
+        .ls_opening
+        .get_leases_data(ls.clone())
+        .await?;
 
     let mut tasks = vec![];
     let max_tasks = state.config.max_tasks;

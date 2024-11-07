@@ -255,3 +255,15 @@ SELECT FROM "LS_Repayment" WHERE "LS_payment_amnt" IS NULL;
 15.10.2024
 
 ALTER TABLE "raw_message" ADD COLUMN "rewards" TEXT DEFAULT NULL;
+
+05.11.2024
+
+UPDATE "LS_Opening" 
+SET "LS_loan_amnt_stable" = "LS_loan_amnt_asset"
+WHERE "LS_loan_pool_id" = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5' AND "LS_loan_amnt_stable" != "LS_loan_amnt_asset";
+
+UPDATE "LS_Opening" 
+SET "LS_loan_amnt_stable" = "LS_loan_amnt_asset"
+WHERE "LS_loan_pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94' AND "LS_loan_amnt_stable" != "LS_loan_amnt_asset";
+
+UPDATE "LS_Loan_Closing" SET "Active" = false;

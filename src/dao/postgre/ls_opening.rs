@@ -739,27 +739,25 @@ impl Table<LS_Opening> {
     }
 
     //TODO: delete
-    pub async fn get_leases_data(&self) -> Result<Vec<LS_Opening>, Error> {
-        let data = sqlx::query_as(
-            r#"
-            SELECT * FROM "LS_Opening" WHERE "LS_loan_amnt" = 0
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(data)
-    }
-
-    pub async fn get_leases_data_lpn_amnt(
+    pub async fn get_leases_data(
         &self,
+        leases: Vec<String>,
     ) -> Result<Vec<LS_Opening>, Error> {
-        let data = sqlx::query_as(
-            r#"
-            SELECT * FROM "LS_Opening" WHERE "LS_lpn_loan_amnt" = 0
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let mut s = String::from("");
+
+        for (index, lease) in leases.iter().enumerate() {
+            s += &format!("'{}'", lease);
+            if index < leases.len() - 1 {
+                s += ","
+            }
+        }
+
+        let parsed_string = format!(
+            r#"SELECT * FROM "LS_Opening" WHERE "LS_contract_id" IN ({})"#,
+            s
+        );
+
+        let data = sqlx::query_as(&parsed_string).fetch_all(&self.pool).await?;
         Ok(data)
     }
 
