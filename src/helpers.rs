@@ -918,3 +918,42 @@ impl FromStr for Loan_Closing_Status {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub enum Protocol_Types {
+    Long,
+    Short,
+}
+
+impl fmt::Display for Protocol_Types {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Protocol_Types::Short => write!(f, "short"),
+            Protocol_Types::Long => write!(f, "long"),
+        }
+    }
+}
+
+impl From<Protocol_Types> for String {
+    fn from(value: Protocol_Types) -> Self {
+        match value {
+            Protocol_Types::Long => String::from("long"),
+            Protocol_Types::Short => String::from("short"),
+        }
+    }
+}
+
+impl FromStr for Protocol_Types {
+    type Err = io::Error;
+
+    fn from_str(value: &str) -> Result<Protocol_Types, Self::Err> {
+        match value {
+            "long" => Ok(Protocol_Types::Long),
+            "short" => Ok(Protocol_Types::Short),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Protocol_Types not supported",
+            )),
+        }
+    }
+}

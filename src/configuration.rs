@@ -1,6 +1,8 @@
 use crate::dao::get_path;
 use crate::error::Error;
-use crate::helpers::{formatter, parse_tuple_string, Formatter};
+use crate::helpers::{
+    formatter, parse_tuple_string, Formatter, Protocol_Types,
+};
 use crate::model::LP_Pool;
 use crate::provider::{DatabasePool, Grpc};
 use crate::types::{AdminProtocolExtendType, Currency};
@@ -108,10 +110,10 @@ impl State {
     }
 
     async fn init_pools(
-        pools: &Vec<(String, String)>,
+        pools: &Vec<(String, String, Protocol_Types)>,
         database: &DatabasePool,
     ) -> Result<(), Error> {
-        for (id, symbol) in pools {
+        for (id, symbol, _) in pools {
             let pool = LP_Pool {
                 LP_Pool_id: id.to_owned(),
                 LP_symbol: symbol.to_owned(),
@@ -268,7 +270,8 @@ pub struct Config {
     pub cache_state_interval: u16,
     pub timeout: u64,
     pub supported_currencies: Vec<Currency>,
-    pub lp_pools: Vec<(String, String)>,
+    pub lp_pools: Vec<(String, String, Protocol_Types)>,
+    pub hash_map_lp_pools: HashMap<String, (String, String, Protocol_Types)>,
     pub native_currency: String,
     pub hash_map_currencies: HashMap<String, Currency>,
     pub hash_map_pool_currency: HashMap<String, Currency>,
@@ -316,6 +319,11 @@ pub fn get_configuration() -> Result<Config, Error> {
 
     let supported_currencies = get_supported_currencies()?;
     let lp_pools = get_lp_pools()?;
+    let mut hash_map_lp_pools: HashMap<
+        String,
+        (String, String, Protocol_Types),
+    > = HashMap::new();
+
     let native_currency = env::var("NATIVE_CURRENCY")?;
     let treasury_contract = env::var("TREASURY_CONTRACT")?;
 
@@ -344,6 +352,7 @@ pub fn get_configuration() -> Result<Config, Error> {
             let c = item.clone();
             hash_map_pool_currency.insert(pool.0.to_owned(), c);
         }
+        hash_map_lp_pools.insert(pool.0.to_owned(), pool.clone());
     }
 
     let events_subscribe = events_subscribe
@@ -362,6 +371,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         timeout,
         supported_currencies,
         lp_pools,
+        hash_map_lp_pools,
         native_currency,
         hash_map_currencies,
         hash_map_pool_currency,
@@ -448,16 +458,17 @@ fn get_supported_currencies() -> Result<Vec<Currency>, Error> {
     Ok(data)
 }
 
-fn get_lp_pools() -> Result<Vec<(String, String)>, Error> {
-    let mut data: Vec<(String, String)> = Vec::new();
+fn get_lp_pools() -> Result<Vec<(String, String, Protocol_Types)>, Error> {
+    let mut data: Vec<(String, String, Protocol_Types)> = Vec::new();
     let lp_pools = parse_tuple_string(env::var("LP_POOLS")?);
 
     for c in lp_pools {
         let items: Vec<&str> = c.split(',').collect();
-        assert_eq!(items.len(), 2);
+        assert_eq!(items.len(), 3);
         let internal_symbl = items[0].to_owned();
         let symbol = items[1].to_owned();
-        data.push((internal_symbl, symbol));
+        let r#type = Protocol_Types::from_str(&items[2])?;
+        data.push((internal_symbl, symbol, r#type));
     }
 
     Ok(data)

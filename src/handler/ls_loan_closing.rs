@@ -212,7 +212,7 @@ async fn get_loan(
     };
 }
 
-async fn get_fees(
+pub async fn get_fees(
     app_state: &AppState<State>,
     lease: &LS_Opening,
     protocol: Option<String>,
@@ -304,12 +304,16 @@ pub fn get_market_close_fee(
                 "LS_payment_symbol not found {}",
                 &market_close.LS_payment_symbol
             ))?;
-        let decimals = BigDecimal::from(u64::pow(10, c2.1.try_into()?));
+        let decimals_c1: BigDecimal =
+            BigDecimal::from(u64::pow(10, c1.1.try_into()?));
+        let decimals: BigDecimal =
+            BigDecimal::from(u64::pow(10, c2.1.try_into()?));
+
         let payment_amount = &market_close.LS_payment_amnt_stable / &decimals;
 
         let amount_amount = &market_close.LS_amnt_stable
             / BigDecimal::from(u64::pow(10, c1.1.try_into()?));
-        let amount = ((amount_amount - payment_amount) * &decimals).round(0);
+        let amount = ((amount_amount - payment_amount) * &decimals_c1).round(0);
         fee += amount;
     }
 
@@ -339,12 +343,15 @@ pub fn get_liquidation_fee(
                 "liquidation.LS_payment_symbol not found {}",
                 &liquidation.LS_payment_symbol
             ))?;
+
+        let decimals_c1: BigDecimal =
+            BigDecimal::from(u64::pow(10, c1.1.try_into()?));
         let decimals = BigDecimal::from(u64::pow(10, c2.1.try_into()?));
         let payment_amount = &liquidation.LS_payment_amnt_stable / &decimals;
 
         let amount_amount = &liquidation.LS_amnt_stable
             / BigDecimal::from(u64::pow(10, c1.1.try_into()?));
-        let amount = ((amount_amount - payment_amount) * &decimals).round(0);
+        let amount = ((amount_amount - payment_amount) * &decimals_c1).round(0);
         fee += amount;
     }
 
