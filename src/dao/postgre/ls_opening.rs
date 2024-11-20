@@ -26,23 +26,6 @@ impl Table<LS_Opening> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "LS_Opening" 
-                    SET 
-                        "Tx_Hash" = $1,
-                        "LS_loan_amnt" = $2
-                    WHERE 
-                        "LS_contract_id" = $3
-                "#,
-            )
-            .bind(&ls_opening.Tx_Hash)
-            .bind(&ls_opening.LS_loan_amnt)
-            .bind(&ls_opening.LS_contract_id)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 

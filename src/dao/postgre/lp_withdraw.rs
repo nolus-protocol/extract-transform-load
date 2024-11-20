@@ -29,27 +29,6 @@ impl Table<LP_Withdraw> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "LP_Withdraw" 
-                    SET 
-                        "Tx_Hash" = $1
-                    WHERE 
-                        "LP_withdraw_height" = $2 AND
-                        "LP_address_id" = $3 AND
-                        "LP_timestamp" = $4 AND
-                        "LP_Pool_id" = $5
-                "#,
-            )
-            .bind(&lp_widthdraw.Tx_Hash)
-            .bind(lp_widthdraw.LP_withdraw_height)
-            .bind(&lp_widthdraw.LP_address_id)
-            .bind(lp_widthdraw.LP_timestamp)
-            .bind(&lp_widthdraw.LP_Pool_id)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 

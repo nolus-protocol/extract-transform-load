@@ -29,27 +29,6 @@ impl Table<LP_Deposit> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "LP_Deposit" 
-                    SET 
-                        "Tx_Hash" = $1
-                    WHERE 
-                        "LP_deposit_height" = $2 AND
-                        "LP_address_id" = $3 AND
-                        "LP_timestamp" = $4 AND
-                        "LP_Pool_id" = $5
-                "#,
-            )
-            .bind(&ls_deposit.Tx_Hash)
-            .bind(ls_deposit.LP_deposit_height)
-            .bind(&ls_deposit.LP_address_id)
-            .bind(ls_deposit.LP_timestamp)
-            .bind(&ls_deposit.LP_Pool_id)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 

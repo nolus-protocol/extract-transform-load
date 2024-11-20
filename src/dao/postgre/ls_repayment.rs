@@ -29,27 +29,6 @@ impl Table<LS_Repayment> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "LS_Repayment" 
-                    SET 
-                        "Tx_Hash" = $1,
-                        "LS_payment_amnt" = $2
-                    WHERE 
-                        "LS_repayment_height" = $3 AND
-                        "LS_contract_id" = $4 AND
-                        "LS_timestamp" = $5
-                "#,
-            )
-            .bind(&ls_repayment.Tx_Hash)
-            .bind(&ls_repayment.LS_payment_amnt)
-            .bind(ls_repayment.LS_repayment_height)
-            .bind(&ls_repayment.LS_contract_id)
-            .bind(ls_repayment.LS_timestamp)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 
@@ -202,5 +181,38 @@ impl Table<LS_Repayment> {
             current_interest_stable,
             prinicap_stable,
         ))
+    }
+
+    pub async fn get_by_contract(
+        &self,
+        contract: String,
+    ) -> Result<Vec<LS_Repayment>, Error> {
+        let data = sqlx::query_as(
+            r#"
+                SELECT
+                    "LS_repayment_height",
+                    "LS_repayment_idx",
+                    "LS_contract_id",
+                    "LS_payment_symbol",
+                    "LS_payment_amnt",
+                    "LS_payment_amnt_stable",
+                    "LS_timestamp",
+                    "LS_loan_close",
+                    "LS_prev_margin_stable",
+                    "LS_prev_interest_stable",
+                    "LS_current_margin_stable",
+                    "LS_current_interest_stable",
+                    "LS_principal_stable",
+                    "Tx_Hash"
+                FROM
+                    "LS_Repayment" as a
+                WHERE
+                    a."LS_contract_id" = $1
+            "#,
+        )
+        .bind(contract)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
     }
 }

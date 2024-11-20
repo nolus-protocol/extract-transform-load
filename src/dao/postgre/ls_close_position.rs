@@ -23,29 +23,6 @@ impl Table<LS_Close_Position> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "LS_Close_Position" 
-                    SET 
-                        "Tx_Hash" = $1,
-                        "LS_amnt_stable" = $2,
-                        "LS_payment_amnt" = $3,
-                        "LS_payment_symbol" = $4
-                    WHERE 
-                         "LS_position_height" = $5 AND
-                         "LS_contract_id" = $6
-                "#,
-            )
-            .bind(&ls_close_position.Tx_Hash)
-            .bind(&ls_close_position.LS_amnt_stable)
-            .bind(&ls_close_position.LS_payment_amnt)
-            .bind(&ls_close_position.LS_payment_symbol)
-            .bind(ls_close_position.LS_position_height)
-            .bind(&ls_close_position.LS_contract_id)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 

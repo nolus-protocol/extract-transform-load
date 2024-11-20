@@ -27,25 +27,6 @@ impl Table<TR_Rewards_Distribution> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "TR_Rewards_Distribution" 
-                    SET 
-                        "Tx_Hash" = $1
-                    WHERE 
-                        "TR_Rewards_height" = $2 AND
-                        "TR_Rewards_Pool_id" = $3 AND
-                        "Event_Block_Index" = $4
-                "#,
-            )
-            .bind(&tr_reward.Tx_Hash)
-            .bind(tr_reward.TR_Rewards_height)
-            .bind(&tr_reward.TR_Rewards_Pool_id)
-            .bind(tr_reward.Event_Block_Index)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 

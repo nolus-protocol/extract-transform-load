@@ -25,25 +25,6 @@ impl Table<Reserve_Cover_Loss> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "Reserve_Cover_Loss" 
-                    SET 
-                        "Tx_Hash" = $1
-                    WHERE 
-                        "LS_contract_id" = $2 AND
-                        "Event_Block_Index" = $3 AND
-                        "Tx_Hash" = $4
-                "#,
-            )
-            .bind(&reserve_cover_loss.Tx_Hash)
-            .bind(&reserve_cover_loss.LS_contract_id)
-            .bind(&reserve_cover_loss.Event_Block_Index)
-            .bind(&reserve_cover_loss.Tx_Hash)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 

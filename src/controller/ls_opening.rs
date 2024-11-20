@@ -1,7 +1,7 @@
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    handler::ls_loan_closing::get_fees,
+    handler::ls_loan_closing::{get_change, get_fees, get_pnl},
     helpers::Protocol_Types,
     model::LS_Opening,
 };
@@ -48,7 +48,7 @@ async fn index(
             Protocol_Types::Short => protocol_data.1.to_owned(),
         };
 
-        let ((downpayment_price,), (lpn_price,), fee, amount) =
+        let ((downpayment_price,), (lpn_price,), fee, (mut pnl, loan)) =
             tokio::try_join!(
                 state
                     .database
@@ -68,46 +68,40 @@ async fn index(
                         &lease.LS_timestamp,
                     )
                     .map_err(Error::from),
-                get_fees(&state, &lease, Some(protocol.to_owned()))
+                get_fees(&state, &lease, protocol.to_owned())
                     .map_err(Error::from),
-                state
-                    .database
-                    .ls_loan_closing
-                    .get_lease_amount(lease.LS_contract_id.to_owned())
-                    .map_err(Error::from)
+                get_pnl(
+                    &state,
+                    &lease,
+                    protocol.to_owned(),
+                    protocol_data.to_owned(),
+                    lease.LS_contract_id.to_owned(),
+                )
             )
             .context(format!(
                 "could not parse currencies in lease {}",
                 &lease.LS_contract_id
             ))?;
 
-        let loan_str = &amount.to_string();
-
-        let f1 = state.in_stabe_by_date(
-            &sb,
-            loan_str,
-            Some(protocol.to_owned()),
-            &lease.LS_timestamp,
-        );
-
         let at = Utc::now();
 
-        let f2 = state.in_stabe_by_date(
-            &sb,
-            loan_str,
-            Some(protocol.to_owned()),
-            &at,
-        );
-
-        let (open_amount, close_amount) = tokio::try_join!(f1, f2,)?;
+        pnl += get_change(
+            &state,
+            sb.to_owned(),
+            loan.to_string(),
+            protocol.to_owned(),
+            protocol_data.2.to_owned(),
+            lease.LS_timestamp,
+            at.to_owned(),
+        )
+        .await?;
 
         return Ok(web::Json(Some(ResponseData {
             lease,
             downpayment_price,
             lpn_price,
             fee,
-            amount,
-            pnl: (close_amount - open_amount).round(0),
+            pnl: pnl.round(0),
         })));
     }
 
@@ -125,6 +119,5 @@ pub struct ResponseData {
     pub downpayment_price: BigDecimal,
     pub lpn_price: BigDecimal,
     pub fee: BigDecimal,
-    pub amount: BigDecimal,
     pub pnl: BigDecimal,
 }

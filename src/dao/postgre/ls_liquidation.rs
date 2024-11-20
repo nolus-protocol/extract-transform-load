@@ -23,33 +23,6 @@ impl Table<LS_Liquidation> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "LS_Liquidation" 
-                    SET 
-                        "Tx_Hash" = $1,
-                        "LS_amnt" = $2,
-                        "LS_amnt_symbol" = $3,
-                        "LS_payment_amnt" = $4,
-                        "LS_payment_amnt_stable" = $5,
-                        "LS_loan_close" = $6
-                    WHERE 
-                        "LS_liquidation_height" = $7 AND
-                        "LS_contract_id" = $8
-                "#,
-            )
-            .bind(&ls_liquidatiion.Tx_Hash)
-            .bind(&ls_liquidatiion.LS_amnt)
-            .bind(&ls_liquidatiion.LS_amnt_symbol)
-            .bind(&ls_liquidatiion.LS_payment_amnt)
-            .bind(&ls_liquidatiion.LS_payment_amnt_stable)
-            .bind(&ls_liquidatiion.LS_loan_close)
-            .bind(ls_liquidatiion.LS_liquidation_height)
-            .bind(&ls_liquidatiion.LS_contract_id)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 

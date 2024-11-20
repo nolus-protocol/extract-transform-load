@@ -25,23 +25,6 @@ impl Table<TR_Profit> {
         .await?;
 
         if value > 0 {
-            sqlx::query(
-                r#"
-                    UPDATE 
-                        "TR_Profit" 
-                    SET 
-                        "Tx_Hash" = $1
-                    WHERE 
-                        "TR_Profit_height" = $2 AND
-                        "TR_Profit_timestamp" = $3
-                "#,
-            )
-            .bind(&tr_profit.Tx_Hash)
-            .bind(&tr_profit.TR_Profit_height)
-            .bind(&tr_profit.TR_Profit_timestamp)
-            .execute(&self.pool)
-            .await?;
-
             return Ok(true);
         }
 

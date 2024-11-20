@@ -75,7 +75,7 @@ impl Table<Block> {
     pub async fn count(&self) -> Result<i64, Error> {
         let (count,) = sqlx::query_as(
             r#"
-             SELECT COUNT(*) FROM "block"
+             SELECT COUNT(1) FROM "block"
             "#,
         )
         .fetch_one(&self.pool)
@@ -86,7 +86,7 @@ impl Table<Block> {
     pub async fn is_synced_to_block(&self, block: i64) -> Result<bool, Error> {
         let (count,): (i64,) = sqlx::query_as(
             r#"
-             SELECT COUNT(*) FROM "block" WHERE id <= $1
+             SELECT COUNT(1) FROM "block" WHERE id <= $1
             "#,
         )
         .bind(block)
