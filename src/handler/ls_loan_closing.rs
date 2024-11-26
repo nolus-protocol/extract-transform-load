@@ -13,7 +13,9 @@ use crate::{
     dao::DataBase,
     error::Error,
     helpers::{Loan_Closing_Status, Protocol_Types},
-    model::{LS_Close_Position, LS_Liquidation, LS_Loan_Closing, LS_Opening},
+    model::{
+        LS_Close_Position, LS_Liquidation, LS_Loan, LS_Loan_Closing, LS_Opening,
+    },
     provider::is_sync_runing,
 };
 
@@ -126,24 +128,16 @@ async fn get_loan(
     taxes: BigDecimal,
 ) -> Result<LS_Loan_Closing, Error> {
     if is_sync_runing() {
-        let active = app_state
-            .database
-            .block
-            .is_synced_to_block(block - 1)
-            .await?;
-
-        if !active {
-            return Ok(LS_Loan_Closing {
-                LS_contract_id: contract.to_owned(),
-                LS_amnt_stable: BigDecimal::from(0),
-                LS_timestamp: at,
-                Type: String::from(r#type),
-                LS_amnt: BigDecimal::from(0),
-                LS_pnl: BigDecimal::from(0),
-                Block: block,
-                Active: false,
-            });
-        }
+        return Ok(LS_Loan_Closing {
+            LS_contract_id: contract.to_owned(),
+            LS_amnt_stable: BigDecimal::from(0),
+            LS_timestamp: at,
+            Type: String::from(r#type),
+            LS_amnt: BigDecimal::from(0),
+            LS_pnl: BigDecimal::from(0),
+            Block: block,
+            Active: false,
+        });
     }
 
     let lease = app_state
@@ -154,13 +148,6 @@ async fn get_loan(
 
     match lease {
         Some(lease) => {
-            let protocol = app_state
-                .get_protocol_by_pool_id(&lease.LS_loan_pool_id)
-                .context(format!(
-                    "protocol not found {}",
-                    &lease.LS_loan_pool_id
-                ))?;
-
             let protocol_data = app_state
                 .config
                 .hash_map_lp_pools
@@ -170,93 +157,40 @@ async fn get_loan(
                     &lease.LS_loan_pool_id
                 ))?;
 
-            let loan_currency = app_state
-                .config
-                .hash_map_currencies
-                .get(&lease.LS_asset_symbol.to_owned())
-                .context(format!(
-                    "LS_asset_symbol not found {}",
-                    &lease.LS_asset_symbol
-                ))?;
-
-            let loan_amount_symbol_decimals =
-                BigDecimal::from(u64::pow(10, loan_currency.1.try_into()?));
-
-            let sb = match protocol_data.2 {
-                Protocol_Types::Long => lease.LS_asset_symbol.to_owned(),
-                Protocol_Types::Short => protocol_data.1.to_owned(),
+            let loan = match protocol_data.2 {
+                Protocol_Types::Long => {
+                    get_pnl_long(
+                        &app_state,
+                        &lease,
+                        contract.to_owned(),
+                        (change_amount, r#type.to_owned()),
+                        taxes.to_owned(),
+                        at.to_owned(),
+                    )
+                    .await?
+                },
+                Protocol_Types::Short => {
+                    get_pnl_short(
+                        &app_state,
+                        &lease,
+                        contract.to_owned(),
+                        (change_amount, r#type.to_owned()),
+                        taxes.to_owned(),
+                        at.to_owned(),
+                    )
+                    .await?
+                },
             };
 
-            let mut LS_amnt_stable = BigDecimal::from(0);
-            let ((mut pnl, mut loan), fee) = tokio::try_join!(
-                get_pnl(
-                    &app_state,
-                    &lease,
-                    protocol.to_owned(),
-                    protocol_data.to_owned(),
-                    contract.to_owned(),
-                ),
-                get_fees(&app_state, &lease, protocol.to_owned())
-            )?;
-
-            if change_amount > BigDecimal::from(0) {
-                loan -= &change_amount;
-                match r#type {
-                    Loan_Closing_Status::MarketClose => {
-                        let change = get_change(
-                            &app_state,
-                            sb.to_owned(),
-                            change_amount.to_string(),
-                            protocol.to_owned(),
-                            protocol_data.2.to_owned(),
-                            lease.LS_timestamp.to_owned(),
-                            at.to_owned(),
-                        )
-                        .await?;
-                        pnl += change;
-                    },
-                    _ => {},
-                }
-            }
-
-            pnl -= &fee;
-            pnl -= (&taxes * loan_amount_symbol_decimals).round(0);
-
-            if loan > BigDecimal::from(0) {
-                let symbol = lease.LS_asset_symbol.to_owned();
-                let l = loan.to_owned().to_string();
-
-                let f1 = app_state.in_stabe_by_date(
-                    &symbol,
-                    &l,
-                    Some(protocol.to_owned()),
-                    &at,
-                );
-
-                let f2 = get_change(
-                    &app_state,
-                    sb.to_owned(),
-                    loan.to_string(),
-                    protocol.to_owned(),
-                    protocol_data.2.to_owned(),
-                    lease.LS_timestamp,
-                    at.to_owned(),
-                );
-
-                let (amount, p) = tokio::try_join!(f1, f2)?;
-                LS_amnt_stable += amount;
-                pnl += p;
-            }
-
             return Ok(LS_Loan_Closing {
-                LS_contract_id: contract.to_owned(),
-                LS_amnt_stable,
-                LS_timestamp: at,
-                Type: String::from(r#type),
-                LS_amnt: loan,
-                LS_pnl: pnl,
                 Block: block,
-                Active: true,
+                LS_contract_id: loan.LS_contract_id,
+                LS_amnt_stable: loan.LS_amnt_stable,
+                LS_timestamp: loan.LS_timestamp,
+                Type: String::from(r#type),
+                LS_amnt: loan.LS_amnt,
+                Active: loan.Active,
+                LS_pnl: loan.LS_pnl,
             });
         },
         None => {
@@ -274,46 +208,51 @@ async fn get_loan(
     };
 }
 
-pub async fn get_pnl(
+pub async fn get_pnl_long(
     app_state: &AppState<State>,
     lease: &LS_Opening,
-    protocol: String,
-    protocol_data: (String, String, Protocol_Types),
     contract: String,
-) -> Result<(BigDecimal, BigDecimal), Error> {
+    change_amount: (BigDecimal, Loan_Closing_Status),
+    taxes: BigDecimal,
+    at: DateTime<Utc>,
+) -> Result<LS_Loan, Error> {
+    let protocol = app_state
+        .get_protocol_by_pool_id(&lease.LS_loan_pool_id)
+        .context(format!("protocol not found {}", &lease.LS_loan_pool_id))?;
+
     let f1 = app_state
         .database
         .ls_liquidation
-        .get_by_contract(contract.to_owned());
+        .get_by_contract(contract.to_owned())
+        .map_err(Error::from);
 
     let f2 = app_state
         .database
         .ls_close_position
-        .get_by_contract(contract.to_owned());
+        .get_by_contract(contract.to_owned())
+        .map_err(Error::from);
 
-    let (liqidations, closings) = tokio::try_join!(f1, f2)?;
+    let f3 =
+        get_fees(&app_state, &lease, protocol.to_owned()).map_err(Error::from);
 
-    let sb = match protocol_data.2 {
-        Protocol_Types::Long => lease.LS_asset_symbol.to_owned(),
-        Protocol_Types::Short => protocol_data.1.to_owned(),
-    };
+    let (liqidations, closings, fee) = tokio::try_join!(f1, f2, f3)?;
 
     let mut liqidated_amount = BigDecimal::from(0);
     let mut closed_amount = BigDecimal::from(0);
     let mut pnl = BigDecimal::from(0);
     let mut tasks = vec![];
+    let mut LS_amnt_stable = BigDecimal::from(0);
 
     for l in liqidations {
         liqidated_amount += l.LS_amnt;
     }
 
     for c in closings {
-        let f = get_change(
+        let f = get_change_long(
             app_state,
-            sb.to_owned(),
+            lease.LS_asset_symbol.to_owned(),
             c.LS_amnt.to_string(),
             protocol.to_owned(),
-            protocol_data.2.to_owned(),
             lease.LS_timestamp,
             c.LS_timestamp,
         )
@@ -328,62 +267,200 @@ pub async fn get_pnl(
         closed_amount += amount
     }
 
-    let rest = &lease.LS_loan_amnt - &liqidated_amount - &closed_amount;
+    let mut loan = &lease.LS_loan_amnt - &liqidated_amount - &closed_amount;
 
-    Ok((pnl, rest))
+    if change_amount.0 > BigDecimal::from(0) {
+        loan -= &change_amount.0;
+        match change_amount.1 {
+            Loan_Closing_Status::MarketClose => {
+                let change = get_change_long(
+                    &app_state,
+                    lease.LS_asset_symbol.to_owned(),
+                    change_amount.1.to_string(),
+                    protocol.to_owned(),
+                    lease.LS_timestamp.to_owned(),
+                    at.to_owned(),
+                )
+                .await?;
+                pnl += change;
+            },
+            _ => {},
+        }
+    }
+
+    let loan_currency = app_state
+        .config
+        .hash_map_currencies
+        .get(&lease.LS_asset_symbol.to_owned())
+        .context(format!(
+            "LS_asset_symbol not found {}",
+            &lease.LS_asset_symbol
+        ))?;
+
+    let loan_amount_symbol_decimals =
+        BigDecimal::from(u64::pow(10, loan_currency.1.try_into()?));
+
+    pnl -= &fee;
+    pnl -= (&taxes * loan_amount_symbol_decimals).round(0);
+
+    if loan > BigDecimal::from(0) {
+        let symbol = lease.LS_asset_symbol.to_owned();
+        let l = loan.to_owned().to_string();
+
+        let f1 = app_state.in_stabe_by_date(
+            &symbol,
+            &l,
+            Some(protocol.to_owned()),
+            &at,
+        );
+
+        let f2 = get_change_long(
+            &app_state,
+            lease.LS_asset_symbol.to_owned(),
+            loan.to_string(),
+            protocol.to_owned(),
+            lease.LS_timestamp,
+            at.to_owned(),
+        );
+
+        let (amount, p) = tokio::try_join!(f1, f2)?;
+        LS_amnt_stable += amount;
+        pnl += p;
+    }
+
+    return Ok(LS_Loan {
+        LS_contract_id: contract.to_owned(),
+        LS_amnt_stable,
+        LS_timestamp: at,
+        LS_amnt: loan,
+        LS_pnl: pnl,
+        Active: true,
+    });
 }
 
-pub async fn get_change(
+pub async fn get_pnl_short(
+    app_state: &AppState<State>,
+    lease: &LS_Opening,
+    contract: String,
+    change_amount: (BigDecimal, Loan_Closing_Status),
+    taxes: BigDecimal,
+    at: DateTime<Utc>,
+) -> Result<LS_Loan, Error> {
+    let loan_fn = app_state
+        .database
+        .ls_loan_closing
+        .get_lease_amount(contract.to_owned())
+        .map_err(Error::from);
+
+    let lpn_currency =
+        app_state.get_currency_by_pool_id(&lease.LS_loan_pool_id)?;
+    let lpn_decimals =
+        BigDecimal::from(u64::pow(10, lpn_currency.1.try_into()?));
+    let loan_currency = app_state
+        .config
+        .hash_map_currencies
+        .get(&lease.LS_asset_symbol.to_owned())
+        .context(format!(
+            "LS_asset_symbol not found {}",
+            &lease.LS_asset_symbol
+        ))?;
+
+    let ctrl_currency = app_state
+        .config
+        .hash_map_currencies
+        .get(&lease.LS_cltr_symbol)
+        .context(format!(
+            "ctrl_currencyt not found {}",
+            &lease.LS_cltr_symbol
+        ))?;
+
+    let protocol = app_state
+        .get_protocol_by_pool_id(&lease.LS_loan_pool_id)
+        .context(format!("protocol not found {}", &lease.LS_loan_pool_id))?;
+
+    let f1 = app_state
+        .database
+        .mp_asset
+        .get_price_by_date(&lpn_currency.0, Some(protocol.to_owned()), &at)
+        .map_err(Error::from);
+
+    let repayments_fn = app_state
+        .database
+        .ls_repayment
+        .get_by_contract(lease.LS_contract_id.to_owned())
+        .map_err(Error::from);
+
+    let ((close_price,), mut loan, repayments) =
+        tokio::try_join!(f1, loan_fn, repayments_fn)?;
+
+    let ctrl_amount_stable = &lease.LS_cltr_amnt_stable
+        / BigDecimal::from(u64::pow(10, ctrl_currency.1.try_into()?));
+
+    let loan_amnt = &lease.LS_loan_amnt
+        / &close_price
+        / BigDecimal::from(u64::pow(10, loan_currency.1.try_into()?));
+
+    let ls_loan_amnt = &lease.LS_loan_amnt_asset / &lpn_decimals;
+
+    let mut pnl =
+        (&loan_amnt - &ls_loan_amnt) * &close_price - &ctrl_amount_stable;
+    // let mut pnl = (&lease.LS_loan_amnt / &close_price
+    //     - &lease.LS_loan_amnt_asset)
+    //     * &close_price
+    //     - ctrl_amount_stable;
+
+    let mut amount = BigDecimal::from(0);
+
+    for repayment in repayments {
+        amount += repayment.LS_payment_amnt;
+    }
+
+    amount =
+        amount / BigDecimal::from(u64::pow(10, lpn_currency.1.try_into()?));
+    pnl -= amount * &close_price;
+    pnl -= (&taxes * &lpn_decimals).round(0);
+
+    if change_amount.0 > BigDecimal::from(0) {
+        loan -= &change_amount.0;
+    }
+
+    let LS_amnt_stable = &loan * &close_price;
+
+    return Ok(LS_Loan {
+        LS_contract_id: contract.to_owned(),
+        LS_amnt_stable,
+        LS_timestamp: at,
+        LS_amnt: loan,
+        LS_pnl: pnl,
+        Active: true,
+    });
+}
+
+pub async fn get_change_long(
     app_state: &AppState<State>,
     symbol: String,
     amnt: String,
     protocol: String,
-    protocol_type: Protocol_Types,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
 ) -> Result<BigDecimal, Error> {
-    match protocol_type {
-        Protocol_Types::Long => {
-            let f1 = app_state.in_stabe_by_date(
-                &symbol,
-                &amnt,
-                Some(protocol.to_owned()),
-                &start_date,
-            );
+    let f1 = app_state.in_stabe_by_date(
+        &symbol,
+        &amnt,
+        Some(protocol.to_owned()),
+        &start_date,
+    );
 
-            let f2 = app_state.in_stabe_by_date(
-                &symbol,
-                &amnt,
-                Some(protocol.to_owned()),
-                &end_date,
-            );
+    let f2 = app_state.in_stabe_by_date(
+        &symbol,
+        &amnt,
+        Some(protocol.to_owned()),
+        &end_date,
+    );
 
-            let (open, close) = tokio::try_join!(f1, f2)?;
+    let (open, close) = tokio::try_join!(f1, f2)?;
 
-            Ok(close - open)
-        },
-        Protocol_Types::Short => {
-            let f1 = app_state.database.mp_asset.get_price_by_date(
-                &symbol,
-                Some(protocol.to_owned()),
-                &start_date,
-            );
-
-            let f2 = app_state.database.mp_asset.get_price_by_date(
-                &symbol,
-                Some(protocol.to_owned()),
-                &end_date,
-            );
-
-            let ((open_price,), (close_price,)) = tokio::try_join!(f1, f2)?;
-
-            let amount = BigDecimal::from_str(&amnt)?;
-            let position = amount / &close_price;
-            let pnl = (close_price - &open_price) * -position;
-
-            Ok(pnl)
-        },
-    }
+    Ok(close - open)
 }
 
 pub async fn get_fees(

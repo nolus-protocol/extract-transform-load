@@ -298,8 +298,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     let database_url = env::var("DATABASE_URL")?;
     let sync_threads: i16 = env::var("SYNC_THREADS")?.parse()?;
     let aggregation_interval = env::var("AGGREGATION_INTTERVAL")?.parse()?;
-    let mp_asset_interval =
-        env::var("MP_ASSET_INTERVAL_IN_MINUTES")?.parse()?;
+    let mp_asset_interval = env::var("MP_ASSET_INTERVAL_IN_SEC")?.parse()?;
     let cache_state_interval =
         env::var("CACHE_INTERVAL_IN_MINUTES")?.parse()?;
     let timeout = env::var("TIMEOUT")?.parse()?;

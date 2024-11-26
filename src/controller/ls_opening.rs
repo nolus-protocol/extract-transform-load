@@ -1,7 +1,7 @@
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    handler::ls_loan_closing::{get_change, get_fees, get_pnl},
+    handler::ls_loan_closing::get_fees,
     helpers::Protocol_Types,
     model::LS_Opening,
 };
@@ -48,53 +48,45 @@ async fn index(
             Protocol_Types::Short => protocol_data.1.to_owned(),
         };
 
-        let ((downpayment_price,), (lpn_price,), fee, (mut pnl, loan)) =
-            tokio::try_join!(
-                state
-                    .database
-                    .mp_asset
-                    .get_price_by_date(
-                        &lease.LS_asset_symbol,
-                        Some(protocol.to_owned()),
-                        &lease.LS_timestamp,
-                    )
-                    .map_err(Error::from),
-                state
-                    .database
-                    .mp_asset
-                    .get_price_by_date(
-                        base_currency,
-                        Some(protocol.to_owned()),
-                        &lease.LS_timestamp,
-                    )
-                    .map_err(Error::from),
-                get_fees(&state, &lease, protocol.to_owned())
-                    .map_err(Error::from),
-                get_pnl(
-                    &state,
-                    &lease,
-                    protocol.to_owned(),
-                    protocol_data.to_owned(),
-                    lease.LS_contract_id.to_owned(),
+        let ((downpayment_price,), (lpn_price,), fee) = tokio::try_join!(
+            state
+                .database
+                .mp_asset
+                .get_price_by_date(
+                    &lease.LS_asset_symbol,
+                    Some(protocol.to_owned()),
+                    &lease.LS_timestamp,
                 )
-            )
-            .context(format!(
-                "could not parse currencies in lease {}",
-                &lease.LS_contract_id
-            ))?;
+                .map_err(Error::from),
+            state
+                .database
+                .mp_asset
+                .get_price_by_date(
+                    base_currency,
+                    Some(protocol.to_owned()),
+                    &lease.LS_timestamp,
+                )
+                .map_err(Error::from),
+            get_fees(&state, &lease, protocol.to_owned()).map_err(Error::from),
+        )
+        .context(format!(
+            "could not parse currencies in lease {}",
+            &lease.LS_contract_id
+        ))?;
 
         let at = Utc::now();
+        let pnl = BigDecimal::from(0);
 
-        pnl += get_change(
-            &state,
-            sb.to_owned(),
-            loan.to_string(),
-            protocol.to_owned(),
-            protocol_data.2.to_owned(),
-            lease.LS_timestamp,
-            at.to_owned(),
-        )
-        .await?;
+        // pnl += get_change(
+        //     &state,
+        //     sb.to_owned(),
+        //     loan.to_string(),
+        //     protocol.to_owned(),
+        //     protocol_data.2.to_owned(),
+        //     lease.LS_timestamp,
+        //     at.to_owned(),
+        // )
+        // .await?;
 
         return Ok(web::Json(Some(ResponseData {
             lease,

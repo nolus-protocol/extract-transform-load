@@ -874,7 +874,7 @@ impl FromStr for EventsType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Loan_Closing_Status {
     Reypay,
     Liquidation,

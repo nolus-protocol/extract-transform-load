@@ -267,3 +267,12 @@ SET "LS_loan_amnt_stable" = "LS_loan_amnt_asset"
 WHERE "LS_loan_pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94' AND "LS_loan_amnt_stable" != "LS_loan_amnt_asset";
 
 UPDATE "LS_Loan_Closing" SET "Active" = false;
+
+
+25.11.2024
+
+in .env
+MP_ASSET_INTERVAL_IN_SEC=20
+
+in database
+UPDATE "LS_Loan_Closing" SET "Active" = false;

@@ -197,7 +197,7 @@ ETL generates a record for any lease instance that:
 | LS_current_interest_stable | Unsigned Int(128) | in_stable(lease.status_query.loan_interest_due::0)       | The loan interest amount up to that point of time                                                       |
 | LS_principal_stable        | Unsigned Int(128) | in_stable(lease.status_query.principal_due::0)           | The paid principal, if 1 - none, if 2 - optional                                                        |
 | Tx_Hash                    | Alphanumeric(64)  | tx hash                                                  | Transaction hash                                                                                        |
-| Tx_Hash                    | Alphanumeric(64)  | tx hash                                                  | Transaction hash                                                                                        |
+| LS_lpn_loan_amnt           | Unsigned Int(128) | n/a                                                      | lease amount in lpn                                                                                     |
 
 ### **LP_Deposit** [Primary key = LP_deposit_height + LP_deposit_idx]
 

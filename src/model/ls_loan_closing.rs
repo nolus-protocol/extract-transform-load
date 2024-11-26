@@ -14,6 +14,16 @@ pub struct LS_Loan_Closing {
     pub Active: bool,
 }
 
+#[derive(Debug, FromRow, Deserialize, Serialize)]
+pub struct LS_Loan {
+    pub LS_contract_id: String,
+    pub LS_amnt: BigDecimal,
+    pub LS_amnt_stable: BigDecimal,
+    pub LS_pnl: BigDecimal,
+    pub LS_timestamp: DateTime<Utc>,
+    pub Active: bool,
+}
+
 #[derive(Debug, Deserialize, Serialize, FromRow)]
 pub struct Pnl_Result {
     pub LS_contract_id: String,
