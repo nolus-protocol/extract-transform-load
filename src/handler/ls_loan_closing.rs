@@ -484,17 +484,17 @@ pub async fn get_fees(
         .get(&symbol.to_owned())
         .context(format!("LS_asset_symbol not found {}", &symbol))?;
 
-    let market_closings_fn = app_state
-        .database
-        .ls_close_position
-        .get_by_contract(lease.LS_contract_id.to_owned())
-        .map_err(Error::from);
+    // let market_closings_fn = app_state
+    //     .database
+    //     .ls_close_position
+    //     .get_by_contract(lease.LS_contract_id.to_owned())
+    //     .map_err(Error::from);
 
-    let liquidations_fn = app_state
-        .database
-        .ls_liquidation
-        .get_by_contract(lease.LS_contract_id.to_owned())
-        .map_err(Error::from);
+    // let liquidations_fn = app_state
+    //     .database
+    //     .ls_liquidation
+    //     .get_by_contract(lease.LS_contract_id.to_owned())
+    //     .map_err(Error::from);
 
     let ctrl_amount_stable = &lease.LS_cltr_amnt_stable
         / BigDecimal::from(u64::pow(10, ctrl_currency.1.try_into()?));
@@ -514,13 +514,18 @@ pub async fn get_fees(
         )
         .map_err(Error::from);
 
-    let (loan_amount, market_closings, liquidations) =
-        tokio::try_join!(f1, market_closings_fn, liquidations_fn)?;
+    let (
+        loan_amount,
+        //  market_closings, liquidations
+    ) = tokio::try_join!(
+        f1,
+        //  market_closings_fn, liquidations_fn
+    )?;
 
-    let market_close_fee = get_market_close_fee(app_state, market_closings)?
-        * &loan_amount_symbol_decimals;
-    let liquidation_fee = get_liquidation_fee(app_state, liquidations)?
-        * &loan_amount_symbol_decimals;
+    // let market_close_fee = get_market_close_fee(app_state, market_closings)?
+    //     * &loan_amount_symbol_decimals;
+    // let liquidation_fee = get_liquidation_fee(app_state, liquidations)?
+    //     * &loan_amount_symbol_decimals;
 
     let lpn_currency =
         app_state.get_currency_by_pool_id(&lease.LS_loan_pool_id)?;
@@ -533,8 +538,7 @@ pub async fn get_fees(
         * &loan_amount_symbol_decimals)
         .round(0);
 
-    let fee =
-        total_loan_stable - loan_amount + market_close_fee + liquidation_fee;
+    let fee = total_loan_stable - loan_amount;
 
     Ok(fee.round(0))
 }
@@ -605,6 +609,7 @@ pub fn get_liquidation_fee(
 
         let amount_amount = &liquidation.LS_amnt_stable
             / BigDecimal::from(u64::pow(10, c1.1.try_into()?));
+
         let amount = amount_amount - payment_amount;
         fee += amount;
     }
