@@ -1,14 +1,14 @@
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    handler::ls_loan_closing::get_fees,
-    helpers::Protocol_Types,
-    model::LS_Opening,
+    handler::ls_loan_closing::{get_fees, get_pnl_long, get_pnl_short},
+    helpers::{Loan_Closing_Status, Protocol_Types},
+    model::{LS_Loan, LS_Opening},
 };
 use actix_web::{get, web, Responder, Result};
 use anyhow::Context;
 use bigdecimal::BigDecimal;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use futures::TryFutureExt;
 use serde::{Deserialize, Serialize};
 
@@ -25,11 +25,6 @@ async fn index(
                 "protocol not found {}",
                 &lease.LS_loan_pool_id
             ))?;
-        let protocol_data = state
-            .config
-            .hash_map_lp_pools
-            .get(&lease.LS_loan_pool_id)
-            .context("could not load protocol")?;
 
         let base_currency = state
             .config
@@ -41,52 +36,39 @@ async fn index(
             ))?;
 
         let base_currency = &base_currency.0;
-        let symbol = lease.LS_asset_symbol.to_owned();
-
-        let sb = match protocol_data.2 {
-            Protocol_Types::Long => symbol,
-            Protocol_Types::Short => protocol_data.1.to_owned(),
-        };
-
-        let ((downpayment_price,), (lpn_price,), fee) = tokio::try_join!(
-            state
-                .database
-                .mp_asset
-                .get_price_by_date(
-                    &lease.LS_asset_symbol,
-                    Some(protocol.to_owned()),
-                    &lease.LS_timestamp,
-                )
-                .map_err(Error::from),
-            state
-                .database
-                .mp_asset
-                .get_price_by_date(
-                    base_currency,
-                    Some(protocol.to_owned()),
-                    &lease.LS_timestamp,
-                )
-                .map_err(Error::from),
-            get_fees(&state, &lease, protocol.to_owned()).map_err(Error::from),
-        )
-        .context(format!(
-            "could not parse currencies in lease {}",
-            &lease.LS_contract_id
-        ))?;
-
         let at = Utc::now();
-        let pnl = BigDecimal::from(0);
+        let app_state = &state.clone();
 
-        // pnl += get_change(
-        //     &state,
-        //     sb.to_owned(),
-        //     loan.to_string(),
-        //     protocol.to_owned(),
-        //     protocol_data.2.to_owned(),
-        //     lease.LS_timestamp,
-        //     at.to_owned(),
-        // )
-        // .await?;
+        let ((downpayment_price,), (lpn_price,), fee, pnl_res) =
+            tokio::try_join!(
+                state
+                    .database
+                    .mp_asset
+                    .get_price_by_date(
+                        &lease.LS_asset_symbol,
+                        Some(protocol.to_owned()),
+                        &lease.LS_timestamp,
+                    )
+                    .map_err(Error::from),
+                state
+                    .database
+                    .mp_asset
+                    .get_price_by_date(
+                        base_currency,
+                        Some(protocol.to_owned()),
+                        &lease.LS_timestamp,
+                    )
+                    .map_err(Error::from),
+                get_fees(&state, &lease, protocol.to_owned())
+                    .map_err(Error::from),
+                get_pnl(app_state, &lease, at)
+            )
+            .context(format!(
+                "could not parse currencies in lease {}",
+                &lease.LS_contract_id
+            ))?;
+
+        let pnl = pnl_res.LS_pnl;
 
         return Ok(web::Json(Some(ResponseData {
             lease,
@@ -98,6 +80,43 @@ async fn index(
     }
 
     Ok(web::Json(None))
+}
+
+pub async fn get_pnl(
+    app_state: &AppState<State>,
+    lease: &LS_Opening,
+    at: DateTime<Utc>,
+) -> Result<LS_Loan, Error> {
+    let protocol_data = app_state
+        .config
+        .hash_map_lp_pools
+        .get(&lease.LS_loan_pool_id)
+        .context("could not load protocol")?;
+
+    match protocol_data.2 {
+        Protocol_Types::Short => {
+            get_pnl_short(
+                app_state,
+                &lease,
+                lease.LS_contract_id.to_owned(),
+                (BigDecimal::from(0), Loan_Closing_Status::None),
+                BigDecimal::from(0),
+                at,
+            )
+            .await
+        },
+        Protocol_Types::Long => {
+            get_pnl_long(
+                app_state,
+                &lease,
+                lease.LS_contract_id.to_owned(),
+                (BigDecimal::from(0), Loan_Closing_Status::None),
+                BigDecimal::from(0),
+                at,
+            )
+            .await
+        },
+    }
 }
 
 #[derive(Debug, Deserialize)]

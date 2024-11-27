@@ -879,6 +879,7 @@ pub enum Loan_Closing_Status {
     Reypay,
     Liquidation,
     MarketClose,
+    None,
 }
 
 impl fmt::Display for Loan_Closing_Status {
@@ -888,6 +889,9 @@ impl fmt::Display for Loan_Closing_Status {
             Loan_Closing_Status::Liquidation => write!(f, "liquidation"),
             Loan_Closing_Status::MarketClose => {
                 write!(f, "market-close")
+            },
+            Loan_Closing_Status::None => {
+                write!(f, "none")
             },
         }
     }
@@ -899,6 +903,7 @@ impl From<Loan_Closing_Status> for String {
             Loan_Closing_Status::Reypay => String::from("repay"),
             Loan_Closing_Status::Liquidation => String::from("liquidation"),
             Loan_Closing_Status::MarketClose => String::from("market-close"),
+            Loan_Closing_Status::None => String::from("none"),
         }
     }
 }
@@ -911,6 +916,7 @@ impl FromStr for Loan_Closing_Status {
             "repay" => Ok(Loan_Closing_Status::Reypay),
             "liquidation" => Ok(Loan_Closing_Status::Liquidation),
             "market-close" => Ok(Loan_Closing_Status::MarketClose),
+            "none" => Ok(Loan_Closing_Status::None),
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Loan_Closing_Status not supported",
