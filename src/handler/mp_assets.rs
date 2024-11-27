@@ -121,7 +121,6 @@ pub async fn fetch_insert(
 
 pub async fn mp_assets_task(app_state: AppState<State>) -> Result<(), Error> {
     let interval: u64 = app_state.config.mp_asset_interval.into();
-    let interval: u64 = interval * 60;
 
     let mut interval = time::interval(Duration::from_secs(interval));
     tokio::spawn(async move {
