@@ -3,9 +3,7 @@ use chrono::DateTime;
 use sqlx::Transaction;
 use std::str::FromStr;
 
-use super::ls_loan_closing::{
-    self as ls_loan_closing_handler, get_liquidation_fee,
-};
+use super::ls_loan_closing::{self as ls_loan_closing_handler};
 use crate::{
     configuration::{AppState, State},
     dao::DataBase,
@@ -105,16 +103,11 @@ pub async fn parse_and_insert(
     }
 
     if loan_close {
-        let items = vec![ls_liquidation];
-        let taxes = get_liquidation_fee(app_state, items)?;
-
         ls_loan_closing_handler::parse_and_insert(
             app_state,
             item.to.to_owned(),
             Loan_Closing_Status::Liquidation,
             at.to_owned(),
-            amount.to_owned(),
-            taxes,
             block,
             transaction,
         )

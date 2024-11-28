@@ -8,7 +8,7 @@ pub struct LS_State_Type {
     pub paid: Option<Status_Paid>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Status_Opened {
     pub amount: AmountTicker,
     pub loan_interest_rate: u128,

@@ -21,6 +21,12 @@ psql
 3. GRANT ALL ON SCHEMA public TO user_name;
 4. Copy .env.example to .env and set necessary settings
 
+### DEV
+
+cargo install cargo-watch
+cargo watch -c -w src -x run
+
+
 ### Test config:
 
 ```

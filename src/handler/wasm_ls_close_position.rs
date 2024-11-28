@@ -12,9 +12,7 @@ use crate::{
     types::LS_Close_Position_Type,
 };
 
-use super::ls_loan_closing::{
-    self as ls_loan_closing_handler, get_market_close_fee,
-};
+use super::ls_loan_closing::{self as ls_loan_closing_handler};
 
 pub async fn parse_and_insert(
     app_state: &AppState<State>,
@@ -106,15 +104,11 @@ pub async fn parse_and_insert(
     }
 
     if loan_close {
-        let items = vec![ls_close_position];
-        let taxes = get_market_close_fee(app_state, items)?;
         ls_loan_closing_handler::parse_and_insert(
             app_state,
             item.to.to_owned(),
             Loan_Closing_Status::MarketClose,
             at.to_owned(),
-            amount.to_owned(),
-            taxes,
             block,
             transaction,
         )

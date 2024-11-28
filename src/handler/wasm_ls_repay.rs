@@ -91,8 +91,6 @@ pub async fn parse_and_insert(
             item.to.to_owned(),
             Loan_Closing_Status::Reypay,
             at.to_owned(),
-            BigDecimal::from(0),
-            BigDecimal::from(0),
             block,
             transaction,
         )
