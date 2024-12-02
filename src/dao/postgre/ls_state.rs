@@ -18,9 +18,14 @@ impl Table<LS_State> {
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
                 "LS_principal_stable",
-                "LS_lpn_loan_amnt"
+                "LS_lpn_loan_amnt",
+                "LS_prev_margin_asset",
+                "LS_prev_interest_asset",
+                "LS_current_margin_asset",
+                "LS_current_interest_asset",
+                "LS_principal_asset"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             "#,
         )
         .bind(&data.LS_contract_id)
@@ -84,7 +89,12 @@ impl Table<LS_State> {
                 "LS_current_margin_stable",
                 "LS_current_interest_stable",
                 "LS_principal_stable",
-                "LS_lpn_loan_amnt"
+                "LS_lpn_loan_amnt",
+                "LS_prev_margin_asset",
+                "LS_prev_interest_asset",
+                "LS_current_margin_asset",
+                "LS_current_interest_asset",
+                "LS_principal_asset"
             )"#,
         );
 
@@ -98,7 +108,12 @@ impl Table<LS_State> {
                 .push_bind(&data.LS_current_margin_stable)
                 .push_bind(&data.LS_current_interest_stable)
                 .push_bind(&data.LS_principal_stable)
-                .push_bind(&data.LS_lpn_loan_amnt);
+                .push_bind(&data.LS_lpn_loan_amnt)
+                .push_bind(&data.LS_prev_margin_asset)
+                .push_bind(&data.LS_prev_interest_asset)
+                .push_bind(&data.LS_current_margin_asset)
+                .push_bind(&data.LS_current_interest_asset)
+                .push_bind(&data.LS_principal_asset);
         });
 
         let query = query_builder.build();

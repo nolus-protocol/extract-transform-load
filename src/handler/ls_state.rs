@@ -57,7 +57,7 @@ async fn proceed(
     timestsamp: DateTime<Utc>,
 ) -> Result<Option<LS_State>, Error> {
     let contract = item.LS_contract_id.to_owned();
-    let data = state.grpc.get_lease_state(contract).await?;
+    let data = state.grpc.get_lease_state(contract.to_owned()).await?;
 
     if let Some(status) = data.opened {
         let pool_currency =
@@ -143,6 +143,20 @@ async fn proceed(
         let due_interest_stable =
             state.in_stabe_calc(&pool_currency_price, &due_interest.amount)?;
 
+        let (
+            LS_prev_margin_asset,
+            LS_prev_interest_asset,
+            LS_current_margin_asset,
+            LS_current_interest_asset,
+            LS_principal_asset,
+        ) = (
+            (BigDecimal::from_str(&overdue_margin.amount)?),
+            (BigDecimal::from_str(&overdue_interest.amount)?),
+            (BigDecimal::from_str(&due_margin.amount)?),
+            (BigDecimal::from_str(&due_interest.amount)?),
+            (BigDecimal::from_str(&status.principal_due.amount)?),
+        );
+
         let LS_lpn_loan_amnt = BigDecimal::from_str(&status.amount.amount)?
             * &price
             / &pool_currency_price;
@@ -166,7 +180,13 @@ async fn proceed(
                 &status.principal_due.amount,
             )?,
             LS_lpn_loan_amnt,
+            LS_prev_margin_asset,
+            LS_prev_interest_asset,
+            LS_current_margin_asset,
+            LS_current_interest_asset,
+            LS_principal_asset,
         };
+
         return Ok(Some(ls_state));
     }
     Ok(None)
