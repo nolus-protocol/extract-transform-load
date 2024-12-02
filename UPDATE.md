@@ -279,7 +279,7 @@ UPDATE "LS_Loan_Closing" SET "Active" = false;
 
 28.11.2024
 
-update "LS_Loan_Closing" set "Active" = false where "Block" > 6000000;
+update "LS_Loan_Closing" set "Active" = false where "Block" > 8000000;
 
 28.11.2024
 
