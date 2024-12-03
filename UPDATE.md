@@ -288,3 +288,8 @@ ALTER TABLE "LS_State" ADD COLUMN  "LS_prev_interest_asset" DECIMAL(39, 0) NOT N
 ALTER TABLE "LS_State" ADD COLUMN  "LS_current_margin_asset" DECIMAL(39, 0) NOT NULL DEFAULT 0;
 ALTER TABLE "LS_State" ADD COLUMN  "LS_current_interest_asset" DECIMAL(39, 0) NOT NULL DEFAULT 0;
 ALTER TABLE "LS_State" ADD COLUMN  "LS_principal_asset" DECIMAL(39, 0) NOT NULL DEFAULT 0;
+
+03.12.2024
+
+update "LS_Loan_Closing" set "Active" = false where "Type" = 'liquidation';
+update "LS_Loan_Closing" set "Active" = false where "Block" > 7000000;

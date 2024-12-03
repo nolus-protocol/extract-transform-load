@@ -59,8 +59,8 @@ GRPC_HOST=https://pirin-cl.nolus.network:9090
 ### Testnet config:
 
 ```
-HOST=rila-cl.nolus.network:26657
-GRPC_HOST=https://rila-cl.nolus.network:9090
+HOST=rpc.nolus.network
+GRPC_HOST=https://grpc.nolus.network
 DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
 SYNC_THREADS=32
 SUPPORTED_CURRENCIES=(NLS,6),(USDC,6),(USDC_AXELAR,6),(OSMO,6),(ATOM,6),(AKT,6),(JUNO,6),(NTRN,6),(USDC_NOBLE,6)
@@ -182,3 +182,13 @@ sudo systemctl start etl
 
 CREATE INDEX raw_message_from ON raw_message("from", "timestamp");
 CREATE INDEX raw_message_to ON raw_message("to", "timestamp");
+
+### ENDPOINTS
+
+https://rpc.nolus.network
+https://grpc.nolus.network
+https://lcd.nolus.network
+https://etl.nolus.network
+https://archive-rpc.nolus.network
+https://archive-grpc.nolus.network
+https://archive-lcd.nolus.network

@@ -132,6 +132,26 @@ async fn get_loan(
 
     match lease {
         Some(lease) => {
+            if r#type == Loan_Closing_Status::Liquidation {
+                let l = get_pnl_liquidated(
+                    &app_state,
+                    &lease,
+                    contract.to_owned(),
+                    at.to_owned(),
+                )
+                .await?;
+                return Ok(LS_Loan_Closing {
+                    Block: block,
+                    LS_contract_id: l.LS_contract_id,
+                    LS_amnt_stable: l.LS_amnt_stable,
+                    LS_timestamp: l.LS_timestamp,
+                    Type: String::from(r#type),
+                    LS_amnt: l.LS_amnt,
+                    Active: l.Active,
+                    LS_pnl: l.LS_pnl,
+                });
+            }
+
             let protocol_data = app_state
                 .config
                 .hash_map_lp_pools
@@ -522,4 +542,65 @@ pub async fn get_fees(
     let fee = total_loan_stable - loan_amount;
 
     Ok(fee.round(0))
+}
+
+pub async fn get_pnl_liquidated(
+    app_state: &AppState<State>,
+    lease: &LS_Opening,
+    contract: String,
+    at: DateTime<Utc>,
+) -> Result<LS_Loan, Error> {
+    let lease_currency = app_state
+        .config
+        .hash_map_currencies
+        .get(&lease.LS_asset_symbol)
+        .context(format!(
+            "LS_asset_symbol not found {}",
+            &lease.LS_asset_symbol
+        ))?;
+
+    let downpayment_currency = app_state
+        .config
+        .hash_map_currencies
+        .get(&lease.LS_cltr_symbol)
+        .context(format!(
+            "lease.LS_cltr_symbol not found {}",
+            &lease.LS_cltr_symbol
+        ))?;
+
+    let lease_downpayment = &lease.LS_cltr_amnt_stable
+        / BigDecimal::from(u64::pow(10, downpayment_currency.1.try_into()?));
+
+    let repayments = app_state
+        .database
+        .ls_repayment
+        .get_by_contract(lease.LS_contract_id.to_owned())
+        .await?;
+
+    let mut repayment_value = BigDecimal::from(0);
+
+    for repayment in repayments {
+        let currency = app_state
+            .config
+            .hash_map_currencies
+            .get(&repayment.LS_payment_symbol)
+            .context(format!(
+                "currency not found  {}",
+                &repayment.LS_payment_symbol
+            ))?;
+        repayment_value += repayment.LS_payment_amnt_stable
+            / BigDecimal::from(u64::pow(10, currency.1.try_into()?));
+    }
+
+    let pnl = -(repayment_value + lease_downpayment);
+
+    return Ok(LS_Loan {
+        LS_contract_id: contract.to_owned(),
+        LS_amnt_stable: BigDecimal::from(0),
+        LS_timestamp: at,
+        LS_amnt: BigDecimal::from(0),
+        LS_pnl: pnl
+            * BigDecimal::from(u64::pow(10, lease_currency.1.try_into()?)),
+        Active: true,
+    });
 }
