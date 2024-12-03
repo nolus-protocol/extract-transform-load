@@ -59,15 +59,15 @@ GRPC_HOST=https://pirin-cl.nolus.network:9090
 ### Testnet config:
 
 ```
-HOST=rpc.nolus.network
-GRPC_HOST=https://grpc.nolus.network
+HOST=rila-cl.nolus.network:26657
+GRPC_HOST=https://rila-cl.nolus.network:9090
 DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
 SYNC_THREADS=32
 SUPPORTED_CURRENCIES=(NLS,6),(USDC,6),(USDC_AXELAR,6),(OSMO,6),(ATOM,6),(AKT,6),(JUNO,6),(NTRN,6),(USDC_NOBLE,6)
 AGGREGATION_INTTERVAL=1
 MP_ASSET_INTERVAL_IN_SEC=20
 CACHE_INTERVAL_IN_MINUTES=60
-LP_POOLS=(nolus184vpz5tng9gy236uu4hf8gqq5rk0ylk27uds72cczz05q0vrwvvsy9mfkp,USDC_AXELAR,long),(nolus1urdpfxrj7m9r70mv5tdrlnmn02eta6ksaxak8ejsc7pshu83qlzsyqf004,USDC_AXELAR,long),(nolus1vmmhpakm6c93f80m3c2kpy220pvxp3ltw4s4p5m6kpha4cg86s2sehz7g2,OSMO,long)
+LP_POOLS=(nolus184vpz5tng9gy236uu4hf8gqq5rk0ylk27uds72cczz05q0vrwvvsy9mfkp,USDC_AXELAR,long),(nolus1urdpfxrj7m9r70mv5tdrlnmn02eta6ksaxak8ejsc7pshu83qlzsyqf004,USDC_AXELAR,long),(nolus1vmmhpakm6c93f80m3c2kpy220pvxp3ltw4s4p5m6kpha4cg86s2sehz7g2,OSMO,short)
 NATIVE_CURRENCY=NLS
 TREASURY_CONTRACT=nolus1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqrr2r7y
 SERVER_HOST=127.0.0.1
