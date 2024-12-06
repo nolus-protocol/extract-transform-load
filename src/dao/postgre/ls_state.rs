@@ -45,27 +45,47 @@ impl Table<LS_State> {
     pub async fn get_active_states(&self) -> Result<Vec<LS_Opening>, Error> {
         sqlx::query_as(
             r#"
-                SELECT 
-                    a."LS_contract_id",
-                    a."LS_address_id",
-                    a."LS_asset_symbol",
-                    a."LS_interest",
-                    a."LS_timestamp",
-                    a."LS_loan_pool_id",
-                    a."LS_loan_amnt_stable",
-                    a."LS_loan_amnt_asset",
-                    a."LS_cltr_symbol",
-                    a."LS_cltr_amnt_stable",
-                    a."LS_cltr_amnt_asset",
-                    a."LS_native_amnt_stable",
-                    a."LS_native_amnt_nolus",
-                    a."Tx_Hash",
-                    a."LS_loan_amnt",
-                    a."LS_lpn_loan_amnt"
-                FROM "LS_Opening" as a 
-                LEFT JOIN "LS_Closing" as b 
-                ON a."LS_contract_id" = b."LS_contract_id" 
-                WHERE b."LS_contract_id" IS NULL
+              SELECT
+                "LS_contract_id",
+                "LS_address_id",
+                "LS_asset_symbol",
+                "LS_interest",
+                "LS_timestamp",
+                "LS_loan_pool_id",
+                "LS_loan_amnt_stable",
+                "LS_loan_amnt_asset",
+                "LS_cltr_symbol",
+                "LS_cltr_amnt_stable",
+                "LS_cltr_amnt_asset",
+                "LS_native_amnt_stable",
+                "LS_native_amnt_nolus",
+                "Tx_Hash",
+                "LS_loan_amnt",
+                "LS_lpn_loan_amnt"
+              FROM "LS_Opening" WHERE "LS_contract_id" NOT IN
+              (
+                SELECT "LS_contract_id" as "Total" FROM (
+                      SELECT "LS_contract_id" FROM "LS_Closing"
+                UNION ALL
+                      SELECT
+                          "LS_contract_id"
+                      FROM "LS_Close_Position"
+                      WHERE
+                          "LS_loan_close" = true
+                UNION ALL
+                      SELECT
+                          "LS_contract_id"
+                      FROM "LS_Repayment"
+                      WHERE
+                          "LS_loan_close" = true
+                UNION ALL
+                      SELECT
+                          "LS_contract_id"
+                      FROM "LS_Liquidation"
+                      WHERE
+                          "LS_loan_close" = true
+                ) AS combined_data GROUP BY "LS_contract_id"
+              )
             "#,
         )
         .fetch_all(&self.pool)

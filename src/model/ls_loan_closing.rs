@@ -36,3 +36,10 @@ pub struct Pnl_Result {
     pub LS_asset_symbol: String,
     pub LS_loan_pool_id: String,
 }
+
+#[derive(Debug, Deserialize, Serialize, FromRow)]
+pub struct Realized_Pnl_Result {
+    pub LS_pnl: BigDecimal,
+    pub LS_loan_pool_id: String,
+    pub LS_asset_symbol: String,
+}

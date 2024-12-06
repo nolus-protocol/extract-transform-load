@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::{DataBase, QueryResult};
-use crate::model::{LS_Loan_Closing, Pnl_Result, Table};
+use crate::model::{LS_Loan_Closing, Pnl_Result, Realized_Pnl_Result, Table};
 use bigdecimal::BigDecimal;
 use sqlx::{error::Error, Transaction};
 
@@ -177,6 +177,33 @@ impl Table<LS_Loan_Closing> {
         .bind(limit)
         .fetch_all(&self.pool)
         .await?;
+        Ok(data)
+    }
+
+    pub async fn get_realized_pnl(
+        &self,
+        address: String,
+    ) -> Result<Vec<Realized_Pnl_Result>, crate::error::Error> {
+        let data= sqlx::query_as(
+            r#"
+                SELECT
+                    s."LS_pnl", o."LS_loan_pool_id", o."LS_asset_symbol"
+                FROM "LS_Loan_Closing"  s
+                LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
+                WHERE s."LS_contract_id" IN 
+                (
+                    SELECT
+                        "LS_contract_id"
+                    FROM "LS_Opening"
+                    WHERE
+                        "LS_address_id" = $1
+                )
+            "#,
+        )
+        .bind(address)
+        .fetch_all(&self.pool)
+        .await?;
+
         Ok(data)
     }
 }

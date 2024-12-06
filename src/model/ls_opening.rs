@@ -21,3 +21,11 @@ pub struct LS_Opening {
     pub LS_lpn_loan_amnt: BigDecimal,
     pub Tx_Hash: String,
 }
+
+#[derive(Debug, FromRow, Deserialize, Serialize)]
+pub struct LS_History {
+    pub symbol: String,
+    pub amount: BigDecimal,
+    pub r#type: String,
+    pub time: DateTime<Utc>,
+}

@@ -16,6 +16,7 @@ pub mod max_lp_ratio;
 pub mod max_ls_interest_7d;
 pub mod optimal;
 pub mod prices;
+pub mod realized_pnl;
 pub mod revenue;
 pub mod supplied_borrowed_series;
 pub mod total_tx_value;

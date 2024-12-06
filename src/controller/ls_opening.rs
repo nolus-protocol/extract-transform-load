@@ -2,7 +2,7 @@ use crate::{
     configuration::{AppState, State},
     error::Error,
     handler::ls_loan_closing::get_fees,
-    model::LS_Opening,
+    model::{LS_History, LS_Opening},
 };
 use actix_web::{get, web, Responder, Result};
 use anyhow::Context;
@@ -39,7 +39,7 @@ async fn index(
             .ls_repayment
             .get_by_contract(lease.LS_contract_id.to_owned());
 
-        let ((downpayment_price,), (lpn_price,), fee, repayments) =
+        let ((downpayment_price,), (lpn_price,), fee, repayments, history) =
             tokio::try_join!(
                 state
                     .database
@@ -62,6 +62,11 @@ async fn index(
                 get_fees(&state, &lease, protocol.to_owned())
                     .map_err(Error::from),
                 repayments_fn.map_err(Error::from),
+                state
+                    .database
+                    .ls_opening
+                    .get_lease_history(lease.LS_contract_id.to_owned())
+                    .map_err(Error::from),
             )
             .context(format!(
                 "could not parse currencies in lease {}",
@@ -89,6 +94,7 @@ async fn index(
             lpn_price,
             fee,
             repayment_value,
+            history,
         })));
     }
 
@@ -107,4 +113,5 @@ pub struct ResponseData {
     pub lpn_price: BigDecimal,
     pub fee: BigDecimal,
     pub repayment_value: BigDecimal,
+    pub history: Vec<LS_History>,
 }

@@ -42,8 +42,10 @@ pub use ls_close_position::LS_Close_Position;
 pub use ls_closing::LS_Closing;
 pub use ls_liquidation::{LS_Liquidation, LS_transactions};
 pub use ls_liquidation_warning::LS_Liquidation_Warning;
-pub use ls_loan_closing::{LS_Loan, LS_Loan_Closing, Pnl_Result};
-pub use ls_opening::LS_Opening;
+pub use ls_loan_closing::{
+    LS_Loan, LS_Loan_Closing, Pnl_Result, Realized_Pnl_Result,
+};
+pub use ls_opening::{LS_History, LS_Opening};
 pub use ls_repayment::LS_Repayment;
 pub use ls_state::LS_State;
 pub use mp_asset::MP_Asset;

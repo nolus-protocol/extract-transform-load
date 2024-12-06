@@ -8,9 +8,9 @@ use crate::{
         blocks, borrow_apr, borrowed, buyback, buyback_total,
         deposit_suspension, distributed, earn_apr, incentives_pool,
         leased_assets, leases, ls_loan_closing, ls_opening, ls_openings,
-        max_lp_ratio, max_ls_interest_7d, optimal, prices, revenue,
-        supplied_borrowed_series, total_tx_value, total_value_locked, txs,
-        utilization_level, version,
+        max_lp_ratio, max_ls_interest_7d, optimal, prices, realized_pnl,
+        revenue, supplied_borrowed_series, total_tx_value, total_value_locked,
+        txs, utilization_level, version,
     },
     error::Error,
 };
@@ -81,7 +81,8 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(txs::index)
                     .service(leases::index)
                     .service(prices::index)
-                    .service(ls_loan_closing::index),
+                    .service(ls_loan_closing::index)
+                    .service(realized_pnl::index),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

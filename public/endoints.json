@@ -248,5 +248,16 @@
         "max": 100
       }
     ]
+  },
+  {
+    "description": "Realized pnl",
+    "url": "/api/realized-pnl",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      }
+    ]
   }
 ]

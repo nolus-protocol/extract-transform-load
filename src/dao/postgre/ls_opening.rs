@@ -1,6 +1,6 @@
 use super::{DataBase, QueryResult};
 use crate::{
-    model::{Borrow_APR, LS_Opening, Leased_Asset, Table},
+    model::{Borrow_APR, LS_History, LS_Opening, Leased_Asset, Table},
     types::LS_Max_Interest,
 };
 use chrono::{DateTime, Utc};
@@ -784,5 +784,36 @@ impl Table<LS_Opening> {
         .execute(&self.pool)
         .await?;
         Ok(())
+    }
+
+    pub async fn get_lease_history(
+        &self,
+        contract_id: String,
+    ) -> Result<Vec<LS_History>, crate::error::Error> {
+        let data = sqlx::query_as(
+            r#"
+                SELECT * FROM (
+                    SELECT
+                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount", "LS_timestamp" as "time",  'repay' as "type"
+                    FROM "LS_Repayment"
+                    WHERE "LS_contract_id" = $1
+                UNION ALL
+                    SELECT
+                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount", "LS_timestamp" as "time",  'market-close' as "type"
+                    FROM "LS_Close_Position"
+                    WHERE "LS_contract_id" = $1
+                UNION ALL
+                    SELECT
+                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount",  "LS_timestamp" as "time", 'liquidation' as "type"
+                    FROM "LS_Liquidation"
+                    WHERE "LS_contract_id" = $1
+                ) AS combined_data order by time asc
+            "#,
+        )
+        .bind(contract_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
     }
 }
