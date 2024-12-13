@@ -293,3 +293,11 @@ ALTER TABLE "LS_State" ADD COLUMN  "LS_principal_asset" DECIMAL(39, 0) NOT NULL 
 
 update "LS_Loan_Closing" set "Active" = false where "Type" = 'liquidation';
 update "LS_Loan_Closing" set "Active" = false where "Block" > 7000000;
+
+13.12.2024
+
+ALTER TABLE "LP_Deposit" ALTER COLUMN "LP_address_id" TYPE VARCHAR(64);
+ALTER TABLE "LP_Withdraw" ALTER COLUMN "LP_address_id" TYPE VARCHAR(64);
+ALTER TABLE "LP_Lender_State" ALTER COLUMN "LP_Lender_id" TYPE VARCHAR(64);
+ALTER TABLE "LS_Liquidation_Warning" ALTER COLUMN "LS_address_id" TYPE VARCHAR(64);
+ALTER TABLE "LS_Opening" ALTER COLUMN "LS_address_id" TYPE VARCHAR(64);

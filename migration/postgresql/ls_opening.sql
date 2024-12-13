@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS "LS_Opening" (
   "LS_contract_id" VARCHAR(64) PRIMARY KEY NOT NULL,
-  "LS_address_id" VARCHAR(44) NOT NULL,
+  "LS_address_id" VARCHAR(64) NOT NULL,
   "LS_asset_symbol" VARCHAR(20) NOT NULL,
   "LS_interest" SMALLINT NOT NULL,
   "LS_timestamp" TIMESTAMPTZ NOT NULL,

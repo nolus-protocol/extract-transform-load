@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS "LP_Lender_State" (
-  "LP_Lender_id" VARCHAR(44) NOT NULL,
+  "LP_Lender_id" VARCHAR(64) NOT NULL,
   "LP_Pool_id" VARCHAR(64) NOT NULL,
   "LP_timestamp" TIMESTAMPTZ NOT NULL,
   "LP_Lender_stable" DECIMAL(39, 0) NOT NULL,
