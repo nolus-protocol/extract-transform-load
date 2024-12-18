@@ -301,3 +301,8 @@ ALTER TABLE "LP_Withdraw" ALTER COLUMN "LP_address_id" TYPE VARCHAR(64);
 ALTER TABLE "LP_Lender_State" ALTER COLUMN "LP_Lender_id" TYPE VARCHAR(64);
 ALTER TABLE "LS_Liquidation_Warning" ALTER COLUMN "LS_address_id" TYPE VARCHAR(64);
 ALTER TABLE "LS_Opening" ALTER COLUMN "LS_address_id" TYPE VARCHAR(64);
+
+18.12.2024
+
+CREATE INDEX idx_from ON raw_message("from");
+CREATE INDEX idx_to ON raw_message("to");
