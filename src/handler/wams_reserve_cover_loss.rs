@@ -1,9 +1,10 @@
-use anyhow::{Context, Result};
+use std::str::FromStr as _;
+
+use anyhow::Context as _;
 use bigdecimal::BigDecimal;
 use chrono::DateTime;
-use cosmos_sdk_proto::Timestamp;
+use cosmrs::proto::Timestamp;
 use sqlx::Transaction;
-use std::str::FromStr;
 
 use crate::{
     configuration::{AppState, State},

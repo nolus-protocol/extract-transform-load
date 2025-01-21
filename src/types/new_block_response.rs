@@ -1,5 +1,6 @@
-use super::EventData;
 use serde::Deserialize;
+
+use super::EventData;
 
 #[derive(Debug, Deserialize)]
 pub struct NewBlockBody {

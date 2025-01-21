@@ -1,6 +1,8 @@
-use super::QueryResult;
+use sqlx::Error;
+
 use crate::model::{LP_Pool, Table};
-use sqlx::error::Error;
+
+use super::QueryResult;
 
 impl Table<LP_Pool> {
     pub async fn insert(&self, data: LP_Pool) -> Result<QueryResult, Error> {

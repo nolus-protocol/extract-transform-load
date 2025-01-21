@@ -1,6 +1,8 @@
-use super::{DataBase, QueryResult};
+use sqlx::{Error, Transaction};
+
 use crate::model::{Block, Table};
-use sqlx::{error::Error, Transaction};
+
+use super::{DataBase, QueryResult};
 
 impl Table<Block> {
     pub async fn insert(

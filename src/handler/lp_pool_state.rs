@@ -1,6 +1,7 @@
-use bigdecimal::{BigDecimal, FromPrimitive};
+use std::str::FromStr as _;
+
+use bigdecimal::{BigDecimal, FromPrimitive as _};
 use chrono::{DateTime, Utc};
-use std::str::FromStr;
 use tokio::task::{JoinHandle, JoinSet};
 
 use crate::{

@@ -1,3 +1,5 @@
+pub use self::aggregation_task::aggregation_task;
+
 mod aggregation_task;
 pub mod cache_state;
 pub mod lp_lender_state;
@@ -18,5 +20,3 @@ pub mod wasm_ls_open;
 pub mod wasm_ls_repay;
 pub mod wasm_tr_profit;
 pub mod wasm_tr_rewards;
-
-pub use aggregation_task::aggregation_task;

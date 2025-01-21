@@ -1,3 +1,7 @@
+pub use self::{
+    path::get_path,
+    types::{DBRow, DataBase, PoolOption, PoolType, QueryResult},
+};
 mod action_history;
 mod block;
 mod lp_deposit;
@@ -23,6 +27,3 @@ mod tr_profit;
 mod tr_rewards_distribution;
 mod tr_state;
 mod types;
-
-pub use path::get_path;
-pub use types::{DBRow, DataBase, PoolOption, PoolType, QueryResult};
