@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    env, fs,
+    env,
     ops::Deref,
     str::FromStr,
     sync::{Arc, Mutex},
@@ -9,6 +9,7 @@ use std::{
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use futures::future::join_all;
+use tokio::fs;
 
 use crate::{
     dao::get_path,
@@ -107,9 +108,7 @@ impl State {
 
         for file in files {
             sqlx::query(
-                tokio::fs::read_to_string(get_path(dir, file))
-                    .await?
-                    .as_str(),
+                fs::read_to_string(get_path(dir, file)).await?.as_str(),
             )
             .execute(&database.pool)
             .await?;
@@ -401,7 +400,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     Ok(config)
 }
 
-pub fn set_configuration() -> Result<(), Error> {
+pub async fn set_configuration() -> Result<(), Error> {
     let config_file: &str = ".env";
     let etl_config_file: &str = "etl.conf";
 
@@ -409,8 +408,8 @@ pub fn set_configuration() -> Result<(), Error> {
     let path = format!("{}/{}", directory, config_file);
     let etl_config_path = format!("{}/{}", directory, etl_config_file);
 
-    let config_string = fs::read_to_string(path)?;
-    let etl_config_string = fs::read_to_string(etl_config_path)?;
+    let config_string = fs::read_to_string(path).await?;
+    let etl_config_string = fs::read_to_string(etl_config_path).await?;
 
     parse_config_string(config_string)?;
     parse_config_string(etl_config_string)?;
@@ -444,7 +443,7 @@ fn parse_config_string(config: String) -> Result<(), Error> {
             },
             _ => value.to_owned(),
         };
-        std::env::set_var(key, parsed_value);
+        env::set_var(key, parsed_value);
     }
 
     Ok(())
