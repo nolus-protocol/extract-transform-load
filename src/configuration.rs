@@ -106,8 +106,13 @@ impl State {
         let dir = env!("CARGO_MANIFEST_DIR");
 
         for file in files {
-            let data = get_path(dir, file)?;
-            sqlx::query(data.as_str()).execute(&database.pool).await?;
+            sqlx::query(
+                tokio::fs::read_to_string(get_path(dir, file))
+                    .await?
+                    .as_str(),
+            )
+            .execute(&database.pool)
+            .await?;
         }
 
         Ok(())
