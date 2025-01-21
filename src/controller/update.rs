@@ -1,112 +1,110 @@
-use std::{collections::HashMap, fs};
+use std::{
+    collections::BTreeMap,
+    fs::File,
+    future::Future,
+    io::BufReader,
+    sync::{Arc, LazyLock},
+};
+
+use actix_web::{
+    get,
+    web::{Data, Json},
+    Responder,
+};
+use anyhow::Context as _;
+use bigdecimal::{num_bigint::BigInt, BigDecimal, One};
+use serde::Serialize;
 
 use crate::{
-    configuration::{AppState, State},
-    error::Error,
-    model::LS_Opening,
+    configuration::State, error::Error, model::LS_Opening,
+    try_join_with_capacity,
 };
-use actix_web::{get, web, Responder, Result};
-use anyhow::Context;
-use bigdecimal::BigDecimal;
-use serde::{Deserialize, Serialize};
-use tokio::task::JoinSet;
+
+/// Represents pairs of the form `(Denominator, Mantissa * 10^(-Exponent))`,
+/// stored as `(Denominator, (Mantissa, Exponent))`.
+const TAXES_LOOKUP_TABLE: [(&'static str, (u8, u8)); 34] = [
+    ("ATOM", /* 0.0076 */ (76, 4)),
+    ("OSMO", /* 0.0101 */ (101, 4)),
+    ("ST_OSMO", /* 0.0132 */ (132, 4)),
+    ("ST_ATOM", /* 0.0101 */ (101, 4)),
+    ("WETH", /* 0.0113 */ (113, 4)),
+    ("WBTC", /* 0.0103 */ (103, 4)),
+    ("AKT", /* 0.0126 */ (126, 4)),
+    ("JUNO", /* 0.0076 */ (76, 4)),
+    ("AXL", /* 0.0107 */ (107, 4)),
+    ("EVMOS", /* 0.0097 */ (97, 4)),
+    ("STK_ATOM", /* 0.0131 */ (131, 4)),
+    ("SCRT", /* 0.0074 */ (74, 4)),
+    ("CRO", /* 0.0108 */ (108, 4)),
+    ("TIA", /* 0.0089 */ (89, 4)),
+    ("STARS", /* 0.0162 */ (162, 4)),
+    ("Q_ATOM", /* 0.0113 */ (113, 4)),
+    ("NTRN", /* 0.0101 */ (101, 4)),
+    ("DYDX", /* 0.0100 */ (100, 4)),
+    ("INJ", /* 0.0052 */ (52, 4)),
+    ("STRD", /* 0.0108 */ (108, 4)),
+    ("MILK_TIA", /* 0.0108 */ (108, 4)),
+    ("ST_TIA", /* 0.0108 */ (108, 4)),
+    ("DYM", /* 0.0041 */ (41, 4)),
+    ("JKL", /* 0.0108 */ (108, 4)),
+    ("LVN", /* 0.0067 */ (67, 4)),
+    ("PICA", /* 0.0102 */ (102, 4)),
+    ("CUDOS", /* 0.0101 */ (101, 4)),
+    ("USDC", /* 0.0098 */ (98, 4)),
+    ("USDC_NOBLE", /* 0.0098 */ (98, 4)),
+    ("USDC_AXELAR", /* 0.0098 */ (98, 4)),
+    ("D_ATOM", /* 0.0097 */ (97, 4)),
+    ("QSR", /* 0.0097 */ (97, 4)),
+    ("ALL_SOL", /* 0.0097 */ (97, 4)),
+    ("ALL_BTC", /* 0.0097 */ (97, 4)),
+];
+
+static TAXES: LazyLock<BTreeMap<&str, BigDecimal>> = LazyLock::new(|| {
+    TAXES_LOOKUP_TABLE
+        .map(|(denominator, (mantissa, exponent))| {
+            (
+                denominator,
+                BigDecimal::new(mantissa.into(), exponent.into()),
+            )
+        })
+        .into()
+});
 
 //TODO: delete
 #[get("/update/v3/ls_loan_amnt")]
-async fn ls_loan_amnt(
-    state: web::Data<AppState<State>>,
-) -> Result<impl Responder, Error> {
-    ls_loan_amnt_task(state.as_ref()).await?;
-    Ok(web::Json(Response { result: true }))
+async fn ls_loan_amnt(state: Data<State>) -> Result<impl Responder, Error> {
+    ls_loan_amnt_task(&state)
+        .await
+        .map(|()| const { Json(Response { result: true }) })
 }
 
-async fn ls_loan_amnt_task(state: &AppState<State>) -> Result<(), Error> {
-    let data = vec![
-        ("ATOM", 0.0076),
-        ("OSMO", 0.0101),
-        ("ST_OSMO", 0.0132),
-        ("ST_ATOM", 0.0101),
-        ("WETH", 0.0113),
-        ("WBTC", 0.0103),
-        ("AKT", 0.0126),
-        ("JUNO", 0.0076),
-        ("AXL", 0.0107),
-        ("EVMOS", 0.0097),
-        ("STK_ATOM", 0.0131),
-        ("SCRT", 0.0074),
-        ("CRO", 0.0108),
-        ("TIA", 0.0089),
-        ("STARS", 0.0162),
-        ("Q_ATOM", 0.0113),
-        ("NTRN", 0.0101),
-        ("DYDX", 0.0100),
-        ("INJ", 0.0052),
-        ("STRD", 0.0108),
-        ("MILK_TIA", 0.0108),
-        ("ST_TIA", 0.0108),
-        ("DYM", 0.0041),
-        ("JKL", 0.0108),
-        ("LVN", 0.0067),
-        ("PICA", 0.0102),
-        ("CUDOS", 0.0101),
-        ("USDC", 0.0098),
-        ("USDC_NOBLE", 0.0098),
-        ("USDC_AXELAR", 0.0098),
-        ("D_ATOM", 0.0097),
-        ("QSR", 0.0097),
-        ("ALL_SOL", 0.0097),
-        ("ALL_BTC", 0.0097),
-    ];
+async fn ls_loan_amnt_task(state: &Arc<State>) -> Result<(), Error> {
+    let ls: Vec<String> =
+        File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/leases.json"))
+            .map_err(Error::from)
+            .and_then(|file| {
+                serde_json::from_reader(BufReader::new(file))
+                    .map_err(Error::from)
+            })?;
 
-    let mut hash = HashMap::new();
-
-    for c in data {
-        hash.insert(c.0, c);
-    }
-
-    let dir = env!("CARGO_MANIFEST_DIR");
-    let data = fs::read_to_string(format!("{}/leases.json", dir))?;
-    let ls: Vec<String> = serde_json::from_str(&data)?;
-
-    let leases = state
-        .database
-        .ls_opening
-        .get_leases_data(ls.clone())
-        .await?;
-
-    let mut tasks = vec![];
-    let max_tasks = state.config.max_tasks;
-
-    for lease in leases {
-        tasks.push(ls_loan_amnt_proceed(state.clone(), lease, hash.clone()));
-    }
-
-    while !tasks.is_empty() {
-        let mut st = JoinSet::new();
-        let range = if tasks.len() > max_tasks {
-            max_tasks
-        } else {
-            tasks.len()
-        };
-
-        for _t in 0..range {
-            if let Some(item) = tasks.pop() {
-                st.spawn(item);
-            }
-        }
-
-        while let Some(item) = st.join_next().await {
-            item??;
-        }
-    }
-
-    Ok(())
+    try_join_with_capacity(
+        state
+            .database
+            .ls_opening
+            .get_leases_data(&ls)
+            .await?
+            .into_iter()
+            .map(|lease| ls_loan_amnt_proceed(state.clone(), lease, &TAXES))
+            .fuse(),
+        state.config.max_tasks,
+    )
+    .await
 }
 
 async fn ls_loan_amnt_proceed(
-    state: AppState<State>,
+    state: Arc<State>,
     mut lease: LS_Opening,
-    hash: HashMap<&str, (&str, f64)>,
+    hash: &BTreeMap<&str, BigDecimal>,
 ) -> Result<(), Error> {
     let lpn_currency = state.get_currency_by_pool_id(&lease.LS_loan_pool_id)?;
 
@@ -122,91 +120,78 @@ async fn ls_loan_amnt_proceed(
         .get(&lease.LS_asset_symbol)
         .context(format!("currency not found {}", &lease.LS_cltr_symbol))?;
 
-    let loan = &lease.LS_cltr_amnt_stable
-        / BigDecimal::from(u64::pow(10, ctrl_currency.1.try_into()?))
-        + &lease.LS_loan_amnt_stable
-            / BigDecimal::from(u64::pow(10, lpn_currency.1.try_into()?));
+    let mut loan = (&lease.LS_cltr_amnt_stable
+        * BigDecimal::new(BigInt::one(), ctrl_currency.exponent.into()))
+        + (&lease.LS_loan_amnt_stable
+            / BigDecimal::new(BigInt::one(), lpn_currency.exponent.into()));
 
     let protocol = state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
 
-    let (price,) = state
+    let price = state
         .database
         .mp_asset
         .get_price_by_date(
-            &lease_currency.0,
-            protocol.to_owned(),
-            &lease.LS_timestamp,
+            &lease_currency.denominator,
+            protocol,
+            lease.LS_timestamp,
         )
         .await?;
-    let taxes = hash.get(lease_currency.0.as_str()).context(format!(
-        "could not get &lease_currency.0 {}",
-        &lease_currency.0
-    ))?;
-    let loan = (&loan - &loan * BigDecimal::try_from(taxes.1)?).round(0);
-    let total = (loan / price
-        * BigDecimal::from(u64::pow(10, lease_currency.1.try_into()?)))
-    .round(0);
 
-    let total = (total).round(0);
-    lease.LS_loan_amnt = total;
+    let taxes = hash.get(&lease_currency.denominator).context(format!(
+        "could not get &lease_currency.0 {}",
+        lease_currency.denominator
+    ))?;
+
+    loan *= BigDecimal::one() - taxes;
+
+    loan = loan.round(0);
+
+    let currency_exponent =
+        BigDecimal::new(BigInt::one(), lease_currency.exponent.into());
+
     state
         .database
         .ls_opening
-        .update_ls_loan_amnt(&lease)
-        .await?;
-
-    Ok(())
+        .update_ls_loan_amount(
+            &lease.LS_contract_id,
+            &(loan / (price * currency_exponent)).round(0),
+        )
+        .await
+        .map_err(From::from)
 }
 
 #[get("/update/v3/ls_lpn_loan_amnt")]
-async fn ls_lpn_loan_amnt(
-    state: web::Data<AppState<State>>,
-) -> Result<impl Responder, Error> {
-    ls_lpn_loan_amnt_task(state.as_ref().clone()).await?;
-    Ok(web::Json(Response { result: true }))
+async fn ls_lpn_loan_amnt(state: Data<State>) -> Result<impl Responder, Error> {
+    ls_lpn_loan_amnt_task(&state)
+        .await
+        .map(|()| const { Json(Response { result: true }) })
 }
 
-async fn ls_lpn_loan_amnt_task(state: AppState<State>) -> Result<(), Error> {
-    let dir = env!("CARGO_MANIFEST_DIR");
-    let data = fs::read_to_string(format!("{}/leases.json", dir))?;
-    let ls: Vec<String> = serde_json::from_str(&data)?;
+async fn ls_lpn_loan_amnt_task(state: &Arc<State>) -> Result<(), Error> {
+    let ls: Vec<String> =
+        File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/leases.json"))
+            .map_err(From::from)
+            .and_then(serde_json::from_reader)
+            .map_err(From::from)?;
 
-    let leases = state
+    state
         .database
         .ls_opening
-        .get_leases_data(ls.clone())
-        .await?;
-
-    let mut tasks = vec![];
-    let max_tasks = state.config.max_tasks;
-
-    for lease in leases {
-        tasks.push(ls_lpn_loan_amnt_proceed(state.clone(), lease));
-    }
-
-    while !tasks.is_empty() {
-        let mut st = JoinSet::new();
-        let range = if tasks.len() > max_tasks {
-            max_tasks
-        } else {
-            tasks.len()
-        };
-
-        for _t in 0..range {
-            if let Some(item) = tasks.pop() {
-                st.spawn(item);
-            }
-        }
-
-        while let Some(item) = st.join_next().await {
-            item??;
-        }
-    }
-    Ok(())
+        .get_leases_data(ls)
+        .await
+        .map_err(From::from)
+        .and_then(|leases| {
+            try_join_with_capacity(
+                leases.into_iter().map(|lease| {
+                    ls_lpn_loan_amnt_proceed(state.clone(), lease)
+                }),
+                state.config.max_tasks,
+            )
+        })
 }
 
 async fn ls_lpn_loan_amnt_proceed(
-    state: AppState<State>,
+    state: Arc<State>,
     mut lease: LS_Opening,
 ) -> Result<(), Error> {
     let protocol = state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
@@ -218,34 +203,33 @@ async fn ls_lpn_loan_amnt_proceed(
         .get(&lease.LS_asset_symbol)
         .context(format!("currency not found {}", &lease.LS_cltr_symbol))?;
 
-    let f1 = state.database.mp_asset.get_price_by_date(
-        &lpn_currency.0,
-        protocol.to_owned(),
-        &lease.LS_timestamp,
+    let lpn_price = state.database.mp_asset.get_price_by_date(
+        &lpn_currency.denominator,
+        protocol,
+        lease.LS_timestamp,
     );
 
-    let f2 = state.database.mp_asset.get_price_by_date(
-        &lease_currency.0,
-        protocol.to_owned(),
-        &lease.LS_timestamp,
+    let lease_currency_price = state.database.mp_asset.get_price_by_date(
+        &lease_currency.denominator,
+        protocol,
+        lease.LS_timestamp,
     );
 
-    let (lpn_price, lease_currency_price) = tokio::try_join!(f1, f2)?;
-    let (lpn_price,) = lpn_price;
-    let (lease_currency_price,) = lease_currency_price;
-
-    lease.LS_lpn_loan_amnt =
-        &lease.LS_loan_amnt * lease_currency_price / lpn_price;
+    let (lpn_price, lease_currency_price) =
+        tokio::try_join!(lpn_price, lease_currency_price)?;
 
     state
         .database
         .ls_opening
-        .update_ls_lpn_loan_amnt(&lease)
-        .await?;
-    Ok(())
+        .update_ls_lpn_loan_amount(
+            &lease.LS_contract_id,
+            &((&lease.LS_loan_amnt * lease_currency_price) / lpn_price),
+        )
+        .await
+        .map_err(From::from)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct Response {
     pub result: bool,
 }

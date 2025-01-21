@@ -1,105 +1,128 @@
-use super::{DataBase, QueryResult};
-use crate::model::{TR_State, Table};
+use std::iter;
+
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
-use std::str::FromStr;
+
+use crate::model::{TR_State, Table};
 
 impl Table<TR_State> {
-    pub async fn insert(&self, data: TR_State) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "TR_State" ("TR_timestamp", "TR_amnt_stable", "TR_amnt_nls")
-            VALUES($1, $2, $3)
-            "#,
+    pub async fn insert(
+        &self,
+        &TR_State {
+            TR_timestamp,
+            ref TR_amnt_stable,
+            ref TR_amnt_nls,
+        }: &TR_State,
+    ) -> Result<(), Error> {
+        const SQL: &'static str = r#"
+        INSERT INTO "TR_State" (
+            "TR_timestamp",
+            "TR_amnt_stable",
+            "TR_amnt_nls"
         )
-        .bind(data.TR_timestamp)
-        .bind(&data.TR_amnt_stable)
-        .bind(&data.TR_amnt_nls)
-        .execute(&self.pool)
-        .await
+        VALUES ($1, $2, $3)
+        "#;
+
+        sqlx::query(SQL)
+            .bind(TR_timestamp)
+            .bind(TR_amnt_stable)
+            .bind(TR_amnt_nls)
+            .execute(&self.pool)
+            .await
+            .map(drop)
     }
 
-    pub async fn insert_many(&self, data: &Vec<TR_State>) -> Result<(), Error> {
-        if data.is_empty() {
+    pub async fn insert_many<'r, T>(&self, data: T) -> Result<(), Error>
+    where
+        T: IntoIterator<Item = &'r TR_State>,
+    {
+        const SQL: &str = r#"
+        INSERT INTO "TR_State" (
+            "TR_timestamp", 
+            "TR_amnt_stable", 
+            "TR_amnt_nls"
+        )
+        "#;
+
+        let mut iter = data.into_iter();
+
+        let Some(first) = iter.next() else {
             return Ok(());
-        }
+        };
 
-        let mut query_builder: QueryBuilder<DataBase> = QueryBuilder::new(
-            r#"
-            INSERT INTO "TR_State" (
-                "TR_timestamp", 
-                "TR_amnt_stable", 
-                "TR_amnt_nls"
-            )"#,
-        );
-
-        query_builder.push_values(data, |mut b, data| {
-            b.push_bind(data.TR_timestamp)
-                .push_bind(&data.TR_amnt_stable)
-                .push_bind(&data.TR_amnt_nls);
-        });
-
-        let query = query_builder.build();
-        query.execute(&self.pool).await?;
-        Ok(())
+        QueryBuilder::new(SQL)
+            .push_values(
+                iter::once(first).chain(iter),
+                |mut b,
+                 &TR_State {
+                     TR_timestamp,
+                     ref TR_amnt_stable,
+                     ref TR_amnt_nls,
+                 }| {
+                    b.push_bind(TR_timestamp)
+                        .push_bind(TR_amnt_stable)
+                        .push_bind(TR_amnt_nls);
+                },
+            )
+            .build()
+            .execute(&self.pool)
+            .await
+            .map(drop)
     }
 
     pub async fn get_amnt_stable(
         &self,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<BigDecimal, crate::error::Error> {
-        let value: (Option<BigDecimal>,) = sqlx::query_as(
-            r#"
-            SELECT 
-                SUM("TR_amnt_stable")
-            FROM "TR_State" WHERE "TR_timestamp" > $1 AND "TR_timestamp" <= $2
-            "#,
-        )
-        .bind(from)
-        .bind(to)
-        .fetch_one(&self.pool)
-        .await?;
-        let (amnt,) = value;
-        let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
+    ) -> Result<BigDecimal, Error> {
+        const SQL: &str = r#"
+        SELECT COALESCE(SUM("TR_amnt_stable"), 0)
+        FROM "TR_State"
+        WHERE
+            "TR_timestamp" > $1 AND
+            "TR_timestamp" <= $2
+        "#;
 
-        Ok(amnt)
+        sqlx::query_as(SQL)
+            .bind(from)
+            .bind(to)
+            .fetch_one(&self.pool)
+            .await
+            .map(|(result,)| result)
     }
 
     pub async fn get_amnt_nls(
         &self,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<BigDecimal, crate::error::Error> {
-        let value: (Option<BigDecimal>,) = sqlx::query_as(
-            r#"
-            SELECT 
-                SUM("TR_amnt_nls")
-            FROM "TR_State" WHERE "TR_timestamp" > $1 AND "TR_timestamp" <= $2
-            "#,
-        )
-        .bind(from)
-        .bind(to)
-        .fetch_one(&self.pool)
-        .await?;
-        let (amnt,) = value;
-        let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
+    ) -> Result<BigDecimal, Error> {
+        const SQL: &str = r#"
+        SELECT COALESCE(SUM("TR_amnt_nls"), 0)
+        FROM "TR_State"
+        WHERE
+            "TR_timestamp" > $1 AND
+            "TR_timestamp" <= $2
+        "#;
 
-        Ok(amnt)
+        sqlx::query_as(SQL)
+            .bind(from)
+            .bind(to)
+            .fetch_one(&self.pool)
+            .await
+            .map(|(result,)| result)
     }
 
-    pub async fn get_incentives_pool(
-        &self,
-    ) -> Result<BigDecimal, crate::error::Error> {
-        let value: Option<(BigDecimal,)>   = sqlx::query_as(
-            r#"
-                SELECT "TR_amnt_nls" / 1000000 AS "Incentives Pool" FROM "TR_State" ORDER BY "TR_timestamp" DESC LIMIT 1
-            "#,
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
+    pub async fn get_incentives_pool(&self) -> Result<BigDecimal, Error> {
+        const SQL: &str = r#"
+        SELECT "TR_amnt_nls" / 1000000 AS "Incentives Pool"
+        FROM "TR_State"
+        ORDER BY "TR_timestamp" DESC
+        LIMIT 1
+        "#;
 
-        Ok(amnt.0)
+        sqlx::query_as(SQL)
+            .fetch_one(&self.pool)
+            .await
+            .map(|(result,)| result)
     }
 }

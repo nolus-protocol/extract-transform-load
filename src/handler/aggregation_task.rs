@@ -1,91 +1,69 @@
+use std::sync::Arc;
+
 use chrono::{DateTime, Utc};
-use std::vec;
-use tokio::task::JoinHandle;
+use tokio::try_join;
 
 use crate::{
-    configuration::{AppState, State},
+    configuration::State,
     error::Error,
-    model::Action_History,
-    model::{Actions, Table},
+    model::{Action_History, Actions, Table},
 };
 
-use super::cache_state;
-use super::{lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state};
+use super::{
+    cache_state, lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state,
+};
 
-pub fn aggregation_task(
-    app_state: AppState<State>,
-) -> JoinHandle<Result<(), Error>> {
-    tokio::spawn(async move {
-        let timestsamp = Utc::now();
-        let action = app_state
-            .database
-            .action_history
-            .get_last_by_type(Actions::AggregationAction.to_string())
-            .await;
+pub async fn aggregation_task(app_state: Arc<State>) -> Result<(), Error> {
+    let timestamp = Utc::now();
 
-        let last_action_timestamp = match action {
-            Ok(action) => match action {
-                Some(item) => item.created_at,
-                None => Utc::now(),
-            },
-            Err(_) => Utc::now(),
-        };
+    let last_action_timestamp = app_state
+        .database
+        .action_history
+        .get_last_by_type(Actions::AggregationAction)
+        .await?
+        .map_or_else(Utc::now, |item| item.created_at);
 
-        let prev_action = app_state
-            .database
-            .action_history
-            .get_last_by_type_before(
-                Actions::AggregationAction.to_string(),
-                last_action_timestamp,
-            )
-            .await;
-
-        let prev_action_timestamp = match prev_action {
-            Ok(action) => match action {
-                Some(item) => item.created_at,
-                None => Utc::now(),
-            },
-            Err(_) => Utc::now(),
-        };
-
-        insert_action(&app_state.database.action_history, timestsamp).await?;
-
-        let joins = vec![
-            ls_state::start_task(app_state.clone(), timestsamp),
-            lp_lender_state::start_task(app_state.clone(), timestsamp),
-            lp_pool_state::start_task(app_state.clone(), timestsamp),
-            tr_state::start_task(app_state.clone(), timestsamp),
-        ];
-
-        for j in joins {
-            j.await??
-        }
-
-        if let Err(error) = pl_state::start_task(
-            app_state.clone(),
-            prev_action_timestamp,
+    let prev_action_timestamp = app_state
+        .database
+        .action_history
+        .get_last_by_type_before(
+            Actions::AggregationAction,
             last_action_timestamp,
-            timestsamp,
         )
         .await?
-        {
-            return Err(Error::ServerError(error.to_string()));
-        };
+        .map_or_else(Utc::now, |action_history| action_history.created_at);
 
-        cache_state::set_total_value_locked(app_state.clone()).await?;
+    insert_action(&app_state.database.action_history, timestamp).await?;
 
-        Ok(())
-    })
+    let ((), (), (), ()) = try_join!(
+        ls_state::parse_and_insert(app_state.clone(), timestamp),
+        lp_lender_state::parse_and_insert(app_state.clone(), timestamp),
+        lp_pool_state::parse_and_insert(app_state.clone(), timestamp),
+        tr_state::parse_and_insert(app_state.clone(), timestamp),
+    )?;
+
+    pl_state::parse_and_insert(
+        app_state.clone(),
+        prev_action_timestamp,
+        last_action_timestamp,
+        timestamp,
+    )
+    .await?;
+
+    cache_state::set_total_value_locked(app_state).await?;
+
+    Ok(())
 }
 
 async fn insert_action(
     action_model: &Table<Action_History>,
-    timestamp: DateTime<Utc>,
+    created_at: DateTime<Utc>,
 ) -> Result<(), Error> {
-    let action = Action_History {
-        action_type: Actions::AggregationAction.to_string(),
-        created_at: timestamp,
-    };
-    action_model.insert(action).await?;
-    Ok(())
+    action_model
+        .insert(Action_History {
+            action_type: Actions::AggregationAction,
+            created_at,
+        })
+        .await
+        .map_err(From::from)
 }

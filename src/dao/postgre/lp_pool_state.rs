@@ -1,258 +1,292 @@
-use super::{DataBase, QueryResult};
+use std::iter;
+
+use chrono::{DateTime, Utc};
+use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
+
 use crate::{
+    custom_uint::UInt63,
     model::{
         LP_Pool_State, Supplied_Borrowed_Series, Table, Utilization_Level,
     },
     types::Max_LP_Ratio,
 };
-use chrono::{DateTime, Utc};
-use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
-use std::str::FromStr;
 
 impl Table<LP_Pool_State> {
     pub async fn insert(
         &self,
-        data: LP_Pool_State,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "LP_Pool_State" (
-                "LP_Pool_id",
-                "LP_Pool_timestamp",
-                "LP_Pool_total_value_locked_stable",
-                "LP_Pool_total_value_locked_asset",
-                "LP_Pool_total_issued_receipts",
-                "LP_Pool_total_borrowed_stable",
-                "LP_Pool_total_borrowed_asset",
-                "LP_Pool_total_yield_stable",
-                "LP_Pool_total_yield_asset",
-                "LP_Pool_min_utilization_threshold"
-            )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        "#,
+        LP_Pool_State {
+            LP_Pool_id,
+            LP_Pool_timestamp,
+            LP_Pool_total_value_locked_stable,
+            LP_Pool_total_value_locked_asset,
+            LP_Pool_total_issued_receipts,
+            LP_Pool_total_borrowed_stable,
+            LP_Pool_total_borrowed_asset,
+            LP_Pool_total_yield_stable,
+            LP_Pool_total_yield_asset,
+            LP_Pool_min_utilization_threshold: _,
+        }: &LP_Pool_State,
+    ) -> Result<(), Error> {
+        const SQL: &str = r#"
+        INSERT INTO "LP_Pool_State" (
+            "LP_Pool_id",
+            "LP_Pool_timestamp",
+            "LP_Pool_total_value_locked_stable",
+            "LP_Pool_total_value_locked_asset",
+            "LP_Pool_total_issued_receipts",
+            "LP_Pool_total_borrowed_stable",
+            "LP_Pool_total_borrowed_asset",
+            "LP_Pool_total_yield_stable",
+            "LP_Pool_total_yield_asset",
+            "LP_Pool_min_utilization_threshold"
         )
-        .bind(&data.LP_Pool_id)
-        .bind(data.LP_Pool_timestamp)
-        .bind(&data.LP_Pool_total_value_locked_stable)
-        .bind(&data.LP_Pool_total_value_locked_asset)
-        .bind(&data.LP_Pool_total_issued_receipts)
-        .bind(&data.LP_Pool_total_borrowed_stable)
-        .bind(&data.LP_Pool_total_borrowed_asset)
-        .bind(&data.LP_Pool_total_yield_stable)
-        .bind(&data.LP_Pool_total_yield_asset)
-        .execute(&self.pool)
-        .await
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, DEFAULT)
+        "#;
+
+        sqlx::query(SQL)
+            .bind(LP_Pool_id)
+            .bind(LP_Pool_timestamp)
+            .bind(LP_Pool_total_value_locked_stable)
+            .bind(LP_Pool_total_value_locked_asset)
+            .bind(LP_Pool_total_issued_receipts)
+            .bind(LP_Pool_total_borrowed_stable)
+            .bind(LP_Pool_total_borrowed_asset)
+            .bind(LP_Pool_total_yield_stable)
+            .bind(LP_Pool_total_yield_asset)
+            // // FIXME ADDED LINE !!!
+            // .bind(LP_Pool_min_utilization_threshold)
+            .execute(&self.pool)
+            .await
+            .map(drop)
     }
 
-    pub async fn insert_many(
-        &self,
-        data: &Vec<LP_Pool_State>,
-    ) -> Result<(), Error> {
-        if data.is_empty() {
+    pub async fn insert_many<'r, T>(&self, data: T) -> Result<(), Error>
+    where
+        T: IntoIterator<Item = &'r LP_Pool_State>,
+    {
+        const SQL: &str = r#"
+        INSERT INTO "LP_Pool_State" (
+            "LP_Pool_id",
+            "LP_Pool_timestamp",
+            "LP_Pool_total_value_locked_stable",
+            "LP_Pool_total_value_locked_asset",
+            "LP_Pool_total_issued_receipts",
+            "LP_Pool_total_borrowed_stable",
+            "LP_Pool_total_borrowed_asset",
+            "LP_Pool_total_yield_stable",
+            "LP_Pool_total_yield_asset",
+            "LP_Pool_min_utilization_threshold"
+        )
+        "#;
+
+        let mut iter = data.into_iter();
+
+        let Some(first) = iter.next() else {
             return Ok(());
-        }
+        };
 
-        let mut query_builder: QueryBuilder<DataBase> = QueryBuilder::new(
-            r#"
-            INSERT INTO "LP_Pool_State" (
-                "LP_Pool_id",
-                "LP_Pool_timestamp",
-                "LP_Pool_total_value_locked_stable",
-                "LP_Pool_total_value_locked_asset",
-                "LP_Pool_total_issued_receipts",
-                "LP_Pool_total_borrowed_stable",
-                "LP_Pool_total_borrowed_asset",
-                "LP_Pool_total_yield_stable",
-                "LP_Pool_total_yield_asset",
-                "LP_Pool_min_utilization_threshold"
-            )"#,
-        );
-
-        query_builder.push_values(data, |mut b, data| {
-            b.push_bind(&data.LP_Pool_id)
-                .push_bind(data.LP_Pool_timestamp)
-                .push_bind(&data.LP_Pool_total_value_locked_stable)
-                .push_bind(&data.LP_Pool_total_value_locked_asset)
-                .push_bind(&data.LP_Pool_total_issued_receipts)
-                .push_bind(&data.LP_Pool_total_borrowed_stable)
-                .push_bind(&data.LP_Pool_total_borrowed_asset)
-                .push_bind(&data.LP_Pool_total_yield_stable)
-                .push_bind(&data.LP_Pool_total_yield_asset)
-                .push_bind(&data.LP_Pool_min_utilization_threshold);
-        });
-
-        let query = query_builder.build();
-        query.execute(&self.pool).await?;
-        Ok(())
+        QueryBuilder::new(SQL)
+            .push_values(
+                iter::once(first).map(iter),
+                |mut b,
+                 &LP_Pool_State {
+                     ref LP_Pool_id,
+                     LP_Pool_timestamp,
+                     ref LP_Pool_total_value_locked_stable,
+                     ref LP_Pool_total_value_locked_asset,
+                     ref LP_Pool_total_issued_receipts,
+                     ref LP_Pool_total_borrowed_stable,
+                     ref LP_Pool_total_borrowed_asset,
+                     ref LP_Pool_total_yield_stable,
+                     ref LP_Pool_total_yield_asset,
+                     ref LP_Pool_min_utilization_threshold,
+                 }| {
+                    b.push_bind(LP_Pool_id)
+                        .push_bind(LP_Pool_timestamp)
+                        .push_bind(LP_Pool_total_value_locked_stable)
+                        .push_bind(LP_Pool_total_value_locked_asset)
+                        .push_bind(LP_Pool_total_issued_receipts)
+                        .push_bind(LP_Pool_total_borrowed_stable)
+                        .push_bind(LP_Pool_total_borrowed_asset)
+                        .push_bind(LP_Pool_total_yield_stable)
+                        .push_bind(LP_Pool_total_yield_asset)
+                        .push_bind(LP_Pool_min_utilization_threshold);
+                },
+            )
+            .build()
+            .execute(&self.pool)
+            .await
+            .map(drop)
     }
 
     pub async fn get_total_value_locked_stable(
         &self,
         datetime: DateTime<Utc>,
-    ) -> Result<(BigDecimal, BigDecimal, BigDecimal), crate::error::Error> {
-        let value: (
-            Option<BigDecimal>,
-            Option<BigDecimal>,
-            Option<BigDecimal>,
-        ) = sqlx::query_as(
-            r#"
-            SELECT 
-                SUM("LP_Pool_total_value_locked_stable"),
-                SUM("LP_Pool_total_borrowed_stable"),
-                SUM("LP_Pool_total_yield_stable") 
-            FROM "LP_Pool_State" WHERE "LP_Pool_timestamp" = $1
-            "#,
-        )
-        .bind(datetime)
-        .fetch_one(&self.pool)
-        .await?;
-        let (locked, borrowed, yield_amount) = value;
-        let locked = locked.unwrap_or(BigDecimal::from_str("0")?);
-        let borrowed = borrowed.unwrap_or(BigDecimal::from_str("0")?);
-        let yield_amount = yield_amount.unwrap_or(BigDecimal::from_str("0")?);
+    ) -> Result<(BigDecimal, BigDecimal, BigDecimal), Error> {
+        const SQL: &str = r#"
+        SELECT
+            COALESCE(SUM("LP_Pool_total_value_locked_stable"), 0),
+            COALESCE(SUM("LP_Pool_total_borrowed_stable"), 0),
+            COALESCE(SUM("LP_Pool_total_yield_stable", 0))
+        FROM "LP_Pool_State"
+        WHERE "LP_Pool_timestamp" = $1
+        "#;
 
-        Ok((locked, borrowed, yield_amount))
+        sqlx::query_as(SQL)
+            .bind(datetime)
+            .fetch_one(&self.pool)
+            .await
     }
 
     pub async fn get_supplied_borrowed_series(
         &self,
-        protocol: String,
+        protocol: &str,
     ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
-        let data = sqlx::query_as(
-            r#"
-            SELECT 
-                "LP_Pool_State"."LP_Pool_timestamp", 
-                SUM(CASE 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000 
-                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000 
-                END) AS "Supplied", 
-                SUM(CASE 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000 
-                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000 
-                END) AS "Borrowed" 
-            FROM
-                "LP_Pool_State"
-            WHERE "LP_Pool_State"."LP_Pool_id" = $1
-            GROUP BY 
-                "LP_Pool_State"."LP_Pool_timestamp"
-            ORDER BY 
-                "LP_Pool_State"."LP_Pool_timestamp" DESC
-            "#,
-        )
-        .bind(protocol)
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(data)
+        const SQL: &str = r#"
+        SELECT
+            "LP_Pool_State"."LP_Pool_timestamp",
+            SUM(
+                CASE 
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
+                END
+            ) AS "Supplied",
+            SUM(
+                CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
+                END
+            ) AS "Borrowed"
+        FROM "LP_Pool_State"
+        WHERE "LP_Pool_State"."LP_Pool_id" = $1
+        GROUP BY "LP_Pool_State"."LP_Pool_timestamp"
+        ORDER BY "LP_Pool_State"."LP_Pool_timestamp" DESC
+        "#;
+
+        sqlx::query_as(SQL)
+            .bind(protocol)
+            .fetch_all(&self.pool)
+            .await
     }
 
-    pub async fn get_supplied_borrowed_series_total(
+    pub async fn get_supplied_borrowed_series_total<'r, I, T>(
         &self,
-        protocols: Vec<String>,
-    ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
-        let mut params = String::from("$1");
+        protocols: I,
+    ) -> Result<Vec<Supplied_Borrowed_Series>, Error>
+    where
+        I: IntoIterator<Item = &'r T>,
+        T: AsRef<str> + ?Sized + 'r,
+    {
+        const BEFORE_BINDS: &str = r#"
+        SELECT
+            "LP_Pool_State"."LP_Pool_timestamp",
+            SUM(
+                CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
+                END
+            ) AS "Supplied",
+            SUM(
+                CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
+                END
+            ) AS "Borrowed"
+        FROM "LP_Pool_State"
+        WHERE "LP_Pool_State"."LP_Pool_id" IN (
+        "#;
 
-        for i in 1..protocols.len() {
-            params += &format!(", ${}", i + 1);
-        }
+        const AFTER_BINDS: &str = r#"
+        )
+        GROUP BY "LP_Pool_State"."LP_Pool_timestamp"
+        ORDER BY "LP_Pool_State"."LP_Pool_timestamp" DESC
+        "#;
 
-        let query_str = format!(
-            r#"
-            SELECT 
-                "LP_Pool_State"."LP_Pool_timestamp", 
-                SUM(CASE 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000 
-                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000 
-                END) AS "Supplied", 
-                SUM(CASE 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000 
-                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000 
-                END) AS "Borrowed" 
-            FROM
-                "LP_Pool_State"
-            WHERE "LP_Pool_State"."LP_Pool_id" IN ({})
-            GROUP BY 
-                "LP_Pool_State"."LP_Pool_timestamp"
-            ORDER BY 
-                "LP_Pool_State"."LP_Pool_timestamp" DESC
-            "#,
-            params
-        );
+        let mut iter = protocols.into_iter();
 
-        let mut query: sqlx::query::QueryAs<'_, _, _, _> =
-            sqlx::query_as(&query_str);
+        let Some(first) = iter.next() else {
+            return Ok(vec![]);
+        };
 
-        for i in protocols {
-            query = query.bind(i);
-        }
-
-        let data = query.fetch_all(&self.pool).await?;
-        Ok(data)
+        iter::once(first)
+            .chain(iter)
+            .map(AsRef::as_ref)
+            .fold(
+                &mut QueryBuilder::new(BEFORE_BINDS),
+                QueryBuilder::push_bind,
+            )
+            .push(AFTER_BINDS)
+            .build_query_as()
+            .fetch_all(&self.pool)
+            .await
     }
 
     pub async fn get_utilization_level(
         &self,
-        protocol: String,
-        skip: i64,
-        limit: i64,
+        protocol: &str,
+        skip: UInt63,
+        limit: UInt63,
     ) -> Result<Vec<Utilization_Level>, Error> {
-        let data = sqlx::query_as(
-            r#"
-                SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable")*100 as "Utilization_Level" FROM "LP_Pool_State" WHERE "LP_Pool_id" = $1 ORDER BY "LP_Pool_timestamp" DESC OFFSET $2 LIMIT $3
-            "#,
-        )
-        .bind(protocol)
-        .bind(skip)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(data)
+        const SQL: &str = r#"
+        SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable") * 100 as "Utilization_Level"
+        FROM "LP_Pool_State"
+        WHERE "LP_Pool_id" = $1
+        ORDER BY "LP_Pool_timestamp" DESC
+        OFFSET $2
+        LIMIT $3
+        "#;
+
+        sqlx::query_as(SQL)
+            .bind(protocol)
+            .bind(skip)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
     }
 
     pub async fn get_utilization_level_old(
         &self,
-        skip: i64,
-        limit: i64,
+        skip: UInt63,
+        limit: UInt63,
     ) -> Result<Vec<Utilization_Level>, Error> {
-        let data = sqlx::query_as(
-            r#"
-                SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable")*100 as "Utilization_Level" FROM "LP_Pool_State" ORDER BY "LP_Pool_timestamp" DESC OFFSET $1 LIMIT $2
-            "#,
-        )
-        .bind(skip)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(data)
+        const SQL: &str = r#"
+        SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable") * 100 as "Utilization_Level"
+        FROM "LP_Pool_State"
+        ORDER BY "LP_Pool_timestamp" DESC
+        OFFSET $1
+        LIMIT $2
+        "#;
+
+        sqlx::query_as(SQL)
+            .bind(skip)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
     }
 
     pub async fn get_max_ls_interest_7d(
         &self,
-        lpp_address: String,
+        lpp_address: &str,
     ) -> Result<Vec<Max_LP_Ratio>, Error> {
-        let data = sqlx::query_as(
-            r#"
-                SELECT
-                    DATE("LP_Pool_timestamp") AS "date",
-                    MAX(
-                    "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
-                    ) AS "ratio"
-                FROM
-                    "LP_Pool_State"
-                WHERE
-                    "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
-                    AND "LP_Pool_id" = $1
-                GROUP BY
-                    "date"
-                ORDER BY "date" DESC
-            "#,
-        )
-        .bind(lpp_address)
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(data)
+        const SQL: &'static str = r#"
+        SELECT
+            DATE("LP_Pool_timestamp") AS "date",
+            MAX("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable") AS "ratio"
+        FROM "LP_Pool_State"
+        WHERE
+            "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days' AND
+            "LP_Pool_id" = $1
+        GROUP BY "date"
+        ORDER BY "date" DESC
+        "#;
+
+        sqlx::query_as(SQL)
+            .bind(lpp_address)
+            .fetch_all(&self.pool)
+            .await
     }
 }

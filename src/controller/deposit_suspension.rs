@@ -1,15 +1,18 @@
-use crate::error::Error;
-use actix_web::{get, web, Responder, Result};
-use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
+
+use actix_web::{get, web::Json, Responder};
+use serde::Serialize;
 
 #[get("/deposit-suspension")]
-async fn index() -> Result<impl Responder, Error> {
-    Ok(web::Json(Response {
-        deposit_suspension: String::from("65.00"),
-    }))
+async fn index() -> Result<impl Responder, Infallible> {
+    const {
+        Ok(Json(Response {
+            deposit_suspension: "65.00",
+        }))
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct Response {
-    pub deposit_suspension: String,
+    pub deposit_suspension: &'static str,
 }

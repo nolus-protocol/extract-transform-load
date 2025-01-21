@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use actix_cors::Cors;
 use actix_files::Files;
 use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
 
 use crate::{
-    configuration::{AppState, State},
+    configuration::State,
     controller::{
         blocks, borrow_apr, borrowed, buyback, buyback_total,
         deposit_suspension, distributed, earn_apr, incentives_pool,
@@ -15,22 +17,19 @@ use crate::{
     error::Error,
 };
 
-pub async fn server_task(app_state: &AppState<State>) -> Result<(), Error> {
-    let app = app_state.clone();
-    tokio::spawn(async move {
-        let server = init_server(app)?;
-        server.await?;
-        Ok(())
-    })
-    .await?
+pub async fn server_task(app_state: Arc<State>) -> Result<(), Error> {
+    tokio::spawn(init_server(app_state)?)
+        .await?
+        .map_err(From::from)
 }
 
-fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
+fn init_server(app_state: Arc<State>) -> Result<Server, Error> {
     let host = app_state.config.server_host.to_owned();
     let port = app_state.config.port;
 
     let server = HttpServer::new(move || {
-        let app = app_state.clone();
+        let app_state = web::Data::new(app_state);
+        let app = (*app_state).clone();
         let static_dir = app_state.config.static_dir.to_owned();
         let allowed_cors = String::from("*");
         let cors_access_all =
@@ -53,7 +52,7 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
         App::new()
             .wrap(cors)
             .wrap(middleware::Compress::default())
-            .app_data(web::Data::new(app_state.clone()))
+            .app_data(app_state)
             .app_data(web::JsonConfig::default().limit(4096))
             .service(
                 web::scope("/api")

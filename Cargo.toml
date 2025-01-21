@@ -49,15 +49,15 @@ tonic = { version = "0.12", default-features = false, features = [
 ] }
 
 chrono = { version = "0.4", features = ["serde"] }
-cosmos-sdk-proto = { version = "0.26", features = ["cosmwasm", "grpc-transport",] }
-prost = { version = "0.13", features = ["derive",] }
+cosmos-sdk-proto = { version = "0.26", features = ["cosmwasm", "grpc-transport", ] }
+prost = { version = "0.13", features = ["derive", ] }
 bigdecimal = { version = "0.4", features = ["serde"] }
 tendermint-rpc = { version = "0.40", features = ["websocket-client"] }
 
 url = "2.5"
 base64 = "0.22"
 thiserror = "2.0"
-tracing = "0.1"
+tracing = { version = "0.1", features = ["max_level_debug", "release_max_level_info"] }
 tracing-subscriber = "0.3"
 anyhow = "1.0"
 sha256 = "1.5.0"

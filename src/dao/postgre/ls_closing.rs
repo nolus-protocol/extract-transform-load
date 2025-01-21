@@ -1,94 +1,116 @@
-use super::{DataBase, QueryResult};
-use crate::model::{LS_Closing, Table};
+use std::iter;
+
 use chrono::{DateTime, Utc};
 use sqlx::{error::Error, QueryBuilder, Transaction};
 
+use crate::{
+    custom_uint::UInt63,
+    model::{LS_Closing, Table},
+};
+
+use super::DataBase;
+
 impl Table<LS_Closing> {
-    pub async fn isExists(
-        &self,
-        ls_closing: &LS_Closing,
-    ) -> Result<bool, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT 
-                COUNT(*)
-            FROM "LS_Closing" 
-            WHERE 
-                "LS_contract_id" = $1       
-            "#,
-        )
-        .bind(&ls_closing.LS_contract_id)
-        .fetch_one(&self.pool)
-        .await?;
+    pub async fn isExists(&self, contract_id: &str) -> Result<bool, Error> {
+        const SQL: &str = r#"
+        SELECT COUNT(1) > 0
+        FROM "LS_Closing"
+        WHERE "LS_contract_id" = $1
+        "#;
 
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
+        sqlx::query_as(SQL)
+            .bind(contract_id)
+            .fetch_one(&self.pool)
+            .await
+            .map(|(result,)| result)
     }
+
     pub async fn insert(
         &self,
-        data: LS_Closing,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "LS_Closing" ("LS_contract_id", "LS_timestamp", "Tx_Hash")
-            VALUES($1, $2, $3)
-        "#,
-        )
-        .bind(&data.LS_contract_id)
-        .bind(data.LS_timestamp)
-        .bind(data.Tx_Hash)
-
-        .execute(&mut **transaction)
-        .await
-    }
-
-    pub async fn insert_many(
-        &self,
-        data: &Vec<LS_Closing>,
+        &LS_Closing {
+            ref Tx_Hash,
+            ref LS_contract_id,
+            LS_timestamp,
+        }: &LS_Closing,
         transaction: &mut Transaction<'_, DataBase>,
     ) -> Result<(), Error> {
-        if data.is_empty() {
+        const SQL: &str = r#"
+        INSERT INTO "LS_Closing" (
+            "Tx_Hash",
+            "LS_contract_id",
+            "LS_timestamp"
+        )
+        VALUES ($1, $2, $3)
+        "#;
+
+        sqlx::query_as(SQL)
+            .bind(Tx_Hash)
+            .bind(LS_contract_id)
+            .bind(LS_timestamp)
+            .execute(&mut **transaction)
+            .await
+    }
+
+    pub async fn insert_many<'r, T>(
+        &self,
+        data: T,
+        transaction: &mut Transaction<'_, DataBase>,
+    ) -> Result<(), Error>
+    where
+        T: Iterator<Item = &'r LS_Closing>,
+    {
+        const SQL: &str = r#"
+        INSERT INTO "LS_Closing" (
+            "Tx_Hash",
+            "LS_contract_id",
+            "LS_timestamp"
+        )
+        "#;
+
+        let mut iter = data.iter();
+
+        let Some(first) = iter.next() else {
             return Ok(());
-        }
+        };
 
-        let mut query_builder: QueryBuilder<DataBase> = QueryBuilder::new(
-            r#"
-            INSERT INTO "LS_Closing" (
-                "LS_contract_id", "LS_timestamp", "Tx_Hash"
-            )"#,
-        );
-
-        query_builder.push_values(data, |mut b, ls| {
-            b.push_bind(&ls.LS_contract_id)
-                .push_bind(ls.LS_timestamp)
-                .push_bind(&ls.Tx_Hash);
-        });
-
-        let query = query_builder.build();
-        query.execute(&mut **transaction).await?;
-        Ok(())
+        QueryBuilder::new(SQL)
+            .push_values(
+                iter::once(first).chain(iter),
+                |mut b,
+                 &LS_Closing {
+                     ref Tx_Hash,
+                     ref LS_contract_id,
+                     LS_timestamp,
+                 }| {
+                    b.push_bind(Tx_Hash)
+                        .push_bind(LS_contract_id)
+                        .push_bind(LS_timestamp);
+                },
+            )
+            .build()
+            .execute(&mut **transaction)
+            .await
+            .map(drop)
     }
 
     pub async fn count(
         &self,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<i64, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT 
-                COUNT(*)
-            FROM "LS_Closing" WHERE "LS_timestamp" > $1 AND "LS_timestamp" <= $2
-            "#,
-        )
-        .bind(from)
-        .bind(to)
-        .fetch_one(&self.pool)
-        .await?;
-        Ok(value)
+    ) -> Result<UInt63, Error> {
+        const SQL: &'static str = r#"
+        SELECT COUNT(1)
+        FROM "LS_Closing"
+        WHERE
+            "LS_timestamp" > $1 AND
+            "LS_timestamp" <= $2
+        "#;
+
+        sqlx::query_as(SQL)
+            .bind(from)
+            .bind(to)
+            .fetch_one(&self.pool)
+            .await
+            .map(|(result,)| result)
     }
 }

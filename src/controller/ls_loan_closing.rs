@@ -1,34 +1,42 @@
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use actix_web::{
+    get,
+    web::{Data, Json, Query},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
 use serde::Deserialize;
+
+use crate::{configuration::State, custom_uint::UInt63, error::Error};
 
 #[get("/ls-loan-closing")]
 async fn index(
-    state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    state: Data<State>,
+    Query(Arguments {
+        skip,
+        limit,
+        mut address,
+    }): Query<Arguments>,
 ) -> Result<impl Responder, Error> {
-    let skip = data.skip.unwrap_or(0);
-    let mut limit = data.limit.unwrap_or(10);
+    address.make_ascii_lowercase();
 
-    if limit > 10 {
-        limit = 10;
-    }
-
-    let items = state
+    state
         .database
         .ls_loan_closing
-        .get_leases(data.address.to_owned(), skip, limit)
-        .await?;
-
-    Ok(web::Json(items))
+        .get_leases(
+            &address,
+            skip.unwrap_or(const { UInt63::from_unsigned(0).unwrap() }),
+            limit.map_or(
+                const { UInt63::from_unsigned(10).unwrap() },
+                |limit| limit.min(const { UInt63::from_unsigned(10).unwrap() }),
+            ),
+        )
+        .await
+        .map(Json)
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Query {
-    skip: Option<i64>,
-    limit: Option<i64>,
+pub struct Arguments {
+    skip: Option<UInt63>,
+    limit: Option<UInt63>,
     address: String,
 }

@@ -1,20 +1,20 @@
-use anyhow::Context;
+use std::{collections::HashMap, str::FromStr, sync::Arc};
+
+use anyhow::Context as _;
+use bigdecimal::{num_bigint::BigInt, BigDecimal, One as _};
 use chrono::Utc;
 use futures::future::join_all;
-use sqlx::types::BigDecimal;
-use tokio::{time, time::Duration};
+use tokio::time::{self, Duration};
 use tracing::error;
 
 use crate::{
-    configuration::{AppState, State},
+    configuration::State,
     error::Error,
-    model::Actions,
-    model::{Action_History, MP_Asset},
+    model::{Action_History, Actions, MP_Asset},
 };
-use std::{collections::HashMap, str::FromStr};
 
 pub async fn fetch_insert(
-    app_state: AppState<State>,
+    app_state: &State,
     height: Option<String>,
 ) -> Result<(), Error> {
     let mut joins = vec![];
@@ -69,7 +69,7 @@ pub async fn fetch_insert(
                         .hash_map_currencies
                         .get(&price.amount.ticker)
                     {
-                        let decimals = asset.1 - lpn_decimals;
+                        let decimals = asset.exponent - lpn_decimals;
                         let mut value =
                             BigDecimal::from_str(&price.amount_quote.amount)?
                                 / BigDecimal::from_str(&price.amount.amount)?
@@ -106,7 +106,7 @@ pub async fn fetch_insert(
     app_state.database.mp_asset.insert_many(&mp_assets).await?;
 
     let action_history = Action_History {
-        action_type: Actions::MpAssetAction.to_string(),
+        action_type: Actions::MpAssetAction,
         created_at: timestamp,
     };
 
@@ -119,16 +119,16 @@ pub async fn fetch_insert(
     Ok(())
 }
 
-pub async fn mp_assets_task(app_state: AppState<State>) -> Result<(), Error> {
-    let interval: u64 = app_state.config.mp_asset_interval.into();
+pub async fn mp_assets_task(app_state: &Arc<State>) -> Result<(), Error> {
+    let mut interval = time::interval(Duration::from_secs(
+        app_state.config.mp_asset_interval.into(),
+    ));
 
-    let mut interval = time::interval(Duration::from_secs(interval));
     tokio::spawn(async move {
-        interval.tick().await;
         loop {
             interval.tick().await;
-            let app = app_state.clone();
-            if let Err(error) = fetch_insert(app, None).await {
+
+            if let Err(error) = fetch_insert(app_state.clone(), None).await {
                 error!("Task error {}", error);
             };
         }
@@ -137,7 +137,7 @@ pub async fn mp_assets_task(app_state: AppState<State>) -> Result<(), Error> {
 }
 
 pub async fn get_lpn_data(
-    app_state: AppState<State>,
+    app_state: &State,
     protocol: String,
 ) -> Result<(String, String, BigDecimal, i16), Error> {
     let prtcs = app_state
@@ -152,18 +152,15 @@ pub async fn get_lpn_data(
 
     let lpn_price = app_state
         .grpc
-        .get_stable_price(
-            prtcs.contracts.oracle.to_owned(),
-            base_currency.to_owned(),
-        )
+        .get_stable_price(prtcs.contracts.oracle.to_owned(), &base_currency)
         .await?;
 
     let lpn_decimals = app_state
         .config
         .hash_map_currencies
         .get(&base_currency)
-        .context(format!("currency not found {}", &base_currency))?
-        .1;
+        .context(format!("currency not found {base_currency}"))?
+        .exponent;
 
     let asset = app_state
         .config
@@ -171,21 +168,15 @@ pub async fn get_lpn_data(
         .get(&lpn_price.amount_quote.ticker)
         .context(format!(
             "could not find currency {}",
-            &lpn_price.amount_quote.ticker,
+            lpn_price.amount_quote.ticker,
         ))?;
 
-    let decimals = asset.1 - lpn_decimals;
-    let decimals_abs = decimals.abs();
-    let power_value = BigDecimal::from(u64::pow(10, decimals_abs.try_into()?));
-
     let mut lpn_price = BigDecimal::from_str(&lpn_price.amount_quote.amount)?
-        / BigDecimal::from_str(&lpn_price.amount.amount)?;
-
-    if decimals > 0 {
-        lpn_price = lpn_price / power_value;
-    } else {
-        lpn_price *= power_value;
-    }
+        / (BigDecimal::from_str(&lpn_price.amount.amount)?
+            * BigDecimal::new(
+                BigInt::one(),
+                i64::from(lpn_decimals) - i64::from(asset.exponent),
+            ));
 
     Ok((protocol, base_currency, lpn_price, lpn_decimals))
 }

@@ -1,58 +1,67 @@
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use std::collections::BTreeMap;
+
+use actix_web::{
+    get,
+    web::{Data, Json, Query},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
-use anyhow::Context;
+use bigdecimal::ToPrimitive;
 use chrono::{Duration, Utc};
 use serde::Deserialize;
-use std::str::FromStr;
+
+use crate::{
+    configuration::State,
+    custom_uint::{UInt63, UInt7},
+    error::Error,
+};
 
 #[get("/prices")]
 async fn index(
-    state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    state: Data<State>,
+    Query(Arguments {
+        interval,
+        protocol,
+        key,
+    }): Query<Arguments>,
 ) -> Result<impl Responder, Error> {
-    let mut interval = data.interval;
+    let interval = interval.min(const { UInt63::from_unsigned(100).unwrap() });
 
-    if interval > 100 {
-        interval = 100;
-    }
-
-    let group = getIntervalGroup(interval);
-    let date = Utc::now() - Duration::days(interval);
-
-    let data = state
+    state
         .database
         .mp_asset
-        .get_prices(data.key.to_owned(), data.protocol.to_owned(), date, group)
-        .await?;
-    let mut prices = vec![];
-
-    for (date, price) in data.into_iter() {
-        let ms = date.timestamp_millis();
-        let str_price = price.to_string();
-        let p = f64::from_str(&str_price)
-            .context("coudld not parse big decimal to float")?;
-        prices.push((ms, p));
-    }
-
-    Ok(web::Json(prices))
+        .get_prices(
+            &key,
+            &protocol,
+            Utc::now() - Duration::days(interval.get_signed()),
+            getIntervalGroup(interval.get()),
+        )
+        .await
+        .map(|prices| {
+            Json(
+                prices
+                    .into_iter()
+                    .map(|(date, price)| {
+                        (date.timestamp_millis(), price.to_f64())
+                    })
+                    .collect::<BTreeMap<_, _>>(),
+            )
+        })
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Query {
-    interval: i64,
+pub struct Arguments {
+    interval: UInt63,
     protocol: String,
     key: String,
 }
 
-pub fn getIntervalGroup(interval: i64) -> i32 {
+pub fn getIntervalGroup(interval: u64) -> UInt7 {
     if interval <= 7 {
-        return 1;
+        const { UInt7::from_unsigned(1).unwrap() }
     } else if interval > 7 && interval < 30 {
-        return 5;
+        const { UInt7::from_unsigned(5).unwrap() }
+    } else {
+        const { UInt7::from_unsigned(60).unwrap() }
     }
-
-    60
 }

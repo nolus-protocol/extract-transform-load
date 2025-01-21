@@ -22,7 +22,7 @@ pub struct DatabasePool {
     pub lp_deposit: Table<LP_Deposit>,
     pub lp_withdraw: Table<LP_Withdraw>,
     pub lp_lender_state: Table<LP_Lender_State>,
-    pub lp_pool: Table<LP_Pool>,
+    pub lp_pool: Table<LP_Pool<String>>,
     pub lp_pool_state: Table<LP_Pool_State>,
     pub tr_profit: Table<TR_Profit>,
     pub tr_rewards_distribution: Table<TR_Rewards_Distribution>,

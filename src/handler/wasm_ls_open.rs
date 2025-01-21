@@ -51,7 +51,7 @@ pub async fn parse_and_insert(
     let f4 = app_state
         .database
         .mp_asset
-        .get_price_by_date(&lpn_currency.0, protocol.to_owned(), &at)
+        .get_price_by_date(&lpn_currency.denominator, protocol.to_owned(), &at)
         .map_err(Error::from);
 
     let f5 = app_state
@@ -81,10 +81,12 @@ pub async fn parse_and_insert(
     let (lpn_price,) = lpn_price;
     let (lease_currency_price,) = lease_currency_price;
 
+    let value = &item.loan_amount;
     let LS_loan_amnt_stable =
-        app_state.in_stabe_calc(&l_price, &item.loan_amount)?;
+        (value * &l_price)?;
     let LS_lpn_loan_amnt = &LS_loan_amnt * lease_currency_price / lpn_price;
 
+    let value = &item.downpayment_amount;
     let ls_opening = LS_Opening {
         Tx_Hash: tx_hash,
         LS_contract_id: item.id,
@@ -97,8 +99,7 @@ pub async fn parse_and_insert(
         LS_loan_amnt_stable,
         LS_loan_amnt_asset: BigDecimal::from_str(item.loan_amount.as_str())?,
         LS_cltr_symbol: item.downpayment_symbol.to_owned(),
-        LS_cltr_amnt_stable: app_state
-            .in_stabe_calc(&d_price, &item.downpayment_amount)?,
+        LS_cltr_amnt_stable: (value * &d_price)?,
         LS_cltr_amnt_asset: BigDecimal::from_str(
             item.downpayment_amount.as_str(),
         )?,

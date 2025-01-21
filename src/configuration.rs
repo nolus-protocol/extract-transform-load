@@ -1,42 +1,23 @@
-use crate::dao::get_path;
-use crate::error::Error;
-use crate::helpers::{
-    formatter, parse_tuple_string, Formatter, Protocol_Types,
+use std::{
+    collections::HashMap,
+    env, fs,
+    num::NonZeroUsize,
+    str::FromStr,
+    sync::{Arc, RwLock},
 };
-use crate::model::LP_Pool;
-use crate::provider::{DatabasePool, Grpc};
-use crate::types::{AdminProtocolExtendType, Currency};
+
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use futures::future::join_all;
-use std::collections::HashMap;
-use std::ops::Deref;
-use std::str::FromStr;
-use std::sync::{Arc, Mutex};
-use std::{env, fs};
 
-#[derive(Debug)]
-pub struct AppState<T>(Arc<T>);
-
-impl<T> AppState<T> {
-    pub fn new(state: T) -> AppState<T> {
-        AppState(Arc::new(state))
-    }
-}
-
-impl<T> Clone for AppState<T> {
-    fn clone(&self) -> AppState<T> {
-        AppState(Arc::clone(&self.0))
-    }
-}
-
-impl<T> Deref for AppState<T> {
-    type Target = Arc<T>;
-
-    fn deref(&self) -> &Arc<T> {
-        &self.0
-    }
-}
+use crate::{
+    dao::get_path,
+    error::Error,
+    helpers::{formatter, parse_tuple_string, Formatter, Protocol_Types},
+    model::LP_Pool,
+    provider::{DatabasePool, Grpc},
+    try_join,
+    types::{AdminProtocolExtendType, Currency},
+};
 
 #[derive(Debug)]
 pub struct Cache {
@@ -49,7 +30,7 @@ pub struct State {
     pub database: DatabasePool,
     pub grpc: Grpc,
     pub protocols: HashMap<String, AdminProtocolExtendType>,
-    pub cache: Mutex<Cache>,
+    pub cache: RwLock<Cache>,
 }
 
 impl State {
@@ -59,21 +40,24 @@ impl State {
         grpc: Grpc,
     ) -> Result<State, Error> {
         Self::init_migrations(&database).await?;
+
         Self::init_pools(&config.lp_pools, &database).await?;
-        let protocols = Self::init_admin_protocols(&grpc, &config).await?;
-        Ok(Self {
-            config,
-            database,
-            grpc,
-            protocols,
-            cache: Mutex::new(Cache {
-                total_value_locked: None,
-            }),
-        })
+
+        Self::init_admin_protocols(&grpc, &config)
+            .await
+            .map(|protocols| Self {
+                config,
+                database,
+                grpc,
+                protocols,
+                cache: RwLock::new(Cache {
+                    total_value_locked: None,
+                }),
+            })
     }
 
     async fn init_migrations(database: &DatabasePool) -> Result<(), Error> {
-        let files = vec![
+        const FILES: [&str; 23] = [
             "lp_pool.sql",
             "action_history.sql",
             "block.sql",
@@ -101,25 +85,29 @@ impl State {
 
         let dir = env!("CARGO_MANIFEST_DIR");
 
-        for file in files {
-            let data = get_path(dir, file)?;
-            sqlx::query(data.as_str()).execute(&database.pool).await?;
+        for file in FILES {
+            sqlx::query(get_path(dir, file)?.as_str())
+                .execute(&database.pool)
+                .await?;
         }
 
         Ok(())
     }
 
     async fn init_pools(
-        pools: &Vec<(String, String, Protocol_Types)>,
+        pools: &[(String, String, Protocol_Types)],
         database: &DatabasePool,
     ) -> Result<(), Error> {
         for (id, symbol, _) in pools {
-            let pool = LP_Pool {
-                LP_Pool_id: id.to_owned(),
-                LP_symbol: symbol.to_owned(),
-            };
-            database.lp_pool.insert(pool).await?;
+            database
+                .lp_pool
+                .insert(&LP_Pool {
+                    LP_Pool_id: id.to_owned(),
+                    LP_symbol: symbol.to_owned(),
+                })
+                .await?;
         }
+
         Ok(())
     }
 
@@ -127,135 +115,125 @@ impl State {
         grpc: &Grpc,
         config: &Config,
     ) -> Result<HashMap<String, AdminProtocolExtendType>, Error> {
-        let protocols = grpc
-            .get_admin_config(config.admin_contract.to_owned())
-            .await?;
-        let mut joins = vec![];
-        let mut protocolsMap =
-            HashMap::<String, AdminProtocolExtendType>::new();
+        try_join(
+            grpc.get_admin_config(config.admin_contract.clone())
+                .await?
+                .into_iter()
+                .filter_map(|protocol| {
+                    (!config.ignore_protocols.contains(&protocol)).then(|| {
+                        let wasm_query_client = grpc.wasm_query_client.clone();
 
-        for p in protocols {
-            if !config.ignore_protocols.contains(&p) {
-                joins.push(
-                    grpc.get_protocol_config(
-                        config.admin_contract.to_owned(),
-                        p,
-                    ),
-                )
-            }
-        }
+                        let admin_contract = config.admin_contract.clone();
 
-        let result = join_all(joins).await;
-
-        for item in result.into_iter().flatten() {
-            protocolsMap.insert(item.protocol.to_owned(), item);
-        }
-
-        Ok(protocolsMap)
+                        async move {
+                            Grpc::get_protocol_config(
+                                wasm_query_client,
+                                admin_contract,
+                                &protocol,
+                            )
+                            .await
+                            .map(|item| (item.protocol.clone(), item))
+                        }
+                    })
+                }),
+        )
+        .await
     }
 
     pub async fn in_stabe(
         &self,
         currency_symbol: &str,
-        protocol: Option<String>,
-        value: &str,
+        protocol: Option<&str>,
+        value: BigDecimal,
     ) -> Result<BigDecimal, Error> {
-        let currency = self.get_currency(currency_symbol)?;
-        let Currency(symbol, _) = currency;
-        let (stabe_price,) =
-            self.database.mp_asset.get_price(symbol, protocol).await?;
-        let val = self.in_stabe_calc(&stabe_price, value)?;
+        let Currency {
+            denominator: symbol,
+            exponent: _,
+        } = self.get_currency(currency_symbol)?;
 
-        Ok(val)
+        self.database
+            .mp_asset
+            .get_price(symbol, protocol)
+            .await
+            .map(|stabe_price| value * stabe_price)
+            .map_err(From::from)
     }
 
     pub async fn in_stabe_by_date(
         &self,
         currency_symbol: &str,
-        value: &str,
-        protocol: Option<String>,
-        date_time: &DateTime<Utc>,
+        value: BigDecimal,
+        protocol: Option<&str>,
+        date_time: DateTime<Utc>,
     ) -> Result<BigDecimal, Error> {
-        let currency = self.get_currency(currency_symbol)?;
-        let Currency(symbol, _) = currency;
+        let Currency {
+            denominator: symbol,
+            exponent: _,
+        } = self.get_currency(currency_symbol)?;
 
-        let (stabe_price,) = self
-            .database
+        self.database
             .mp_asset
             .get_price_by_date(symbol, protocol, date_time)
-            .await?;
-        let val = self.in_stabe_calc(&stabe_price, value)?;
-
-        Ok(val)
+            .await
+            .map(|stabe_price| value * stabe_price)
+            .map_err(From::from)
     }
 
     pub async fn in_stabe_by_pool_id(
         &self,
         pool_id: &str,
-        value: &str,
+        value: &BigDecimal,
     ) -> Result<BigDecimal, Error> {
-        let currency = self.get_currency_by_pool_id(pool_id)?;
-        let Currency(symbol, _) = currency;
-        let protocol = self.get_protocol_by_pool_id(pool_id);
+        let Currency {
+            denominator: symbol,
+            exponent: _,
+        } = self.get_currency_by_pool_id(pool_id)?;
 
-        let (stabe_price,) =
-            self.database.mp_asset.get_price(symbol, protocol).await?;
-        let val = self.in_stabe_calc(&stabe_price, value)?;
-
-        Ok(val)
+        self.database
+            .mp_asset
+            .get_price(symbol, self.get_protocol_by_pool_id(pool_id))
+            .await
+            .map(|stable_price| stable_price * value)
+            .map_err(From::from)
     }
 
-    pub fn get_protocol_by_pool_id(&self, pool_id: &str) -> Option<String> {
-        let protocols = &self.protocols;
-        let protocol = protocols
-            .iter()
-            .find(|(_protocol, data)| data.contracts.lpp == pool_id);
-        protocol.map(|(protocol, _)| protocol.to_owned())
-    }
-
-    pub fn in_stabe_calc(
+    pub fn get_protocol_by_pool_id<'r>(
         &self,
-        stable_price: &BigDecimal,
-        value: &str,
-    ) -> Result<BigDecimal, Error> {
-        let val = BigDecimal::from_str(value)?;
-        let val = val * stable_price;
-        Ok(val)
+        pool_id: &str,
+    ) -> Option<&'r str> {
+        self.protocols.iter().find_map(|(protocol, data)| {
+            (data.contracts.lpp == pool_id).then(|| &**protocol)
+        })
     }
 
     pub fn get_currency(
         &self,
         currency_symbol: &str,
     ) -> Result<&Currency, Error> {
-        let currency =
-            match self.config.hash_map_currencies.get(currency_symbol) {
-                Some(c) => c,
-                None => {
-                    return Err(Error::NotSupportedCurrency(format!(
-                        "Currency {} not found",
-                        currency_symbol
-                    )));
-                },
-            };
-
-        Ok(currency)
+        self.config
+            .hash_map_currencies
+            .get(currency_symbol)
+            .ok_or_else(|| {
+                Error::NotSupportedCurrency(format!(
+                    "Currency {} not found",
+                    currency_symbol
+                ))
+            })
     }
 
     pub fn get_currency_by_pool_id(
         &self,
         pool_id: &str,
     ) -> Result<&Currency, Error> {
-        let currency = match self.config.hash_map_pool_currency.get(pool_id) {
-            Some(c) => c,
-            None => {
-                return Err(Error::NotSupportedCurrency(format!(
+        self.config
+            .hash_map_pool_currency
+            .get(pool_id)
+            .ok_or_else(|| {
+                Error::NotSupportedCurrency(format!(
                     "Pool with id {} not found",
                     pool_id
-                )));
-            },
-        };
-
-        Ok(currency)
+                ))
+            })
     }
 }
 
@@ -280,7 +258,7 @@ pub struct Config {
     pub port: u16,
     pub allowed_origins: Vec<String>,
     pub static_dir: String,
-    pub max_tasks: usize,
+    pub max_tasks: NonZeroUsize,
     pub admin_contract: String,
     pub ignore_protocols: Vec<String>,
     pub initial_protocol: String,
@@ -333,8 +311,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         .map(|item| item.to_owned())
         .collect::<Vec<String>>();
     let static_dir = format!(
-        "{}/{}",
-        env!("CARGO_MANIFEST_DIR"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/{}"),
         env::var("STATIC_DIRECTORY")?
     );
     let enable_sync = env::var("ENABLE_SYNC")?.parse()?;
@@ -342,14 +319,13 @@ pub fn get_configuration() -> Result<Config, Error> {
     let mut hash_map_pool_currency: HashMap<String, Currency> = HashMap::new();
 
     for currency in &supported_currencies {
-        let c = currency.clone();
-        hash_map_currencies.insert(currency.0.to_owned(), c);
+        hash_map_currencies
+            .insert(currency.denominator.to_owned(), currency.clone());
     }
 
     for pool in &lp_pools {
         if let Some(item) = hash_map_currencies.get(&pool.1) {
-            let c = item.clone();
-            hash_map_pool_currency.insert(pool.0.to_owned(), c);
+            hash_map_pool_currency.insert(pool.0.to_owned(), item.clone());
         }
         hash_map_lp_pools.insert(pool.0.to_owned(), pool.clone());
     }
@@ -410,24 +386,7 @@ pub fn set_configuration() -> Result<(), Error> {
 }
 
 fn parse_config_string(config: String) -> Result<(), Error> {
-    let params: Vec<Option<(&str, &str)>> = config
-        .split('\n')
-        .map(|s| {
-            let element = s.find('=');
-            if let Some(e) = element {
-                return Some(s.split_at(e));
-            }
-            None
-        })
-        .map(|value| {
-            if let Some((k, v)) = value {
-                return Some((k, &v[1..]));
-            }
-            None
-        })
-        .collect();
-
-    for (key, value) in params.into_iter().flatten() {
+    for (key, value) in config.split('\n').filter_map(|s| s.split_once('=')) {
         let parsed_value = match key {
             "WEBSOCKET_HOST" => {
                 let host = env::var("HOST")?;
@@ -451,7 +410,10 @@ fn get_supported_currencies() -> Result<Vec<Currency>, Error> {
         assert_eq!(items.len(), 2);
         let ticker = items[0].to_owned();
         let decimal = items[1].parse()?;
-        data.push(Currency(ticker, decimal));
+        data.push(Currency {
+            denominator: ticker,
+            exponent: decimal,
+        });
     }
 
     Ok(data)

@@ -1,39 +1,48 @@
 use std::{fmt, io, str::FromStr};
 
-use anyhow::{anyhow, Context, Result};
-use base64::prelude::*;
+use anyhow::{anyhow, Context as _, Result};
+use base64::engine::{general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use cosmos_sdk_proto::{
-    cosmos::{
-        bank::v1beta1::MsgSend,
-        distribution::v1beta1::MsgWithdrawDelegatorReward,
-        gov::{v1::MsgVote, v1beta1::MsgVote as MsgVoteLegacy},
-        staking::v1beta1::{MsgBeginRedelegate, MsgDelegate, MsgUndelegate},
+use cosmrs::{
+    proto::{
+        cosmos::{
+            bank::v1beta1::MsgSend,
+            distribution::v1beta1::MsgWithdrawDelegatorReward,
+            gov::{v1::MsgVote, v1beta1::MsgVote as MsgVoteLegacy},
+            staking::v1beta1::{
+                MsgBeginRedelegate, MsgDelegate, MsgUndelegate,
+            },
+        },
+        cosmwasm::wasm::v1::MsgExecuteContract,
+        tendermint::abci::Event,
+        Timestamp,
     },
-    cosmwasm::wasm::v1::MsgExecuteContract,
-    tendermint::abci::Event,
-    Timestamp,
+    tx::Fee,
+    Any,
 };
-use cosmrs::{tx::Fee, Any};
 use ibc_proto::ibc::{
-    apps::transfer::v1::MsgTransfer, core::channel::v1::MsgRecvPacket,
+    applications::transfer::v1::MsgTransfer, core::channel::v1::MsgRecvPacket,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;
 
-use crate::{error::Error, types::MsgReceivePacket};
+use crate::{
+    custom_uint::{UInt31, UInt63},
+    error::Error,
+    types::MsgReceivePacket,
+};
 
 #[derive(Debug, FromRow, Default, Serialize, Deserialize)]
 pub struct Raw_Message {
-    pub index: i32,
+    pub index: UInt31,
     pub from: String,
     pub to: String,
     pub r#type: String,
     pub value: String,
     pub tx_hash: String,
-    pub block: i64,
+    pub block: UInt63,
     pub fee_amount: BigDecimal,
     pub fee_denom: Option<String>,
     pub memo: String,
@@ -43,16 +52,16 @@ pub struct Raw_Message {
 
 impl Raw_Message {
     pub fn from_any(
-        index: i32,
+        index: UInt31,
         value: Any,
         tx_hash: String,
-        block: i64,
+        block: UInt63,
         time_stamp: Timestamp,
         fee: Fee,
         memo: String,
         events: Vec<String>,
-        tx_events: &Vec<Event>,
-    ) -> Result<Raw_Message, anyhow::Error> {
+        tx_events: &[Event],
+    ) -> Result<Raw_Message> {
         let k = CosmosTypes::from_str(&value.type_url)?;
         let seconds = time_stamp.seconds.try_into()?;
         let nanos = time_stamp.nanos.try_into()?;
@@ -278,7 +287,7 @@ impl Raw_Message {
 pub fn get_withdraw_delegator_rewards(
     validator: String,
     delegator: String,
-    tx_events: &Vec<Event>,
+    tx_events: &[Event],
 ) -> Result<Option<String>, Error> {
     const EVENT: &str = "withdraw_rewards";
 
@@ -310,7 +319,7 @@ pub fn get_withdraw_delegator_rewards(
 pub fn get_msg_execute_contract_rewards(
     recipient: String,
     sender: String,
-    tx_events: &Vec<Event>,
+    tx_events: &[Event],
 ) -> Result<Option<String>, Error> {
     const EVENT: &str = "transfer";
     for event in tx_events.iter() {
@@ -362,76 +371,56 @@ pub enum CosmosTypes {
 
 impl fmt::Display for CosmosTypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            CosmosTypes::MsgSend => {
-                write!(f, "/cosmos.bank.v1beta1.MsgSend")
-            },
+        f.write_str(match self {
+            CosmosTypes::MsgSend => "/cosmos.bank.v1beta1.MsgSend",
             CosmosTypes::MsgTransfer => {
-                write!(f, "/ibc.applications.transfer.v1.MsgTransfer")
+                "/ibc.applications.transfer.v1.MsgTransfer"
             },
-            CosmosTypes::MsgVoteLegacy => {
-                write!(f, "/cosmos.gov.v1beta1.MsgVote")
-            },
-            CosmosTypes::MsgVote => {
-                write!(f, "/cosmos.gov.v1.MsgVote")
-            },
-            CosmosTypes::MsgRecvPacket => {
-                write!(f, "/ibc.core.channel.v1.MsgRecvPacket")
-            },
+            CosmosTypes::MsgVoteLegacy => "/cosmos.gov.v1beta1.MsgVote",
+            CosmosTypes::MsgVote => "/cosmos.gov.v1.MsgVote",
+            CosmosTypes::MsgRecvPacket => "/ibc.core.channel.v1.MsgRecvPacket",
             CosmosTypes::MsgWithdrawDelegatorReward => {
-                write!(
-                    f,
-                    "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward"
-                )
+                "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward"
             },
-            CosmosTypes::MsgDelegate => {
-                write!(f, "/cosmos.staking.v1beta1.MsgDelegate")
-            },
+            CosmosTypes::MsgDelegate => "/cosmos.staking.v1beta1.MsgDelegate",
             CosmosTypes::MsgBeginRedelegate => {
-                write!(f, "/cosmos.staking.v1beta1.MsgBeginRedelegate")
+                "/cosmos.staking.v1beta1.MsgBeginRedelegate"
             },
             CosmosTypes::MsgUndelegate => {
-                write!(f, "/cosmos.staking.v1beta1.MsgUndelegate")
+                "/cosmos.staking.v1beta1.MsgUndelegate"
             },
             CosmosTypes::MsgExecuteContract => {
-                write!(f, "/cosmwasm.wasm.v1.MsgExecuteContract")
+                "/cosmwasm.wasm.v1.MsgExecuteContract"
             },
-        }
+        })
     }
 }
 
 impl From<CosmosTypes> for String {
     fn from(value: CosmosTypes) -> Self {
         match value {
-            CosmosTypes::MsgSend => {
-                String::from("/cosmos.bank.v1beta1.MsgSend")
-            },
+            CosmosTypes::MsgSend => "/cosmos.bank.v1beta1.MsgSend",
             CosmosTypes::MsgTransfer => {
-                String::from("/ibc.applications.transfer.v1.MsgTransfer")
+                "/ibc.applications.transfer.v1.MsgTransfer"
             },
-            CosmosTypes::MsgVoteLegacy => {
-                String::from("/cosmos.gov.v1beta1.MsgVote")
+            CosmosTypes::MsgVoteLegacy => "/cosmos.gov.v1beta1.MsgVote",
+            CosmosTypes::MsgVote => "/cosmos.gov.v1.MsgVote",
+            CosmosTypes::MsgRecvPacket => "/ibc.core.channel.v1.MsgRecvPacket",
+            CosmosTypes::MsgWithdrawDelegatorReward => {
+                "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward"
             },
-            CosmosTypes::MsgVote => String::from("/cosmos.gov.v1.MsgVote"),
-            CosmosTypes::MsgRecvPacket => {
-                String::from("/ibc.core.channel.v1.MsgRecvPacket")
-            },
-            CosmosTypes::MsgWithdrawDelegatorReward => String::from(
-                "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward",
-            ),
-            CosmosTypes::MsgDelegate => {
-                String::from("/cosmos.staking.v1beta1.MsgDelegate")
-            },
+            CosmosTypes::MsgDelegate => "/cosmos.staking.v1beta1.MsgDelegate",
             CosmosTypes::MsgBeginRedelegate => {
-                String::from("/cosmos.staking.v1beta1.MsgBeginRedelegate")
+                "/cosmos.staking.v1beta1.MsgBeginRedelegate"
             },
             CosmosTypes::MsgUndelegate => {
-                String::from("/cosmos.staking.v1beta1.MsgUndelegate")
+                "/cosmos.staking.v1beta1.MsgUndelegate"
             },
             CosmosTypes::MsgExecuteContract => {
-                String::from("/cosmwasm.wasm.v1.MsgExecuteContract")
+                "/cosmwasm.wasm.v1.MsgExecuteContract"
             },
         }
+        .into()
     }
 }
 

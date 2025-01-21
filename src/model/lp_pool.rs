@@ -1,6 +1,10 @@
 use sqlx::FromRow;
+
 #[derive(Debug, FromRow)]
-pub struct LP_Pool {
-    pub LP_Pool_id: String,
-    pub LP_symbol: String,
+pub struct LP_Pool<Str>
+where
+    Str: AsRef<str>,
+{
+    pub LP_Pool_id: Str,
+    pub LP_symbol: Str,
 }

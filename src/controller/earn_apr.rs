@@ -1,63 +1,59 @@
-use std::str::FromStr;
-
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use actix_web::{
+    get,
+    web::{Data, Json, Query},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, Zero};
 use serde::{Deserialize, Serialize};
+
+use crate::{configuration::State, custom_uint::UInt31, error::Error};
 
 #[get("/earn-apr")]
 async fn index(
-    state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    state: Data<State>,
+    Query(Arguments { mut protocol }): Query<Arguments>,
 ) -> Result<impl Responder, Error> {
-    if let Some(protocolKey) = &data.protocol {
-        let protocolKey = protocolKey.to_uppercase();
-        let admin = state.protocols.get(&protocolKey);
-        if let Some(protocol) = admin {
-            let data = match protocolKey.as_str() {
-                "OSMOSIS-OSMOSIS-ALL_BTC" => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr_interest(
-                        protocol.contracts.lpp.to_owned(),
-                        15,
-                    )
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-                "OSMOSIS-OSMOSIS-ALL_SOL" | "OSMOSIS-OSMOSIS-АКТ" => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr_interest(
-                        protocol.contracts.lpp.to_owned(),
-                        20,
-                    )
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-                _ => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr(protocol.contracts.lpp.to_owned())
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-            };
-            return Ok(web::Json(Response { earn_apr: data }));
-        }
+    protocol.make_ascii_uppercase();
+
+    let max_interest = match &*protocol {
+        "OSMOSIS-OSMOSIS-ALL_BTC" => {
+            const { Some(UInt31::from_unsigned(15).unwrap()) }
+        },
+        "OSMOSIS-OSMOSIS-ALL_SOL" | "OSMOSIS-OSMOSIS-АКТ" => {
+            const { Some(UInt31::from_unsigned(20).unwrap()) }
+        },
+        _ => None,
+    };
+
+    let Some(protocol) = state.protocols.get(&protocol) else {
+        return Ok(Json(Response {
+            earn_apr: BigDecimal::zero(),
+        }));
+    };
+
+    if let Some(max_interest) = max_interest {
+        state
+            .database
+            .ls_opening
+            .get_earn_apr_interest(&protocol.contracts.lpp, max_interest)
+            .await
+    } else {
+        state
+            .database
+            .ls_opening
+            .get_earn_apr(&protocol.contracts.lpp)
+            .await
     }
-
-    Ok(web::Json(Response {
-        earn_apr: BigDecimal::from_str("0")?,
-    }))
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Response {
-    pub earn_apr: BigDecimal,
+    .map(|earn_apr| Json(Response { earn_apr }))
+    .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Query {
-    protocol: Option<String>,
+pub struct Arguments {
+    protocol: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Response {
+    pub earn_apr: BigDecimal,
 }

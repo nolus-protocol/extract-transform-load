@@ -1,102 +1,121 @@
-use super::{DataBase, QueryResult};
-use crate::model::{Block, Table};
-use sqlx::{error::Error, Transaction};
+use sqlx::{FromRow, Transaction};
+
+use crate::{
+    custom_uint::UInt63,
+    error::Error,
+    model::{Block, Table},
+};
+
+use super::DataBase;
+
+type Result<T, E = sqlx::Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Clone, Copy, FromRow)]
+struct Gap {
+    start: UInt63,
+    end: UInt63,
+}
 
 impl Table<Block> {
     pub async fn insert(
         &self,
-        block: Block,
+        Block { id }: Block,
         transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO block (id)
-            VALUES($1)
-            "#,
-        )
-        .bind(block.id)
-        .execute(&mut **transaction)
-        .await
+    ) -> Result<()> {
+        const SQL: &str = r#"
+        INSERT INTO "block" ("id")
+        VALUES ($1)
+        "#;
+
+        sqlx::query(SQL)
+            .bind(id)
+            .execute(&mut **transaction)
+            .await
+            .map(drop)
     }
 
-    pub async fn get_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
-        sqlx::query_as(
-            r#"
-            WITH gaps AS
-            (
-                SELECT
-                    LAG(id, 1, 0) OVER(ORDER BY id) AS gap_begin,
-                    id AS gap_end,
-                    id - LAG(id, 1, 0) OVER(ORDER BY id) AS gap
-                FROM block
-            )
+    pub async fn get_missing_blocks(&self) -> Result<Vec<Gap>> {
+        const SQL: &str = r#"
+        SELECT *
+        FROM (
             SELECT
-                gap_begin,
-                gap_end
-            FROM gaps
-            WHERE gap > 1
-            "#,
+                (
+                    LAG("id", 1, 0)
+                    OVER(ORDER BY "id")
+                ) AS "start",
+                "id" AS "end"
+            FROM "block"
         )
-        .fetch_all(&self.pool)
-        .await
+        WHERE "end" - "start" > 1
+        "#;
+
+        sqlx::query_as(SQL).fetch_all(&self.pool).await
     }
 
-    pub async fn get_first_block(&self) -> Result<(i64,), Error> {
-        sqlx::query_as(
-            r#"
-            SELECT id FROM block ORDER BY id ASC
-            "#,
-        )
-        .fetch_one(&self.pool)
-        .await
+    pub async fn get_first_block(&self) -> Result<UInt63> {
+        const SQL: &str = r#"
+        SELECT "id"
+        FROM "block"
+        ORDER BY "id" ASC
+        "#;
+
+        sqlx::query_as(SQL)
+            .fetch_one(&self.pool)
+            .await
+            .map(|(result,)| result)
     }
 
-    pub async fn get_last_block(&self) -> Result<(i64,), Error> {
-        sqlx::query_as(
-            r#"
-            SELECT id FROM block ORDER BY id DESC
-            "#,
-        )
-        .fetch_one(&self.pool)
-        .await
+    pub async fn get_last_block(&self) -> Result<UInt63> {
+        const SQL: &str = r#"
+        SELECT "id"
+        FROM "block"
+        ORDER BY "id" DESC
+        LIMIT 1
+        "#;
+
+        sqlx::query_as(SQL)
+            .fetch_one(&self.pool)
+            .await
+            .map(|(result,)| result)
     }
 
-    pub async fn get_one(&self, id: i64) -> Result<Option<Block>, Error> {
-        sqlx::query_as(
-            r#"
-             SELECT * FROM "block" WHERE id = $1
-            "#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
+    pub async fn get_one(&self, id: UInt63) -> Result<Option<Block>> {
+        const SQL: &str = r#"
+        SELECT *
+        FROM "block"
+        WHERE "id" = $1
+        "#;
+
+        sqlx::query_as(SQL)
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
     }
 
-    pub async fn count(&self) -> Result<i64, Error> {
-        let (count,) = sqlx::query_as(
-            r#"
-             SELECT COUNT(1) FROM "block"
-            "#,
-        )
-        .fetch_one(&self.pool)
-        .await?;
-        Ok(count)
+    pub async fn count(&self) -> Result<UInt63, Error> {
+        const SQL: &str = r#"
+        SELECT COUNT(1)
+        FROM "block"
+        "#;
+
+        sqlx::query_as(SQL)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(From::from)
+            .map(|(result,)| result)
     }
 
-    pub async fn is_synced_to_block(&self, block: i64) -> Result<bool, Error> {
-        let (count,): (i64,) = sqlx::query_as(
-            r#"
-             SELECT COUNT(1) FROM "block" WHERE id <= $1
-            "#,
-        )
-        .bind(block)
-        .fetch_one(&self.pool)
-        .await?;
+    pub async fn is_synced_to_block(&self, block: UInt63) -> Result<bool> {
+        const SQL: &str = r#"
+        SELECT COUNT(1) = $1
+        FROM "block"
+        WHERE id <= $1
+        "#;
 
-        if block == count {
-            return Ok(true);
-        }
-
-        Ok(false)
+        sqlx::query_as(SQL)
+            .bind(block.get_signed())
+            .fetch_one(&self.pool)
+            .await
+            .map(|(result,)| result)
     }
 }

@@ -1,26 +1,28 @@
-use std::str::FromStr;
-
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use actix_web::{
+    error::ErrorInternalServerError,
+    get,
+    web::{Data, Json},
+    Responder, Result,
 };
-use actix_web::{get, web, Responder, Result};
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, Zero as _};
 use serde::{Deserialize, Serialize};
 
-#[get("/total-value-locked")]
-async fn index(
-    state: web::Data<AppState<State>>,
-) -> Result<impl Responder, Error> {
-    let total_value_locked = if let Ok(item) = state.cache.lock() {
-        item.total_value_locked
-            .to_owned()
-            .unwrap_or(BigDecimal::from_str("0")?)
-    } else {
-        BigDecimal::from_str("0")?
-    };
+use crate::configuration::State;
 
-    Ok(web::Json(Response { total_value_locked }))
+#[get("/total-value-locked")]
+async fn index(state: Data<State>) -> Result<impl Responder> {
+    state
+        .cache
+        .read()
+        .map(|lock| {
+            Json(Response {
+                total_value_locked: lock
+                    .total_value_locked
+                    .clone()
+                    .unwrap_or_else(BigDecimal::zero),
+            })
+        })
+        .map_err(ErrorInternalServerError)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -1,6 +1,8 @@
 use sqlx::FromRow;
 
+use crate::custom_uint::UInt63;
+
 #[derive(Debug, FromRow)]
 pub struct Block {
-    pub id: i64,
+    pub id: UInt63,
 }

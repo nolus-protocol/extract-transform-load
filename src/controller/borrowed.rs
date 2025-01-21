@@ -1,40 +1,46 @@
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use std::borrow::Cow;
+
+use actix_web::{
+    get,
+    web::{Data, Json, Query},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 
+use crate::{configuration::State, error::Error};
+
 #[get("/borrowed")]
 async fn index(
-    state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    state: Data<State>,
+    Query(Arguments { protocol }): Query<Arguments>,
 ) -> Result<impl Responder, Error> {
-    if let Some(protocolKey) = &data.protocol {
-        let protocolKey = protocolKey.to_uppercase();
-        let admin = state.protocols.get(&protocolKey);
+    if let Some(mut protocol) = protocol {
+        protocol.make_ascii_uppercase();
 
-        if let Some(protocol) = admin {
-            let data = state
-                .database
-                .ls_opening
-                .get_borrowed(protocol.contracts.lpp.to_owned())
-                .await?;
-            return Ok(web::Json(Response { borrowed: data }));
-        }
+        let protocol = state
+            .protocols
+            .get(&protocol)
+            .ok_or_else(|| Error::ProtocolError(Cow::Owned(protocol)))?;
+
+        state
+            .database
+            .ls_opening
+            .get_borrowed(&protocol.contracts.lpp)
+            .await
+    } else {
+        state.database.ls_opening.get_borrowed_total().await
     }
-
-    let data = state.database.ls_opening.get_borrowed_total().await?;
-    Ok(web::Json(Response { borrowed: data }))
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Response {
-    pub borrowed: BigDecimal,
+    .map(|data| Json(Response { borrowed: data }))
+    .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Query {
+pub struct Arguments {
     protocol: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Response {
+    pub borrowed: BigDecimal,
 }

@@ -2,12 +2,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{types::BigDecimal, FromRow};
 
+use crate::custom_uint::UInt15;
+
 #[derive(Debug, FromRow, Deserialize, Serialize)]
 pub struct LS_Opening {
     pub LS_contract_id: String,
     pub LS_address_id: String,
     pub LS_asset_symbol: String,
-    pub LS_interest: i16,
+    pub LS_interest: UInt15,
     pub LS_timestamp: DateTime<Utc>,
     pub LS_loan_pool_id: String,
     pub LS_loan_amnt: BigDecimal,

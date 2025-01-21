@@ -1,70 +1,61 @@
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
-    model::LS_Opening,
+use actix_web::{
+    get,
+    web::{Data, Json, Query},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
 use bigdecimal::BigDecimal;
-use futures::future::join_all;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    configuration::State, error::Error, model::LS_Opening,
+    try_join_with_capacity,
+};
 
 #[get("/ls-openings")]
 async fn index(
-    state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    state: Data<State>,
+    Query(Arguments { leases }): Query<Arguments>,
 ) -> Result<impl Responder, Error> {
-    let leases: Vec<&str> = data.leases.split(',').collect();
-    let data = state.database.ls_opening.get_leases(leases).await?;
-    let mut joins = Vec::new();
-
-    for item in data {
-        joins.push(getData(state.clone(), item))
-    }
-
-    let result = join_all(joins).await;
-    let mut items: Vec<ResponseData> = vec![];
-
-    for item in result.into_iter().flatten().flatten() {
-        items.push(item);
-    }
-
-    Ok(web::Json(items))
+    try_join_with_capacity::<_, Vec<_>, _, _, _>(
+        state
+            .database
+            .ls_opening
+            .get_leases(leases.split(','))
+            .await?
+            .into_iter()
+            .map(|item| getData((**state).clone(), item)),
+        state.config.max_tasks,
+    )
+    .await
+    .map(Json)
 }
 
 async fn getData(
-    state: web::Data<AppState<State>>,
+    state: AppState<State>,
     lease: LS_Opening,
-) -> Result<Option<ResponseData>, Error> {
-    let result = state
+) -> Result<ResponseData, Error> {
+    state
         .database
-        .ls_opening
-        .get(lease.LS_contract_id.to_owned())
-        .await?;
-    if let Some(lease) = result {
-        let protocol = state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
-        let (downpayment_price,) = state
-            .database
-            .mp_asset
-            .get_price_by_date(
-                &lease.LS_asset_symbol,
-                protocol,
-                &lease.LS_timestamp,
-            )
-            .await?;
-        return Ok(Some(ResponseData {
+        .mp_asset
+        .get_price_by_date(
+            &lease.LS_asset_symbol,
+            state.get_protocol_by_pool_id(&lease.LS_loan_pool_id),
+            lease.LS_timestamp,
+        )
+        .await
+        .map(|downpayment_price| ResponseData {
             lease,
             downpayment_price,
-        }));
-    }
-    Ok(None)
+        })
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Query {
+pub struct Arguments {
     pub leases: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct ResponseData {
     pub lease: LS_Opening,
     pub downpayment_price: BigDecimal,

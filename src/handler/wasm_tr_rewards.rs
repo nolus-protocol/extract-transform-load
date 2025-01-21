@@ -1,18 +1,16 @@
+use std::str::FromStr;
+
 use bigdecimal::BigDecimal;
 use chrono::DateTime;
 use sqlx::Transaction;
-use std::str::FromStr;
 
 use crate::{
-    configuration::{AppState, State},
-    dao::DataBase,
-    error::Error,
-    model::TR_Rewards_Distribution,
-    types::TR_Rewards_Distribution_Type,
+    configuration::State, dao::DataBase, error::Error,
+    model::TR_Rewards_Distribution, types::TR_Rewards_Distribution_Type,
 };
 
 pub async fn parse_and_insert(
-    app_state: &AppState<State>,
+    app_state: &State,
     item: TR_Rewards_Distribution_Type,
     index: usize,
     tx_hash: String,
@@ -29,6 +27,7 @@ pub async fn parse_and_insert(
     })?;
     let protocol = app_state.get_protocol_by_pool_id(&item.to);
 
+    let rewards_amnt = BigDecimal::from_str(&item.rewards_amount)?;
     let tr_rewards_distribution = TR_Rewards_Distribution {
         Tx_Hash: tx_hash,
         TR_Rewards_height: item.height.parse()?,
@@ -38,12 +37,12 @@ pub async fn parse_and_insert(
         TR_Rewards_amnt_stable: app_state
             .in_stabe_by_date(
                 &item.rewards_symbol,
-                &item.rewards_amount,
+                rewards_amnt.clone(),
                 protocol,
-                &at,
+                at,
             )
             .await?,
-        TR_Rewards_amnt_nls: BigDecimal::from_str(&item.rewards_amount)?,
+        TR_Rewards_amnt_nls: rewards_amnt,
         Event_Block_Index: index.try_into()?,
     };
 
@@ -57,7 +56,7 @@ pub async fn parse_and_insert(
         app_state
             .database
             .tr_rewards_distribution
-            .insert(tr_rewards_distribution, transaction)
+            .insert(&tr_rewards_distribution, transaction)
             .await?;
     }
 

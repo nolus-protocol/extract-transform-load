@@ -1,11 +1,13 @@
 use chrono::{DateTime, Utc};
 use sqlx::{types::BigDecimal, FromRow};
 
+use crate::custom_uint::{UInt31, UInt63};
+
 #[derive(Debug, FromRow, Clone)]
 pub struct LS_Close_Position {
     pub Tx_Hash: String,
-    pub LS_position_height: i64,
-    pub LS_position_idx: Option<i32>,
+    pub LS_position_height: UInt63,
+    pub LS_position_idx: Option<UInt31>,
     pub LS_contract_id: String,
     pub LS_change: BigDecimal,
     pub LS_amnt: BigDecimal,

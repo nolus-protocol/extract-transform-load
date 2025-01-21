@@ -105,7 +105,7 @@ pub async fn parse_and_insert(
     let PL_IN_LP_amnt_stable = app_state
         .database
         .lp_deposit
-        .get_amnt_stable(last_action_timestamp, current_timestsamp)
+        .get_amount_stable(last_action_timestamp, current_timestsamp)
         .await?;
 
     let PL_OUT_LP_amnt_stable = app_state

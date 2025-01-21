@@ -1,34 +1,40 @@
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use std::borrow::Cow;
+
+use actix_web::{
+    get,
+    web::{Data, Json, Query},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
 use serde::Deserialize;
+
+use crate::{configuration::State, error::Error};
 
 #[get("/leased-assets")]
 async fn index(
-    state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    state: Data<State>,
+    Query(Arguments { protocol }): Query<Arguments>,
 ) -> Result<impl Responder, Error> {
-    if let Some(protocolKey) = &data.protocol {
-        let protocolKey = protocolKey.to_uppercase();
-        let admin = state.protocols.get(&protocolKey);
+    if let Some(mut protocol) = protocol {
+        protocol.make_ascii_uppercase();
 
-        if let Some(protocol) = admin {
-            let data = state
-                .database
-                .ls_opening
-                .get_leased_assets(protocol.contracts.lpp.to_owned())
-                .await?;
-            return Ok(web::Json(data));
-        }
+        let protocol = state
+            .protocols
+            .get(&protocol)
+            .ok_or_else(|| Error::ProtocolError(Cow::Owned(protocol)))?;
+
+        state
+            .database
+            .ls_opening
+            .get_leased_assets(&protocol.contracts.lpp)
+            .await
+    } else {
+        state.database.ls_opening.get_leased_assets_total().await
     }
-
-    let data = state.database.ls_opening.get_leased_assets_total().await?;
-    Ok(web::Json(data))
+    .map(Json)
+    .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Query {
+pub struct Arguments {
     protocol: Option<String>,
 }

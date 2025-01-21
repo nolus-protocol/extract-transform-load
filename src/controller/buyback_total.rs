@@ -1,22 +1,25 @@
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use actix_web::{
+    get,
+    web::{Data, Json},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
 use bigdecimal::BigDecimal;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+
+use crate::{configuration::State, error::Error};
 
 #[get("/buyback-total")]
-async fn index(
-    state: web::Data<AppState<State>>,
-) -> Result<impl Responder, Error> {
-    let data = state.database.tr_profit.get_buyback_total().await?;
-    Ok(web::Json(Response {
-        buyback_total: data,
-    }))
+async fn index(state: Data<State>) -> Result<impl Responder, Error> {
+    state
+        .database
+        .tr_profit
+        .get_buyback_total()
+        .await
+        .map(|buyback_total| Json(Response { buyback_total }))
+        .map_err(From::from)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct Response {
     pub buyback_total: BigDecimal,
 }

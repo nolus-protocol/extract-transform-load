@@ -1,28 +1,36 @@
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use actix_web::{
+    get,
+    web::{Data, Json, Query},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
 use serde::Deserialize;
+
+use crate::{configuration::State, custom_uint::UInt63, error::Error};
 
 #[get("/buyback")]
 async fn index(
-    state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    state: Data<State>,
+    Query(Arguments { skip, limit }): Query<Arguments>,
 ) -> Result<impl Responder, Error> {
-    let skip = data.skip.unwrap_or(0);
-    let mut limit = data.limit.unwrap_or(32);
-
-    if limit > 100 {
-        limit = 100;
-    }
-
-    let data = state.database.tr_profit.get_buyback(skip, limit).await?;
-    Ok(web::Json(data))
+    state
+        .database
+        .tr_profit
+        .get_buyback(
+            skip.unwrap_or(const { UInt63::MIN }),
+            limit.map_or(
+                const { UInt63::from_unsigned(32).unwrap() },
+                |limit| {
+                    limit.min(const { UInt63::from_unsigned(100).unwrap() })
+                },
+            ),
+        )
+        .await
+        .map(Json)
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Query {
-    skip: Option<i64>,
-    limit: Option<i64>,
+pub struct Arguments {
+    skip: Option<UInt63>,
+    limit: Option<UInt63>,
 }

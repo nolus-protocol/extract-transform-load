@@ -1,32 +1,32 @@
-use crate::configuration::{AppState, State};
-use crate::dao::DataBase;
-use crate::handler::{
-    wams_reserve_cover_loss, wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_close,
-    wasm_ls_close_position, wasm_ls_liquidation, wasm_ls_liquidation_warning,
-    wasm_ls_open, wasm_ls_repay, wasm_tr_profit, wasm_tr_rewards,
+use std::{collections::HashMap, fmt, io, str::FromStr};
+
+use anyhow::Context as _;
+use cosmrs::{
+    proto::cosmos::base::abci::v1beta1::TxResponse,
+    proto::tendermint::abci::{Event, EventAttribute},
+    proto::Timestamp,
+    Any, Tx,
 };
-use crate::model::{Block, Raw_Message};
+use sqlx::Transaction;
+
 use crate::{
+    configuration::State,
+    dao::DataBase,
     error::Error,
+    handler::{
+        wams_reserve_cover_loss, wasm_lp_deposit, wasm_lp_withdraw,
+        wasm_ls_close, wasm_ls_close_position, wasm_ls_liquidation,
+        wasm_ls_liquidation_warning, wasm_ls_open, wasm_ls_repay,
+        wasm_tr_profit, wasm_tr_rewards,
+    },
+    model::{Block, Raw_Message},
     types::{
-        Interest_values, LP_Deposit_Type, LP_Withdraw_Type, LS_Closing_Type,
-        LS_Liquidation_Type, LS_Opening_Type, LS_Repayment_Type,
-        TR_Profit_Type, TR_Rewards_Distribution_Type,
+        Interest_values, LP_Deposit_Type, LP_Withdraw_Type,
+        LS_Close_Position_Type, LS_Closing_Type, LS_Liquidation_Type,
+        LS_Liquidation_Warning_Type, LS_Opening_Type, LS_Repayment_Type,
+        Reserve_Cover_Loss_Type, TR_Profit_Type, TR_Rewards_Distribution_Type,
     },
 };
-
-use crate::types::{
-    LS_Close_Position_Type, LS_Liquidation_Warning_Type,
-    Reserve_Cover_Loss_Type,
-};
-use anyhow::Context;
-use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
-use cosmos_sdk_proto::tendermint::abci::{Event, EventAttribute};
-use cosmos_sdk_proto::Timestamp;
-
-use cosmrs::{Any, Tx};
-use sqlx::Transaction;
-use std::{collections::HashMap, fmt, io, str::FromStr};
 
 #[derive(Debug)]
 pub enum Formatter {
@@ -40,7 +40,8 @@ pub fn formatter(mut parser: String, args: &[Formatter]) -> String {
     for (index, value) in args.iter().enumerate() {
         match value {
             Formatter::ParsedStr(s) => {
-                let parsed_string = format!(r#""{}""#, s);
+                let parsed_string = format!(r#"{s:?}"#);
+
                 parser = parser
                     .replace(format!("${}", index).as_str(), &parsed_string);
             },
@@ -554,7 +555,7 @@ fn pasrse_data(
 }
 
 pub async fn parse_event(
-    app_state: AppState<State>,
+    app_state: &State,
     event: &Event,
     index: usize,
     time_stamp: Timestamp,
@@ -772,7 +773,7 @@ pub async fn parse_raw_tx(
             let isExists =
                 app_state.database.raw_message.isExists(&msg).await?;
             if !isExists {
-                app_state.database.raw_message.insert(msg, tx).await?;
+                app_state.database.raw_message.insert(&msg, tx).await?;
             }
         }
     }
@@ -884,16 +885,12 @@ pub enum Loan_Closing_Status {
 
 impl fmt::Display for Loan_Closing_Status {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Loan_Closing_Status::Reypay => write!(f, "repay"),
-            Loan_Closing_Status::Liquidation => write!(f, "liquidation"),
-            Loan_Closing_Status::MarketClose => {
-                write!(f, "market-close")
-            },
-            Loan_Closing_Status::None => {
-                write!(f, "none")
-            },
-        }
+        f.write_str(match self {
+            Loan_Closing_Status::Reypay => "repay",
+            Loan_Closing_Status::Liquidation => "liquidation",
+            Loan_Closing_Status::MarketClose => "market-close",
+            Loan_Closing_Status::None => "none",
+        })
     }
 }
 
@@ -931,21 +928,24 @@ pub enum Protocol_Types {
     Short,
 }
 
+impl Protocol_Types {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Protocol_Types::Short => "short",
+            Protocol_Types::Long => "long",
+        }
+    }
+}
+
 impl fmt::Display for Protocol_Types {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Protocol_Types::Short => write!(f, "short"),
-            Protocol_Types::Long => write!(f, "long"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
 impl From<Protocol_Types> for String {
     fn from(value: Protocol_Types) -> Self {
-        match value {
-            Protocol_Types::Long => String::from("long"),
-            Protocol_Types::Short => String::from("short"),
-        }
+        value.as_str().into()
     }
 }
 

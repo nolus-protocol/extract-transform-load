@@ -1,24 +1,25 @@
-use crate::{
-    configuration::{AppState, State},
-    error::Error,
+use actix_web::{
+    get,
+    web::{Data, Json},
+    Responder,
 };
-use actix_web::{get, web, Responder, Result};
 use bigdecimal::BigDecimal;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+
+use crate::{configuration::State, error::Error};
 
 #[get("/distributed")]
-async fn index(
-    state: web::Data<AppState<State>>,
-) -> Result<impl Responder, Error> {
-    let data = state
+async fn index(state: Data<State>) -> Result<impl Responder, Error> {
+    state
         .database
         .tr_rewards_distribution
         .get_distributed()
-        .await?;
-    Ok(web::Json(Response { distributed: data }))
+        .await
+        .map(|distributed| Json(Response { distributed }))
+        .map_err(From::from)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct Response {
     pub distributed: BigDecimal,
 }
