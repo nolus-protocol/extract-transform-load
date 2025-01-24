@@ -32,10 +32,8 @@ impl Event {
                 if let Err(e) = tokio::try_join!(self.init(), start_sync(app)) {
                     error!("{}", e);
                 }
-            } else {
-                if let Err(e) = tokio::try_join!(self.init()) {
-                    error!("{}", e);
-                }
+            } else if let Err(e) = tokio::try_join!(self.init()) {
+                error!("{}", e);
             }
 
             sleep(Duration::from_secs(

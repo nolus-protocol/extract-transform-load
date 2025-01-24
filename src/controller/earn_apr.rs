@@ -1,7 +1,5 @@
-use std::str::FromStr as _;
-
 use actix_web::{get, web, Responder};
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, Zero as _};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -12,44 +10,43 @@ use crate::{
 #[get("/earn-apr")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    web::Query(Query { protocol }): web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    if let Some(protocolKey) = &data.protocol {
-        let protocolKey = protocolKey.to_uppercase();
-        let admin = state.protocols.get(&protocolKey);
-        if let Some(protocol) = admin {
-            let data = match protocolKey.as_str() {
-                "OSMOSIS-OSMOSIS-ALL_BTC" => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr_interest(
-                        protocol.contracts.lpp.to_owned(),
-                        15,
-                    )
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-                "OSMOSIS-OSMOSIS-ALL_SOL" | "OSMOSIS-OSMOSIS-АКТ" => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr_interest(
-                        protocol.contracts.lpp.to_owned(),
-                        20,
-                    )
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-                _ => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr(protocol.contracts.lpp.to_owned())
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-            };
-            return Ok(web::Json(Response { earn_apr: data }));
-        }
-    }
+    let protocol = protocol.and_then(|mut protocol| {
+        protocol.make_ascii_uppercase();
+
+        state.protocols.get(&protocol).map(|protocol_data| {
+            (
+                protocol_data,
+                match &*protocol {
+                    "OSMOSIS-OSMOSIS-ALL_BTC" => Some(15),
+                    "OSMOSIS-OSMOSIS-ALL_SOL" | "OSMOSIS-OSMOSIS-АКТ" => {
+                        Some(20)
+                    },
+                    _ => None,
+                },
+            )
+        })
+    });
 
     Ok(web::Json(Response {
-        earn_apr: BigDecimal::from_str("0")?,
+        earn_apr: if let Some((protocol, max_interest)) = protocol {
+            let protocol = protocol.contracts.lpp.to_owned();
+
+            if let Some(max_interest) = max_interest {
+                state
+                    .database
+                    .ls_opening
+                    .get_earn_apr_interest(protocol, max_interest)
+                    .await
+            } else {
+                state.database.ls_opening.get_earn_apr(protocol).await
+            }
+            .ok()
+        } else {
+            None
+        }
+        .unwrap_or_else(BigDecimal::zero),
     }))
 }
 

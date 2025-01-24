@@ -17,7 +17,7 @@ pub async fn parse_and_insert(
     let items = app_state.database.lp_pool.get_all().await?;
     let mut data = vec![];
     let mut tasks = vec![];
-    let max_tasks = app_state.config.max_tasks;
+    let max_tasks = app_state.config.max_tasks.get();
     for item in items {
         tasks.push(proceed(app_state.clone(), item, timestsamp));
     }

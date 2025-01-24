@@ -21,7 +21,7 @@ pub async fn parse_and_insert(
         .await?;
     let mut data: Vec<LP_Lender_State> = Vec::new();
     let mut tasks = vec![];
-    let max_tasks = app_state.config.max_tasks;
+    let max_tasks = app_state.config.max_tasks.get();
 
     for item in items {
         tasks.push(proceed(app_state.clone(), item, timestsamp));

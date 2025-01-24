@@ -10,7 +10,7 @@ pub async fn set_total_value_locked(
     app_state: AppState<State>,
 ) -> Result<(), Error> {
     let neutron_usdc_noble = if let Some((neutron_usdc_noble, _, _)) =
-        app_state.config.lp_pools.get(0)
+        app_state.config.lp_pools.first()
     {
         neutron_usdc_noble
     } else {

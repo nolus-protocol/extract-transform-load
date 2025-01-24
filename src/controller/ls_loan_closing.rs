@@ -9,22 +9,23 @@ use crate::{
 #[get("/ls-loan-closing")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    web::Query(Query {
+        skip,
+        limit,
+        address,
+    }): web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let skip = data.skip.unwrap_or(0);
-    let mut limit = data.limit.unwrap_or(10);
-
-    if limit > 10 {
-        limit = 10;
-    }
-
-    let items = state
+    state
         .database
         .ls_loan_closing
-        .get_leases(data.address.to_owned(), skip, limit)
-        .await?;
-
-    Ok(web::Json(items))
+        .get_leases(
+            address,
+            skip.unwrap_or(0),
+            limit.map_or(10, |limit| limit.min(10)),
+        )
+        .await
+        .map(web::Json)
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]

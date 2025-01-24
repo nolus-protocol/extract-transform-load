@@ -51,7 +51,7 @@ pub async fn proceed_leases(app_state: AppState<State>) -> Result<(), Error> {
         .get_leases_to_proceed()
         .await?;
     let mut tasks = vec![];
-    let max_tasks = app_state.config.max_tasks;
+    let max_tasks = app_state.config.max_tasks.get();
 
     for item in items {
         tasks.push(proceed(app_state.clone(), item));
@@ -184,7 +184,7 @@ async fn get_loan(
                 },
             };
 
-            return Ok(LS_Loan_Closing {
+            Ok(LS_Loan_Closing {
                 Block: block,
                 LS_contract_id: loan.LS_contract_id,
                 LS_amnt_stable: loan.LS_amnt_stable,
@@ -193,10 +193,10 @@ async fn get_loan(
                 LS_amnt: loan.LS_amnt,
                 Active: loan.Active,
                 LS_pnl: loan.LS_pnl,
-            });
+            })
         },
         None => {
-            return Ok(LS_Loan_Closing {
+            Ok(LS_Loan_Closing {
                 LS_contract_id: contract.to_owned(),
                 LS_amnt_stable: BigDecimal::from(0),
                 LS_timestamp: at,
@@ -205,9 +205,9 @@ async fn get_loan(
                 LS_pnl: BigDecimal::from(0),
                 Block: block,
                 Active: false,
-            });
+            })
         },
-    };
+    }
 }
 
 pub async fn get_pnl_long(
@@ -286,7 +286,7 @@ pub async fn get_pnl_long(
         / BigDecimal::from(u64::pow(10, downpayment_currency.1.try_into()?));
 
     let fee_fn =
-        get_fees(&app_state, &lease, protocol.to_owned()).map_err(Error::from);
+        get_fees(app_state, lease, protocol.to_owned()).map_err(Error::from);
 
     let repayments_fn = app_state
         .database
@@ -319,7 +319,7 @@ pub async fn get_pnl_long(
 
     let pnl = &amount - lease_debt - repayment_value - lease_downpayment + fee;
 
-    return Ok(LS_Loan {
+    Ok(LS_Loan {
         LS_contract_id: contract.to_owned(),
         LS_amnt_stable: &amount
             * BigDecimal::from(u64::pow(10, lease_currency.1.try_into()?)),
@@ -328,7 +328,7 @@ pub async fn get_pnl_long(
         LS_pnl: pnl
             * BigDecimal::from(u64::pow(10, lease_currency.1.try_into()?)),
         Active: true,
-    });
+    })
 }
 
 pub async fn get_pnl_short(
@@ -407,7 +407,7 @@ pub async fn get_pnl_short(
         / BigDecimal::from(u64::pow(10, downpayment_currency.1.try_into()?));
 
     let fee_fn =
-        get_fees(&app_state, &lease, protocol.to_owned()).map_err(Error::from);
+        get_fees(app_state, lease, protocol.to_owned()).map_err(Error::from);
 
     let repayments_fn = app_state
         .database
@@ -448,7 +448,7 @@ pub async fn get_pnl_short(
         &amount - lease_debt * lpn_price - repayment_value - lease_downpayment
             + fee;
 
-    return Ok(LS_Loan {
+    Ok(LS_Loan {
         LS_contract_id: contract.to_owned(),
         LS_amnt_stable: &amount
             * BigDecimal::from(u64::pow(10, lease_currency.1.try_into()?)),
@@ -457,7 +457,7 @@ pub async fn get_pnl_short(
         LS_pnl: pnl
             * BigDecimal::from(u64::pow(10, lease_currency.1.try_into()?)),
         Active: true,
-    });
+    })
 }
 
 pub async fn get_change_long(
@@ -519,7 +519,7 @@ pub async fn get_fees(
 
     let loan_amount_fn = app_state
         .in_stabe_by_date(
-            &symbol,
+            symbol,
             &loan_amnt,
             Some(protocol),
             &lease.LS_timestamp,
@@ -594,7 +594,7 @@ pub async fn get_pnl_liquidated(
 
     let pnl = -(repayment_value + lease_downpayment);
 
-    return Ok(LS_Loan {
+    Ok(LS_Loan {
         LS_contract_id: contract.to_owned(),
         LS_amnt_stable: BigDecimal::from(0),
         LS_timestamp: at,
@@ -602,5 +602,5 @@ pub async fn get_pnl_liquidated(
         LS_pnl: pnl
             * BigDecimal::from(u64::pow(10, lease_currency.1.try_into()?)),
         Active: true,
-    });
+    })
 }

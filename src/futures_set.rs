@@ -3,23 +3,20 @@ use std::{future::Future, num::NonZeroUsize};
 use tokio::task::{JoinError, JoinSet};
 
 #[inline]
-pub fn try_join_all<Iterable, Err, FutureErr>(
+pub async fn try_join_all<Iterable, Err, FutureErr>(
     iterable: Iterable,
-) -> impl Future<Output = Result<(), Err>>
-       + Send
-       + 'static
-       + use<Iterable, Err, FutureErr>
+) -> Result<(), Err>
 where
     Iterable: IntoIterator,
     Iterable::Item: Future<Output = Result<(), FutureErr>> + Send + 'static,
-    Err: 'static,
     JoinError: Into<Err>,
     FutureErr: Into<Err> + Send + 'static,
 {
-    try_join_all_folding(iterable, (), |(), ()| ())
+    try_join_all_folding(iterable, (), |(), ()| ()).await
 }
 
-pub fn try_join_all_folding<
+#[inline]
+pub async fn try_join_all_folding<
     Iterable,
     Accumulator,
     FoldWith,
@@ -30,41 +27,33 @@ pub fn try_join_all_folding<
     iterable: Iterable,
     accumulator: Accumulator,
     fold_with: FoldWith,
-) -> impl Future<Output = Result<Accumulator, Err>>
-       + Send
-       + 'static
-       + use<Iterable, Accumulator, FoldWith, Err, FutureOk, FutureErr>
+) -> Result<Accumulator, Err>
 where
     Iterable: IntoIterator,
     Iterable::Item:
         Future<Output = Result<FutureOk, FutureErr>> + Send + 'static,
-    Accumulator: Send + 'static,
-    FoldWith: FnMut(Accumulator, FutureOk) -> Accumulator + Send + 'static,
-    Err: 'static,
-    JoinError: Into<Err>,
+    FoldWith: FnMut(Accumulator, FutureOk) -> Accumulator,
     FutureOk: Send + 'static,
+    JoinError: Into<Err>,
     FutureErr: Into<Err> + Send + 'static,
 {
     try_join_set_folding(accumulator, fold_with, iterable.into_iter().collect())
+        .await
 }
 
 #[inline]
-pub fn try_join_all_with_capacity<Iterable, Err, FutureErr>(
+pub async fn try_join_all_with_capacity<Iterable, Err, FutureErr>(
     iterable: Iterable,
     capacity: NonZeroUsize,
-) -> impl Future<Output = Result<(), Err>>
-       + Send
-       + 'static
-       + use<Iterable, Err, FutureErr>
+) -> Result<(), Err>
 where
-    Iterable: IntoIterator + Send + 'static,
-    Iterable::IntoIter: Send,
+    Iterable: IntoIterator,
     Iterable::Item: Future<Output = Result<(), FutureErr>> + Send + 'static,
-    Err: 'static,
-    FutureErr: Into<Err> + Send + 'static,
     JoinError: Into<Err>,
+    FutureErr: Into<Err> + Send + 'static,
 {
     try_join_all_folding_with_capacity(iterable, (), |(), ()| (), capacity)
+        .await
 }
 
 pub async fn try_join_all_folding_with_capacity<
@@ -85,8 +74,8 @@ where
     Iterable::Item:
         Future<Output = Result<FutureOk, FutureErr>> + Send + 'static,
     FoldWith: FnMut(Accumulator, FutureOk) -> Accumulator,
-    JoinError: Into<Err>,
     FutureOk: Send + 'static,
+    JoinError: Into<Err>,
     FutureErr: Into<Err> + Send + 'static,
 {
     let mut iter = iterable.into_iter().fuse();
@@ -124,8 +113,8 @@ async fn try_join_set_folding<Accumulator, FoldWith, Err, FutureOk, FutureErr>(
 where
     FoldWith: FnMut(Accumulator, FutureOk) -> Accumulator,
     JoinError: Into<Err>,
-    FutureOk: Send + 'static,
-    FutureErr: Into<Err> + Send + 'static,
+    FutureOk: 'static,
+    FutureErr: Into<Err> + 'static,
 {
     while let Some(result) = set.join_next().await {
         accumulator = match result {

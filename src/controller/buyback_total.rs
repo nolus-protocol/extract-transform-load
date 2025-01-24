@@ -11,10 +11,13 @@ use crate::{
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let data = state.database.tr_profit.get_buyback_total().await?;
-    Ok(web::Json(Response {
-        buyback_total: data,
-    }))
+    state
+        .database
+        .tr_profit
+        .get_buyback_total()
+        .await
+        .map(|buyback_total| web::Json(Response { buyback_total }))
+        .map_err(From::from)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

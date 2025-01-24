@@ -9,24 +9,25 @@ use crate::{
 #[get("/leased-assets")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    web::Query(Query { protocol }): web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    if let Some(protocolKey) = &data.protocol {
-        let protocolKey = protocolKey.to_uppercase();
-        let admin = state.protocols.get(&protocolKey);
+    let protocol = protocol.and_then(|mut protocol| {
+        protocol.make_ascii_uppercase();
 
-        if let Some(protocol) = admin {
-            let data = state
-                .database
-                .ls_opening
-                .get_leased_assets(protocol.contracts.lpp.to_owned())
-                .await?;
-            return Ok(web::Json(data));
-        }
+        state.protocols.get(&protocol)
+    });
+
+    if let Some(protocol) = protocol {
+        state
+            .database
+            .ls_opening
+            .get_leased_assets(protocol.contracts.lpp.to_owned())
+            .await
+    } else {
+        state.database.ls_opening.get_leased_assets_total().await
     }
-
-    let data = state.database.ls_opening.get_leased_assets_total().await?;
-    Ok(web::Json(data))
+    .map(web::Json)
+    .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]

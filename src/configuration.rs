@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     env,
+    num::NonZero,
     ops::Deref,
     str::FromStr,
     sync::{Arc, Mutex},
@@ -288,7 +289,7 @@ pub struct Config {
     pub port: u16,
     pub allowed_origins: Vec<String>,
     pub static_dir: String,
-    pub max_tasks: usize,
+    pub max_tasks: NonZero<usize>,
     pub admin_contract: String,
     pub ignore_protocols: Vec<String>,
     pub initial_protocol: String,
@@ -474,7 +475,7 @@ fn get_lp_pools() -> Result<Vec<(String, String, Protocol_Types)>, Error> {
         assert_eq!(items.len(), 3);
         let internal_symbl = items[0].to_owned();
         let symbol = items[1].to_owned();
-        let r#type = Protocol_Types::from_str(&items[2])?;
+        let r#type = Protocol_Types::from_str(items[2])?;
         data.push((internal_symbl, symbol, r#type));
     }
 

@@ -1,11 +1,13 @@
+use std::iter;
+
 use actix_web::{get, web, Responder};
 use bigdecimal::BigDecimal;
-use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    futures_set::try_join_all_folding_with_capacity,
     model::LS_Opening,
 };
 
@@ -14,50 +16,54 @@ async fn index(
     state: web::Data<AppState<State>>,
     data: web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let leases: Vec<&str> = data.leases.split(',').collect();
-    let data = state.database.ls_opening.get_leases(leases).await?;
-    let mut joins = Vec::new();
+    let leases_count;
 
-    for item in data {
-        joins.push(getData(state.clone(), item))
-    }
+    let leases = {
+        let leases = data.leases.split(',').collect::<Vec<_>>();
 
-    let result = join_all(joins).await;
-    let mut items: Vec<ResponseData> = vec![];
+        leases_count = leases.len();
 
-    for item in result.into_iter().flatten().flatten() {
-        items.push(item);
-    }
+        state.database.ls_opening.get_leases(leases).await?
+    };
 
-    Ok(web::Json(items))
+    let results_vec: Vec<_> = iter::from_fn(|| const { Some(None) })
+        .take(leases_count - leases.len())
+        .collect();
+
+    try_join_all_folding_with_capacity(
+        leases
+            .into_iter()
+            .map(|ls_opening| getData(state.clone(), ls_opening)),
+        results_vec,
+        |mut accumulator, response_data| {
+            accumulator.push(Some(response_data));
+
+            accumulator
+        },
+        state.config.max_tasks,
+    )
+    .await
+    .map(web::Json)
 }
 
 async fn getData(
     state: web::Data<AppState<State>>,
     lease: LS_Opening,
-) -> Result<Option<ResponseData>, Error> {
-    let result = state
+) -> Result<ResponseData, Error> {
+    state
         .database
-        .ls_opening
-        .get(lease.LS_contract_id.to_owned())
-        .await?;
-    if let Some(lease) = result {
-        let protocol = state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
-        let (downpayment_price,) = state
-            .database
-            .mp_asset
-            .get_price_by_date(
-                &lease.LS_asset_symbol,
-                protocol,
-                &lease.LS_timestamp,
-            )
-            .await?;
-        return Ok(Some(ResponseData {
+        .mp_asset
+        .get_price_by_date(
+            &lease.LS_asset_symbol,
+            state.get_protocol_by_pool_id(&lease.LS_loan_pool_id),
+            &lease.LS_timestamp,
+        )
+        .await
+        .map(|(downpayment_price,)| ResponseData {
             lease,
             downpayment_price,
-        }));
-    }
-    Ok(None)
+        })
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]

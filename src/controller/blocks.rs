@@ -9,6 +9,11 @@ use crate::{
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let data = state.database.block.count().await?;
-    Ok(web::Json(data))
+    state
+        .database
+        .block
+        .count()
+        .await
+        .map(web::Json)
+        .map_err(From::from)
 }

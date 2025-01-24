@@ -104,21 +104,23 @@ impl Grpc {
         let mut sync = 5;
         loop {
             let blocks = self.get_block(height).await;
+
             match blocks {
                 Ok((data, time_stamp)) => {
                     return Ok((data, time_stamp));
                 },
                 Err(err) => {
-                    let s = tonic::Status::from_error(err.try_into()?);
+                    let s = tonic::Status::from_error(err.into());
+
                     let message = s.message();
+
                     match s.code() {
                         tonic::Code::NotFound | tonic::Code::InvalidArgument => {},
                         s => {
                             return Err(anyhow!("Error")).with_context(|| {
                                 format!(
-                                "cloud not parse transaction block {}, message: {}, code {}",
-                                &height, &message, &s
-                            )
+                                    "cloud not parse transaction block {height}, message: {message}, code {s}"
+                                )
                             })
                         },
                     }
@@ -133,12 +135,12 @@ impl Grpc {
             sleep(Duration::from_secs(1)).await;
         }
 
-        return Err(anyhow!("Error")).with_context(|| {
+        Err(anyhow!("Error")).with_context(|| {
             format!("transaction not found in block in 5 getters {}", &height)
-        });
+        })
     }
 
-    pub async fn get_latest_block(&self) -> Result<i64> {
+    pub async fn get_latest_block(&self) -> Result<i64, Error> {
         const QUERY_NODE_INFO_ERROR: &str =
             "Failed to query node's latest block!";
 
@@ -154,6 +156,7 @@ impl Grpc {
             .get_latest_block(GetLatestBlockRequest {})
             .await
             .context(QUERY_NODE_INFO_ERROR)
+            .map_err(From::from)
             .and_then(|response| {
                 response
                     .into_inner()
@@ -165,6 +168,7 @@ impl Grpc {
                             .map(|header| header.height)
                             .context(MISSING_BLOCK_HEADER_INFO_ERROR)
                     })
+                    .map_err(From::from)
             })
     }
 

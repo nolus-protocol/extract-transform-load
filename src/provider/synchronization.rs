@@ -27,7 +27,7 @@ impl Synchronization {
         running.store(bool, Ordering::SeqCst)
     }
 
-    pub async fn get_params<'a>(
+    pub async fn get_params(
         &self,
         app_state: &AppState<State>,
     ) -> Result<(i16, Vec<(i64, i64)>), Error> {
@@ -56,21 +56,21 @@ impl Synchronization {
         Ok((threads_count, parts))
     }
 
-    pub async fn run<'a>(
+    pub async fn run(
         &self,
         app_state: AppState<State>,
     ) -> Result<(), Error> {
         let (threads_count, parts) = self.get_params(&app_state).await?;
 
         if !self.is_running() {
-            self.start_tasks(threads_count, parts, app_state.clone())
+            self.start_tasks(threads_count, parts, app_state)
                 .await?;
         }
 
         Ok(())
     }
 
-    async fn start_tasks<'a>(
+    async fn start_tasks(
         &self,
         threads_count: i16,
         mut parts: Vec<(i64, i64)>,

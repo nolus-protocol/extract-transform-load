@@ -56,10 +56,10 @@ impl Raw_Message {
         fee: Fee,
         memo: String,
         events: Vec<String>,
-        tx_events: &Vec<Event>,
+        tx_events: &[Event],
     ) -> Result<Raw_Message, anyhow::Error> {
         let k = CosmosTypes::from_str(&value.type_url)?;
-        let seconds = time_stamp.seconds.try_into()?;
+        let seconds = time_stamp.seconds;
         let nanos = time_stamp.nanos.try_into()?;
         let coin: Option<&cosmrs::Coin> = fee.amount.first();
         let (fee_amount, fee_denom) = match coin {
@@ -68,7 +68,7 @@ impl Raw_Message {
         };
 
         match k {
-            CosmosTypes::MsgSend => {
+            CosmosTypes::Send => {
                 let m = value.to_msg::<MsgSend>()?;
                 Ok(Raw_Message {
                     index,
@@ -86,7 +86,7 @@ impl Raw_Message {
                     rewards: None,
                 })
             },
-            CosmosTypes::MsgTransfer => {
+            CosmosTypes::Transfer => {
                 let m = value.to_msg::<MsgTransfer>()?;
                 Ok(Raw_Message {
                     index,
@@ -104,7 +104,7 @@ impl Raw_Message {
                     rewards: None,
                 })
             },
-            CosmosTypes::MsgVoteLegacy => {
+            CosmosTypes::VoteLegacy => {
                 let m = value.to_msg::<MsgVoteLegacy>()?;
                 Ok(Raw_Message {
                     index,
@@ -122,7 +122,7 @@ impl Raw_Message {
                     rewards: None,
                 })
             },
-            CosmosTypes::MsgVote => {
+            CosmosTypes::Vote => {
                 let m = value.to_msg::<MsgVote>()?;
                 Ok(Raw_Message {
                     index,
@@ -140,7 +140,7 @@ impl Raw_Message {
                     rewards: None,
                 })
             },
-            CosmosTypes::MsgRecvPacket => {
+            CosmosTypes::RecvPacket => {
                 let m = value.to_msg::<MsgRecvPacket>()?;
                 let packet = m.packet.context("unable to get packets")?;
                 let data =
@@ -162,7 +162,7 @@ impl Raw_Message {
                     rewards: None,
                 })
             },
-            CosmosTypes::MsgWithdrawDelegatorReward => {
+            CosmosTypes::WithdrawDelegatorReward => {
                 let m = value.to_msg::<MsgWithdrawDelegatorReward>()?;
                 let amount = get_withdraw_delegator_rewards(
                     m.validator_address.to_owned(),
@@ -185,7 +185,7 @@ impl Raw_Message {
                     rewards: amount,
                 })
             },
-            CosmosTypes::MsgDelegate => {
+            CosmosTypes::Delegate => {
                 let m = value.to_msg::<MsgDelegate>()?;
                 Ok(Raw_Message {
                     index,
@@ -203,7 +203,7 @@ impl Raw_Message {
                     rewards: None,
                 })
             },
-            CosmosTypes::MsgBeginRedelegate => {
+            CosmosTypes::BeginRedelegate => {
                 let m = value.to_msg::<MsgBeginRedelegate>()?;
                 Ok(Raw_Message {
                     index,
@@ -221,7 +221,7 @@ impl Raw_Message {
                     rewards: None,
                 })
             },
-            CosmosTypes::MsgUndelegate => {
+            CosmosTypes::Undelegate => {
                 let m = value.to_msg::<MsgUndelegate>()?;
                 Ok(Raw_Message {
                     index,
@@ -239,12 +239,12 @@ impl Raw_Message {
                     rewards: None,
                 })
             },
-            CosmosTypes::MsgExecuteContract => {
+            CosmosTypes::ExecuteContract => {
                 let m = value.to_msg::<MsgExecuteContract>()?;
                 let msg: Value = serde_json::from_slice(&m.msg)?;
 
                 for event in events {
-                    if let Some(_) = msg.get(&event) {
+                    if msg.get(&event).is_some() {
                         let rewards = {
                             if &event == "claim_rewards" {
                                 get_msg_execute_contract_rewards(
@@ -283,11 +283,11 @@ impl Raw_Message {
 pub fn get_withdraw_delegator_rewards(
     validator: String,
     delegator: String,
-    tx_events: &Vec<Event>,
+    tx_events: &[Event],
 ) -> Result<Option<String>, Error> {
     const EVENT: &str = "withdraw_rewards";
 
-    for (_index, event) in tx_events.iter().enumerate() {
+    for event in tx_events.iter() {
         if event.r#type == EVENT {
             let attributes = event.attributes.iter();
             let amount = attributes
@@ -315,7 +315,7 @@ pub fn get_withdraw_delegator_rewards(
 pub fn get_msg_execute_contract_rewards(
     recipient: String,
     sender: String,
-    tx_events: &Vec<Event>,
+    tx_events: &[Event],
 ) -> Result<Option<String>, Error> {
     const EVENT: &str = "transfer";
     for event in tx_events.iter() {
@@ -353,52 +353,52 @@ pub fn get_msg_execute_contract_rewards(
 
 #[derive(Debug)]
 pub enum CosmosTypes {
-    MsgSend,
-    MsgTransfer,
-    MsgVote,
-    MsgVoteLegacy,
-    MsgRecvPacket,
-    MsgWithdrawDelegatorReward,
-    MsgDelegate,
-    MsgBeginRedelegate,
-    MsgUndelegate,
-    MsgExecuteContract,
+    Send,
+    Transfer,
+    Vote,
+    VoteLegacy,
+    RecvPacket,
+    WithdrawDelegatorReward,
+    Delegate,
+    BeginRedelegate,
+    Undelegate,
+    ExecuteContract,
 }
 
 impl fmt::Display for CosmosTypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CosmosTypes::MsgSend => {
+            CosmosTypes::Send => {
                 write!(f, "/cosmos.bank.v1beta1.MsgSend")
             },
-            CosmosTypes::MsgTransfer => {
+            CosmosTypes::Transfer => {
                 write!(f, "/ibc.applications.transfer.v1.MsgTransfer")
             },
-            CosmosTypes::MsgVoteLegacy => {
+            CosmosTypes::VoteLegacy => {
                 write!(f, "/cosmos.gov.v1beta1.MsgVote")
             },
-            CosmosTypes::MsgVote => {
+            CosmosTypes::Vote => {
                 write!(f, "/cosmos.gov.v1.MsgVote")
             },
-            CosmosTypes::MsgRecvPacket => {
+            CosmosTypes::RecvPacket => {
                 write!(f, "/ibc.core.channel.v1.MsgRecvPacket")
             },
-            CosmosTypes::MsgWithdrawDelegatorReward => {
+            CosmosTypes::WithdrawDelegatorReward => {
                 write!(
                     f,
                     "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward"
                 )
             },
-            CosmosTypes::MsgDelegate => {
+            CosmosTypes::Delegate => {
                 write!(f, "/cosmos.staking.v1beta1.MsgDelegate")
             },
-            CosmosTypes::MsgBeginRedelegate => {
+            CosmosTypes::BeginRedelegate => {
                 write!(f, "/cosmos.staking.v1beta1.MsgBeginRedelegate")
             },
-            CosmosTypes::MsgUndelegate => {
+            CosmosTypes::Undelegate => {
                 write!(f, "/cosmos.staking.v1beta1.MsgUndelegate")
             },
-            CosmosTypes::MsgExecuteContract => {
+            CosmosTypes::ExecuteContract => {
                 write!(f, "/cosmwasm.wasm.v1.MsgExecuteContract")
             },
         }
@@ -408,32 +408,30 @@ impl fmt::Display for CosmosTypes {
 impl From<CosmosTypes> for String {
     fn from(value: CosmosTypes) -> Self {
         match value {
-            CosmosTypes::MsgSend => {
-                String::from("/cosmos.bank.v1beta1.MsgSend")
-            },
-            CosmosTypes::MsgTransfer => {
+            CosmosTypes::Send => String::from("/cosmos.bank.v1beta1.MsgSend"),
+            CosmosTypes::Transfer => {
                 String::from("/ibc.applications.transfer.v1.MsgTransfer")
             },
-            CosmosTypes::MsgVoteLegacy => {
+            CosmosTypes::VoteLegacy => {
                 String::from("/cosmos.gov.v1beta1.MsgVote")
             },
-            CosmosTypes::MsgVote => String::from("/cosmos.gov.v1.MsgVote"),
-            CosmosTypes::MsgRecvPacket => {
+            CosmosTypes::Vote => String::from("/cosmos.gov.v1.MsgVote"),
+            CosmosTypes::RecvPacket => {
                 String::from("/ibc.core.channel.v1.MsgRecvPacket")
             },
-            CosmosTypes::MsgWithdrawDelegatorReward => String::from(
+            CosmosTypes::WithdrawDelegatorReward => String::from(
                 "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward",
             ),
-            CosmosTypes::MsgDelegate => {
+            CosmosTypes::Delegate => {
                 String::from("/cosmos.staking.v1beta1.MsgDelegate")
             },
-            CosmosTypes::MsgBeginRedelegate => {
+            CosmosTypes::BeginRedelegate => {
                 String::from("/cosmos.staking.v1beta1.MsgBeginRedelegate")
             },
-            CosmosTypes::MsgUndelegate => {
+            CosmosTypes::Undelegate => {
                 String::from("/cosmos.staking.v1beta1.MsgUndelegate")
             },
-            CosmosTypes::MsgExecuteContract => {
+            CosmosTypes::ExecuteContract => {
                 String::from("/cosmwasm.wasm.v1.MsgExecuteContract")
             },
         }
@@ -445,29 +443,25 @@ impl FromStr for CosmosTypes {
 
     fn from_str(value: &str) -> Result<CosmosTypes, Self::Err> {
         match value {
-            "/cosmos.bank.v1beta1.MsgSend" => Ok(CosmosTypes::MsgSend),
+            "/cosmos.bank.v1beta1.MsgSend" => Ok(CosmosTypes::Send),
             "/ibc.applications.transfer.v1.MsgTransfer" => {
-                Ok(CosmosTypes::MsgTransfer)
+                Ok(CosmosTypes::Transfer)
             },
-            "/cosmos.gov.v1beta1.MsgVote" => Ok(CosmosTypes::MsgVoteLegacy),
-            "/cosmos.gov.v1.MsgVote" => Ok(CosmosTypes::MsgVote),
-            "/ibc.core.channel.v1.MsgRecvPacket" => {
-                Ok(CosmosTypes::MsgRecvPacket)
-            },
+            "/cosmos.gov.v1beta1.MsgVote" => Ok(CosmosTypes::VoteLegacy),
+            "/cosmos.gov.v1.MsgVote" => Ok(CosmosTypes::Vote),
+            "/ibc.core.channel.v1.MsgRecvPacket" => Ok(CosmosTypes::RecvPacket),
             "/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward" => {
-                Ok(CosmosTypes::MsgWithdrawDelegatorReward)
+                Ok(CosmosTypes::WithdrawDelegatorReward)
             },
-            "/cosmos.staking.v1beta1.MsgDelegate" => {
-                Ok(CosmosTypes::MsgDelegate)
-            },
+            "/cosmos.staking.v1beta1.MsgDelegate" => Ok(CosmosTypes::Delegate),
             "/cosmos.staking.v1beta1.MsgBeginRedelegate" => {
-                Ok(CosmosTypes::MsgBeginRedelegate)
+                Ok(CosmosTypes::BeginRedelegate)
             },
             "/cosmos.staking.v1beta1.MsgUndelegate" => {
-                Ok(CosmosTypes::MsgUndelegate)
+                Ok(CosmosTypes::Undelegate)
             },
             "/cosmwasm.wasm.v1.MsgExecuteContract" => {
-                Ok(CosmosTypes::MsgExecuteContract)
+                Ok(CosmosTypes::ExecuteContract)
             },
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
