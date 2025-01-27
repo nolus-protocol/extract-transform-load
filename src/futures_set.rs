@@ -248,3 +248,32 @@ where
 
     Ok(accumulator)
 }
+
+#[tokio::test]
+async fn test_join_set_folding() {
+    async fn delayed_result(
+        delay: std::time::Duration,
+        value: u8,
+    ) -> Result<u8, std::convert::Infallible> {
+        tokio::time::sleep(delay).await;
+
+        Ok(value)
+    }
+
+    let result = try_join_all_folding_mapping_err_with_capacity(
+        [
+            delayed_result(std::time::Duration::from_millis(350), 1),
+            delayed_result(std::time::Duration::from_millis(150), 2),
+            delayed_result(std::time::Duration::from_millis(50), 4),
+            delayed_result(std::time::Duration::from_millis(250), 8),
+            delayed_result(std::time::Duration::from_millis(450), 16),
+        ],
+        0,
+        |acc, result| acc ^ result,
+        |err| -> JoinError { match err {} },
+        const { NonZeroUsize::new(3).unwrap() },
+    )
+    .await.unwrap();
+
+    assert_eq!(result, 31);
+}
