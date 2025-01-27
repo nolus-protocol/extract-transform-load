@@ -10,6 +10,8 @@ use crate::{
 use super::DataBase;
 
 impl Table<LS_Opening> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(
         &self,
         ls_opening: &LS_Opening,
@@ -29,6 +31,8 @@ impl Table<LS_Opening> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: LS_Opening,
@@ -78,6 +82,9 @@ impl Table<LS_Opening> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<LS_Opening>,
@@ -134,6 +141,7 @@ impl Table<LS_Opening> {
             .map(drop)
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn count(
         &self,
         from: DateTime<Utc>,
@@ -249,6 +257,11 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_borrow_apr(
         &self,
         protocol: String,
@@ -272,10 +285,13 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leased_assets(
         &self,
         protocol: String,
     ) -> Result<Vec<Leased_Asset>, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT
             "LS_asset_symbol" AS "Asset",
@@ -291,9 +307,11 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leased_assets_total(
         &self,
     ) -> Result<Vec<Leased_Asset>, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT
             "LS_asset_symbol" AS "Asset",
@@ -305,10 +323,12 @@ impl Table<LS_Opening> {
         sqlx::query_as(SQL).fetch_all(&self.pool).await
     }
 
+    // FIXME Pass argument by reference.
     pub async fn get_earn_apr(
         &self,
         protocol: String,
     ) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to parameterize non-constant hardcoded values.
         const SQL: &str = r#"
         WITH "DateRange" AS (
             SELECT generate_series(
@@ -398,11 +418,15 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt31` instead. Alternative: Find another data type that
+    //  better fits description of value.
     pub async fn get_earn_apr_interest(
         &self,
         protocol: String,
         max_interest: i32,
     ) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to parameterize non-constant hardcoded values.
         const SQL: &str = r#"
         WITH "DateRange" AS (
             SELECT generate_series(
@@ -479,6 +503,7 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Pass argument by reference.
     pub async fn get(
         &self,
         LS_contract_id: String,
@@ -495,10 +520,12 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Pass argument by reference.
     pub async fn get_borrowed(
         &self,
         protocol: String,
     ) -> Result<BigDecimal, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan"
         FROM "LS_Opening"
@@ -515,6 +542,7 @@ impl Table<LS_Opening> {
     }
 
     pub async fn get_borrowed_total(&self) -> Result<BigDecimal, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan"
         FROM "LS_Opening"
@@ -528,6 +556,8 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Use iterators instead.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leases(
         &self,
         leases: Vec<&str>,
@@ -548,6 +578,7 @@ impl Table<LS_Opening> {
     }
 
     pub async fn get_total_tx_value(&self) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to describe currencies' decimal places dynamically.
         const SQL: &str = r#"
         WITH Opened_Leases AS (
             SELECT
@@ -642,6 +673,8 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_max_ls_interest_7d(
         &self,
         lpp_address: String,
@@ -664,6 +697,11 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leases_by_address(
         &self,
         address: String,
@@ -688,6 +726,9 @@ impl Table<LS_Opening> {
     }
 
     //TODO: delete
+    // FIXME Pass argument by reference.
+    // FIXME Use iterators instead.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leases_data(
         &self,
         leases: Vec<String>,
@@ -710,6 +751,8 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn update_ls_loan_amnt(
         &self,
         ls_opening: &LS_Opening,
@@ -728,6 +771,8 @@ impl Table<LS_Opening> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn update_ls_lpn_loan_amnt(
         &self,
         ls_opening: &LS_Opening,
@@ -746,6 +791,8 @@ impl Table<LS_Opening> {
             .map(drop)
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_lease_history(
         &self,
         contract_id: String,
