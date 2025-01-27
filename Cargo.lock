@@ -953,7 +953,6 @@ dependencies = [
  "base64 0.22.1",
  "bigdecimal",
  "chrono",
- "cosmos-sdk-proto",
  "cosmrs",
  "futures",
  "ibc-proto",
