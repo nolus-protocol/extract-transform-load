@@ -20,6 +20,11 @@ rpath = false
 codegen-units = 1
 opt-level = 3
 
+[features]
+default = ["mainnet"]
+mainnet = []
+testnet = []
+
 [dependencies]
 
 actix-web = { version = "4.9" }
@@ -69,8 +74,3 @@ ibc-proto = "0.51.0"
 
 [dev-dependencies]
 tokio = { version = "1.41", features = ["time", "test-util"] }
-
-[features]
-default = ["mainnet"]
-mainnet = []
-testnet = []
