@@ -57,7 +57,7 @@ struct GrpcInner {
 pub struct Grpc(Arc<GrpcInner>);
 
 impl Grpc {
-    pub async fn new(config: Config) -> Result<Grpc, Error> {
+    pub async fn new(config: &Config) -> Result<Grpc, Error> {
         let host = config.grpc_host.to_owned();
         let uri = Uri::from_str(&host).context("Invalid grpc url")?;
         let tls_config = ClientTlsConfig::new().with_native_roots();
