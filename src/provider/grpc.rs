@@ -109,16 +109,17 @@ impl Grpc {
                     return Ok((data, time_stamp));
                 },
                 Err(err) => {
-                    let s = tonic::Status::from_error(err.try_into()?);
+                    let s = tonic::Status::from_error(err.into());
                     let message = s.message();
                     match s.code() {
-                        tonic::Code::NotFound | tonic::Code::InvalidArgument => {},
+                        tonic::Code::NotFound
+                        | tonic::Code::InvalidArgument => {},
                         s => {
                             return Err(anyhow!("Error")).with_context(|| {
                                 format!(
-                                "cloud not parse transaction block {}, message: {}, code {}",
-                                &height, &message, &s
-                            )
+                                    "cloud not parse transaction block \
+                                    {height}, message: {message}, code {s}"
+                                )
                             })
                         },
                     }
@@ -133,9 +134,9 @@ impl Grpc {
             sleep(Duration::from_secs(1)).await;
         }
 
-        return Err(anyhow!("Error")).with_context(|| {
-            format!("transaction not found in block in 5 getters {}", &height)
-        });
+        Err(anyhow!("Error")).with_context(|| {
+            format!("transaction not found in block in 5 getters {height}")
+        })
     }
 
     pub async fn get_latest_block(&self) -> Result<i64> {
@@ -224,7 +225,7 @@ impl Grpc {
         if let Err(err) = &tx {
             match err.code() {
                 tonic::Code::Internal | tonic::Code::Unknown => {
-                    error!("tx decode with internal error: {}", err);
+                    error!("tx decode with internal error: {err}");
                     return Ok(None);
                 },
                 _ => {},
@@ -232,17 +233,15 @@ impl Grpc {
         }
         let tx = tx
             .context(format!(
-                "Query response doesn't contain tx information {}, block {}",
-                hash,
-                height
+                "Query response doesn't contain tx information {hash}, block \
+                {height}"
             ))
             .and_then(|response| {
                 let data = response.into_inner();
                 data.tx_response.context(format!(
-                "Query response doesn't contain tx information tx_response {}, block {}",
-                hash,
-                height
-            ))
+                    "Query response doesn't contain tx information tx_response \
+                    {hash}, block {height}",
+                ))
             })?;
 
         Ok(Some(tx))
@@ -281,9 +280,6 @@ impl Grpc {
         contract: String,
         protocol: String,
     ) -> Result<AdminProtocolExtendType, Error> {
-        let bytes = format!(r#"{{"protocol": "{}"}}"#, protocol).to_owned();
-        let bytes = bytes.as_bytes();
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query against contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -293,7 +289,8 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: format!(r#"{{"protocol": {protocol:?}}}"#)
+                    .into_bytes(),
             })
             .await
             .map(|response| response.into_inner().data)
@@ -316,8 +313,6 @@ impl Grpc {
         protocol: String,
         _height: Option<String>,
     ) -> Result<(Prices, String), Error> {
-        let bytes = b"{\"prices\": {}}";
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query against oracle contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -327,7 +322,7 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: br#"{"prices":{}}"#.to_vec(),
             })
             .await
             .map(|response| response.into_inner().data)
@@ -342,8 +337,6 @@ impl Grpc {
         &self,
         contract: String,
     ) -> Result<String, Error> {
-        let bytes = b"{\"base_currency\": {}}";
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query against oracle base_currency contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -353,7 +346,7 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: br#"{"base_currency":{}}"#.to_vec(),
             })
             .await
             .map(|response| response.into_inner().data)
@@ -369,11 +362,6 @@ impl Grpc {
         contract: String,
         ticker: String,
     ) -> Result<AmountObject, Error> {
-        let bytes =
-            format!(r#"{{"stable_price": {{ "currency": "{}" }} }}"#, ticker)
-                .to_owned();
-        let bytes = bytes.as_bytes();
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query against oracle stable_price contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -383,7 +371,10 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: format!(
+                    r#"{{"stable_price":{{"currency":{ticker:?}}}}}"#
+                )
+                .into_bytes(),
             })
             .await
             .map(|response| response.into_inner().data)
@@ -425,8 +416,6 @@ impl Grpc {
         &self,
         contract: String,
     ) -> Result<LS_State_Type, Error> {
-        let bytes = b"{}";
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query lease contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -436,7 +425,7 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: b"{}".to_vec(),
             })
             .await
             .map(|response| response.into_inner().data)
@@ -453,8 +442,6 @@ impl Grpc {
         contract: String,
         height: i64,
     ) -> Result<LS_State_Type, Error> {
-        let bytes = b"{}";
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query lease contract by block!";
 
@@ -462,7 +449,7 @@ impl Grpc {
             "Failed to parse message query lease contract!";
         let mut request = QuerySmartContractStateRequest {
             address: contract,
-            query_data: bytes.to_vec(),
+            query_data: b"{}".to_vec(),
         }
         .into_request();
 
@@ -487,10 +474,6 @@ impl Grpc {
         contract: String,
         address: String,
     ) -> Result<Balance, Error> {
-        let request =
-            format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
-        let bytes = request.as_bytes();
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query balance contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -500,7 +483,10 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: format!(
+                    r#"{{"balance":{{"address":{address:?}}}}}"#
+                )
+                .into_bytes(),
             })
             .await
             .map(|response| response.into_inner().data)
@@ -516,8 +502,6 @@ impl Grpc {
         &self,
         contract: String,
     ) -> Result<LPP_Price, Error> {
-        let bytes = b"{\"price\": []}";
-
         const QUERY_CONTRACT_ERROR: &str = "Failed to run query lpp contract!";
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp contract!";
@@ -526,7 +510,7 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: br#"{"price":[]}"#.to_vec(),
             })
             .await
             .map(|response| response.into_inner().data)
@@ -542,8 +526,6 @@ impl Grpc {
         &self,
         contract: String,
     ) -> Result<LP_Pool_State_Type, Error> {
-        let bytes = b"{\"lpp_balance\": []}";
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query lpp balance state contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -553,7 +535,7 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: br#"{"lpp_balance":[]}"#.to_vec(),
             })
             .await
             .map(|response| response.into_inner().data)
@@ -569,8 +551,6 @@ impl Grpc {
         &self,
         contract: String,
     ) -> Result<LP_Pool_Config_State_Type, Error> {
-        let bytes = b"{\"config\": []}";
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query lpp config state contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -580,7 +560,7 @@ impl Grpc {
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
-                query_data: bytes.to_vec(),
+                query_data: br#"{"config":[]}"#.to_vec(),
             })
             .await
             .map(|response| response.into_inner().data)

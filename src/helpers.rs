@@ -703,33 +703,34 @@ pub async fn insert_txs(
 
     if block.is_none() {
         let mut tx = app_state.database.pool.begin().await?;
-        for tx_results in txs {
-            if let Some(tx_results) = tx_results {
-                let hash = tx_results.txhash.to_owned();
-                let tx_data =
-                    tx_results.tx.context("could not find Any message")?;
-                parse_raw_tx(
+        for tx_results in txs.into_iter().flatten() {
+            let hash = tx_results.txhash.to_owned();
+
+            let tx_data =
+                tx_results.tx.context("could not find Any message")?;
+
+            parse_raw_tx(
+                app_state.clone(),
+                tx_results.txhash,
+                tx_data,
+                height,
+                time_stamp,
+                &tx_results.events,
+                &mut tx,
+            )
+            .await?;
+
+            for (index, event) in tx_results.events.iter().enumerate() {
+                parse_event(
                     app_state.clone(),
-                    tx_results.txhash,
-                    tx_data,
+                    event,
+                    index,
+                    time_stamp,
+                    hash.to_owned(),
                     height,
-                    time_stamp.clone(),
-                    &tx_results.events,
                     &mut tx,
                 )
                 .await?;
-                for (index, event) in tx_results.events.iter().enumerate() {
-                    parse_event(
-                        app_state.clone(),
-                        event,
-                        index,
-                        time_stamp.clone(),
-                        hash.to_owned(),
-                        height,
-                        &mut tx,
-                    )
-                    .await?;
-                }
             }
         }
 
@@ -763,7 +764,7 @@ pub async fn parse_raw_tx(
             msg.clone(),
             tx_hash.to_owned(),
             height,
-            time_stamp.clone(),
+            time_stamp,
             fee,
             memo,
             app_state.config.events_subscribe.clone(),
