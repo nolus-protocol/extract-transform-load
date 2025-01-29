@@ -73,7 +73,7 @@ async fn app_main() -> Result<(), Error> {
 }
 
 async fn init<'c>() -> Result<(Config, DatabasePool), Error> {
-    set_configuration()?;
+    set_configuration().await?;
     let config = get_configuration()?;
     let database = DatabasePool::new(&config).await?;
     Ok((config, database))
