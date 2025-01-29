@@ -73,3 +73,7 @@ features = ["fs", "macros", "rt-multi-thread"]
 version = "0.12"
 default-features = false
 features = ["channel", "gzip", "prost", "tls", "tls-roots", "transport", "zstd"]
+
+[dev-dependencies.tokio]
+version = "1.41"
+features = ["test-util", "time"]
