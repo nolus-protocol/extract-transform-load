@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    convert::identity,
     env,
     num::NonZeroUsize,
     ops::Deref,
@@ -9,12 +10,12 @@ use std::{
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use futures::future::join_all;
 use tokio::fs;
 
 use crate::{
     dao::get_path,
     error::Error,
+    futures_set::{map_infallible, try_join_all},
     helpers::{formatter, parse_tuple_string, Formatter, Protocol_Types},
     model::LP_Pool,
     provider::{DatabasePool, Grpc},
@@ -139,28 +140,32 @@ impl State {
         let protocols = grpc
             .get_admin_config(config.admin_contract.to_owned())
             .await?;
-        let mut joins = vec![];
-        let mut protocolsMap =
-            HashMap::<String, AdminProtocolExtendType>::new();
 
-        for p in protocols {
-            if !config.ignore_protocols.contains(&p) {
-                joins.push(
-                    grpc.get_protocol_config(
-                        config.admin_contract.to_owned(),
-                        p,
-                    ),
-                )
-            }
-        }
+        try_join_all(
+            protocols
+                .into_iter()
+                .filter(|protocol| !config.ignore_protocols.contains(&protocol))
+                .map(|protocol| {
+                    let grpc = grpc.clone();
 
-        let result = join_all(joins).await;
+                    let admin_contract = config.admin_contract.clone();
 
-        for item in result.into_iter().flatten() {
-            protocolsMap.insert(item.protocol.to_owned(), item);
-        }
+                    async move {
+                        grpc.get_protocol_config(admin_contract, protocol).await
+                    }
+                }),
+            From::from,
+            identity,
+            HashMap::new(),
+            |mut accumulator, protocol| {
+                accumulator.insert(protocol.protocol.clone(), protocol);
 
-        Ok(protocolsMap)
+                Ok(accumulator)
+            },
+            map_infallible,
+            None,
+        )
+        .await
     }
 
     pub async fn in_stabe(
