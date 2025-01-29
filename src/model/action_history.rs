@@ -1,6 +1,7 @@
+use std::{fmt, io, str::FromStr};
+
 use chrono::{DateTime, Utc};
 use sqlx::FromRow;
-use std::{fmt, io, str::FromStr};
 
 #[derive(Debug, FromRow)]
 pub struct Action_History {

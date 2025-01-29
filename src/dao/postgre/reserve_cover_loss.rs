@@ -1,6 +1,8 @@
-use super::{DataBase, QueryResult};
+use sqlx::{Error, Transaction};
+
 use crate::model::{Reserve_Cover_Loss, Table};
-use sqlx::{error::Error, Transaction};
+
+use super::{DataBase, QueryResult};
 
 impl Table<Reserve_Cover_Loss> {
     pub async fn isExists(

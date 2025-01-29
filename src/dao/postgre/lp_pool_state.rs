@@ -1,13 +1,16 @@
-use super::{DataBase, QueryResult};
+use std::str::FromStr as _;
+
+use chrono::{DateTime, Utc};
+use sqlx::{types::BigDecimal, Error, QueryBuilder};
+
 use crate::{
     model::{
         LP_Pool_State, Supplied_Borrowed_Series, Table, Utilization_Level,
     },
     types::Max_LP_Ratio,
 };
-use chrono::{DateTime, Utc};
-use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
-use std::str::FromStr;
+
+use super::{DataBase, QueryResult};
 
 impl Table<LP_Pool_State> {
     pub async fn insert(

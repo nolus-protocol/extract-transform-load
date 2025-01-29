@@ -1,8 +1,11 @@
-use super::{DataBase, QueryResult};
-use crate::model::{TR_State, Table};
+use std::str::FromStr as _;
+
 use chrono::{DateTime, Utc};
-use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
-use std::str::FromStr;
+use sqlx::{types::BigDecimal, Error, QueryBuilder};
+
+use crate::model::{TR_State, Table};
+
+use super::{DataBase, QueryResult};
 
 impl Table<TR_State> {
     pub async fn insert(&self, data: TR_State) -> Result<QueryResult, Error> {

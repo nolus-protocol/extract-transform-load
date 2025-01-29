@@ -1,10 +1,11 @@
+use actix_web::{get, web, Responder};
+use bigdecimal::BigDecimal;
+use serde::{Deserialize, Serialize};
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
-use actix_web::{get, web, Responder, Result};
-use bigdecimal::BigDecimal;
-use serde::{Deserialize, Serialize};
 
 #[get("/total-tx-value")]
 async fn index(

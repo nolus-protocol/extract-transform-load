@@ -1,6 +1,7 @@
-use crate::error::Error;
-use actix_web::{get, web, Responder, Result};
+use actix_web::{get, web, Responder};
 use serde::{Deserialize, Serialize};
+
+use crate::error::Error;
 
 #[get("/version")]
 async fn index() -> Result<impl Responder, Error> {

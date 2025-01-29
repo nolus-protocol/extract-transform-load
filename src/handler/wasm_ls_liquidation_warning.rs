@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::Context as _;
 use chrono::DateTime;
-use cosmos_sdk_proto::Timestamp;
+use cosmrs::proto::Timestamp;
 use sqlx::Transaction;
 
 use crate::{

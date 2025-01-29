@@ -1,13 +1,16 @@
-use crate::configuration::{AppState, State};
-use crate::error::Error;
-use crate::handler::ls_loan_closing;
-use crate::helpers::insert_txs;
-use crate::provider::Grpc;
-
-use anyhow::Context;
-use futures::future::try_join_all;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+use anyhow::Context as _;
+use futures::future::try_join_all;
 use tracing::{error, info};
+
+use crate::{
+    configuration::{AppState, State},
+    error::Error,
+    handler::ls_loan_closing,
+    helpers::insert_txs,
+    provider::Grpc,
+};
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
 

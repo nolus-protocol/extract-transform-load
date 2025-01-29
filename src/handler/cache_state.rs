@@ -1,8 +1,9 @@
+use tokio::time::{self, Duration};
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
-use tokio::{time, time::Duration};
 
 #[cfg(feature = "mainnet")]
 pub async fn set_total_value_locked(
