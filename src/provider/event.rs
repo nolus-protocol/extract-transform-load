@@ -1,16 +1,19 @@
 use std::time::Duration;
 
-use crate::configuration::{AppState, State};
-use crate::error::Error;
-use crate::helpers::insert_txs;
-use crate::provider::synchronization::start_sync;
-use anyhow::Context;
-use futures::StreamExt;
-use tendermint_rpc::client::WebSocketClient;
-use tendermint_rpc::query::EventType;
-use tendermint_rpc::SubscriptionClient;
+use anyhow::Context as _;
+use futures::StreamExt as _;
+use tendermint_rpc::{
+    client::WebSocketClient, query::EventType, SubscriptionClient,
+};
 use tokio::time::sleep;
 use tracing::{error, info};
+
+use crate::{
+    configuration::{AppState, State},
+    error::Error,
+    helpers::insert_txs,
+    provider::synchronization::start_sync,
+};
 
 pub struct Event {
     app_state: AppState<State>,

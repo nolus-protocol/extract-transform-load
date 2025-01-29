@@ -1,7 +1,9 @@
-use super::QueryResult;
-use crate::model::{Action_History, Table};
 use chrono::{DateTime, Utc};
-use sqlx::error::Error;
+use sqlx::Error;
+
+use crate::model::{Action_History, Table};
+
+use super::QueryResult;
 
 impl Table<Action_History> {
     pub async fn insert(

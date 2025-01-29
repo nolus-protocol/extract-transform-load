@@ -1,14 +1,16 @@
-use crate::configuration::Config;
-use crate::dao::{PoolOption, PoolType};
-use crate::error::Error;
-use crate::model::{
-    Action_History, Block, LP_Deposit, LP_Lender_State, LP_Pool, LP_Pool_State,
-    LP_Withdraw, LS_Closing, LS_Liquidation, LS_Liquidation_Warning,
-    LS_Loan_Closing, LS_Opening, LS_Repayment, LS_State, MP_Asset, MP_Yield,
-    PL_State, Raw_Message, Reserve_Cover_Loss, TR_Profit,
-    TR_Rewards_Distribution, TR_State,
+use crate::{
+    configuration::Config,
+    dao::{PoolOption, PoolType},
+    error::Error,
+    model::{
+        Action_History, Block, LP_Deposit, LP_Lender_State, LP_Pool,
+        LP_Pool_State, LP_Withdraw, LS_Close_Position, LS_Closing,
+        LS_Liquidation, LS_Liquidation_Warning, LS_Loan_Closing, LS_Opening,
+        LS_Repayment, LS_State, MP_Asset, MP_Yield, PL_State, Raw_Message,
+        Reserve_Cover_Loss, TR_Profit, TR_Rewards_Distribution, TR_State,
+        Table,
+    },
 };
-use crate::model::{LS_Close_Position, Table};
 
 #[derive(Debug)]
 pub struct DatabasePool {
