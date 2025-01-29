@@ -1,5 +1,3 @@
-use std::str::FromStr as _;
-
 use actix_web::{get, web, Responder};
 use anyhow::Context as _;
 use chrono::{Duration, Utc};
@@ -13,33 +11,40 @@ use crate::{
 #[get("/prices")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    web::Query(data): web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let mut interval = data.interval;
+    let interval = data.interval.min(100);
 
-    if interval > 100 {
-        interval = 100;
-    }
+    const BIG_DECIMAL_TO_FLOAT_ERROR: &str = "Couldn't convert BigDecimal to \
+    floating-point number via string conversion!";
 
-    let group = getIntervalGroup(interval);
-    let date = Utc::now() - Duration::days(interval);
-
-    let data = state
+    state
         .database
         .mp_asset
-        .get_prices(data.key.to_owned(), data.protocol.to_owned(), date, group)
-        .await?;
-    let mut prices = vec![];
+        .get_prices(
+            data.key,
+            data.protocol,
+            Utc::now() - Duration::days(interval),
+            getIntervalGroup(interval),
+        )
+        .await
+        .map_err(From::from)
+        .and_then(|data| {
+            data.into_iter()
+                .try_fold(vec![], |mut prices, (date, price)| {
+                    price
+                        .to_string()
+                        .parse::<f64>()
+                        .context(BIG_DECIMAL_TO_FLOAT_ERROR)
+                        .map(|price| {
+                            prices.push((date, price));
 
-    for (date, price) in data.into_iter() {
-        let ms = date.timestamp_millis();
-        let str_price = price.to_string();
-        let p = f64::from_str(&str_price)
-            .context("coudld not parse big decimal to float")?;
-        prices.push((ms, p));
-    }
-
-    Ok(web::Json(prices))
+                            prices
+                        })
+                })
+                .map(web::Json)
+                .map_err(From::from)
+        })
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,10 +56,10 @@ pub struct Query {
 
 pub fn getIntervalGroup(interval: i64) -> i32 {
     if interval <= 7 {
-        return 1;
+        1
     } else if interval > 7 && interval < 30 {
-        return 5;
+        5
+    } else {
+        60
     }
-
-    60
 }

@@ -27,10 +27,8 @@ async fn index(
         From::from,
         identity,
         vec![],
-        |mut accumulator, item| {
-            if let Some(item) = item {
-                accumulator.push(item);
-            }
+        |mut accumulator, response_data| {
+            accumulator.push(response_data);
 
             Ok(accumulator)
         },
@@ -44,29 +42,21 @@ async fn index(
 async fn getData(
     state: web::Data<AppState<State>>,
     lease: LS_Opening,
-) -> Result<Option<ResponseData>, Error> {
-    let result = state
+) -> Result<ResponseData, Error> {
+    state
         .database
-        .ls_opening
-        .get(lease.LS_contract_id.to_owned())
-        .await?;
-    if let Some(lease) = result {
-        let protocol = state.get_protocol_by_pool_id(&lease.LS_loan_pool_id);
-        let (downpayment_price,) = state
-            .database
-            .mp_asset
-            .get_price_by_date(
-                &lease.LS_asset_symbol,
-                protocol,
-                &lease.LS_timestamp,
-            )
-            .await?;
-        return Ok(Some(ResponseData {
+        .mp_asset
+        .get_price_by_date(
+            &lease.LS_asset_symbol,
+            state.get_protocol_by_pool_id(&lease.LS_loan_pool_id),
+            &lease.LS_timestamp,
+        )
+        .await
+        .map(|(downpayment_price,)| ResponseData {
             lease,
             downpayment_price,
-        }));
-    }
-    Ok(None)
+        })
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]

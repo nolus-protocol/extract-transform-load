@@ -1,7 +1,5 @@
-use std::str::FromStr as _;
-
 use actix_web::{get, web, Responder};
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, Zero as _};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -13,15 +11,14 @@ use crate::{
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let total_value_locked = if let Ok(item) = state.cache.lock() {
-        item.total_value_locked
-            .to_owned()
-            .unwrap_or(BigDecimal::from_str("0")?)
-    } else {
-        BigDecimal::from_str("0")?
-    };
-
-    Ok(web::Json(Response { total_value_locked }))
+    Ok(web::Json(Response {
+        total_value_locked: state
+            .cache
+            .lock()
+            .ok()
+            .and_then(|item| item.total_value_locked.clone())
+            .unwrap_or_else(BigDecimal::zero),
+    }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]

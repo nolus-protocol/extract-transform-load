@@ -11,8 +11,13 @@ use crate::{
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let data = state.database.tr_profit.get_revenue().await?;
-    Ok(web::Json(Response { revenue: data }))
+    state
+        .database
+        .tr_profit
+        .get_revenue()
+        .await
+        .map(|revenue| web::Json(Response { revenue }))
+        .map_err(From::from)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -11,12 +11,13 @@ use crate::{
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let data = state
+    state
         .database
         .tr_rewards_distribution
         .get_distributed()
-        .await?;
-    Ok(web::Json(Response { distributed: data }))
+        .await
+        .map(|distributed| web::Json(Response { distributed }))
+        .map_err(From::from)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

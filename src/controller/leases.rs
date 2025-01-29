@@ -9,23 +9,25 @@ use crate::{
 #[get("/leases")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    web::Query(Query {
+        skip,
+        limit,
+        mut address,
+    }): web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let skip = data.skip.unwrap_or(0);
-    let mut limit = data.limit.unwrap_or(10);
+    address.make_ascii_lowercase();
 
-    if limit > 10 {
-        limit = 10;
-    }
-
-    let address = data.address.to_lowercase().to_owned();
-    let data = state
+    state
         .database
         .ls_opening
-        .get_leases_by_address(address, skip, limit)
-        .await?;
-
-    Ok(web::Json(data))
+        .get_leases_by_address(
+            address,
+            skip.unwrap_or(0),
+            limit.map_or(10, |limit| limit.min(10)),
+        )
+        .await
+        .map(web::Json)
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]

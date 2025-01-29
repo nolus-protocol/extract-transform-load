@@ -1,16 +1,14 @@
+use std::convert::Infallible;
+
 use actix_web::{get, web, Responder};
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
-
 #[get("/optimal")]
-async fn index() -> Result<impl Responder, Error> {
-    Ok(web::Json(Response {
-        optimal: String::from("70.00"),
-    }))
+async fn index() -> Result<impl Responder, Infallible> {
+    const { Ok(web::Json(Response { optimal: "70.00" })) }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
-    pub optimal: String,
+    pub optimal: &'static str,
 }

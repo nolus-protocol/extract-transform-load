@@ -1,5 +1,4 @@
 use actix_web::{get, web, Responder};
-use bigdecimal::BigDecimal;
 use serde::Deserialize;
 
 use crate::{
@@ -10,33 +9,35 @@ use crate::{
 #[get("/borrow-apr")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    web::Query(Query {
+        skip,
+        limit,
+        protocol,
+    }): web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let skip = data.skip.unwrap_or(0);
-    let mut limit = data.limit.unwrap_or(32);
+    let protocol = protocol.and_then(|mut protocol| {
+        protocol.make_ascii_uppercase();
 
-    if limit > 100 {
-        limit = 100;
-    }
+        state.protocols.get(&protocol)
+    });
 
-    if let Some(protocolKey) = &data.protocol {
-        let protocolKey = protocolKey.to_uppercase();
-        let admin = state.protocols.get(&protocolKey);
+    let Some(protocol) = protocol else {
+        return Ok(web::Json(vec![]));
+    };
 
-        if let Some(protocol) = admin {
-            let data = state
-                .database
-                .ls_opening
-                .get_borrow_apr(protocol.contracts.lpp.to_owned(), skip, limit)
-                .await?;
-            let items: Vec<BigDecimal> =
-                data.iter().map(|item| item.APR.to_owned()).collect();
-            return Ok(web::Json(items));
-        }
-    }
-
-    let items = vec![];
-    Ok(web::Json(items))
+    state
+        .database
+        .ls_opening
+        .get_borrow_apr(
+            protocol.contracts.lpp.clone(),
+            skip.unwrap_or(0),
+            limit.map_or(32, |limit| limit.min(100)),
+        )
+        .await
+        .map(|aprs| {
+            web::Json(aprs.into_iter().map(|apr| apr.APR).collect::<Vec<_>>())
+        })
+        .map_err(From::from)
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,55 +1,62 @@
 use actix_web::{get, web, Responder};
 use anyhow::Context as _;
-use bigdecimal::BigDecimal;
+use bigdecimal::{num_bigint::BigInt, BigDecimal, One as _, Zero as _};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    helpers::Protocol_Types,
 };
 
 #[get("/realized-pnl")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    web::Query(Query { mut address }): web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let address = data.address.to_lowercase().to_owned();
-    let data = state
+    address.make_ascii_lowercase();
+
+    state
         .database
         .ls_loan_closing
         .get_realized_pnl(address)
-        .await?;
-    let mut pnl = BigDecimal::from(0);
-
-    for item in data {
-        let protocol_data = state
-            .config
-            .hash_map_lp_pools
-            .get(&item.LS_loan_pool_id)
-            .context(format!(
-                "could not get protocol in realized-pnl{}",
-                &item.LS_loan_pool_id
-            ))?;
-        let currency = match protocol_data.2 {
-            crate::helpers::Protocol_Types::Long => state
-                .config
-                .hash_map_currencies
-                .get(&item.LS_asset_symbol)
-                .context(format!(
-                    "LS_asset_symbol not found {}",
-                    &item.LS_asset_symbol
-                ))?,
-            crate::helpers::Protocol_Types::Short => {
-                state.get_currency_by_pool_id(&item.LS_loan_pool_id)?
-            },
-        };
-        let amount = BigDecimal::from(item.LS_pnl)
-            / BigDecimal::from(u64::pow(10, currency.1.try_into()?));
-
-        pnl += amount;
-    }
-
-    Ok(web::Json(Response { realized_pnl: pnl }))
+        .await
+        .map_err(From::from)
+        .and_then(|data| {
+            data.into_iter()
+                .try_fold(BigDecimal::zero(), |pnl, item| {
+                    state
+                        .config
+                        .hash_map_lp_pools
+                        .get(&item.LS_loan_pool_id)
+                        .context(format!(
+                            "could not get protocol in realized-pnl {}",
+                            item.LS_loan_pool_id
+                        ))
+                        .map_err(From::from)
+                        .and_then(|(_, _, protocol_type)| match protocol_type {
+                            Protocol_Types::Long => state
+                                .config
+                                .hash_map_currencies
+                                .get(&item.LS_asset_symbol)
+                                .context(format!(
+                                    "LS_asset_symbol not found {}",
+                                    item.LS_asset_symbol
+                                ))
+                                .map_err(From::from),
+                            Protocol_Types::Short => state
+                                .get_currency_by_pool_id(&item.LS_loan_pool_id),
+                        })
+                        .map(|currency| {
+                            pnl + (item.LS_pnl
+                                * BigDecimal::new(
+                                    BigInt::one(),
+                                    currency.1.into(),
+                                ))
+                        })
+                })
+                .map(|realized_pnl| web::Json(Response { realized_pnl }))
+        })
 }
 
 #[derive(Debug, Serialize, Deserialize)]

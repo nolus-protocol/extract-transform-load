@@ -1,6 +1,6 @@
 use actix_web::{get, web, Responder};
 use anyhow::Context as _;
-use bigdecimal::BigDecimal;
+use bigdecimal::{num_bigint::BigInt, BigDecimal, One as _, Zero as _};
 use futures::TryFutureExt as _;
 use serde::{Deserialize, Serialize};
 
@@ -14,25 +14,24 @@ use crate::{
 #[get("/ls-opening")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
+    web::Query(data): web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let result = state.database.ls_opening.get(data.lease.to_owned()).await?;
+    let result = state.database.ls_opening.get(data.lease).await?;
+
     if let Some(lease) = result {
         let protocol = state
             .get_protocol_by_pool_id(&lease.LS_loan_pool_id)
-            .context(format!(
-                "protocol not found {}",
-                &lease.LS_loan_pool_id
-            ))?;
+            .context(format!("protocol not found {}", lease.LS_loan_pool_id))?;
 
         let base_currency = state
             .config
             .hash_map_pool_currency
             .get(&lease.LS_loan_pool_id)
-            .context(format!(
-                "currency not found in hash map pool in protocol {}",
-                &protocol
-            ))?;
+            .with_context(|| {
+                format!(
+                    "currency not found in hash map pool in protocol {protocol}"
+                )
+            })?;
 
         let base_currency = &base_currency.0;
         let repayments_fn = state
@@ -69,37 +68,49 @@ async fn index(
                     .get_lease_history(lease.LS_contract_id.to_owned())
                     .map_err(Error::from),
             )
-            .context(format!(
-                "could not parse currencies in lease {}",
-                &lease.LS_contract_id
-            ))?;
+            .with_context(|| {
+                format!(
+                    "could not parse currencies in lease {}",
+                    lease.LS_contract_id
+                )
+            })?;
 
-        let mut repayment_value = BigDecimal::from(0);
-
-        for repayment in repayments {
-            let currency = state
-                .config
-                .hash_map_currencies
-                .get(&repayment.LS_payment_symbol)
-                .context(format!(
-                    "currency not found  {}",
-                    &repayment.LS_payment_symbol
-                ))?;
-            repayment_value += repayment.LS_payment_amnt_stable
-                / BigDecimal::from(u64::pow(10, currency.1.try_into()?));
-        }
-
-        return Ok(web::Json(Some(ResponseData {
-            lease,
-            downpayment_price,
-            lpn_price,
-            fee,
-            repayment_value,
-            history,
-        })));
+        repayments
+            .into_iter()
+            .try_fold(BigDecimal::zero(), |repayment_value, repayment| {
+                state
+                    .config
+                    .hash_map_currencies
+                    .get(&repayment.LS_payment_symbol)
+                    .map(|currency| {
+                        repayment_value
+                            + (repayment.LS_payment_amnt_stable
+                                * BigDecimal::new(
+                                    BigInt::one(),
+                                    currency.1.into(),
+                                ))
+                    })
+                    .with_context(|| {
+                        format!(
+                            "currency not found {}",
+                            repayment.LS_payment_symbol
+                        )
+                    })
+            })
+            .map(|repayment_value| {
+                web::Json(Some(ResponseData {
+                    lease,
+                    downpayment_price,
+                    lpn_price,
+                    fee,
+                    repayment_value,
+                    history,
+                }))
+            })
+            .map_err(From::from)
+    } else {
+        const { Ok(web::Json(None)) }
     }
-
-    Ok(web::Json(None))
 }
 
 #[derive(Debug, Deserialize)]
