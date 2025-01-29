@@ -5,6 +5,7 @@ pub mod configuration;
 pub mod controller;
 pub mod dao;
 pub mod error;
+pub mod futures_set;
 pub mod handler;
 pub mod helpers;
 pub mod model;
