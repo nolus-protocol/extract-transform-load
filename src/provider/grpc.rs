@@ -46,12 +46,10 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Grpc {
-    pub config: Config,
-    pub endpoint: Endpoint,
-    pub tendermint_client: TendermintServiceClient<Channel>,
-    pub wasm_query_client: WasmQueryClient<Channel>,
-    pub bank_query_client: BankQueryClient<Channel>,
-    pub tx_service_client: TxServiceClient<Channel>,
+    tendermint_client: TendermintServiceClient<Channel>,
+    wasm_query_client: WasmQueryClient<Channel>,
+    bank_query_client: BankQueryClient<Channel>,
+    tx_service_client: TxServiceClient<Channel>,
 }
 
 impl Grpc {
@@ -88,8 +86,6 @@ impl Grpc {
                 .max_decoding_message_size(limit);
 
         Ok(Grpc {
-            config,
-            endpoint,
             tendermint_client: tendermint_client.clone(),
             wasm_query_client: wasm_query_client.clone(),
             bank_query_client: bank_query_client.clone(),
