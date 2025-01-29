@@ -1,9 +1,11 @@
-use std::fs;
+use std::path::PathBuf;
 
-use crate::error::Error;
+pub fn get_path(dir: &str, file: &str) -> PathBuf {
+    let mut buf = PathBuf::new();
 
-pub fn get_path(dir: &str, file: &str) -> Result<String, Error> {
-    let data =
-        fs::read_to_string(format!("{}/migration/postgresql/{}", dir, file))?;
-    Ok(data)
+    for chunk in [dir, "migration", "postgresql", file] {
+        buf.push(chunk);
+    }
+
+    buf
 }
