@@ -6,6 +6,8 @@ use crate::model::{LS_Closing, Table};
 use super::DataBase;
 
 impl Table<LS_Closing> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(
         &self,
         ls_closing: &LS_Closing,
@@ -25,6 +27,8 @@ impl Table<LS_Closing> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: LS_Closing,
@@ -48,6 +52,9 @@ impl Table<LS_Closing> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<LS_Closing>,
@@ -76,6 +83,7 @@ impl Table<LS_Closing> {
             .map(drop)
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn count(
         &self,
         from: DateTime<Utc>,

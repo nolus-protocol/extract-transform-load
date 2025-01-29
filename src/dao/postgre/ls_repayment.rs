@@ -7,6 +7,8 @@ use crate::model::{LS_Repayment, Table};
 use super::DataBase;
 
 impl Table<LS_Repayment> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(
         &self,
         ls_repayment: &LS_Repayment,
@@ -31,6 +33,8 @@ impl Table<LS_Repayment> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: LS_Repayment,
@@ -74,6 +78,9 @@ impl Table<LS_Repayment> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<LS_Repayment>,
@@ -124,6 +131,7 @@ impl Table<LS_Repayment> {
             .map(drop)
     }
 
+    // FIXME Return data in a dedicated structure instead of as a tuple.
     pub async fn get_sum(
         &self,
         from: DateTime<Utc>,
@@ -163,6 +171,8 @@ impl Table<LS_Repayment> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_by_contract(
         &self,
         contract: String,

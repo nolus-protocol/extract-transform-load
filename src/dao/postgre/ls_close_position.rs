@@ -5,6 +5,8 @@ use crate::model::{LS_Close_Position, Table};
 use super::DataBase;
 
 impl Table<LS_Close_Position> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(
         &self,
         ls_close_position: &LS_Close_Position,
@@ -27,6 +29,8 @@ impl Table<LS_Close_Position> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: &LS_Close_Position,
@@ -78,6 +82,9 @@ impl Table<LS_Close_Position> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<LS_Close_Position>,
@@ -136,6 +143,8 @@ impl Table<LS_Close_Position> {
             .map(drop)
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_by_contract(
         &self,
         contract: String,

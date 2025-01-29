@@ -5,7 +5,11 @@ use sqlx::{types::BigDecimal, Error, QueryBuilder};
 use crate::model::{LS_Opening, LS_State, Table};
 
 impl Table<LS_State> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(&self, data: LS_State) -> Result<(), Error> {
+        // FIXME [MAJOR] Insert with all of the argument's fields or use
+        //  `DEFAULT`.
         const SQL: &str = r#"
         INSERT INTO "LS_State" (
             "LS_contract_id",
@@ -43,7 +47,9 @@ impl Table<LS_State> {
             .map(drop)
     }
 
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_active_states(&self) -> Result<Vec<LS_Opening>, Error> {
+        // FIXME Research possible query optimizations.
         const SQL: &str = r#"
         SELECT *
         FROM "LS_Opening"
@@ -72,6 +78,9 @@ impl Table<LS_State> {
         sqlx::query_as(SQL).fetch_all(&self.pool).await
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(&self, data: &Vec<LS_State>) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "LS_State" (
@@ -122,6 +131,7 @@ impl Table<LS_State> {
             .map(drop)
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn count(&self, timestamp: DateTime<Utc>) -> Result<i64, Error> {
         const SQL: &str = r#"
         SELECT COUNT(*)
@@ -136,6 +146,9 @@ impl Table<LS_State> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Resolve collision between implementations, by passing protocol
+    //  descriptions dynamically.
     #[cfg(feature = "mainnet")]
     pub async fn get_total_value_locked(
         &self,
@@ -148,6 +161,8 @@ impl Table<LS_State> {
         osmosis_all_sol: String,
         osmosis_akt: String,
     ) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to describe protocols dynamically.
+        // FIXME Find a way to describe currencies' decimal places dynamically.
         const SQL: &str = r#"
         WITH "Lease_Value_Divisor" AS (
             SELECT
@@ -279,12 +294,17 @@ impl Table<LS_State> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Resolve collision between implementations, by passing protocol
+    //  descriptions dynamically.
     #[cfg(feature = "testnet")]
     pub async fn get_total_value_locked(
         &self,
         osmosis_usdc_protocol: String,
         neutron_axelar_protocol: String,
     ) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to describe protocols dynamically.
+        // FIXME Find a way to describe currencies' decimal places dynamically.
         const SQL: &str = r#"
         WITH Lease_Value_Divisor AS (
             SELECT
