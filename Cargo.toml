@@ -31,19 +31,45 @@ actix-files = "0.6"
 actix-web = "4.9"
 anyhow = "1.0"
 base64 = "0.22"
-bigdecimal = { version = "0.4", features = ["serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-cosmrs = { version = "0.21", default-features = false, features = ["grpc", "bip32", "cosmwasm"] }
 futures = "0.3"
 ibc-proto = "0.51.0"
 serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
 sha256 = "1.5.0"
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "bigdecimal"] }
-tendermint-rpc = { version = "0.40", features = ["websocket-client"] }
 thiserror = "2.0"
-tokio = { version = "1.41", features = ["fs", "macros", "rt-multi-thread"] }
-tonic = { version = "0.12", default-features = false, features = ["channel", "gzip", "prost", "tls", "tls-roots", "transport", "zstd"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 url = "2.5"
+
+[dependencies.bigdecimal]
+version = "0.4"
+features = ["serde"]
+
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
+
+[dependencies.cosmrs]
+version = "0.21"
+default-features = false
+features = ["grpc", "bip32", "cosmwasm"]
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[dependencies.sqlx]
+version = "0.8"
+features = ["runtime-tokio-rustls", "postgres", "chrono", "bigdecimal"]
+
+[dependencies.tendermint-rpc]
+version = "0.40"
+features = ["websocket-client"]
+
+[dependencies.tokio]
+version = "1.41"
+features = ["fs", "macros", "rt-multi-thread"]
+
+[dependencies.tonic]
+version = "0.12"
+default-features = false
+features = ["channel", "gzip", "prost", "tls", "tls-roots", "transport", "zstd"]
