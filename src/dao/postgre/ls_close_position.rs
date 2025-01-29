@@ -1,6 +1,8 @@
-use super::{DataBase, QueryResult};
+use sqlx::{Error, QueryBuilder, Transaction};
+
 use crate::model::{LS_Close_Position, Table};
-use sqlx::{error::Error, QueryBuilder, Transaction};
+
+use super::{DataBase, QueryResult};
 
 impl Table<LS_Close_Position> {
     pub async fn isExists(

@@ -1,6 +1,8 @@
-use super::{DataBase, QueryResult};
+use sqlx::{Error, Transaction};
+
 use crate::model::{LS_Liquidation_Warning, Table};
-use sqlx::{error::Error, Transaction};
+
+use super::{DataBase, QueryResult};
 
 impl Table<LS_Liquidation_Warning> {
     pub async fn isExists(

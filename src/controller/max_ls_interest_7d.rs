@@ -1,9 +1,10 @@
+use actix_web::{get, web, HttpRequest, Responder};
+use serde_json::Map;
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
-use actix_web::{get, web, HttpRequest, Responder, Result};
-use serde_json::Map;
 
 #[get("/max_ls_interest_7d/{lpp_address}")]
 async fn index(

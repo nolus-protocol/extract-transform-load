@@ -1,9 +1,11 @@
+pub use self::{
+    database::DatabasePool,
+    event::Event,
+    grpc::Grpc,
+    synchronization::{is_sync_runing, Synchronization},
+};
+
 mod database;
 mod event;
 mod grpc;
 mod synchronization;
-
-pub use database::DatabasePool;
-pub use event::Event;
-pub use grpc::Grpc;
-pub use synchronization::{is_sync_runing, Synchronization};

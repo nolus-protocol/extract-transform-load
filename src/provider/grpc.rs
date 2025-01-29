@@ -1,44 +1,48 @@
-use std::str::FromStr;
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
-use crate::configuration::Config;
-use crate::error::Error;
-use crate::types::{
-    AdminProtocolExtendType, AdminProtocolType, AmountObject, Balance,
-    LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_State_Type,
-    Prices,
-};
-
-use anyhow::{anyhow, Context, Result};
-use cosmos_sdk_proto::cosmos::bank::v1beta1::{
-    query_client::QueryClient as BankQueryClient, QueryAllBalancesRequest,
-    QueryAllBalancesResponse,
-};
-use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
-use cosmos_sdk_proto::cosmos::tx::v1beta1::GetTxRequest;
-use cosmos_sdk_proto::Timestamp;
-use cosmos_sdk_proto::{
-    cosmos::base::{
-        query::v1beta1::PageRequest,
-        tendermint::v1beta1::GetBlockByHeightRequest,
+use anyhow::{anyhow, Context as _, Result};
+use cosmrs::proto::{
+    cosmos::{
+        bank::v1beta1::{
+            query_client::QueryClient as BankQueryClient,
+            QueryAllBalancesRequest, QueryAllBalancesResponse,
+        },
+        base::{
+            abci::v1beta1::TxResponse,
+            query::v1beta1::PageRequest,
+            tendermint::v1beta1::{
+                service_client::ServiceClient as TendermintServiceClient,
+                GetBlockByHeightRequest, GetLatestBlockRequest,
+            },
+        },
+        tx::v1beta1::{
+            service_client::ServiceClient as TxServiceClient, GetTxRequest,
+        },
     },
-    cosmwasm::wasm::v1::QuerySmartContractStateRequest,
-};
-
-use cosmrs::{
-    proto::cosmos::base::tendermint::v1beta1::{
-        service_client::ServiceClient as TendermintServiceClient,
-        GetLatestBlockRequest,
+    cosmwasm::wasm::v1::{
+        query_client::QueryClient as WasmQueryClient,
+        QuerySmartContractStateRequest,
     },
-    proto::cosmos::tx::v1beta1::service_client::ServiceClient as TxServiceClient,
-    proto::cosmwasm::wasm::v1::query_client::QueryClient as WasmQueryClient,
+    Timestamp,
 };
 use sha256::digest;
 use tokio::time::sleep;
-use tonic::codegen::http::Uri;
-use tonic::transport::{Channel, ClientTlsConfig, Endpoint};
-use tonic::IntoRequest;
+use tonic::{
+    codegen::http::Uri,
+    transport::{Channel, ClientTlsConfig, Endpoint},
+    IntoRequest,
+};
 use tracing::error;
+
+use crate::{
+    configuration::Config,
+    error::Error,
+    types::{
+        AdminProtocolExtendType, AdminProtocolType, AmountObject, Balance,
+        LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type,
+        LS_State_Type, Prices,
+    },
+};
 
 #[derive(Debug)]
 pub struct Grpc {

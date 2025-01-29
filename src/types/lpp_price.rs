@@ -1,5 +1,6 @@
-use super::Amount;
 use serde::Deserialize;
+
+use super::Amount;
 
 #[derive(Debug, Deserialize)]
 pub struct LPP_Price {

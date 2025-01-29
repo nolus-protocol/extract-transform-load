@@ -1,7 +1,7 @@
-use chrono::Utc;
 use std::time::Duration;
-use tokio::time;
 
+use chrono::Utc;
+use tokio::time;
 use tracing::{error, Level};
 
 use etl::{

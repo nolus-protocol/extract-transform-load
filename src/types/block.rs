@@ -1,5 +1,6 @@
-use super::{BlockBody, NewBlockBody};
 use serde::Deserialize;
+
+use super::{BlockBody, NewBlockBody};
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]

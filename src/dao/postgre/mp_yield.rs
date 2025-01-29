@@ -1,6 +1,8 @@
-use super::QueryResult;
+use sqlx::Error;
+
 use crate::model::{MP_Yield, Table};
-use sqlx::error::Error;
+
+use super::QueryResult;
 
 impl Table<MP_Yield> {
     pub async fn insert(&self, data: MP_Yield) -> Result<QueryResult, Error> {

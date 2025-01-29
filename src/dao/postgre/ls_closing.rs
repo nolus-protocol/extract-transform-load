@@ -1,7 +1,9 @@
-use super::{DataBase, QueryResult};
-use crate::model::{LS_Closing, Table};
 use chrono::{DateTime, Utc};
-use sqlx::{error::Error, QueryBuilder, Transaction};
+use sqlx::{Error, QueryBuilder, Transaction};
+
+use crate::model::{LS_Closing, Table};
+
+use super::{DataBase, QueryResult};
 
 impl Table<LS_Closing> {
     pub async fn isExists(

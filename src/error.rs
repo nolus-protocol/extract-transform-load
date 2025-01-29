@@ -1,26 +1,28 @@
+use std::{
+    env::VarError,
+    fmt::Error as FMT_ERROR,
+    io::Error as IO_ERROR,
+    num::{ParseIntError, TryFromIntError as TRY_FROM_INT_ERROR},
+    str::ParseBoolError as PARSE_BOOL_ERROR,
+    string::{
+        FromUtf8Error as FROM_UTF8_ERROR, ParseError as StringParseError,
+    },
+};
+
 use actix_web::{
     http::header::ToStrError as HEADER_TO_STR_ERROR, ResponseError,
 };
 use anyhow::Error as ANYHOW_ERROR;
 use base64::DecodeError as BASE64_DECODE_ERROR;
 use bigdecimal::ParseBigDecimalError as BIG_DECIMAL_ERROR;
-use cosmos_sdk_proto::prost::{
-    DecodeError as DECODE_ERROR, EncodeError as ENCODE_ERROR,
+use cosmrs::{
+    proto::prost::{DecodeError as DECODE_ERROR, EncodeError as ENCODE_ERROR},
+    tx::ErrorReport,
 };
-use cosmrs::tx::ErrorReport;
 use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;
-use std::fmt::Error as FMT_ERROR;
-use std::num::TryFromIntError as TRY_FROM_INT_ERROR;
-use std::string::FromUtf8Error as FROM_UTF8_ERROR;
-use std::{
-    env::VarError, io::Error as IO_ERROR, num::ParseIntError,
-    str::ParseBoolError as PARSE_BOOL_ERROR,
-    string::ParseError as StringParseError,
-};
 use thiserror::Error;
-use tokio::task::JoinError;
-use tokio::time::error::Elapsed;
+use tokio::{task::JoinError, time::error::Elapsed};
 use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
 use url::ParseError as URL_ERROR;
 

@@ -1,10 +1,13 @@
-use super::{DataBase, QueryResult};
+use std::str::FromStr as _;
+
+use chrono::{DateTime, Utc};
+use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
+
 use crate::model::{
     LS_Opening, LS_State, Pnl_Over_Time, Table, Unrealized_Pnl,
 };
-use chrono::{DateTime, Utc};
-use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
-use std::str::FromStr;
+
+use super::{DataBase, QueryResult};
 
 impl Table<LS_State> {
     pub async fn insert(&self, data: LS_State) -> Result<QueryResult, Error> {
