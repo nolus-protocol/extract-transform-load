@@ -1,17 +1,17 @@
-use std::str::FromStr as _;
+use std::{convert::identity, str::FromStr as _};
 
 use anyhow::Context as _;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use futures::TryFutureExt as _;
 use sqlx::Transaction;
-use tokio::task::JoinSet;
 use tracing::info;
 
 use crate::{
     configuration::{AppState, State},
     dao::DataBase,
     error::Error,
+    futures_set::{map_infallible, try_join_all},
     helpers::{Loan_Closing_Status, Protocol_Types},
     model::{LS_Loan, LS_Loan_Closing, LS_Opening},
     provider::is_sync_runing,
@@ -45,39 +45,25 @@ pub async fn parse_and_insert(
 }
 
 pub async fn proceed_leases(app_state: AppState<State>) -> Result<(), Error> {
-    let items = app_state
-        .database
-        .ls_loan_closing
-        .get_leases_to_proceed()
-        .await?;
-    let mut tasks = vec![];
-    let max_tasks = app_state.config.max_tasks;
-
-    for item in items {
-        tasks.push(proceed(app_state.clone(), item));
-    }
-
-    while !tasks.is_empty() {
-        let mut st = JoinSet::new();
-        let range = if tasks.len() > max_tasks {
-            max_tasks
-        } else {
-            tasks.len()
-        };
-
-        for _t in 0..range {
-            if let Some(item) = tasks.pop() {
-                st.spawn(item);
-            }
-        }
-
-        while let Some(item) = st.join_next().await {
-            item??;
-        }
-    }
-    info!("Loans Synchronization completed");
-
-    Ok(())
+    try_join_all(
+        app_state
+            .database
+            .ls_loan_closing
+            .get_leases_to_proceed()
+            .await?
+            .into_iter()
+            .map(|item| proceed(app_state.clone(), item)),
+        From::from,
+        identity,
+        (),
+        |(), ()| const { Ok(()) },
+        map_infallible,
+        Some(app_state.config.max_tasks),
+    )
+    .await
+    .inspect(|()| {
+        info!("Loans Synchronization completed");
+    })
 }
 
 async fn proceed(

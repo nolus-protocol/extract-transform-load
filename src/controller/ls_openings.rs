@@ -1,11 +1,13 @@
+use std::convert::identity;
+
 use actix_web::{get, web, Responder};
 use bigdecimal::BigDecimal;
-use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    futures_set::{map_infallible, try_join_all},
     model::LS_Opening,
 };
 
@@ -14,22 +16,29 @@ async fn index(
     state: web::Data<AppState<State>>,
     data: web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let leases: Vec<&str> = data.leases.split(',').collect();
-    let data = state.database.ls_opening.get_leases(leases).await?;
-    let mut joins = Vec::new();
+    try_join_all(
+        state
+            .database
+            .ls_opening
+            .get_leases(data.leases.split(',').collect())
+            .await?
+            .into_iter()
+            .map(|ls_opening| getData(state.clone(), ls_opening)),
+        From::from,
+        identity,
+        vec![],
+        |mut accumulator, item| {
+            if let Some(item) = item {
+                accumulator.push(item);
+            }
 
-    for item in data {
-        joins.push(getData(state.clone(), item))
-    }
-
-    let result = join_all(joins).await;
-    let mut items: Vec<ResponseData> = vec![];
-
-    for item in result.into_iter().flatten().flatten() {
-        items.push(item);
-    }
-
-    Ok(web::Json(items))
+            Ok(accumulator)
+        },
+        map_infallible,
+        None,
+    )
+    .await
+    .map(web::Json)
 }
 
 async fn getData(

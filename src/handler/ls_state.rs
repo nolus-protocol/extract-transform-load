@@ -1,15 +1,13 @@
-use std::str::FromStr as _;
+use std::{convert::identity, str::FromStr as _};
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use tokio::{
-    join,
-    task::{JoinHandle, JoinSet},
-};
+use tokio::{join, task::JoinHandle};
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    futures_set::{map_infallible, try_join_all},
     model::{LS_Opening, LS_State},
     types::AmountTicker,
 };
@@ -18,37 +16,35 @@ pub async fn parse_and_insert(
     app_state: AppState<State>,
     timestsamp: DateTime<Utc>,
 ) -> Result<(), Error> {
-    let items = app_state.database.ls_state.get_active_states().await?;
-    let mut tasks = vec![];
-    let mut data = vec![];
-    let max_tasks = app_state.config.max_tasks;
-    for item in items {
-        tasks.push(proceed(app_state.clone(), item, timestsamp));
-    }
-    while !tasks.is_empty() {
-        let mut st = JoinSet::new();
-        let range = if tasks.len() > max_tasks {
-            max_tasks
-        } else {
-            tasks.len()
-        };
-
-        for _t in 0..range {
-            if let Some(item) = tasks.pop() {
-                st.spawn(item);
+    let states = try_join_all(
+        app_state
+            .database
+            .ls_state
+            .get_active_states()
+            .await?
+            .into_iter()
+            .map(|item| proceed(app_state.clone(), item, timestsamp)),
+        From::from,
+        identity,
+        Vec::new(),
+        |mut accumulator, item| {
+            if let Some(item) = item {
+                accumulator.push(item);
             }
-        }
 
-        while let Some(item) = st.join_next().await {
-            let d = item??;
-            if let Some(record) = d {
-                data.push(record);
-            }
-        }
-    }
-    app_state.database.ls_state.insert_many(&data).await?;
+            Ok(accumulator)
+        },
+        map_infallible,
+        Some(app_state.config.max_tasks),
+    )
+    .await?;
 
-    Ok(())
+    app_state
+        .database
+        .ls_state
+        .insert_many(&states)
+        .await
+        .map_err(From::from)
 }
 
 async fn proceed(
@@ -196,5 +192,5 @@ pub fn start_task(
     app_state: AppState<State>,
     timestsamp: DateTime<Utc>,
 ) -> JoinHandle<Result<(), Error>> {
-    tokio::spawn(async move { parse_and_insert(app_state, timestsamp).await })
+    tokio::spawn(parse_and_insert(app_state, timestsamp))
 }

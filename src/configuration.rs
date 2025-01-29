@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     env,
+    num::NonZeroUsize,
     ops::Deref,
     str::FromStr,
     sync::{Arc, Mutex},
@@ -288,7 +289,7 @@ pub struct Config {
     pub port: u16,
     pub allowed_origins: Vec<String>,
     pub static_dir: String,
-    pub max_tasks: usize,
+    pub max_tasks: NonZeroUsize,
     pub admin_contract: String,
     pub ignore_protocols: Vec<String>,
     pub initial_protocol: String,

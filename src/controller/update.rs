@@ -1,14 +1,15 @@
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap, convert::identity, fs::File, io::BufReader};
 
 use actix_web::{get, web, Responder};
 use anyhow::Context as _;
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use tokio::task::JoinSet;
+use tokio::task;
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    futures_set::{map_infallible, try_join_all},
     model::LS_Opening,
 };
 
@@ -65,43 +66,24 @@ async fn ls_loan_amnt_task(state: &AppState<State>) -> Result<(), Error> {
         hash.insert(c.0, c);
     }
 
-    let dir = env!("CARGO_MANIFEST_DIR");
-    let data = fs::read_to_string(format!("{}/leases.json", dir))?;
-    let ls: Vec<String> = serde_json::from_str(&data)?;
-
-    let leases = state
-        .database
-        .ls_opening
-        .get_leases_data(ls.clone())
-        .await?;
-
-    let mut tasks = vec![];
-    let max_tasks = state.config.max_tasks;
-
-    for lease in leases {
-        tasks.push(ls_loan_amnt_proceed(state.clone(), lease, hash.clone()));
-    }
-
-    while !tasks.is_empty() {
-        let mut st = JoinSet::new();
-        let range = if tasks.len() > max_tasks {
-            max_tasks
-        } else {
-            tasks.len()
-        };
-
-        for _t in 0..range {
-            if let Some(item) = tasks.pop() {
-                st.spawn(item);
-            }
-        }
-
-        while let Some(item) = st.join_next().await {
-            item??;
-        }
-    }
-
-    Ok(())
+    try_join_all(
+        state
+            .database
+            .ls_opening
+            .get_leases_data(read_leases().await?)
+            .await?
+            .into_iter()
+            .map(|lease| {
+                ls_loan_amnt_proceed(state.clone(), lease, hash.clone())
+            }),
+        From::from,
+        identity,
+        (),
+        |(), ()| const { Ok(()) },
+        map_infallible,
+        Some(state.config.max_tasks),
+    )
+    .await
 }
 
 async fn ls_loan_amnt_proceed(
@@ -168,42 +150,22 @@ async fn ls_lpn_loan_amnt(
 }
 
 async fn ls_lpn_loan_amnt_task(state: AppState<State>) -> Result<(), Error> {
-    let dir = env!("CARGO_MANIFEST_DIR");
-    let data = fs::read_to_string(format!("{}/leases.json", dir))?;
-    let ls: Vec<String> = serde_json::from_str(&data)?;
-
-    let leases = state
-        .database
-        .ls_opening
-        .get_leases_data(ls.clone())
-        .await?;
-
-    let mut tasks = vec![];
-    let max_tasks = state.config.max_tasks;
-
-    for lease in leases {
-        tasks.push(ls_lpn_loan_amnt_proceed(state.clone(), lease));
-    }
-
-    while !tasks.is_empty() {
-        let mut st = JoinSet::new();
-        let range = if tasks.len() > max_tasks {
-            max_tasks
-        } else {
-            tasks.len()
-        };
-
-        for _t in 0..range {
-            if let Some(item) = tasks.pop() {
-                st.spawn(item);
-            }
-        }
-
-        while let Some(item) = st.join_next().await {
-            item??;
-        }
-    }
-    Ok(())
+    try_join_all(
+        state
+            .database
+            .ls_opening
+            .get_leases_data(read_leases().await?)
+            .await?
+            .into_iter()
+            .map(|item| ls_lpn_loan_amnt_proceed(state.clone(), item)),
+        From::from,
+        identity,
+        (),
+        |(), ()| const { Ok(()) },
+        map_infallible,
+        Some(state.config.max_tasks),
+    )
+    .await
 }
 
 async fn ls_lpn_loan_amnt_proceed(
@@ -242,8 +204,20 @@ async fn ls_lpn_loan_amnt_proceed(
         .database
         .ls_opening
         .update_ls_lpn_loan_amnt(&lease)
-        .await?;
-    Ok(())
+        .await
+        .map_err(From::from)
+}
+
+async fn read_leases() -> Result<Vec<String>, Error> {
+    task::spawn_blocking(|| {
+        File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/leases.json"))
+            .map(BufReader::new)
+            .and_then(|file| serde_json::from_reader(file).map_err(From::from))
+            .map_err(From::from)
+    })
+    .await
+    .map_err(From::from)
+    .and_then(identity)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
