@@ -61,7 +61,7 @@ async fn app_main() -> Result<(), Error> {
     mp_assets::fetch_insert(app_state.clone(), None).await?;
     let mut event_manager = Event::new(app_state.clone());
 
-    let (_, _, _, _, _) = tokio::try_join!(
+    let ((), (), (), (), ()) = tokio::try_join!(
         event_manager.run(),
         mp_assets::mp_assets_task(app_state.clone()),
         start_aggregation_tasks(app_state.clone()),
