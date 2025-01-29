@@ -1,9 +1,10 @@
+use actix_web::{get, web, Responder};
+use serde::Deserialize;
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
-use actix_web::{get, web, Responder, Result};
-use serde::Deserialize;
 
 #[get("/txs")]
 async fn index(

@@ -1,9 +1,11 @@
-use std::str::FromStr;
+use std::str::FromStr as _;
+
+use bigdecimal::BigDecimal;
+use sqlx::{Error, Transaction};
+
+use crate::model::{LS_Loan_Closing, Pnl_Result, Realized_Pnl_Result, Table};
 
 use super::{DataBase, QueryResult};
-use crate::model::{LS_Loan_Closing, Pnl_Result, Realized_Pnl_Result, Table};
-use bigdecimal::BigDecimal;
-use sqlx::{error::Error, Transaction};
 
 impl Table<LS_Loan_Closing> {
     pub async fn isExists(

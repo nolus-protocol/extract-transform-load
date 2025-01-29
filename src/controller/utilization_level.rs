@@ -1,10 +1,11 @@
+use actix_web::{get, web, Responder};
+use bigdecimal::BigDecimal;
+use serde::Deserialize;
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
-use actix_web::{get, web, Responder, Result};
-use bigdecimal::BigDecimal;
-use serde::Deserialize;
 
 #[get("/utilization-level")]
 async fn index(

@@ -1,7 +1,9 @@
-use super::{DataBase, QueryResult};
-use crate::model::{LP_Lender_State, Table};
 use chrono::{DateTime, Utc};
-use sqlx::{error::Error, QueryBuilder};
+use sqlx::{Error, QueryBuilder};
+
+use crate::model::{LP_Lender_State, Table};
+
+use super::{DataBase, QueryResult};
 
 impl Table<LP_Lender_State> {
     pub async fn insert(

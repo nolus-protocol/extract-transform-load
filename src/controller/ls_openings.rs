@@ -1,12 +1,13 @@
+use actix_web::{get, web, Responder};
+use bigdecimal::BigDecimal;
+use futures::future::join_all;
+use serde::{Deserialize, Serialize};
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
     model::LS_Opening,
 };
-use actix_web::{get, web, Responder, Result};
-use bigdecimal::BigDecimal;
-use futures::future::join_all;
-use serde::{Deserialize, Serialize};
 
 #[get("/ls-openings")]
 async fn index(

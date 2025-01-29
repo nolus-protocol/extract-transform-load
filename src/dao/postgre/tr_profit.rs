@@ -1,8 +1,11 @@
-use super::{DataBase, QueryResult};
-use crate::model::{Buyback, TR_Profit, Table};
+use std::str::FromStr as _;
+
 use chrono::{DateTime, Utc};
-use sqlx::{error::Error, types::BigDecimal, QueryBuilder, Transaction};
-use std::str::FromStr;
+use sqlx::{types::BigDecimal, Error, QueryBuilder, Transaction};
+
+use crate::model::{Buyback, TR_Profit, Table};
+
+use super::{DataBase, QueryResult};
 
 impl Table<TR_Profit> {
     pub async fn isExists(
