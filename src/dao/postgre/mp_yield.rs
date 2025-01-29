@@ -3,6 +3,8 @@ use sqlx::Error;
 use crate::model::{MP_Yield, Table};
 
 impl Table<MP_Yield> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(&self, data: MP_Yield) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "MP_Yield" (

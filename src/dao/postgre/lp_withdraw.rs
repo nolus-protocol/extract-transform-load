@@ -7,6 +7,8 @@ use crate::model::{LP_Withdraw, Table};
 use super::DataBase;
 
 impl Table<LP_Withdraw> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(
         &self,
         lp_widthdraw: &LP_Withdraw,
@@ -33,6 +35,8 @@ impl Table<LP_Withdraw> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: LP_Withdraw,
@@ -68,6 +72,9 @@ impl Table<LP_Withdraw> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<LP_Withdraw>,
@@ -110,6 +117,7 @@ impl Table<LP_Withdraw> {
             .map(drop)
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn count_closed(
         &self,
         from: DateTime<Utc>,

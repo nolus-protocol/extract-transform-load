@@ -6,6 +6,8 @@ use crate::model::{LS_Loan_Closing, Pnl_Result, Realized_Pnl_Result, Table};
 use super::DataBase;
 
 impl Table<LS_Loan_Closing> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(&self, contract: String) -> Result<bool, Error> {
         const SQL: &str = r#"
         SELECT EXISTS(
@@ -22,6 +24,8 @@ impl Table<LS_Loan_Closing> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: LS_Loan_Closing,
@@ -55,6 +59,7 @@ impl Table<LS_Loan_Closing> {
             .map(drop)
     }
 
+    // FIXME Pass argument by reference.
     pub async fn get_lease_amount(
         &self,
         contract_id: String,
@@ -84,6 +89,8 @@ impl Table<LS_Loan_Closing> {
             .map(|f| f.map_or_else(BigDecimal::zero, |(result,)| result))
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn update(&self, data: LS_Loan_Closing) -> Result<(), Error> {
         const SQL: &str = r#"
         UPDATE "LS_Loan_Closing"
@@ -106,6 +113,7 @@ impl Table<LS_Loan_Closing> {
             .map(drop)
     }
 
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leases_to_proceed(
         &self,
     ) -> Result<Vec<LS_Loan_Closing>, Error> {
@@ -118,6 +126,11 @@ impl Table<LS_Loan_Closing> {
         sqlx::query_as(SQL).fetch_all(&self.pool).await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leases(
         &self,
         address: String,
@@ -153,6 +166,8 @@ impl Table<LS_Loan_Closing> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_realized_pnl(
         &self,
         address: String,
