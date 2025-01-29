@@ -6,6 +6,7 @@ pub mod controller;
 pub mod custom_uint;
 pub mod dao;
 pub mod error;
+pub mod futures_set;
 pub mod handler;
 pub mod helpers;
 pub mod model;
