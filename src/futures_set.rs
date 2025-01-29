@@ -136,3 +136,35 @@ impl<MapJoinErr, MapFutureErr, Accumulator, FoldWith, MapFoldErr>
         Ok(accumulator)
     }
 }
+
+#[tokio::test]
+async fn test_join_set_folding() {
+    async fn delayed_result(
+        delay: std::time::Duration,
+        value: u8,
+    ) -> Result<u8, Infallible> {
+        tokio::time::sleep(delay).await;
+
+        Ok(value)
+    }
+
+    let result = try_join_all(
+        [
+            delayed_result(std::time::Duration::from_millis(350), 1),
+            delayed_result(std::time::Duration::from_millis(150), 2),
+            delayed_result(std::time::Duration::from_millis(50), 4),
+            delayed_result(std::time::Duration::from_millis(250), 8),
+            delayed_result(std::time::Duration::from_millis(450), 16),
+        ],
+        std::convert::identity,
+        map_infallible,
+        0,
+        |acc, result| Ok(acc ^ result),
+        map_infallible,
+        const { Some(NonZeroUsize::new(3).unwrap()) },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result, 31);
+}
