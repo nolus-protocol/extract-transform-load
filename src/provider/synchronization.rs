@@ -133,9 +133,9 @@ struct Handler {
 
 impl Handler {
     pub async fn new(app_state: AppState<State>) -> Result<Self, Error> {
-        let config = app_state.config.clone();
-        let grpc: Grpc =
-            Grpc::new(config).await.context("unable to start grpc")?;
+        let grpc: Grpc = Grpc::new(&app_state.config)
+            .await
+            .context("unable to start grpc")?;
         Ok(Handler { app_state, grpc })
     }
     pub async fn init(&mut self, parts: Vec<(i64, i64)>) -> Result<(), Error> {

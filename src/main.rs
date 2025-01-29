@@ -53,9 +53,9 @@ async fn app_main() -> Result<(), Error> {
     };
 
     let db_pool = database;
-    let grpc = Grpc::new(config.clone()).await?;
+    let grpc = Grpc::new(&config).await?;
 
-    let state = State::new(config.clone(), db_pool, grpc).await?;
+    let state = State::new(config, db_pool, grpc).await?;
     let app_state = AppState::new(state);
 
     mp_assets::fetch_insert(app_state.clone(), None).await?;
