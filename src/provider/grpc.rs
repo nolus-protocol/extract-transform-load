@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context as _, Result};
 use cosmrs::proto::{
@@ -45,12 +45,16 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Grpc {
+struct GrpcInner {
     tendermint_client: TendermintServiceClient<Channel>,
     wasm_query_client: WasmQueryClient<Channel>,
     bank_query_client: BankQueryClient<Channel>,
     tx_service_client: TxServiceClient<Channel>,
 }
+
+#[derive(Debug, Clone)]
+#[repr(transparent)]
+pub struct Grpc(Arc<GrpcInner>);
 
 impl Grpc {
     pub async fn new(config: Config) -> Result<Grpc, Error> {
@@ -85,12 +89,12 @@ impl Grpc {
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
 
-        Ok(Grpc {
+        Ok(Grpc(Arc::new(GrpcInner {
             tendermint_client: tendermint_client.clone(),
             wasm_query_client: wasm_query_client.clone(),
             bank_query_client: bank_query_client.clone(),
             tx_service_client: tx_service_client.clone(),
-        })
+        })))
     }
 
     pub async fn prepare_block(
@@ -144,7 +148,7 @@ impl Grpc {
         const MISSING_BLOCK_HEADER_INFO_ERROR: &str =
             "Query response doesn't contain block's header information!";
 
-        let mut client = self.tendermint_client.clone();
+        let mut client = self.0.tendermint_client.clone();
 
         client
             .get_latest_block(GetLatestBlockRequest {})
@@ -176,7 +180,7 @@ impl Grpc {
         const MISSING_BLOCK_DATA_INFO_ERROR: &str =
             "Query response doesn't contain block's data information!";
 
-        let mut client = self.tendermint_client.clone();
+        let mut client = self.0.tendermint_client.clone();
         let block = client
             .get_block_by_height(GetBlockByHeightRequest { height })
             .await
@@ -214,7 +218,7 @@ impl Grpc {
     ) -> Result<Option<TxResponse>, Error> {
         let hash = tx_hash.to_string();
 
-        let mut client = self.tx_service_client.clone();
+        let mut client = self.0.tx_service_client.clone();
         let tx = client.get_tx(GetTxRequest { hash: tx_hash }).await;
 
         if let Err(err) = &tx {
@@ -262,7 +266,7 @@ impl Grpc {
             resolve_denom: false,
         };
 
-        let mut client = self.bank_query_client.clone();
+        let mut client = self.0.bank_query_client.clone();
 
         let data = client
             .all_balances(data)
@@ -285,7 +289,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -319,7 +323,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against oracle contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -345,7 +349,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against oracle base_currency contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -375,7 +379,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against oracle stable_price contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -401,7 +405,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against admin config contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -428,7 +432,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lease contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -465,7 +469,7 @@ impl Grpc {
         let metetadata = request.metadata_mut();
         metetadata.append("x-cosmos-block-height", height.into());
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(request)
             .await
@@ -492,7 +496,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query balance contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -518,7 +522,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -545,7 +549,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp balance state contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
@@ -572,7 +576,7 @@ impl Grpc {
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lpp config state contract!";
 
-        let mut client = self.wasm_query_client.clone();
+        let mut client = self.0.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {
                 address: contract,
