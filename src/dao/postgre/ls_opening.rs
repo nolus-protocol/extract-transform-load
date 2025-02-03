@@ -1,6 +1,8 @@
 use super::{DataBase, QueryResult};
 use crate::{
-    model::{Borrow_APR, LS_History, LS_Opening, Leased_Asset, Table},
+    model::{
+        Borrow_APR, LS_History, LS_Opening, Leased_Asset, Leases_Monthly, Table,
+    },
     types::LS_Max_Interest,
 };
 use chrono::{DateTime, Utc};
@@ -814,6 +816,57 @@ impl Table<LS_Opening> {
         .fetch_all(&self.pool)
         .await?;
 
+        Ok(data)
+    }
+
+    pub async fn get_leases_monthly(
+        &self,
+    ) -> Result<Vec<Leases_Monthly>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            WITH Historically_Opened_Base AS (
+            SELECT
+                DISTINCT ON (lso."LS_contract_id") lso."LS_contract_id" AS "Contract ID",
+                lso."LS_address_id" AS "User",
+                CASE
+                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
+                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
+                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
+                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
+                        ELSE "LS_asset_symbol"
+                    END AS "Leased Asset",
+                DATE_TRUNC('month', "LS_timestamp") AS "Date",
+                CASE
+                WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
+                WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000 
+                WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
+                WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_cltr_amnt_stable" / 1000000000000000000
+                ELSE "LS_cltr_amnt_stable" / 1000000
+                END AS "Down Payment Amount",
+                CASE 
+                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
+                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
+                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
+                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN "LS_loan_amnt_stable" / 1000000
+                        ELSE "LS_loan_amnt_asset" / 1000000
+                    END
+            AS "Loan Amount"
+            FROM
+                "LS_Opening" lso
+            )
+            SELECT
+            "Date",
+            SUM("Down Payment Amount") + SUM("Loan Amount") AS "Amount"
+            FROM
+            Historically_Opened_Base
+            GROUP BY
+            "Date"
+            ORDER BY
+            "Date" DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
         Ok(data)
     }
 }

@@ -7,10 +7,11 @@ use crate::{
     controller::{
         blocks, borrow_apr, borrowed, buyback, buyback_total,
         deposit_suspension, distributed, earn_apr, incentives_pool,
-        leased_assets, leases, ls_loan_closing, ls_opening, ls_openings,
-        max_lp_ratio, max_ls_interest_7d, optimal, prices, realized_pnl,
-        revenue, supplied_borrowed_series, total_tx_value, total_value_locked,
-        txs, utilization_level, version,
+        leased_assets, leases, leases_monthly, ls_loan_closing, ls_opening,
+        ls_openings, max_lp_ratio, max_ls_interest_7d, open_interest,
+        open_position_value, optimal, prices, realized_pnl, revenue,
+        supplied_borrowed_series, total_tx_value, total_value_locked, txs,
+        unrealized_pnl, unrealized_pnl_by_address, utilization_level, version,
     },
     error::Error,
 };
@@ -82,7 +83,12 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(leases::index)
                     .service(prices::index)
                     .service(ls_loan_closing::index)
-                    .service(realized_pnl::index),
+                    .service(realized_pnl::index)
+                    .service(leases_monthly::index)
+                    .service(open_position_value::index)
+                    .service(open_interest::index)
+                    .service(unrealized_pnl::index)
+                    .service(unrealized_pnl_by_address::index),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })
