@@ -386,7 +386,7 @@ impl Table<LS_State> {
     pub async fn get_pnl_over_time(
         &self,
         contract_id: String,
-        period: i64,
+        period: String,
     ) -> Result<Vec<Pnl_Over_Time>, Error> {
         let value  = sqlx::query_as(r#"
         WITH Active_Positions AS (
@@ -418,7 +418,7 @@ impl Table<LS_State> {
             INNER JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_State"."LS_contract_id"
           WHERE
             "LS_State"."LS_contract_id" = '$1' -- Replace with your specific contract ID
-            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '$2 days'
+            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '$2'
         ),
         Lease_Value_Table AS (
           SELECT
@@ -445,8 +445,8 @@ impl Table<LS_State> {
             "LS_State"
             INNER JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_State"."LS_contract_id"
           WHERE
-            "LS_State"."LS_contract_id" = '$1' -- Replace with your specific contract ID
-            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '$2 days'
+            "LS_State"."LS_contract_id" = $1
+            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '$2'
         ),
         Hourly_Unrealized_PnL AS (
           SELECT
@@ -470,10 +470,10 @@ impl Table<LS_State> {
         ORDER BY
           "Day"
       "#,
-  )
-  .bind(contract_id)
-  .bind(period)
-  .fetch_all(&self.pool)
+    )
+    .bind(contract_id.to_owned())
+    .bind(period.to_owned())
+    .fetch_all(&self.pool)
   .await?;
 
         Ok(value)
