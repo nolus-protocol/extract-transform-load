@@ -19,10 +19,7 @@ async fn index(
     let data = state
         .database
         .ls_state
-        .get_pnl_over_time(
-            data.address.to_owned(),
-            format!("{} days", interval),
-        )
+        .get_pnl_over_time(data.address.to_owned(), interval)
         .await?;
 
     Ok(web::Json(data))
