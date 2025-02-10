@@ -51,6 +51,21 @@
     ]
   },
   {
+    "description": "Pnl over time",
+    "url": "/api/pnl-over-time",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      },
+      {
+        "name": "interval",
+        "type": "String"
+      }
+    ]
+  },
+  {
     "description": "Get leases monthly",
     "url": "/api/leases-monthly",
     "type": "GET"

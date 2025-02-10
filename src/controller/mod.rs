@@ -18,6 +18,7 @@ pub mod max_ls_interest_7d;
 pub mod open_interest;
 pub mod open_position_value;
 pub mod optimal;
+pub mod pnl_over_time;
 pub mod prices;
 pub mod realized_pnl;
 pub mod revenue;
