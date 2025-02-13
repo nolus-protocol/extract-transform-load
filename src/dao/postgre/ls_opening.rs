@@ -307,180 +307,48 @@ impl Table<LS_Opening> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)> = sqlx::query_as(
             r#"
-            WITH DateRange AS (
+                WITH Last_Hour_States AS (
                 SELECT
-                    generate_series(
-                        CURRENT_DATE - INTERVAL '7 days',
-                        CURRENT_DATE,
-                        '1 day'
-                    ) :: date AS date
-            ),
-            Pool_State_Interest AS (
-            SELECT
-                "LP_Pool_timestamp",
-                CASE
-                    WHEN "LP_Pool_total_borrowed_stable"/"LP_Pool_total_value_locked_stable" < 0.7 THEN (12 + (("LP_Pool_total_borrowed_stable"/"LP_Pool_total_value_locked_stable") / (1 - ("LP_Pool_total_borrowed_stable"/"LP_Pool_total_value_locked_stable")) / 0.7)*2) * 10
-                    ELSE 186 
-                END AS "interest"
-            FROM
-                "LP_Pool_State"
-            WHERE
-                "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
-                AND "LP_Pool_id" = $1
-            ORDER BY
-                "LP_Pool_timestamp" DESC
-            ),
-            DailyInterest AS (
-                SELECT
-                DATE("LP_Pool_timestamp") as date,
-                MAX("interest") AS max_interest
+                    *
                 FROM
-                Pool_State_Interest
-                GROUP BY
-                "LP_Pool_timestamp"
-            ),
-            MaxLSInterest AS (
-                SELECT
-                    dr.date,
-                    COALESCE(
-                        di.max_interest,
-                        FIRST_VALUE(di.max_interest) OVER (
-                            ORDER BY
-                                dr.date ROWS BETWEEN UNBOUNDED PRECEDING
-                                AND 1 PRECEDING
-                        )
-                    ) AS max_interest
-                FROM
-                    DateRange dr
-                    LEFT JOIN DailyInterest di ON dr.date = di.date
-            ),
-            MaxLPRatio AS (
-                SELECT
-                    DATE("LP_Pool_timestamp") AS date,
-                    (
-                        "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
-                    ) AS ratio
-                FROM
-                    (
-                        SELECT
-                            *,
-                            RANK() OVER (
-                                PARTITION BY DATE("LP_Pool_timestamp")
-                                ORDER BY
-                                    (
-                                        "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
-                                    ) DESC
-                            ) AS rank
-                        FROM
-                            "LP_Pool_State"
-                        WHERE
-                            "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
-                            AND "LP_Pool_id" = $1
-                    ) ranked
+                    "LS_State"
                 WHERE
-                    ranked.rank = 1
-            ),
-            APRCalc AS (
+                    "LS_timestamp" >= NOW() - INTERVAL '1 hour'
+                ),
+                Last_Hour_Pool_State AS (
                 SELECT
-                    AVG((mli.max_interest - 40) * mlr.ratio) / 10 AS "Earn APR"
+                    (
+                    "LP_Pool_total_borrowed_stable" / NULLIF("LP_Pool_total_value_locked_stable", 0)
+                    ) AS utilization_rate
                 FROM
-                    MaxLSInterest mli
-                    JOIN MaxLPRatio mlr ON mli.date = mlr.date
-            )
-            SELECT
-                COALESCE((POWER((1 + ("Earn APR" / 100 / 365)), 365) - 1) * 100, 0) AS "Earn APY"
-            FROM APRCalc
+                    "LP_Pool_State"
+                WHERE
+                    "LP_Pool_id" = $1
+                ORDER BY
+                    "LP_Pool_timestamp" DESC
+                LIMIT
+                    1
+                ),
+                APRCalc AS (
+                SELECT
+                    (AVG(o."LS_interest") / 10.0 - 4) * (
+                    SELECT
+                        utilization_rate
+                    FROM
+                        Last_Hour_Pool_State
+                    ) AS apr
+                FROM
+                    Last_Hour_States s
+                    JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
+                WHERE
+                    o."LS_loan_pool_id" = $1
+                )
+                SELECT
+                    (POWER((1 + ("apr" / 100 / 365)), 365) - 1) * 100 AS "PERCENT"
+                FROM APRCalc       
             "#,
         )
         .bind(&protocol)
-        .fetch_optional(&self.pool)
-        .await?;
-        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
-
-        Ok(amnt.0)
-    }
-
-    pub async fn get_earn_apr_interest(
-        &self,
-        protocol: String,
-        max_interest: i32,
-    ) -> Result<BigDecimal, crate::error::Error> {
-        let value: Option<(BigDecimal,)> = sqlx::query_as(
-            r#"
-                WITH DateRange AS (
-                    SELECT
-                        generate_series(
-                        CURRENT_DATE - INTERVAL '7 days',
-                        CURRENT_DATE,
-                        '1 day'
-                        ) :: date AS date
-                    ),
-                    DailyInterest AS (
-                    SELECT
-                        DATE("LS_timestamp") AS date,
-                        MAX("LS_interest") AS max_interest
-                    FROM
-                        "LS_Opening"
-                    WHERE
-                        "LS_timestamp" >= CURRENT_DATE - INTERVAL '7 days' AND "LS_loan_pool_id" = $1
-                    GROUP BY
-                        DATE("LS_timestamp")
-                    ),
-                    MaxLSInterest AS (
-                    SELECT
-                        dr.date,
-                        COALESCE(
-                        di.max_interest,
-                        FIRST_VALUE(di.max_interest) OVER (
-                            ORDER BY
-                            dr.date ROWS BETWEEN UNBOUNDED PRECEDING
-                            AND 1 PRECEDING
-                        )
-                        ) AS max_interest
-                    FROM
-                        DateRange dr
-                        LEFT JOIN DailyInterest di ON dr.date = di.date
-                    ),
-                    MaxLPRatio AS (
-                    SELECT
-                        DATE("LP_Pool_timestamp") AS date,
-                        (
-                        "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
-                        ) AS ratio
-                    FROM
-                        (
-                        SELECT
-                            *,
-                            RANK() OVER (
-                            PARTITION BY DATE("LP_Pool_timestamp")
-                            ORDER BY
-                                (
-                                "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
-                                ) DESC
-                            ) AS rank
-                        FROM
-                            "LP_Pool_State"
-                        WHERE
-                            "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days' AND "LP_Pool_id" = $1
-                        ) ranked
-                    WHERE
-                        ranked.rank = 1
-                    ),
-                    APRCalc AS (
-                    SELECT
-                        AVG((mli.max_interest - $2) * mlr.ratio) / 10 AS "allBTC APR"
-                    FROM
-                        MaxLSInterest mli
-                        JOIN MaxLPRatio mlr ON mli.date = mlr.date
-                    )
-                    SELECT
-                        (POWER((1 + ("allBTC APR" / 100 / 365)), 365) - 1) * 100 AS "ALL_BTC_OSMOSIS"
-                    FROM APRCalc
-                        
-            "#,
-        )
-        .bind(&protocol)
-        .bind(&max_interest)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));

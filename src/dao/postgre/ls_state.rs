@@ -482,91 +482,79 @@ impl Table<LS_State> {
     ) -> Result<Vec<Unrealized_Pnl>, Error> {
         let data = sqlx::query_as(
           r#"
-          WITH Active_Positions AS (
-          SELECT
-            DISTINCT "LS_contract_id"
-          FROM
-            "LS_State"
-          WHERE
-            "LS_timestamp" >= NOW() - INTERVAL '1 hour'
-        ),
-        DP_Loan_Table AS (
-          SELECT
-            "LS_Opening"."LS_contract_id" AS "Contract ID",
-            CASE
-              WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_principal_stable" / 100000000
-              WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_principal_stable" / 1000000000
-              ELSE "LS_principal_stable" / 1000000
-            END AS "Loan",
-            CASE
-              WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
-              WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
-              WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
-              WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_cltr_amnt_stable" / 1000000000000000000
-              ELSE "LS_cltr_amnt_stable" / 1000000
-            END AS "Down Payment",
-            DATE_TRUNC('hour', "LS_State"."LS_timestamp") AS "Hour",
-            "LS_Opening"."LS_address_id" AS "Address ID"
-          FROM
-            "LS_State"
-            INNER JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_State"."LS_contract_id"
-          WHERE
-            "LS_State"."LS_contract_id" IN (SELECT "LS_contract_id" FROM Active_Positions)
-            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '30 days'
-            AND "LS_Opening"."LS_address_id" = $1
-        ),
-        Lease_Value_Table AS (
-          SELECT
-            "LS_Opening"."LS_contract_id" AS "Contract ID",
-            CASE
-              WHEN "LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN "LS_amnt_stable" / 100000000
-              WHEN "LS_asset_symbol" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
-              WHEN "LS_asset_symbol" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000
-              WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_amnt_stable" / 1000000000000000000
-              ELSE "LS_amnt_stable" / 1000000
-            END AS "Lease Value",
-            CASE
-              WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN ("LS_prev_margin_stable" + "LS_current_margin_stable") / 100000000
-              WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN ("LS_prev_margin_stable" + "LS_current_margin_stable") / 1000000000
-              ELSE ("LS_prev_margin_stable" + "LS_current_margin_stable") / 1000000
-            END AS "Margin Interest",
-            CASE
-              WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN ("LS_prev_interest_stable" + "LS_current_interest_stable") / 100000000
-              WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN ("LS_prev_interest_stable" + "LS_current_interest_stable") / 1000000000
-              ELSE ("LS_prev_interest_stable" + "LS_current_interest_stable") / 1000000
-            END AS "Loan Interest",
-            DATE_TRUNC('hour', "LS_State"."LS_timestamp") AS "Hour",
-            "LS_Opening"."LS_address_id" AS "Address ID"
-          FROM
-            "LS_State"
-            INNER JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_State"."LS_contract_id"
-          WHERE
-            "LS_State"."LS_contract_id" IN (SELECT "LS_contract_id" FROM Active_Positions)
-            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '30 days'
-            AND "LS_Opening"."LS_address_id" = $1
-        ),
-        Hourly_Unrealized_PnL AS (
-          SELECT
-            DATE_TRUNC('hour', lvt."Hour") AS "Hour",
-            DATE_TRUNC('day', lvt."Hour") AS "Day",
-            lvt."Address ID",
-            SUM("Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest") AS "Hourly Unrealized PnL"
-          FROM
-            Lease_Value_Table lvt
-            LEFT JOIN DP_Loan_Table dplt ON lvt."Contract ID" = dplt."Contract ID" AND lvt."Hour" = dplt."Hour"
-          GROUP BY
-            DATE_TRUNC('hour', lvt."Hour"), DATE_TRUNC('day', lvt."Hour"), lvt."Address ID"
-        )
-        SELECT
-          "Day",
-          "Address ID",
-          AVG("Hourly Unrealized PnL") AS "Daily Unrealized PnL"
-        FROM
-          Hourly_Unrealized_PnL
-        GROUP BY
-          "Day", "Address ID"
-        ORDER BY
-          "Day"
+            WITH Filtered_Opening AS (
+              SELECT *
+              FROM "LS_Opening"
+              WHERE "LS_address_id" = $1
+            ),
+            Active_Positions AS (
+              SELECT DISTINCT "LS_contract_id"
+              FROM "LS_State"
+              WHERE "LS_timestamp" >= NOW() - INTERVAL '30 days'
+            ),
+            DP_Loan_Table AS (
+              SELECT
+                fo."LS_contract_id" AS "Contract ID",
+                CASE
+                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN fs."LS_principal_stable" / 100000000
+                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN fs."LS_principal_stable" / 1000000000
+                  ELSE fs."LS_principal_stable" / 1000000
+                END AS "Loan",
+                CASE
+                  WHEN fo."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN fo."LS_cltr_amnt_stable" / 100000000
+                  WHEN fo."LS_cltr_symbol" IN ('ALL_SOL') THEN fo."LS_cltr_amnt_stable" / 1000000000
+                  WHEN fo."LS_cltr_symbol" IN ('PICA') THEN fo."LS_cltr_amnt_stable" / 1000000000000
+                  ELSE fo."LS_cltr_amnt_stable" / 1000000
+                END AS "Down Payment",
+                DATE_TRUNC('hour', fs."LS_timestamp") AS "Hour",
+                fo."LS_address_id" AS "Address ID"
+              FROM "LS_State" fs
+              INNER JOIN Filtered_Opening fo ON fo."LS_contract_id" = fs."LS_contract_id"
+              WHERE fs."LS_timestamp" >= NOW() - INTERVAL '20 days'
+                AND fs."LS_contract_id" IN (SELECT "LS_contract_id" FROM Active_Positions)
+            ),
+            Lease_Value_Table AS (
+              SELECT
+                fo."LS_contract_id" AS "Contract ID",
+                CASE
+                  WHEN fo."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN fs."LS_amnt_stable" / 100000000
+                  WHEN fo."LS_asset_symbol" IN ('ALL_SOL') THEN fs."LS_amnt_stable" / 1000000000
+                  ELSE fs."LS_amnt_stable" / 1000000
+                END AS "Lease Value",
+                CASE
+                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 100000000
+                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 1000000000
+                  ELSE (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 1000000
+                END AS "Margin Interest",
+                CASE
+                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 100000000
+                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 1000000000
+                  ELSE (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 1000000
+                END AS "Loan Interest",
+                DATE_TRUNC('hour', fs."LS_timestamp") AS "Hour",
+                fo."LS_address_id" AS "Address ID"
+              FROM "LS_State" fs
+              INNER JOIN Filtered_Opening fo ON fo."LS_contract_id" = fs."LS_contract_id"
+              WHERE fs."LS_timestamp" >= NOW() - INTERVAL '20 days'
+                AND fs."LS_contract_id" IN (SELECT "LS_contract_id" FROM Active_Positions)
+            ),
+            Hourly_Unrealized_PnL AS (
+              SELECT
+                DATE_TRUNC('hour', lvt."Hour") AS "Hour",
+                DATE_TRUNC('day', lvt."Hour") AS "Day",
+                lvt."Address ID",
+                SUM("Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest") AS "Hourly Unrealized PnL"
+              FROM Lease_Value_Table lvt
+              LEFT JOIN DP_Loan_Table dplt ON lvt."Contract ID" = dplt."Contract ID" AND lvt."Hour" = dplt."Hour"
+              GROUP BY DATE_TRUNC('hour', lvt."Hour"), DATE_TRUNC('day', lvt."Hour"), lvt."Address ID"
+            )
+            SELECT
+              "Day",
+              "Address ID",
+              AVG("Hourly Unrealized PnL") AS "Daily Unrealized PnL"
+            FROM Hourly_Unrealized_PnL
+            GROUP BY "Day", "Address ID"
+            ORDER BY "Day";
           "#,
       )
       .bind(address)

@@ -35,6 +35,18 @@
     ]
   },
   {
+    "description": "Realized pnl stats",
+    "url": "/api/realized-pnl-stats",
+    "type": "GET",
+    "params": []
+  },
+  {
+    "description": "Supplied funds",
+    "url": "/api/supplied-funds",
+    "type": "GET",
+    "params": []
+  },
+  {
     "description": "Time series Supplied/Borrowed",
     "url": "/api/time-series",
     "type": "GET"
