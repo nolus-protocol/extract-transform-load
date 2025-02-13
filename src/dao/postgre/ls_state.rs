@@ -490,7 +490,7 @@ impl Table<LS_State> {
             Active_Positions AS (
               SELECT DISTINCT "LS_contract_id"
               FROM "LS_State"
-              WHERE "LS_timestamp" >= NOW() - INTERVAL '30 days'
+              WHERE "LS_timestamp" >= NOW() - INTERVAL '1 hour'
             ),
             DP_Loan_Table AS (
               SELECT
