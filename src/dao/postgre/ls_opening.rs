@@ -301,6 +301,66 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
+    pub async fn get_earn_apr_interest(
+        &self,
+        protocol: String,
+        max_interest: f32,
+    ) -> Result<BigDecimal, crate::error::Error> {
+        let sql = format!(
+            r#"
+                 WITH Last_Hour_States AS (
+                SELECT
+                    *
+                FROM
+                    "LS_State"
+                WHERE
+                    "LS_timestamp" >= NOW() - INTERVAL '1 hour'
+                ),
+                Last_Hour_Pool_State AS (
+                SELECT
+                    (
+                    "LP_Pool_total_borrowed_stable" / NULLIF("LP_Pool_total_value_locked_stable", 0)
+                    ) AS utilization_rate
+                FROM
+                    "LP_Pool_State"
+                WHERE
+                    "LP_Pool_id" = '{}'
+                ORDER BY
+                    "LP_Pool_timestamp" DESC
+                LIMIT
+                    1
+                ),
+                APRCalc AS (
+                SELECT
+                    (AVG(o."LS_interest") / 10.0 - {}) * (
+                    SELECT
+                        utilization_rate
+                    FROM
+                        Last_Hour_Pool_State
+                    ) AS apr
+                FROM
+                    Last_Hour_States s
+                    JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
+                WHERE
+                    o."LS_loan_pool_id" = '{}'
+                )
+                SELECT
+                    (POWER((1 + ("apr" / 100 / 365)), 365) - 1) * 100 AS "PERCENT"
+                FROM APRCalc  
+                        
+            "#,
+            protocol.to_owned(),
+            max_interest,
+            protocol.to_owned()
+        );
+        let value: Option<(BigDecimal,)> =
+            sqlx::query_as(&sql).fetch_optional(&self.pool).await?;
+
+        let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
+
+        Ok(amnt.0)
+    }
+
     pub async fn get_earn_apr(
         &self,
         protocol: String,
