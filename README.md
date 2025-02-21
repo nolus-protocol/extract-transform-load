@@ -192,3 +192,7 @@ https://etl.nolus.network
 https://archive-rpc.nolus.network
 https://archive-grpc.nolus.network
 https://archive-lcd.nolus.network
+
+20.02.2025
+
+bock: 10961047 - add { state: {due_projection_secs: due_projection_secs} } in lease query
