@@ -420,7 +420,7 @@ impl Grpc {
         &self,
         contract: String,
     ) -> Result<LS_State_Type, Error> {
-        let bytes = b"{}";
+        let bytes = b"{\"state\": {}}";
 
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query lease contract!";
