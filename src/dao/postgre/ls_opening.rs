@@ -293,7 +293,59 @@ impl Table<LS_Opening> {
     ) -> Result<Vec<Leased_Asset>, Error> {
         let data = sqlx::query_as(
             r#"
-            SELECT "LS_asset_symbol" AS "Asset", SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening" GROUP BY "Asset"
+            WITH LatestTimestamps AS (
+            SELECT 
+                "LS_contract_id", 
+                MAX("LS_timestamp") AS "MaxTimestamp"
+            FROM 
+                "LS_State"
+            WHERE
+                "LS_timestamp" > (now() - INTERVAL '1 hour')
+            GROUP BY 
+                "LS_contract_id"
+            ),
+            Opened AS (
+                SELECT
+                    s."LS_contract_id",
+                    s."LS_amnt_stable",
+                    CASE
+                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                        ELSE lo."LS_asset_symbol"
+                    END AS "Asset Type"
+                FROM
+                    "LS_State" s
+                INNER JOIN 
+                    LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
+                INNER JOIN
+                    "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+                WHERE
+                    s."LS_amnt_stable" > 0
+            ),
+            Lease_Value_Table AS (
+                SELECT
+                    op."Asset Type" AS "Token",
+                    CASE
+                        WHEN "Asset Type" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_amnt_stable" / 100000000
+                        WHEN "Asset Type" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
+                        WHEN "Asset Type" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000
+                        WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_amnt_stable" / 1000000000000000000
+                    ELSE "LS_amnt_stable" / 1000000
+                END AS "Lease Value"
+                FROM
+                    Opened op
+            )
+            SELECT 
+                "Token", 
+                SUM("Lease Value") AS "Loan"
+            FROM 
+                Lease_Value_Table 
+            GROUP BY 
+                "Token"
+            ORDER BY 
+                "Loan" DESC
             "#,
         )
         .fetch_all(&self.pool)
