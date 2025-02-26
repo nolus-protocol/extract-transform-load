@@ -326,7 +326,7 @@ impl Table<LS_Opening> {
             ),
             Lease_Value_Table AS (
                 SELECT
-                    op."Asset Type" AS "Token",
+                    op."Asset Type" AS "Asset",
                     CASE
                         WHEN "Asset Type" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_amnt_stable" / 100000000
                         WHEN "Asset Type" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
@@ -338,14 +338,14 @@ impl Table<LS_Opening> {
                     Opened op
             )
             SELECT 
-                "Token", 
+                "Asset", 
                 SUM("Lease Value") AS "Loan"
             FROM 
                 Lease_Value_Table 
             GROUP BY 
-                "Token"
+                "Asset"
             ORDER BY 
-                "Loan" DESC
+                "Loan" DESC;
             "#,
         )
         .fetch_all(&self.pool)
