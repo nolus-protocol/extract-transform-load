@@ -3,6 +3,7 @@
 
 pub mod configuration;
 pub mod controller;
+pub mod custom_uint;
 pub mod dao;
 pub mod error;
 pub mod handler;
