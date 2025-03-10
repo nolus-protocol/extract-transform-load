@@ -28,4 +28,6 @@ pub struct LS_History {
     pub amount: BigDecimal,
     pub r#type: String,
     pub time: DateTime<Utc>,
+    pub ls_amnt_symbol: Option<String>,
+    pub ls_amnt: Option<BigDecimal>
 }

@@ -776,20 +776,40 @@ impl Table<LS_Opening> {
             r#"
                 SELECT * FROM (
                     SELECT
-                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount", "LS_timestamp" as "time",  'repay' as "type"
+                        "LS_payment_symbol" as "symbol",
+                        "LS_payment_amnt" as "amount",
+                        NULL as "ls_amnt_symbol",
+                        NULL as "ls_amnt",
+                        "LS_timestamp" as "time",
+                        'repay' as "type"
                     FROM "LS_Repayment"
                     WHERE "LS_contract_id" = $1
-                UNION ALL
+                    
+                    UNION ALL
+                    
                     SELECT
-                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount", "LS_timestamp" as "time",  'market-close' as "type"
+                        "LS_payment_symbol" as "symbol",
+                        "LS_payment_amnt" as "amount",
+                        "LS_amnt_symbol" as "ls_amnt_symbol",
+                        "LS_amnt" as "ls_amnt",
+                        "LS_timestamp" as "time",
+                        'market-close' as "type"
                     FROM "LS_Close_Position"
                     WHERE "LS_contract_id" = $1
-                UNION ALL
+                    
+                    UNION ALL
+                    
                     SELECT
-                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount",  "LS_timestamp" as "time", 'liquidation' as "type"
+                        "LS_payment_symbol" as "symbol",
+                        "LS_payment_amnt" as "amount",
+                        "LS_amnt_symbol" as "ls_amnt_symbol",
+                        "LS_amnt" as "ls_amnt",
+                        "LS_timestamp" as "time",
+                        'liquidation' as "type"
                     FROM "LS_Liquidation"
                     WHERE "LS_contract_id" = $1
-                ) AS combined_data order by time asc
+                ) AS combined_data
+                ORDER BY time ASC;
             "#,
         )
         .bind(contract_id)
