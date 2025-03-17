@@ -5,8 +5,6 @@ use sqlx::FromRow;
 
 #[derive(Debug, FromRow, Deserialize, Serialize)]
 pub struct Unrealized_Pnl {
-    #[sqlx(rename = "Daily Unrealized PnL")]
-    pub amount: BigDecimal,
-    #[sqlx(rename = "Day")]
-    pub date: DateTime<Utc>,
+    pub pnl: BigDecimal,
+    pub time: DateTime<Utc>,
 }
