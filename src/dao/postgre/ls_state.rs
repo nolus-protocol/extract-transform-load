@@ -410,7 +410,7 @@ impl Table<LS_State> {
           FROM "LS_State"
           INNER JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_State"."LS_contract_id"
           WHERE "LS_State"."LS_contract_id" = '{}'
-            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '{}'
+            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '20 days'
         ),
         Lease_Value_Table AS (
           SELECT
@@ -440,7 +440,7 @@ impl Table<LS_State> {
           FROM "LS_State"
           INNER JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_State"."LS_contract_id"
           WHERE "LS_State"."LS_contract_id" = '{}'
-            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '{}'
+            AND "LS_State"."LS_timestamp" >= NOW() - INTERVAL '20 days'
         ),
         Repayment_Summary AS (
           SELECT
@@ -468,7 +468,7 @@ impl Table<LS_State> {
         LEFT JOIN DP_Loan_Table dplt ON lvt."Contract ID" = dplt."Contract ID" AND lvt."Hour" = dplt."Hour"
         LEFT JOIN Repayment_Summary rs ON lvt."Contract ID" = rs."Contract ID" AND lvt."Hour" >= rs."Hour"
         ORDER BY lvt."Hour"  
-      "#, contract_id.to_owned(), period.to_owned(), contract_id.to_owned(), period.to_owned()))
+      "#, contract_id.to_owned(), contract_id.to_owned()))
     .fetch_all(&self.pool)
   .await?;
 
