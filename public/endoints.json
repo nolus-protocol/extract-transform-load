@@ -317,5 +317,16 @@
         "type": "String"
       }
     ]
+  },
+  {
+    "description": "Lease position/debt",
+    "url": "/api/position-debt-value",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      }
+    ]
   }
 ]

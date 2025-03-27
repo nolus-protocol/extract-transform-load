@@ -6,6 +6,7 @@ pub mod buyback_total;
 pub mod deposit_suspension;
 pub mod distributed;
 pub mod earn_apr;
+pub mod get_position_debt_value;
 pub mod incentives_pool;
 pub mod leased_assets;
 pub mod leases;

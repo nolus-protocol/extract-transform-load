@@ -1,7 +1,8 @@
 use super::{DataBase, QueryResult};
 use crate::{
     model::{
-        Borrow_APR, LS_History, LS_Opening, Leased_Asset, Leases_Monthly, Table,
+        Borrow_APR, LS_Amount, LS_History, LS_Opening, Leased_Asset,
+        Leases_Monthly, Table,
     },
     types::LS_Max_Interest,
 };
@@ -865,6 +866,68 @@ impl Table<LS_Opening> {
             "Date" DESC
             "#,
         )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_position_value(
+        &self,
+        address: String,
+    ) -> Result<Vec<LS_Amount>, Error> {
+        let data = sqlx::query_as(
+            r#"
+           SELECT
+            s."LS_timestamp" AS "time",
+            SUM(
+                CASE
+                WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000
+                WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN s."LS_amnt_stable" / 1000000000
+                WHEN o."LS_asset_symbol" IN ('PICA') THEN s."LS_amnt_stable" / 1000000000000
+                WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN s."LS_amnt_stable" / 1000000000000000000
+                ELSE s."LS_amnt_stable" / 1000000
+                END
+            ) AS "amount"
+            FROM "LS_State" s
+            INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
+            WHERE o."LS_address_id" = 'nolus17rjgmry3w2xcc8yer4h4m8vuypkhkh8he3u8xv'
+            AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
+            GROUP BY s."LS_timestamp"
+            ORDER BY s."LS_timestamp"
+            "#,
+        )
+        .bind(address)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_debt_value(
+        &self,
+        address: String,
+    ) -> Result<Vec<LS_Amount>, Error> {
+        let data = sqlx::query_as(
+            r#"
+             SELECT
+            s."LS_timestamp" AS "time",
+            SUM(
+                CASE
+                WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 100000000
+                WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 1000000000
+                WHEN o."LS_asset_symbol" IN ('PICA') THEN (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 1000000000000
+                WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 1000000000000000000
+                ELSE (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 1000000
+                END
+            ) AS "amount"
+            FROM "LS_State" s
+            INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
+            WHERE o."LS_address_id" = $1
+            AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
+            GROUP BY s."LS_timestamp"
+            ORDER BY s."LS_timestamp"
+            "#,
+        )
+        .bind(address)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
