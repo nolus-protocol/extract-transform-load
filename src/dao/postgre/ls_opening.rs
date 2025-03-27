@@ -908,15 +908,30 @@ impl Table<LS_Opening> {
     ) -> Result<Vec<LS_Amount>, Error> {
         let data = sqlx::query_as(
             r#"
-             SELECT
+            SELECT
             s."LS_timestamp" AS "time",
             SUM(
+                (
+                s."LS_principal_stable" +
+                s."LS_prev_margin_stable" +
+                s."LS_current_margin_stable" +
+                s."LS_prev_interest_stable" +
+                s."LS_current_interest_stable"
+                )
+                /
                 CASE
-                WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 100000000
-                WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 1000000000
-                WHEN o."LS_asset_symbol" IN ('PICA') THEN (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 1000000000000
-                WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 1000000000000000000
-                ELSE (s."LS_principal_stable"+"LS_prev_margin_stable"+"LS_current_margin_stable"+"LS_prev_interest_stable"+"LS_current_interest_stable") / 1000000
+                -- Handle short positions by loan pool ID
+                WHEN o."LS_asset_symbol" = 'USDC_NOBLE' AND o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 100000000  -- BTC
+                WHEN o."LS_asset_symbol" = 'USDC_NOBLE' AND o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 1000000000 -- SOL
+
+                -- Long positions handled by asset symbol
+                WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN 100000000
+                WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN 1000000000
+                WHEN o."LS_asset_symbol" = 'PICA' THEN 1000000000000
+                WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
+
+                -- Default to 1e6 (e.g., for USDC, ATOM, OSMO, etc.)
+                ELSE 1000000
                 END
             ) AS "amount"
             FROM "LS_State" s
