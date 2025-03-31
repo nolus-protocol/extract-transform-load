@@ -890,7 +890,7 @@ impl Table<LS_Opening> {
             ) AS "amount"
             FROM "LS_State" s
             INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
-            WHERE o."LS_address_id" = 'nolus17rjgmry3w2xcc8yer4h4m8vuypkhkh8he3u8xv'
+            WHERE o."LS_address_id" = $1
             AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
             GROUP BY s."LS_timestamp"
             ORDER BY s."LS_timestamp"

@@ -1,6 +1,6 @@
 [package]
 name = "etl"
-version = "3.7.10"
+version = "3.8.0"
 edition = "2021"
 rust-version = "1.79.0"
 
@@ -32,24 +32,23 @@ sqlx = { version = "0.8", features = [
     "bigdecimal",
 ] }
 
-cosmrs = { version = "0.21", default-features = false, features = [
+cosmrs = { version = "0.22", default-features = false, features = [
     "grpc",
     "bip32",
     "cosmwasm"
 ] }
 
-tonic = { version = "0.12", default-features = false, features = [
+tonic = { version = "0.13", default-features = false, features = [
     "channel",
     "gzip",
     "prost",
-    "tls",
-    "tls-roots",
+    "tls-native-roots",
     "transport",
     "zstd",
 ] }
 
 chrono = { version = "0.4", features = ["serde"] }
-cosmos-sdk-proto = { version = "0.26", features = ["cosmwasm", "grpc-transport",] }
+cosmos-sdk-proto = { version = "0.27", features = ["cosmwasm", "grpc-transport",] }
 prost = { version = "0.13", features = ["derive",] }
 bigdecimal = { version = "0.4", features = ["serde"] }
 tendermint-rpc = { version = "0.40", features = ["websocket-client"] }
