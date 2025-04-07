@@ -1,16 +1,15 @@
 use chrono::{DateTime, Utc};
-use std::vec;
 use tokio::task::JoinHandle;
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    model::Action_History,
-    model::{Actions, Table},
+    model::{Action_History, Actions, Table},
 };
 
-use super::cache_state;
-use super::{lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state};
+use super::{
+    cache_state, lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state,
+};
 
 pub fn aggregation_task(
     app_state: AppState<State>,

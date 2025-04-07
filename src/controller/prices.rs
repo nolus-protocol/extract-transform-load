@@ -1,12 +1,14 @@
+use std::str::FromStr as _;
+
+use actix_web::{get, web, Responder};
+use anyhow::Context as _;
+use chrono::{Duration, Utc};
+use serde::Deserialize;
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
-use actix_web::{get, web, Responder, Result};
-use anyhow::Context;
-use chrono::{Duration, Utc};
-use serde::Deserialize;
-use std::str::FromStr;
 
 #[get("/prices")]
 async fn index(

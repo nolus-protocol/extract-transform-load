@@ -1,14 +1,15 @@
+use actix_web::{get, web, Responder};
+use anyhow::Context as _;
+use bigdecimal::BigDecimal;
+use futures::TryFutureExt as _;
+use serde::{Deserialize, Serialize};
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
     handler::ls_loan_closing::get_fees,
     model::{LS_History, LS_Opening},
 };
-use actix_web::{get, web, Responder, Result};
-use anyhow::Context;
-use bigdecimal::BigDecimal;
-use futures::TryFutureExt;
-use serde::{Deserialize, Serialize};
 
 #[get("/ls-opening")]
 async fn index(

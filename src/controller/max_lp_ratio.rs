@@ -1,10 +1,11 @@
+use actix_web::{get, web, HttpRequest, Responder};
+use bigdecimal::ToPrimitive;
+use serde_json::{json, Map};
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
-use actix_web::{get, web, HttpRequest, Responder, Result};
-use bigdecimal::ToPrimitive;
-use serde_json::{json, Map};
 
 #[get("/max_lp_ratio/{lpp_address}")]
 async fn index(

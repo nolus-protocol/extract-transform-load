@@ -1,23 +1,28 @@
 use std::{fmt, io, str::FromStr};
 
-use anyhow::{anyhow, Context, Result};
-use base64::prelude::*;
+use anyhow::{anyhow, Context as _};
+use base64::engine::{general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use cosmos_sdk_proto::{
-    cosmos::{
-        bank::v1beta1::MsgSend,
-        distribution::v1beta1::MsgWithdrawDelegatorReward,
-        gov::{v1::MsgVote, v1beta1::MsgVote as MsgVoteLegacy},
-        staking::v1beta1::{MsgBeginRedelegate, MsgDelegate, MsgUndelegate},
+use cosmrs::{
+    proto::{
+        cosmos::{
+            bank::v1beta1::MsgSend,
+            distribution::v1beta1::MsgWithdrawDelegatorReward,
+            gov::{v1::MsgVote, v1beta1::MsgVote as MsgVoteLegacy},
+            staking::v1beta1::{
+                MsgBeginRedelegate, MsgDelegate, MsgUndelegate,
+            },
+        },
+        cosmwasm::wasm::v1::MsgExecuteContract,
+        tendermint::abci::Event,
+        Timestamp,
     },
-    cosmwasm::wasm::v1::MsgExecuteContract,
-    tendermint::abci::Event,
-    Timestamp,
+    tx::Fee,
+    Any,
 };
-use cosmrs::{tx::Fee, Any};
 use ibc_proto::ibc::{
-    apps::transfer::v1::MsgTransfer, core::channel::v1::MsgRecvPacket,
+    applications::transfer::v1::MsgTransfer, core::channel::v1::MsgRecvPacket,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

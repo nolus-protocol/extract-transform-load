@@ -1,7 +1,9 @@
-use super::{DataBase, QueryResult};
-use crate::model::{MP_Asset, Table};
 use chrono::{DateTime, Utc};
-use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
+use sqlx::{types::BigDecimal, Error, QueryBuilder};
+
+use crate::model::{MP_Asset, Table};
+
+use super::{DataBase, QueryResult};
 
 impl Table<MP_Asset> {
     pub async fn insert(&self, data: MP_Asset) -> Result<QueryResult, Error> {

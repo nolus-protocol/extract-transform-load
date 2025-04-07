@@ -1,8 +1,9 @@
+use actix_web::{get, web, Responder};
+
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
-use actix_web::{get, web, Responder, Result};
 
 #[get("/blocks")]
 async fn index(

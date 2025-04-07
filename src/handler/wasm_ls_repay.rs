@@ -1,9 +1,9 @@
+use std::str::FromStr as _;
+
 use bigdecimal::BigDecimal;
 use chrono::DateTime;
 use sqlx::Transaction;
-use std::str::FromStr;
 
-use super::ls_loan_closing as ls_loan_closing_handler;
 use crate::{
     configuration::{AppState, State},
     dao::DataBase,
@@ -12,6 +12,8 @@ use crate::{
     model::LS_Repayment,
     types::LS_Repayment_Type,
 };
+
+use super::ls_loan_closing as ls_loan_closing_handler;
 
 pub async fn parse_and_insert(
     app_state: &AppState<State>,

@@ -3,8 +3,8 @@ use crate::model::{
     LS_Opening, LS_State, Pnl_Over_Time, Table, Unrealized_Pnl,
 };
 use chrono::{DateTime, Utc};
-use sqlx::{error::Error, types::BigDecimal, QueryBuilder};
-use std::str::FromStr;
+use sqlx::{types::BigDecimal, Error, QueryBuilder};
+use std::str::FromStr as _;
 
 impl Table<LS_State> {
     pub async fn insert(&self, data: LS_State) -> Result<QueryResult, Error> {
@@ -386,7 +386,7 @@ impl Table<LS_State> {
     pub async fn get_pnl_over_time(
         &self,
         contract_id: String,
-        period: i64,
+        _period: i64,
     ) -> Result<Vec<Pnl_Over_Time>, Error> {
         let value  = sqlx::query_as(&format!(r#"
           WITH DP_Loan_Table AS (

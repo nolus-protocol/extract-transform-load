@@ -1,12 +1,13 @@
-use crate::model::PL_State;
+use std::str::FromStr as _;
+
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use std::str::FromStr;
 use tokio::task::JoinHandle;
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    model::PL_State,
 };
 
 pub async fn parse_and_insert(
