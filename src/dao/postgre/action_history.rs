@@ -4,6 +4,8 @@ use sqlx::Error;
 use crate::model::{Action_History, Table};
 
 impl Table<Action_History> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(&self, data: Action_History) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "action_history" (
@@ -21,6 +23,7 @@ impl Table<Action_History> {
             .map(drop)
     }
 
+    // FIXME Pass `Actions` instead.
     pub async fn get_last_by_type(
         &self,
         action_type: String,
@@ -39,6 +42,7 @@ impl Table<Action_History> {
             .await
     }
 
+    // FIXME Pass `Actions` instead.
     pub async fn get_last_by_type_before(
         &self,
         action_type: String,

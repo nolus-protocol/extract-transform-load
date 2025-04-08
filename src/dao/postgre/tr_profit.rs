@@ -7,6 +7,8 @@ use crate::model::{Buyback, TR_Profit, Table};
 use super::DataBase;
 
 impl Table<TR_Profit> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(&self, tr_profit: &TR_Profit) -> Result<bool, Error> {
         const SQL: &str = r#"
         SELECT EXISTS(
@@ -26,6 +28,8 @@ impl Table<TR_Profit> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: TR_Profit,
@@ -53,6 +57,9 @@ impl Table<TR_Profit> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<TR_Profit>,
@@ -87,6 +94,7 @@ impl Table<TR_Profit> {
             .map(drop)
     }
 
+    // FIXME Return data in a dedicated structure instead of as a tuple.
     pub async fn get_amnt_stable(
         &self,
         from: DateTime<Utc>,
@@ -113,11 +121,16 @@ impl Table<TR_Profit> {
             })
     }
 
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_buyback(
         &self,
         skip: i64,
         limit: i64,
     ) -> Result<Vec<Buyback>, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT
             (
@@ -141,6 +154,7 @@ impl Table<TR_Profit> {
     }
 
     pub async fn get_buyback_total(&self) -> Result<BigDecimal, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT
             (
@@ -158,6 +172,7 @@ impl Table<TR_Profit> {
     }
 
     pub async fn get_revenue(&self) -> Result<BigDecimal, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT
             (

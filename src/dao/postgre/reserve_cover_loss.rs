@@ -5,6 +5,8 @@ use crate::model::{Reserve_Cover_Loss, Table};
 use super::DataBase;
 
 impl Table<Reserve_Cover_Loss> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(
         &self,
         reserve_cover_loss: &Reserve_Cover_Loss,
@@ -29,6 +31,8 @@ impl Table<Reserve_Cover_Loss> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: Reserve_Cover_Loss,

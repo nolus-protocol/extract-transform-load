@@ -10,6 +10,8 @@ use crate::{
 };
 
 impl Table<LP_Pool_State> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(&self, data: LP_Pool_State) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "LP_Pool_State" (
@@ -42,6 +44,9 @@ impl Table<LP_Pool_State> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<LP_Pool_State>,
@@ -85,6 +90,7 @@ impl Table<LP_Pool_State> {
             .map(drop)
     }
 
+    // FIXME Return data in a dedicated structure instead of as a tuple.
     pub async fn get_total_value_locked_stable(
         &self,
         datetime: DateTime<Utc>,
@@ -109,6 +115,8 @@ impl Table<LP_Pool_State> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_supplied_borrowed_series(
         &self,
         protocol: String,
@@ -118,26 +126,26 @@ impl Table<LP_Pool_State> {
             "LP_Pool_timestamp",
             SUM(
                 "LP_Pool_total_value_locked_stable" / (
-                    CASE
+                CASE
                         WHEN "LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN
                             100000000
                         WHEN "LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN
                             1000000000
                         ELSE
                             1000000
-                    END
+                END
                 )
             ) AS "Supplied",
             SUM(
                 "LP_Pool_total_borrowed_stable" / (
-                    CASE
+                CASE
                         WHEN "LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN
                             100000000
                         WHEN "LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN
                             1000000000
                         ELSE
                             1000000
-                    END
+                END
                 )
             ) AS "Borrowed"
         FROM "LP_Pool_State"
@@ -152,35 +160,38 @@ impl Table<LP_Pool_State> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use iterators instead.
     pub async fn get_supplied_borrowed_series_total(
         &self,
         protocols: Vec<String>,
     ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
+        // FIXME Find a way to describe currencies' decimal places dynamically.
         const PRE_BINDS_SQL: &str = r#"
         SELECT
             "LP_Pool_timestamp",
             SUM(
                 "LP_Pool_total_value_locked_stable" / (
-                    CASE
+                CASE
                         WHEN "LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN
                             100000000
                         WHEN "LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN
                             1000000000
                         ELSE
                             1000000
-                    END
+                END
                 )
             ) AS "Supplied",
             SUM(
                 "LP_Pool_total_borrowed_stable" / (
-                    CASE
+                CASE
                         WHEN "LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN
                             100000000
                         WHEN "LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN
                             1000000000
                         ELSE
                             1000000
-                    END
+                END
                 )
             ) AS "Borrowed"
         FROM "LP_Pool_State"
@@ -202,6 +213,11 @@ impl Table<LP_Pool_State> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_utilization_level(
         &self,
         protocol: String,
@@ -230,6 +246,10 @@ impl Table<LP_Pool_State> {
             .await
     }
 
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_utilization_level_old(
         &self,
         skip: i64,
@@ -255,6 +275,8 @@ impl Table<LP_Pool_State> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_max_ls_interest_7d(
         &self,
         lpp_address: String,
@@ -280,6 +302,8 @@ impl Table<LP_Pool_State> {
     }
 
     pub async fn get_supplied_funds(&self) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to describe protocols dynamically.
+        // FIXME Find a way to describe currencies' decimal places dynamically.
         const SQL: &str = r#"
         WITH "Latest_Pool_Data" AS (
             SELECT 

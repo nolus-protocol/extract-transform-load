@@ -5,6 +5,8 @@ use sqlx::{types::BigDecimal, Error, QueryBuilder};
 use crate::model::{TR_State, Table};
 
 impl Table<TR_State> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure.
     pub async fn insert(&self, data: TR_State) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "TR_State" (
@@ -24,6 +26,9 @@ impl Table<TR_State> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure.
+    // FIXME Use iterators instead.
     pub async fn insert_many(&self, data: &Vec<TR_State>) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "TR_State" (

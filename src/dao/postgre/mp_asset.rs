@@ -4,6 +4,8 @@ use sqlx::{types::BigDecimal, Error, QueryBuilder};
 use crate::model::{MP_Asset, Table};
 
 impl Table<MP_Asset> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(&self, data: MP_Asset) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "MP_Asset" (
@@ -25,6 +27,9 @@ impl Table<MP_Asset> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(&self, data: &Vec<MP_Asset>) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "MP_Asset" (
@@ -53,6 +58,8 @@ impl Table<MP_Asset> {
             .map(drop)
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Return data in a dedicated structure instead of as a tuple.
     pub async fn get_min_max_from_range(
         &self,
         key: String,
@@ -78,6 +85,11 @@ impl Table<MP_Asset> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt31` instead. Alternative: Find another data type that
+    //  better fits description of value.
+    // FIXME Return data in a dedicated structure instead of as a tuple.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_prices(
         &self,
         key: String,
@@ -122,6 +134,8 @@ impl Table<MP_Asset> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Unwrap the tuple before returning.
     pub async fn get_price(
         &self,
         key: &str,
@@ -157,6 +171,9 @@ impl Table<MP_Asset> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Pass argument by value, as it implements `Copy`.
+    // FIXME Unwrap the tuple before returning.
     pub async fn get_price_by_date(
         &self,
         key: &str,

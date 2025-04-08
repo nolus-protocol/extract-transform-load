@@ -5,6 +5,8 @@ use crate::model::{Block, Table};
 use super::DataBase;
 
 impl Table<Block> {
+    // FIXME [optional] Pass data by reference, as separate arguments.
+    //  Alternative: Make block a type alias.
     pub async fn insert(
         &self,
         block: Block,
@@ -22,6 +24,8 @@ impl Table<Block> {
             .map(drop)
     }
 
+    // FIXME Return data in a dedicated structure instead of as a tuple.
+    // FIXME Use `UInt63` instead.
     pub async fn get_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
         const SQL: &str = r#"
         SELECT *
@@ -40,6 +44,8 @@ impl Table<Block> {
         sqlx::query_as(SQL).fetch_all(&self.pool).await
     }
 
+    // FIXME Unwrap the tuple before returning.
+    // FIXME Use `UInt63` instead.
     pub async fn get_first_block(&self) -> Result<(i64,), Error> {
         const SQL: &str = r#"
         SELECT "id"
@@ -51,6 +57,8 @@ impl Table<Block> {
         sqlx::query_as(SQL).fetch_one(&self.pool).await
     }
 
+    // FIXME Unwrap the tuple before returning.
+    // FIXME Use `UInt63` instead.
     pub async fn get_last_block(&self) -> Result<(i64,), Error> {
         const SQL: &str = r#"
         SELECT "id"
@@ -62,6 +70,7 @@ impl Table<Block> {
         sqlx::query_as(SQL).fetch_one(&self.pool).await
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn get_one(&self, id: i64) -> Result<Option<Block>, Error> {
         const SQL: &str = r#"
         SELECT *
@@ -75,6 +84,7 @@ impl Table<Block> {
             .await
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn count(&self) -> Result<i64, Error> {
         const SQL: &str = r#"
         SELECT
@@ -88,6 +98,7 @@ impl Table<Block> {
             .map(|(val,)| val)
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn is_synced_to_block(&self, block: i64) -> Result<bool, Error> {
         const SQL: &str = r#"
         SELECT

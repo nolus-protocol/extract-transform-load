@@ -7,6 +7,8 @@ use crate::model::{TR_Rewards_Distribution, Table};
 use super::DataBase;
 
 impl Table<TR_Rewards_Distribution> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure.
     pub async fn isExists(
         &self,
         tr_reward: &TR_Rewards_Distribution,
@@ -62,6 +64,9 @@ impl Table<TR_Rewards_Distribution> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<TR_Rewards_Distribution>,

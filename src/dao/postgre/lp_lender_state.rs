@@ -4,6 +4,8 @@ use sqlx::{Error, QueryBuilder};
 use crate::model::{LP_Lender_State, Table};
 
 impl Table<LP_Lender_State> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(&self, data: LP_Lender_State) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "LP_Lender_State" (
@@ -29,6 +31,7 @@ impl Table<LP_Lender_State> {
             .map(drop)
     }
 
+    // FIXME Return data in a dedicated structure instead of as a tuple.
     pub async fn get_active_states(
         &self,
     ) -> Result<Vec<(String, String)>, Error> {
@@ -56,6 +59,9 @@ impl Table<LP_Lender_State> {
         sqlx::query_as(SQL).fetch_all(&self.pool).await
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<LP_Lender_State>,
@@ -91,6 +97,7 @@ impl Table<LP_Lender_State> {
             .map(drop)
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn count(&self, timestamp: DateTime<Utc>) -> Result<i64, Error> {
         const SQL: &str = r#"
         SELECT

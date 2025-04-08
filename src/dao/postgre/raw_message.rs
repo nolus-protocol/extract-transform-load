@@ -5,6 +5,8 @@ use crate::model::{Raw_Message, Table};
 use super::DataBase;
 
 impl Table<Raw_Message> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: Raw_Message,
@@ -46,6 +48,8 @@ impl Table<Raw_Message> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(&self, data: &Raw_Message) -> Result<bool, Error> {
         const SQL: &str = r#"
         SELECT EXISTS(
@@ -65,6 +69,11 @@ impl Table<Raw_Message> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get(
         &self,
         address: String,

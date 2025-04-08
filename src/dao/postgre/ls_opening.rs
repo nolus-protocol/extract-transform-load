@@ -12,6 +12,8 @@ use crate::{
 use super::DataBase;
 
 impl Table<LS_Opening> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(
         &self,
         ls_opening: &LS_Opening,
@@ -31,6 +33,8 @@ impl Table<LS_Opening> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: LS_Opening,
@@ -80,6 +84,9 @@ impl Table<LS_Opening> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
+    // FIXME Use iterators instead.
     pub async fn insert_many(
         &self,
         data: &Vec<LS_Opening>,
@@ -136,6 +143,7 @@ impl Table<LS_Opening> {
             .map(drop)
     }
 
+    // FIXME Use `UInt63` instead.
     pub async fn count(
         &self,
         from: DateTime<Utc>,
@@ -256,6 +264,11 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_borrow_apr(
         &self,
         protocol: String,
@@ -282,10 +295,13 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leased_assets(
         &self,
         protocol: String,
     ) -> Result<Vec<Leased_Asset>, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT
             "LS_asset_symbol" AS "Asset",
@@ -303,12 +319,15 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leased_assets_total(
         &self,
     ) -> Result<Vec<Leased_Asset>, Error> {
+        // FIXME Find a way to describe currencies dynamically.
+        // FIXME Find a way to describe currencies' decimal places dynamically.
         const SQL: &str = r#"
         WITH "LatestTimestamps" AS (
-            SELECT
+        SELECT
                 "LS_contract_id",
                 MAX("LS_timestamp") AS "MaxTimestamp"
             FROM "LS_State"
@@ -372,11 +391,13 @@ impl Table<LS_Opening> {
         sqlx::query_as(SQL).fetch_all(&self.pool).await
     }
 
+    // FIXME Pass argument by reference.
     pub async fn get_earn_apr_interest(
         &self,
         protocol: String,
         max_interest: f32,
     ) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to parameterize non-constant hardcoded values.
         const SQL: &str = r#"
         WITH "Last_Hour_States" AS (
             SELECT *
@@ -404,7 +425,7 @@ impl Table<LS_Opening> {
                             AVG("o"."LS_interest") / 10.0
                         ) - $2
                     ) * (
-                        SELECT
+            SELECT
                             "utilization_rate"
                         FROM "Last_Hour_Pool_State"
                     )
@@ -413,15 +434,15 @@ impl Table<LS_Opening> {
             JOIN "LS_Opening" "o" ON "s"."LS_contract_id" = "o"."LS_contract_id"
             WHERE "o"."LS_loan_pool_id" = $1
         )
-        SELECT
+            SELECT
             (
-                (
-                    POWER(
+            (
+                POWER(
                         1 + (
                             "apr" / 36500
                         ),
-                        365
-                    ) - 1
+                    365
+                ) - 1
                 ) * 100
             ) AS "PERCENT"
         FROM "APRCalc"
@@ -437,10 +458,14 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt31` instead. Alternative: Find another data type that
+    //  better fits description of value.
     pub async fn get_earn_apr(
         &self,
         protocol: String,
     ) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to parameterize non-constant hardcoded values.
         const SQL: &str = r#"
         WITH "Last_Hour_States" AS (
             SELECT *
@@ -477,7 +502,7 @@ impl Table<LS_Opening> {
             JOIN "LS_Opening" AS "o" ON "s"."LS_contract_id" = "o"."LS_contract_id"
             WHERE "o"."LS_loan_pool_id" = $1
         )
-        SELECT
+            SELECT
             (
                 (
                     POWER(
@@ -502,6 +527,7 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Pass argument by reference.
     pub async fn get(
         &self,
         LS_contract_id: String,
@@ -518,10 +544,12 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Pass argument by reference.
     pub async fn get_borrowed(
         &self,
         protocol: String,
     ) -> Result<BigDecimal, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT
             SUM(
@@ -541,6 +569,7 @@ impl Table<LS_Opening> {
     }
 
     pub async fn get_borrowed_total(&self) -> Result<BigDecimal, Error> {
+        // FIXME Currency might not always have six decimal places.
         const SQL: &str = r#"
         SELECT
             SUM(
@@ -557,6 +586,9 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Use iterators instead.
+    // FIXME Driver might limit number of returned rows.
+    // FIXME Solution might not be optimal.
     pub async fn get_leases(
         &self,
         leases: Vec<&str>,
@@ -564,7 +596,7 @@ impl Table<LS_Opening> {
         const SQL: &str = r#"
         SELECT *
         FROM "LS_Opening"
-        WHERE "LS_contract_id" IN ( 
+        WHERE "LS_contract_id" IN (
         "#;
 
         leases
@@ -578,12 +610,13 @@ impl Table<LS_Opening> {
     }
 
     pub async fn get_total_tx_value(&self) -> Result<BigDecimal, Error> {
+        // FIXME Find a way to describe currencies' decimal places dynamically.
         const SQL: &str = r#"
         WITH "Opened_Leases" AS (
             SELECT
                 (
-                    "LS_cltr_amnt_stable" / (
-                        CASE
+                "LS_cltr_amnt_stable" / (
+                    CASE
                             WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN
                                 100000000
                             WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN
@@ -594,12 +627,12 @@ impl Table<LS_Opening> {
                                 1000000000000000000
                             ELSE
                                 1000000
-                        END
+                    END
                     )
                 ) AS "Down Payment Amount",
                 (
                     "LS_loan_amnt_asset" / (
-                        CASE
+                    CASE
                             WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN
                                 1000000
                             WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN
@@ -610,7 +643,7 @@ impl Table<LS_Opening> {
                                 1000000
                             ELSE
                                 1000000
-                        END
+                    END
                     )
                 ) AS "Loan"
             FROM "LS_Opening"
@@ -619,39 +652,39 @@ impl Table<LS_Opening> {
             SELECT
                 (
                     "LP_amnt_stable" / (
-                        CASE
+                CASE
                             WHEN "LP_address_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN
                                 100000000    -- Example for ALL_BTC or similar
                             WHEN "LP_address_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN
                                 1000000000   -- Example for ALL_SOL
                             ELSE
                                 1000000    -- Default divisor
-                        END
+                END
                     )
-                ) AS "Volume"
+            ) AS "Volume"
             FROM "LP_Deposit"
         ),
         "LP_Withdrawals" AS (
             SELECT
                 (
                     "LP_amnt_stable" / (
-                        CASE
+                CASE
                             WHEN "LP_address_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN
                                 100000000    -- Example for ALL_BTC or similar
                             WHEN "LP_address_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN
                                 1000000000   -- Example for ALL_SOL
                             ELSE
                                 1000000    -- Default divisor
-                        END
+                END
                     )
-                ) AS "Volume"
+            ) AS "Volume"
             FROM "LP_Withdraw"
         ),
         "LS_Close" AS (
             SELECT
                 (
                     "LS_payment_amnt_stable" / (
-                        CASE
+                CASE
                             WHEN "LS_payment_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN
                                 100000000
                             WHEN "LS_payment_symbol" IN ('ALL_SOL') THEN
@@ -662,16 +695,16 @@ impl Table<LS_Opening> {
                                 1000000000000000000
                             ELSE
                                 1000000
-                        END
+                END
                     )
-                ) AS "Volume"
+            ) AS "Volume"
             FROM "LS_Close_Position"
         ),
         "LS_Repayment" AS (
             SELECT
                 (
                     "LS_payment_amnt_stable" / (
-                        CASE
+                CASE
                             WHEN "LS_payment_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN
                                 100000000
                             WHEN "LS_payment_symbol" IN ('ALL_SOL') THEN
@@ -682,9 +715,9 @@ impl Table<LS_Opening> {
                                 1000000000000000000
                             ELSE
                                 1000000
-                        END
+                END
                     )
-                ) AS "Volume"
+            ) AS "Volume"
             FROM "LS_Repayment"
         )
         SELECT
@@ -699,7 +732,7 @@ impl Table<LS_Opening> {
                 SELECT
                     "Volume"
                 FROM "LP_Deposits"
-            UNION ALL 
+            UNION ALL
                 SELECT
                     "Volume"
                 FROM "LP_Withdrawals"
@@ -722,6 +755,8 @@ impl Table<LS_Opening> {
             })
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_max_ls_interest_7d(
         &self,
         lpp_address: String,
@@ -744,6 +779,11 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Use `UInt63` instead.
+    // FIXME Avoid using `OFFSET` in SQL query. It requires evaluating rows
+    //  eagerly before they can be filtered out.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leases_by_address(
         &self,
         address: String,
@@ -785,6 +825,9 @@ impl Table<LS_Opening> {
     }
 
     //TODO: delete
+    // FIXME Pass argument by reference.
+    // FIXME Use iterators instead.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_leases_data(
         &self,
         leases: Vec<String>,
@@ -804,12 +847,14 @@ impl Table<LS_Opening> {
             .await
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn update_ls_loan_amnt(
         &self,
         ls_opening: &LS_Opening,
     ) -> Result<(), Error> {
         const SQL: &str = r#"
-        UPDATE "LS_Opening" 
+        UPDATE "LS_Opening"
         SET
             "LS_loan_amnt" = $1
         WHERE "LS_contract_id" = $2
@@ -823,12 +868,14 @@ impl Table<LS_Opening> {
             .map(drop)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn update_ls_lpn_loan_amnt(
         &self,
         ls_opening: &LS_Opening,
     ) -> Result<(), Error> {
         const SQL: &str = r#"
-        UPDATE "LS_Opening" 
+        UPDATE "LS_Opening"
         SET
             "LS_lpn_loan_amnt" = $1
         WHERE "LS_contract_id" = $2
@@ -842,6 +889,8 @@ impl Table<LS_Opening> {
             .map(drop)
     }
 
+    // FIXME Pass argument by reference.
+    // FIXME Driver might limit number of returned rows.
     pub async fn get_lease_history(
         &self,
         contract_id: String,
@@ -857,21 +906,21 @@ impl Table<LS_Opening> {
             FROM "LS_Repayment"
             WHERE "LS_contract_id" = $1
             UNION ALL
-                SELECT
-                    "LS_payment_symbol" as "symbol",
-                    "LS_payment_amnt" as "amount",
-                    "LS_timestamp" as "time",
-                    'market-close' as "type"
-                FROM "LS_Close_Position"
-                WHERE "LS_contract_id" = $1
+            SELECT
+                "LS_payment_symbol" as "symbol",
+                "LS_payment_amnt" as "amount",
+                "LS_timestamp" as "time",
+                'market-close' as "type"
+            FROM "LS_Close_Position"
+            WHERE "LS_contract_id" = $1
             UNION ALL
-                SELECT
-                    "LS_payment_symbol" as "symbol",
-                    "LS_payment_amnt" as "amount",
-                    "LS_timestamp" as "time",
-                    'liquidation' as "type"
-                FROM "LS_Liquidation"
-                WHERE "LS_contract_id" = $1
+            SELECT
+                "LS_payment_symbol" as "symbol",
+                "LS_payment_amnt" as "amount",
+                "LS_timestamp" as "time",
+                'liquidation' as "type"
+            FROM "LS_Liquidation"
+            WHERE "LS_contract_id" = $1
         ) AS "combined_data"
         ORDER BY "time" ASC
         "#;

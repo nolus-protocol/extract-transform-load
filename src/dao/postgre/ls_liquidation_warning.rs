@@ -5,6 +5,8 @@ use crate::model::{LS_Liquidation_Warning, Table};
 use super::DataBase;
 
 impl Table<LS_Liquidation_Warning> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn isExists(
         &self,
         ls_liquidatiion_warning: &LS_Liquidation_Warning,
@@ -29,6 +31,8 @@ impl Table<LS_Liquidation_Warning> {
             .map(|(result,)| result)
     }
 
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(
         &self,
         data: LS_Liquidation_Warning,

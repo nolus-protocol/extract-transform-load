@@ -3,6 +3,8 @@ use sqlx::Error;
 use crate::model::{PL_State, Table};
 
 impl Table<PL_State> {
+    // FIXME Pass data by reference, as separate arguments or as a dedicated
+    //  structure. Avoid the need for owned data.
     pub async fn insert(&self, data: PL_State) -> Result<(), Error> {
         const SQL: &str = r#"
         INSERT INTO "PL_State" (
