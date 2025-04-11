@@ -9,6 +9,7 @@ mod lp_lender_state;
 mod lp_pool;
 mod lp_pool_state;
 mod lp_withdraw;
+mod ls_auto_close_position;
 mod ls_close_position;
 mod ls_closing;
 mod ls_liquidation;

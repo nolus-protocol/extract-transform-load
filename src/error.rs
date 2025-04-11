@@ -120,6 +120,9 @@ pub enum Error {
 
     #[error("FromUtf8Error error: {0}")]
     FromUtf8Error(#[from] FROM_UTF8_ERROR),
+
+    #[error("Policy not supported")]
+    AutoClosePosition(),
 }
 
 impl ResponseError for Error {}

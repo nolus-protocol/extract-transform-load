@@ -29,5 +29,6 @@ pub struct LS_History {
     pub r#type: String,
     pub time: DateTime<Utc>,
     pub ls_amnt_symbol: Option<String>,
-    pub ls_amnt: Option<BigDecimal>
+    pub ls_amnt: Option<BigDecimal>,
+    pub additional: Option<String>,
 }
