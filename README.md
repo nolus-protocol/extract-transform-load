@@ -46,7 +46,7 @@ ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,https://app-dev.nolu
 TIMEOUT=300
 MAX_TASKS=128
 ADMIN_CONTRACT=nolus1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jsqxf8nd
-IGNORE_PROTOCOLS=
+IGNORE_PROTOCOLS=OSMOSIS-OSMOSIS-ATOM,OSMOSIS-OSMOSIS-OSMO,OSMOSIS-OSMOSIS-INJ
 INITIAL_PROTOCOL=OSMOSIS-OSMOSIS-USDC_AXELAR
 SOCKET_RECONNECT_INTERVAL=5
 EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
@@ -192,3 +192,7 @@ https://etl.nolus.network
 https://archive-rpc.nolus.network
 https://archive-grpc.nolus.network
 https://archive-lcd.nolus.network
+
+20.02.2025
+
+bock: 10961047 - add { state: {due_projection_secs: due_projection_secs} } in lease query

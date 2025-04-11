@@ -19,21 +19,30 @@ async fn index(
         let admin = state.protocols.get(&protocolKey);
         if let Some(protocol) = admin {
             let data = match protocolKey.as_str() {
-                "OSMOSIS-OSMOSIS-ALL_BTC" => state
+                "OSMOSIS-OSMOSIS-ALL_BTC" | "OSMOSIS-OSMOSIS-ATOM" => state
                     .database
                     .ls_opening
                     .get_earn_apr_interest(
                         protocol.contracts.lpp.to_owned(),
-                        15,
+                        2.5,
                     )
                     .await
                     .unwrap_or(BigDecimal::from(0)),
-                "OSMOSIS-OSMOSIS-ALL_SOL" | "OSMOSIS-OSMOSIS-АКТ" => state
+                "OSMOSIS-OSMOSIS-ALL_SOL" => state
                     .database
                     .ls_opening
                     .get_earn_apr_interest(
                         protocol.contracts.lpp.to_owned(),
-                        20,
+                        4.0,
+                    )
+                    .await
+                    .unwrap_or(BigDecimal::from(0)),
+                "OSMOSIS-OSMOSIS-ST_ATOM" | "OSMOSIS-OSMOSIS-AKT" => state
+                    .database
+                    .ls_opening
+                    .get_earn_apr_interest(
+                        protocol.contracts.lpp.to_owned(),
+                        2.0,
                     )
                     .await
                     .unwrap_or(BigDecimal::from(0)),

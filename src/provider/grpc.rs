@@ -399,7 +399,6 @@ impl Grpc {
         contract: String,
     ) -> Result<Vec<String>, Error> {
         let bytes = b"{\"protocols\": {}}";
-
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query against admin config contract!";
         const PARCE_MESSAGE_ERROR: &str =
@@ -425,7 +424,7 @@ impl Grpc {
         &self,
         contract: String,
     ) -> Result<LS_State_Type, Error> {
-        let bytes = b"{}";
+        let bytes = b"{\"state\": {}}";
 
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query lease contract!";
@@ -453,7 +452,7 @@ impl Grpc {
         contract: String,
         height: i64,
     ) -> Result<LS_State_Type, Error> {
-        let bytes = b"{}";
+        let bytes = b"{\"state\": {}}";
 
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query lease contract by block!";
@@ -470,9 +469,9 @@ impl Grpc {
         metetadata.append("x-cosmos-block-height", height.into());
 
         let mut client = self.wasm_query_client.clone();
-        let data = client
-            .smart_contract_state(request)
-            .await
+        let data = client.smart_contract_state(request).await;
+
+        let data = data
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {

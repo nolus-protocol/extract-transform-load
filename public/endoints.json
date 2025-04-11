@@ -35,8 +35,66 @@
     ]
   },
   {
+    "description": "Realized pnl stats",
+    "url": "/api/realized-pnl-stats",
+    "type": "GET",
+    "params": []
+  },
+  {
+    "description": "Supplied funds",
+    "url": "/api/supplied-funds",
+    "type": "GET",
+    "params": []
+  },
+  {
     "description": "Time series Supplied/Borrowed",
     "url": "/api/time-series",
+    "type": "GET"
+  },
+  {
+    "description": "Unrealzied pnl by address",
+    "url": "/api/unrealized-pnl-by-address",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "description": "Pnl over time",
+    "url": "/api/pnl-over-time",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      },
+      {
+        "name": "interval",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "description": "Get leases monthly",
+    "url": "/api/leases-monthly",
+    "type": "GET"
+  },
+  {
+    "description": "Open position value",
+    "url": "/api/open-position-value",
+    "type": "GET"
+  },
+  {
+    "description": "Open interest",
+    "url": "/api/open-interest",
+    "type": "GET"
+  },
+  {
+    "description": "Unrealized pnl",
+    "url": "/api/unrealized-pnl",
     "type": "GET"
   },
   {

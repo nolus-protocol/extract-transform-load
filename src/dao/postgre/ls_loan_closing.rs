@@ -97,6 +97,39 @@ impl Table<LS_Loan_Closing> {
         Ok(amnt)
     }
 
+    pub async fn get_realized_pnl_stats(
+        &self,
+    ) -> Result<BigDecimal, crate::error::Error> {
+        let value: (Option<BigDecimal>,) = sqlx::query_as(
+            r#"
+                SELECT 
+                SUM(
+                    CASE
+                    WHEN o."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN c."LS_pnl" / 100000000
+                    WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN c."LS_pnl" / 1000000000
+                    WHEN o."LS_asset_symbol" IN ('PICA') THEN c."LS_pnl" / 1000000000000
+                    WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN c."LS_pnl" / 1000000000000000000
+                    ELSE c."LS_pnl" / 1000000
+                    END
+                ) AS "Total Adjusted Stable Amount"
+                FROM 
+                "LS_Loan_Closing" c
+                LEFT JOIN 
+                "LS_Opening" o 
+                ON 
+                c."LS_contract_id" = o."LS_contract_id"
+                WHERE 
+                c."LS_timestamp" >= '2025-01-01';
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        let (amnt,) = value;
+        let amnt = amnt.unwrap_or(BigDecimal::from_str("0")?);
+
+        Ok(amnt)
+    }
+
     pub async fn update(
         &self,
         data: LS_Loan_Closing,
