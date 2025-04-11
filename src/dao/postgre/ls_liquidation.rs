@@ -131,7 +131,7 @@ impl Table<LS_Liquidation> {
                 .push_bind(&ls.LS_loan_close);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&mut **transaction).await?;
         Ok(())
     }

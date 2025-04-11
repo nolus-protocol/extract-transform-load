@@ -41,7 +41,7 @@ impl Table<MP_Asset> {
                 .push_bind(&mp.Protocol);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
 
         Ok(())

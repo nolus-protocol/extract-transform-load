@@ -133,7 +133,7 @@ impl Table<LS_Opening> {
                 .push_bind(&ls.LS_lpn_loan_amnt);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -538,7 +538,7 @@ impl Table<LS_Opening> {
             query = query.bind(i);
         }
 
-        let data = query.fetch_all(&self.pool).await?;
+        let data = query.persistent(false).fetch_all(&self.pool).await?;
         Ok(data)
     }
 
@@ -723,7 +723,10 @@ impl Table<LS_Opening> {
             s
         );
 
-        let data = sqlx::query_as(&parsed_string).fetch_all(&self.pool).await?;
+        let data = sqlx::query_as(&parsed_string)
+            .persistent(false)
+            .fetch_all(&self.pool)
+            .await?;
         Ok(data)
     }
 

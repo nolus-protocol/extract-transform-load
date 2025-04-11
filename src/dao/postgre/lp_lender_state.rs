@@ -83,7 +83,7 @@ impl Table<LP_Lender_State> {
                 .push_bind(&data.LP_Lender_receipts);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
         Ok(())
     }

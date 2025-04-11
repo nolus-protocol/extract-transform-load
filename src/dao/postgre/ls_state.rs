@@ -138,7 +138,7 @@ impl Table<LS_State> {
                 .push_bind(&data.LS_principal_asset);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
         Ok(())
     }

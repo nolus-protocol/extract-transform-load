@@ -101,7 +101,7 @@ impl Table<LP_Deposit> {
                 .push_bind(&lp.Tx_Hash);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&mut **transaction).await?;
 
         Ok(())

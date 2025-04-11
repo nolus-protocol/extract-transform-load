@@ -39,7 +39,7 @@ impl Table<TR_State> {
                 .push_bind(&data.TR_amnt_nls);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
         Ok(())
     }

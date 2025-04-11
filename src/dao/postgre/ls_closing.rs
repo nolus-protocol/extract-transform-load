@@ -68,7 +68,7 @@ impl Table<LS_Closing> {
                 .push_bind(&ls.Tx_Hash);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&mut **transaction).await?;
         Ok(())
     }

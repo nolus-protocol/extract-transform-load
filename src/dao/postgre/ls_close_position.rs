@@ -131,7 +131,7 @@ impl Table<LS_Close_Position> {
                 .push_bind(&ls.LS_payment_symbol);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
