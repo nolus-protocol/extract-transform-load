@@ -410,7 +410,7 @@ impl Table<LS_State> {
           FROM "LS_State" s
           INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
           WHERE s."LS_contract_id" = '{}'
-            AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
+            AND s."LS_timestamp" >= NOW() - INTERVAL '24 HOURS'
         ),
         Lease_Value_Table AS (
           SELECT
@@ -440,13 +440,13 @@ impl Table<LS_State> {
           FROM "LS_State" s
           INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
           WHERE s."LS_contract_id" = '{}'
-            AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
+            AND s."LS_timestamp" >= NOW() - INTERVAL '24 HOURS'
         ),
         Lease_Hours AS (
           SELECT DISTINCT DATE_TRUNC('hour', s."LS_timestamp") AS "Hour"
           FROM "LS_State" s
           WHERE s."LS_contract_id" = '{}'
-            AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
+            AND s."LS_timestamp" >= NOW() - INTERVAL '24 HOURS'
         ),
         Normalized_Repayments AS (
           SELECT

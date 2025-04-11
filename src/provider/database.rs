@@ -44,6 +44,7 @@ impl<'c> DatabasePool {
     pub async fn new(config: &Config) -> Result<DatabasePool, Error> {
         let pool = PoolOption::new()
             .after_connect(|_conn, _meta| Box::pin(async move { Ok(()) }))
+            .max_connections(20)
             .connect(config.database_url.as_str())
             .await?;
 
