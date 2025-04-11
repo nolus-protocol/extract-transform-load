@@ -13,5 +13,6 @@ CREATE TABLE IF NOT EXISTS "LS_State" (
   "LS_prev_interest_asset" DECIMAL(39, 0) NOT NULL DEFAULT 0,
   "LS_current_margin_asset" DECIMAL(39, 0) NOT NULL DEFAULT 0,
   "LS_current_interest_asset" DECIMAL(39, 0) NOT NULL DEFAULT 0,
+  "LS_principal_asset" DECIMAL(39, 0) NOT NULL DEFAULT 0,
   PRIMARY KEY ("LS_contract_id", "LS_timestamp")
 );

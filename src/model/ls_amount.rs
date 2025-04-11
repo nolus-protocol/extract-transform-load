@@ -1,10 +1,9 @@
-use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{types::BigDecimal, FromRow};
 
 #[derive(Debug, FromRow, Deserialize, Serialize)]
-pub struct Unrealized_Pnl {
-    pub pnl: BigDecimal,
+pub struct LS_Amount {
+    pub amount: BigDecimal,
     pub time: DateTime<Utc>,
 }

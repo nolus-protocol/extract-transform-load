@@ -5,7 +5,8 @@ use sqlx::{types::BigDecimal, Error, QueryBuilder, Transaction};
 
 use crate::{
     model::{
-        Borrow_APR, LS_History, LS_Opening, Leased_Asset, Leases_Monthly, Table,
+        Borrow_APR, LS_Amount, LS_History, LS_Opening, Leased_Asset,
+        Leases_Monthly, Table,
     },
     types::LS_Max_Interest,
 };
@@ -779,20 +780,45 @@ impl Table<LS_Opening> {
             r#"
                 SELECT * FROM (
                     SELECT
-                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount", "LS_timestamp" as "time",  'repay' as "type"
+                        "LS_payment_symbol" as "symbol",
+                        "LS_payment_amnt" as "amount",
+                        NULL as "ls_amnt_symbol",
+                        NULL as "ls_amnt",
+                        "LS_timestamp" as "time",
+                        'repay' as "type",
+                        NULL as "additional"
+
                     FROM "LS_Repayment"
                     WHERE "LS_contract_id" = $1
-                UNION ALL
+                    
+                    UNION ALL
+                    
                     SELECT
-                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount", "LS_timestamp" as "time",  'market-close' as "type"
+                        "LS_payment_symbol" as "symbol",
+                        "LS_payment_amnt" as "amount",
+                        "LS_amnt_symbol" as "ls_amnt_symbol",
+                        "LS_amnt" as "ls_amnt",
+                        "LS_timestamp" as "time",
+                        'market-close' as "type",
+                        NULL as "additional"
+
                     FROM "LS_Close_Position"
                     WHERE "LS_contract_id" = $1
-                UNION ALL
+                    
+                    UNION ALL
+                    
                     SELECT
-                    "LS_payment_symbol" as "symbol", "LS_payment_amnt" as "amount",  "LS_timestamp" as "time", 'liquidation' as "type"
+                        "LS_payment_symbol" as "symbol",
+                        "LS_payment_amnt" as "amount",
+                        "LS_amnt_symbol" as "ls_amnt_symbol",
+                        "LS_amnt" as "ls_amnt",
+                        "LS_timestamp" as "time",
+                        'liquidation' as "type",
+                        "LS_transaction_type" as "additional"
                     FROM "LS_Liquidation"
                     WHERE "LS_contract_id" = $1
-                ) AS combined_data order by time asc
+                ) AS combined_data
+                ORDER BY time ASC;
             "#,
         )
         .bind(contract_id)
@@ -848,6 +874,83 @@ impl Table<LS_Opening> {
             "Date" DESC
             "#,
         )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_position_value(
+        &self,
+        address: String,
+    ) -> Result<Vec<LS_Amount>, Error> {
+        let data = sqlx::query_as(
+            r#"
+           SELECT
+            s."LS_timestamp" AS "time",
+            SUM(
+                CASE
+                WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000
+                WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN s."LS_amnt_stable" / 1000000000
+                WHEN o."LS_asset_symbol" IN ('PICA') THEN s."LS_amnt_stable" / 1000000000000
+                WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN s."LS_amnt_stable" / 1000000000000000000
+                ELSE s."LS_amnt_stable" / 1000000
+                END
+            ) AS "amount"
+            FROM "LS_State" s
+            INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
+            WHERE o."LS_address_id" = $1
+            AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
+            GROUP BY s."LS_timestamp"
+            ORDER BY s."LS_timestamp"
+            "#,
+        )
+        .bind(address)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_debt_value(
+        &self,
+        address: String,
+    ) -> Result<Vec<LS_Amount>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT
+            s."LS_timestamp" AS "time",
+            SUM(
+                (
+                s."LS_principal_stable" +
+                s."LS_prev_margin_stable" +
+                s."LS_current_margin_stable" +
+                s."LS_prev_interest_stable" +
+                s."LS_current_interest_stable"
+                )
+                /
+                CASE
+                -- Handle short positions by loan pool ID
+                WHEN o."LS_asset_symbol" = 'USDC_NOBLE' AND o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 100000000  -- BTC
+                WHEN o."LS_asset_symbol" = 'USDC_NOBLE' AND o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 1000000000 -- SOL
+
+                -- Long positions handled by asset symbol
+                WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN 100000000
+                WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN 1000000000
+                WHEN o."LS_asset_symbol" = 'PICA' THEN 1000000000000
+                WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
+
+                -- Default to 1e6 (e.g., for USDC, ATOM, OSMO, etc.)
+                ELSE 1000000
+                END
+            ) AS "amount"
+            FROM "LS_State" s
+            INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
+            WHERE o."LS_address_id" = $1
+            AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
+            GROUP BY s."LS_timestamp"
+            ORDER BY s."LS_timestamp"
+            "#,
+        )
+        .bind(address)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)

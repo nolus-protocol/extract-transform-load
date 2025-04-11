@@ -19,6 +19,7 @@ pub use self::{
     lp_pool_state_type::LP_Pool_State_Type,
     lp_withdraw_type::LP_Withdraw_Type,
     lpp_price::LPP_Price,
+    ls_auto_close_position_type::LS_Auto_Close_Position_Type,
     ls_close_position_type::LS_Close_Position_Type,
     ls_closing_type::LS_Closing_Type,
     ls_liquidation_type::LS_Liquidation_Type,
@@ -58,6 +59,7 @@ mod lp_pool_config_state_type;
 mod lp_pool_state_type;
 mod lp_withdraw_type;
 mod lpp_price;
+mod ls_auto_close_position_type;
 mod ls_close_position_type;
 mod ls_closing_type;
 mod ls_liquidation_type;

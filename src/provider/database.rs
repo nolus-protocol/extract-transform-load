@@ -4,11 +4,11 @@ use crate::{
     error::Error,
     model::{
         Action_History, Block, LP_Deposit, LP_Lender_State, LP_Pool,
-        LP_Pool_State, LP_Withdraw, LS_Close_Position, LS_Closing,
-        LS_Liquidation, LS_Liquidation_Warning, LS_Loan_Closing, LS_Opening,
-        LS_Repayment, LS_State, MP_Asset, MP_Yield, PL_State, Raw_Message,
-        Reserve_Cover_Loss, TR_Profit, TR_Rewards_Distribution, TR_State,
-        Table,
+        LP_Pool_State, LP_Withdraw, LS_Auto_Close_Position, LS_Close_Position,
+        LS_Closing, LS_Liquidation, LS_Liquidation_Warning, LS_Loan_Closing,
+        LS_Opening, LS_Repayment, LS_State, MP_Asset, MP_Yield, PL_State,
+        Raw_Message, Reserve_Cover_Loss, TR_Profit, TR_Rewards_Distribution,
+        TR_State, Table,
     },
 };
 
@@ -20,6 +20,7 @@ pub struct DatabasePool {
     pub ls_repayment: Table<LS_Repayment>,
     pub ls_liquidation: Table<LS_Liquidation>,
     pub ls_liquidation_warning: Table<LS_Liquidation_Warning>,
+    pub ls_auto_close_position: Table<LS_Auto_Close_Position>,
     pub ls_state: Table<LS_State>,
     pub lp_deposit: Table<LP_Deposit>,
     pub lp_withdraw: Table<LP_Withdraw>,
@@ -44,6 +45,7 @@ impl<'c> DatabasePool {
     pub async fn new(config: &Config) -> Result<DatabasePool, Error> {
         let pool = PoolOption::new()
             .after_connect(|_conn, _meta| Box::pin(async move { Ok(()) }))
+            .max_connections(20)
             .connect(config.database_url.as_str())
             .await?;
 
@@ -58,6 +60,7 @@ impl<'c> DatabasePool {
             ls_repayment: Table::new(pool.clone()),
             ls_liquidation: Table::new(pool.clone()),
             ls_liquidation_warning: Table::new(pool.clone()),
+            ls_auto_close_position: Table::new(pool.clone()),
             ls_state: Table::new(pool.clone()),
             lp_deposit: Table::new(pool.clone()),
             lp_withdraw: Table::new(pool.clone()),
