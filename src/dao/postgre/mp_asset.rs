@@ -15,6 +15,7 @@ impl Table<MP_Asset> {
         .bind(data.MP_asset_timestamp)
         .bind(&data.MP_price_in_stable)
         .bind(&data.Protocol)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -63,6 +64,7 @@ impl Table<MP_Asset> {
         .bind(key)
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await
     }
@@ -90,6 +92,7 @@ impl Table<MP_Asset> {
         .bind(key)
         .bind(protocol)
         .bind(date_time)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await
     }
@@ -110,6 +113,7 @@ impl Table<MP_Asset> {
                 )
                 .bind(key)
                 .bind(protocol)
+                .persistent(false)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -122,6 +126,7 @@ impl Table<MP_Asset> {
                     "#,
                 )
                 .bind(key)
+                .persistent(false)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -153,6 +158,7 @@ impl Table<MP_Asset> {
                 .bind(key)
                 .bind(protocol)
                 .bind(date_time)
+                .persistent(false)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -171,6 +177,7 @@ impl Table<MP_Asset> {
                 )
                 .bind(key)
                 .bind(date_time)
+                .persistent(false)
                 .fetch_one(&self.pool)
                 .await
             },

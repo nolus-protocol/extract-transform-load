@@ -40,6 +40,7 @@ impl Table<LP_Pool_State> {
         .bind(&data.LP_Pool_total_borrowed_asset)
         .bind(&data.LP_Pool_total_yield_stable)
         .bind(&data.LP_Pool_total_yield_asset)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -104,6 +105,7 @@ impl Table<LP_Pool_State> {
             "#,
         )
         .bind(datetime)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (locked, borrowed, yield_amount) = value;
@@ -142,6 +144,7 @@ impl Table<LP_Pool_State> {
             "#,
         )
         .bind(protocol)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -207,6 +210,7 @@ impl Table<LP_Pool_State> {
         .bind(protocol)
         .bind(skip)
         .bind(limit)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -224,6 +228,7 @@ impl Table<LP_Pool_State> {
         )
         .bind(skip)
         .bind(limit)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -251,6 +256,7 @@ impl Table<LP_Pool_State> {
             "#,
         )
         .bind(lpp_address)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -293,6 +299,7 @@ impl Table<LP_Pool_State> {
             WHERE rank = 1
             "#,
         )
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;

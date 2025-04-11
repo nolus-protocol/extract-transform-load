@@ -25,6 +25,7 @@ impl Table<LP_Withdraw> {
         .bind(&lp_widthdraw.LP_address_id)
         .bind(lp_widthdraw.LP_timestamp)
         .bind(&lp_widthdraw.LP_Pool_id)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -65,6 +66,7 @@ impl Table<LP_Withdraw> {
         .bind(&data.LP_amnt_receipts)
         .bind(data.LP_deposit_close)
         .bind(data.Tx_Hash)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -124,6 +126,7 @@ impl Table<LP_Withdraw> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -143,6 +146,7 @@ impl Table<LP_Withdraw> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;

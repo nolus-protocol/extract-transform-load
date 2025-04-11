@@ -23,6 +23,7 @@ impl Table<TR_Rewards_Distribution> {
         .bind(tr_reward.TR_Rewards_height)
         .bind(&tr_reward.TR_Rewards_Pool_id)
         .bind(tr_reward.Event_Block_Index)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -59,6 +60,7 @@ impl Table<TR_Rewards_Distribution> {
         .bind(&data.TR_Rewards_amnt_nls)
         .bind(data.Event_Block_Index)
         .bind(data.Tx_Hash)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -114,6 +116,7 @@ impl Table<TR_Rewards_Distribution> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -136,6 +139,7 @@ impl Table<TR_Rewards_Distribution> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -152,6 +156,7 @@ impl Table<TR_Rewards_Distribution> {
                 SELECT SUM("TR_Rewards_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Rewards_Distribution"
             "#,
         )
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 

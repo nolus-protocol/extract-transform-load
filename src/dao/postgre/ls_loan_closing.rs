@@ -20,6 +20,7 @@ impl Table<LS_Loan_Closing> {
             "#,
         )
         .bind(contract)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -58,6 +59,7 @@ impl Table<LS_Loan_Closing> {
         .bind(&data.Type)
         .bind(&data.Block)
         .bind(&data.Active)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -87,6 +89,7 @@ impl Table<LS_Loan_Closing> {
             "#,
         )
         .bind(contract_id)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -120,6 +123,7 @@ impl Table<LS_Loan_Closing> {
                 c."LS_timestamp" >= '2025-01-01';
             "#,
         )
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -151,6 +155,7 @@ impl Table<LS_Loan_Closing> {
         .bind(&data.LS_pnl)
         .bind(&data.Active)
         .bind(&data.LS_contract_id)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -163,6 +168,7 @@ impl Table<LS_Loan_Closing> {
             SELECT * FROM "LS_Loan_Closing" WHERE "Active" = false;
             "#,
         )
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -208,6 +214,7 @@ impl Table<LS_Loan_Closing> {
         .bind(address)
         .bind(skip)
         .bind(limit)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -234,6 +241,7 @@ impl Table<LS_Loan_Closing> {
             "#,
         )
         .bind(address)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
 

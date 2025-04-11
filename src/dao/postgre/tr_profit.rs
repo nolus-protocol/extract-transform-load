@@ -21,6 +21,7 @@ impl Table<TR_Profit> {
         )
         .bind(tr_profit.TR_Profit_height)
         .bind(tr_profit.TR_Profit_timestamp)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -53,6 +54,7 @@ impl Table<TR_Profit> {
         .bind(&data.TR_Profit_amnt_stable)
         .bind(&data.TR_Profit_amnt_nls)
         .bind(&data.Tx_Hash)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -105,6 +107,7 @@ impl Table<TR_Profit> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt, amnt_nolus) = value;
@@ -126,6 +129,7 @@ impl Table<TR_Profit> {
         )
         .bind(skip)
         .bind(limit)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -139,6 +143,7 @@ impl Table<TR_Profit> {
                 SELECT SUM("TR_Profit_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Profit"
             "#,
         )
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -154,6 +159,7 @@ impl Table<TR_Profit> {
                 SELECT SUM("TR_Profit_amnt_stable") / 1000000 AS "Distributed" FROM "TR_Profit"
             "#,
         )
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 

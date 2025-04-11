@@ -25,6 +25,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(&ls_opening.LS_contract_id)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -79,6 +80,7 @@ impl Table<LS_Opening> {
         .bind(&data.Tx_Hash)
         .bind(&data.LS_loan_amnt)
         .bind(&data.LS_lpn_loan_amnt)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -152,6 +154,7 @@ impl Table<LS_Opening> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -171,6 +174,7 @@ impl Table<LS_Opening> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -193,6 +197,7 @@ impl Table<LS_Opening> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -220,6 +225,7 @@ impl Table<LS_Opening> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -247,6 +253,7 @@ impl Table<LS_Opening> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -269,6 +276,7 @@ impl Table<LS_Opening> {
         .bind(protocol)
         .bind(skip)
         .bind(limit)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -284,6 +292,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(protocol)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -349,6 +358,7 @@ impl Table<LS_Opening> {
                 "Loan" DESC;
             "#,
         )
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -406,8 +416,10 @@ impl Table<LS_Opening> {
             max_interest,
             protocol.to_owned()
         );
-        let value: Option<(BigDecimal,)> =
-            sqlx::query_as(&sql).fetch_optional(&self.pool).await?;
+        let value: Option<(BigDecimal,)> = sqlx::query_as(&sql)
+            .persistent(false)
+            .fetch_optional(&self.pool)
+            .await?;
 
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
 
@@ -462,6 +474,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(&protocol)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
@@ -479,6 +492,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(LS_contract_id)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await
     }
@@ -493,6 +507,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(protocol)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
@@ -508,6 +523,7 @@ impl Table<LS_Opening> {
                 SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening"
             "#,
         )
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
@@ -622,6 +638,7 @@ impl Table<LS_Opening> {
                     ) AS combined_data
               "#,
           )
+          .persistent(false)
           .fetch_optional(&self.pool)
           .await?;
 
@@ -655,6 +672,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(lpp_address)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -699,6 +717,7 @@ impl Table<LS_Opening> {
         .bind(address)
         .bind(skip)
         .bind(limit)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -746,6 +765,7 @@ impl Table<LS_Opening> {
         )
         .bind(&ls_opening.LS_loan_amnt)
         .bind(&ls_opening.LS_contract_id)
+        .persistent(false)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -767,6 +787,7 @@ impl Table<LS_Opening> {
         )
         .bind(&ls_opening.LS_lpn_loan_amnt)
         .bind(&ls_opening.LS_contract_id)
+        .persistent(false)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -817,6 +838,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(contract_id)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
 
@@ -869,6 +891,7 @@ impl Table<LS_Opening> {
             "Date" DESC
             "#,
         )
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -900,6 +923,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(address)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -946,6 +970,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(address)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)

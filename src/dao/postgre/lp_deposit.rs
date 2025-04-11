@@ -25,6 +25,7 @@ impl Table<LP_Deposit> {
         .bind(&ls_deposit.LP_address_id)
         .bind(ls_deposit.LP_timestamp)
         .bind(&ls_deposit.LP_Pool_id)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -63,6 +64,7 @@ impl Table<LP_Deposit> {
         .bind(&data.LP_amnt_asset)
         .bind(&data.LP_amnt_receipts)
         .bind(&data.Tx_Hash)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -121,6 +123,7 @@ impl Table<LP_Deposit> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -140,6 +143,7 @@ impl Table<LP_Deposit> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;

@@ -27,6 +27,7 @@ impl Table<LP_Lender_State> {
         .bind(&data.LP_Lender_stable)
         .bind(&data.LP_Lender_asset)
         .bind(&data.LP_Lender_receipts)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -50,6 +51,7 @@ impl Table<LP_Lender_State> {
             GROUP BY "LP_address_id", "LP_Pool_id"
             "#,
         )
+        .persistent(false)
         .fetch_all(&self.pool)
         .await
     }
@@ -100,6 +102,7 @@ impl Table<LP_Lender_State> {
             "#,
         )
         .bind(timestamp)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)

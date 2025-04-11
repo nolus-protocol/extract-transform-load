@@ -40,6 +40,7 @@ impl Table<LS_State> {
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
         .bind(&data.LS_lpn_loan_amnt)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -90,6 +91,7 @@ impl Table<LS_State> {
               )
             "#,
         )
+        .persistent(false)
         .fetch_all(&self.pool)
         .await
     }
@@ -155,6 +157,7 @@ impl Table<LS_State> {
             "#,
         )
         .bind(timestamp)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -212,6 +215,7 @@ impl Table<LS_State> {
       SELECT SUM("Lease Value") FROM Lease_Value_Table
             "#,
         )
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -275,6 +279,7 @@ impl Table<LS_State> {
           SELECT SUM("Total Interest Due") FROM Lease_Value_Table
           "#,
       )
+      .persistent(false)
       .fetch_optional(&self.pool)
       .await?;
 
@@ -370,6 +375,7 @@ impl Table<LS_State> {
         LEFT JOIN DP_Loan_Table dplt ON lvt."Contract ID" = dplt."Contract ID"
         "#,
     )
+    .persistent(false)
     .fetch_optional(&self.pool)
     .await?;
 
@@ -493,6 +499,7 @@ impl Table<LS_State> {
           AND lvt."Hour" = rs."Hour"
         ORDER BY lvt."Hour";
       "#, contract_id.to_owned(), contract_id.to_owned(), contract_id.to_owned(), contract_id.to_owned()))
+      .persistent(false)
     .fetch_all(&self.pool)
   .await?;
 
@@ -614,6 +621,7 @@ impl Table<LS_State> {
           "#,
       )
       .bind(address)
+      .persistent(false)
       .fetch_all(&self.pool)
       .await?;
         Ok(data)
@@ -736,6 +744,7 @@ impl Table<LS_State> {
         .bind(osmosis_all_btc)
         .bind(osmosis_all_sol)
         .bind(osmosis_akt)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -805,7 +814,7 @@ impl Table<LS_State> {
         )
         .bind(osmosis_usdc_protocol)
         .bind(neutron_axelar_protocol)
-
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await?;
 

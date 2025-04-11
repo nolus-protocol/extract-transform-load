@@ -18,6 +18,7 @@ impl Table<LS_Closing> {
             "#,
         )
         .bind(&ls_closing.LS_contract_id)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -41,7 +42,7 @@ impl Table<LS_Closing> {
         .bind(&data.LS_contract_id)
         .bind(data.LS_timestamp)
         .bind(data.Tx_Hash)
-
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -87,6 +88,7 @@ impl Table<LS_Closing> {
         )
         .bind(from)
         .bind(to)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
