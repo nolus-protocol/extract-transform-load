@@ -16,17 +16,18 @@ use crate::{
     dao::DataBase,
     error::Error,
     handler::{
-        wams_reserve_cover_loss, wasm_lp_deposit, wasm_lp_withdraw,
+        wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_auto_close_position,
         wasm_ls_close, wasm_ls_close_position, wasm_ls_liquidation,
         wasm_ls_liquidation_warning, wasm_ls_open, wasm_ls_repay,
-        wasm_tr_profit, wasm_tr_rewards,
+        wasm_reserve_cover_loss, wasm_tr_profit, wasm_tr_rewards,
     },
     model::{Block, Raw_Message},
     types::{
         Interest_values, LP_Deposit_Type, LP_Withdraw_Type,
-        LS_Close_Position_Type, LS_Closing_Type, LS_Liquidation_Type,
-        LS_Liquidation_Warning_Type, LS_Opening_Type, LS_Repayment_Type,
-        Reserve_Cover_Loss_Type, TR_Profit_Type, TR_Rewards_Distribution_Type,
+        LS_Auto_Close_Position_Type, LS_Close_Position_Type, LS_Closing_Type,
+        LS_Liquidation_Type, LS_Liquidation_Warning_Type, LS_Opening_Type,
+        LS_Repayment_Type, Reserve_Cover_Loss_Type, TR_Profit_Type,
+        TR_Rewards_Distribution_Type,
     },
 };
 
@@ -333,6 +334,23 @@ pub fn parse_wasm_ls_liquidation_warning(
 
     Ok(c)
 }
+
+pub fn parse_wasm_ls_auto_close_position(
+    attributes: &Vec<EventAttribute>,
+) -> Result<LS_Auto_Close_Position_Type, Error> {
+    let ls_auto_close_position = pasrse_data(attributes)?;
+    let c = LS_Auto_Close_Position_Type {
+        to: ls_auto_close_position
+            .get("to")
+            .ok_or(Error::FieldNotExist(String::from("to")))?
+            .to_owned(),
+        take_profit_ltv: ls_auto_close_position.get("take-profit-ltv").cloned(),
+        stop_loss_ltv: ls_auto_close_position.get("stop-loss-ltv").cloned(),
+    };
+
+    Ok(c)
+}
+
 pub fn parse_wasm_reserve_cover_loss(
     attributes: &Vec<EventAttribute>,
 ) -> Result<Reserve_Cover_Loss_Type, Error> {
@@ -632,10 +650,22 @@ pub async fn parse_event(
                 )
                 .await?;
             },
+            EventsType::LS_Auto_Close_Position => {
+                let ls_auto_close_position =
+                    parse_wasm_ls_auto_close_position(&event.attributes)?;
+                wasm_ls_auto_close_position::parse_and_insert(
+                    &app_state,
+                    ls_auto_close_position,
+                    time_stamp,
+                    tx_hash,
+                    tx,
+                )
+                .await?;
+            },
             EventsType::Reserve_Cover_Loss => {
                 let reserve_cover_loss =
                     parse_wasm_reserve_cover_loss(&event.attributes)?;
-                wams_reserve_cover_loss::parse_and_insert(
+                wasm_reserve_cover_loss::parse_and_insert(
                     &app_state,
                     reserve_cover_loss,
                     index,
@@ -790,6 +820,7 @@ pub enum EventsType {
     LS_Repay,
     LS_Liquidation,
     LS_Liquidation_Warning,
+    LS_Auto_Close_Position,
     Reserve_Cover_Loss,
 
     LP_deposit,
@@ -818,6 +849,9 @@ impl fmt::Display for EventsType {
             EventsType::LS_Liquidation_Warning => {
                 write!(f, "wasm-ls-liquidation-warning")
             },
+            EventsType::LS_Auto_Close_Position => {
+                write!(f, "wasm-ls-auto-close-position")
+            },
         }
     }
 }
@@ -845,6 +879,9 @@ impl From<EventsType> for String {
             EventsType::LS_Liquidation_Warning => {
                 String::from("wasm-ls-liquidation-warning")
             },
+            EventsType::LS_Auto_Close_Position => {
+                String::from("wasm-ls-auto-close-position")
+            },
         }
     }
 }
@@ -867,6 +904,9 @@ impl FromStr for EventsType {
             "wasm-tr-rewards" => Ok(EventsType::TR_Rewards_Distribution),
             "wasm-ls-liquidation-warning" => {
                 Ok(EventsType::LS_Liquidation_Warning)
+            },
+            "wasm-ls-auto-close-position" => {
+                Ok(EventsType::LS_Auto_Close_Position)
             },
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
@@ -961,6 +1001,45 @@ impl FromStr for Protocol_Types {
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Protocol_Types not supported",
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Auto_Close_Strategies {
+    TakeProfit,
+    StopLoss,
+}
+
+impl fmt::Display for Auto_Close_Strategies {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Auto_Close_Strategies::TakeProfit => write!(f, "take-profit"),
+            Auto_Close_Strategies::StopLoss => write!(f, "stop-loss"),
+        }
+    }
+}
+
+impl From<Auto_Close_Strategies> for String {
+    fn from(value: Auto_Close_Strategies) -> Self {
+        match value {
+            Auto_Close_Strategies::TakeProfit => String::from("take-profit"),
+            Auto_Close_Strategies::StopLoss => String::from("stop-loss"),
+        }
+    }
+}
+
+impl FromStr for Auto_Close_Strategies {
+    type Err = io::Error;
+
+    fn from_str(value: &str) -> Result<Auto_Close_Strategies, Self::Err> {
+        match value {
+            "take-profit" => Ok(Auto_Close_Strategies::TakeProfit),
+            "stop-loss" => Ok(Auto_Close_Strategies::StopLoss),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Auto_Close_Strategies not supported",
             )),
         }
     }

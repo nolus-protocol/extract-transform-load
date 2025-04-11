@@ -35,6 +35,8 @@ pub struct Pnl_Result {
     pub Block: i64,
     pub LS_asset_symbol: String,
     pub LS_loan_pool_id: String,
+    pub LS_Close_Strategy: Option<String>,
+    pub LS_Close_Strategy_Ltv: Option<i16>,
 }
 
 #[derive(Debug, Deserialize, Serialize, FromRow)]

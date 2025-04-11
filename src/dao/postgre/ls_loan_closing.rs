@@ -187,13 +187,22 @@ impl Table<LS_Loan_Closing> {
                 "LS_Loan_Closing"."Type",
                 "LS_Loan_Closing"."Block",
                 "LS_Opening"."LS_asset_symbol",
-                "LS_Opening"."LS_loan_pool_id"
+                "LS_Opening"."LS_loan_pool_id",
+                "LS_Auto_Close_Position"."LS_Close_Strategy",
+                "LS_Auto_Close_Position"."LS_Close_Strategy_Ltv"
             FROM 
                 "LS_Loan_Closing" 
+
             INNER JOIN 
                 "LS_Opening" 
             ON 
-                "LS_Loan_Closing"."LS_contract_id" = "LS_Opening"."LS_contract_id"  
+                "LS_Loan_Closing"."LS_contract_id" = "LS_Opening"."LS_contract_id"
+            
+            LEFT JOIN 
+                "LS_Auto_Close_Position" 
+            ON 
+                "LS_Loan_Closing"."LS_contract_id" = "LS_Auto_Close_Position"."LS_contract_id"  
+
             WHERE 
                 "LS_Loan_Closing"."Active" = true
             AND

@@ -785,7 +785,9 @@ impl Table<LS_Opening> {
                         NULL as "ls_amnt_symbol",
                         NULL as "ls_amnt",
                         "LS_timestamp" as "time",
-                        'repay' as "type"
+                        'repay' as "type",
+                        NULL as "additional"
+
                     FROM "LS_Repayment"
                     WHERE "LS_contract_id" = $1
                     
@@ -797,7 +799,9 @@ impl Table<LS_Opening> {
                         "LS_amnt_symbol" as "ls_amnt_symbol",
                         "LS_amnt" as "ls_amnt",
                         "LS_timestamp" as "time",
-                        'market-close' as "type"
+                        'market-close' as "type",
+                        NULL as "additional"
+
                     FROM "LS_Close_Position"
                     WHERE "LS_contract_id" = $1
                     
@@ -809,7 +813,8 @@ impl Table<LS_Opening> {
                         "LS_amnt_symbol" as "ls_amnt_symbol",
                         "LS_amnt" as "ls_amnt",
                         "LS_timestamp" as "time",
-                        'liquidation' as "type"
+                        'liquidation' as "type",
+                        "LS_transaction_type" as "additional"
                     FROM "LS_Liquidation"
                     WHERE "LS_contract_id" = $1
                 ) AS combined_data
