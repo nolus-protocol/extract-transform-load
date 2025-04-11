@@ -23,6 +23,7 @@ impl Table<Reserve_Cover_Loss> {
         .bind(&reserve_cover_loss.LS_contract_id)
         .bind(&reserve_cover_loss.Event_Block_Index)
         .bind(&reserve_cover_loss.Tx_Hash)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -57,6 +58,7 @@ impl Table<Reserve_Cover_Loss> {
         .bind(&data.LS_amnt)
         .bind(&data.Event_Block_Index)
         .bind(&data.LS_timestamp)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }

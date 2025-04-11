@@ -28,7 +28,7 @@ impl Table<Raw_Message> {
         .bind(&data.memo)
         .bind(&data.timestamp)
         .bind(&data.rewards)
-
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -49,6 +49,7 @@ impl Table<Raw_Message> {
         )
         .bind(data.index)
         .bind(&data.tx_hash)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -74,6 +75,7 @@ impl Table<Raw_Message> {
         .bind(&address)
         .bind(skip)
         .bind(limit)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)

@@ -18,6 +18,7 @@ impl Table<Action_History> {
         )
         .bind(&data.action_type)
         .bind(data.created_at)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -32,6 +33,7 @@ impl Table<Action_History> {
             "#,
         )
         .bind(action_type)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await
     }
@@ -48,6 +50,7 @@ impl Table<Action_History> {
         )
         .bind(action_type)
         .bind(timestamp)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await
     }

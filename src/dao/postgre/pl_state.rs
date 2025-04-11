@@ -73,6 +73,7 @@ impl Table<PL_State> {
         .bind(&data.PL_TR_tax_amnt_nls)
         .bind(&data.PL_OUT_TR_rewards_amnt_stable)
         .bind(&data.PL_OUT_TR_rewards_amnt_nls)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }

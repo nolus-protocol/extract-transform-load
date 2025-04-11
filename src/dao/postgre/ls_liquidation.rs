@@ -21,6 +21,7 @@ impl Table<LS_Liquidation> {
         )
         .bind(ls_liquidatiion.LS_liquidation_height)
         .bind(&ls_liquidatiion.LS_contract_id)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -77,6 +78,7 @@ impl Table<LS_Liquidation> {
         .bind(&data.LS_payment_amnt)
         .bind(&data.LS_payment_amnt_stable)
         .bind(&data.LS_loan_close)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -133,7 +135,7 @@ impl Table<LS_Liquidation> {
                 .push_bind(&ls.LS_loan_close);
         });
 
-        let query = query_builder.build();
+        let query = query_builder.build().persistent(false);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -148,6 +150,7 @@ impl Table<LS_Liquidation> {
             "#,
         )
         .bind(&contract)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
