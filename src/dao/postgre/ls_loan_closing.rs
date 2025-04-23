@@ -111,7 +111,7 @@ impl Table<LS_Loan_Closing> {
                     WHEN o."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN c."LS_pnl" / 100000000
                     WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN c."LS_pnl" / 1000000000
                     WHEN o."LS_asset_symbol" IN ('PICA') THEN c."LS_pnl" / 1000000000000
-                    WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN c."LS_pnl" / 1000000000000000000
+                    WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN c."LS_pnl" / 1000000000000000000
                     ELSE c."LS_pnl" / 1000000
                     END
                 ) AS "Total Adjusted Stable Amount"

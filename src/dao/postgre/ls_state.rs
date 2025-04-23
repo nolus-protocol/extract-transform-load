@@ -206,7 +206,7 @@ impl Table<LS_State> {
                   WHEN "Asset Type" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_amnt_stable" / 100000000
                   WHEN "Asset Type" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
                   WHEN "Asset Type" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000
-                  WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_amnt_stable" / 1000000000000000000
+                  WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_amnt_stable" / 1000000000000000000
               ELSE "LS_amnt_stable" / 1000000
           END AS "Lease Value"
           FROM
@@ -270,7 +270,7 @@ impl Table<LS_State> {
                       WHEN "Asset Type" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "Interest" / 100000000
                       WHEN "Asset Type" IN ('ALL_SOL') THEN "Interest" / 1000000000
                       WHEN "Asset Type" IN ('PICA') THEN "Interest" / 1000000000000
-                      WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "Interest" / 1000000000000000000
+                      WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "Interest" / 1000000000000000000
                   ELSE "Interest" / 1000000
                   END AS "Total Interest Due"
               FROM
@@ -310,7 +310,7 @@ impl Table<LS_State> {
             WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
             WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
             WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
-            WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_cltr_amnt_stable" / 1000000000000000000
+            WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
             ELSE "LS_cltr_amnt_stable" / 1000000
           END AS "Down Payment"
         FROM
@@ -331,7 +331,7 @@ impl Table<LS_State> {
             WHEN "LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN "LS_amnt_stable" / 100000000
             WHEN "LS_asset_symbol" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
             WHEN "LS_asset_symbol" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000
-            WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN "LS_amnt_stable" / 1000000000000000000
+            WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_amnt_stable" / 1000000000000000000
             ELSE "LS_amnt_stable" / 1000000
           END AS "Lease Value",
       CASE
@@ -410,7 +410,7 @@ impl Table<LS_State> {
               WHEN o."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN o."LS_cltr_amnt_stable" / 100000000
               WHEN o."LS_cltr_symbol" IN ('ALL_SOL') THEN o."LS_cltr_amnt_stable" / 1000000000
               WHEN o."LS_cltr_symbol" IN ('PICA') THEN o."LS_cltr_amnt_stable" / 1000000000000
-              WHEN o."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN o."LS_cltr_amnt_stable" / 1000000000000000000
+              WHEN o."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000
               ELSE o."LS_cltr_amnt_stable" / 1000000
             END AS "Down Payment"
           FROM "LS_State" s
@@ -426,7 +426,7 @@ impl Table<LS_State> {
               WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000
               WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN s."LS_amnt_stable" / 1000000000
               WHEN o."LS_asset_symbol" IN ('PICA') THEN s."LS_amnt_stable" / 1000000000000
-              WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN s."LS_amnt_stable" / 1000000000000000000
+              WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN s."LS_amnt_stable" / 1000000000000000000
               ELSE s."LS_amnt_stable" / 1000000
             END AS "Lease Value",
             CASE
@@ -648,7 +648,7 @@ impl Table<LS_State> {
                 WHEN "LS_asset_symbol" IN ('WBTC', 'ALL_BTC', 'CRO') THEN 100000000
                 WHEN "LS_asset_symbol" IN ('ALL_SOL') THEN 1000000000
                 WHEN "LS_asset_symbol" IN ('PICA') THEN 1000000000000
-                WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
+                WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN 1000000000000000000
                 ELSE 1000000
               END AS "Divisor"
             FROM
@@ -772,7 +772,7 @@ impl Table<LS_State> {
               CASE
                 WHEN "LS_asset_symbol" IN ('WBTC', 'CRO') THEN 100000000
                 WHEN "LS_asset_symbol" IN ('PICA') THEN 1000000000000
-                WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS') THEN 1000000000000000000
+                WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN 1000000000000000000
                 ELSE 1000000
               END AS "Divisor"
             FROM
