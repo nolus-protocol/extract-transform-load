@@ -2,7 +2,10 @@ use std::str::FromStr as _;
 
 use bigdecimal::{BigDecimal, FromPrimitive as _};
 use chrono::{DateTime, Utc};
-use tokio::task::{JoinHandle, JoinSet};
+use tokio::{
+    task::{JoinHandle, JoinSet},
+    time::{sleep, Duration},
+};
 
 use crate::{
     configuration::{AppState, State},
@@ -42,6 +45,7 @@ pub async fn parse_and_insert(
                 data.push(record);
             }
         }
+        sleep(Duration::from_millis(app_state.config.tasks_interval)).await;
     }
 
     app_state.database.lp_pool_state.insert_many(&data).await?;

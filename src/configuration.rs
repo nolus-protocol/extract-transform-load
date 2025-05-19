@@ -293,6 +293,7 @@ pub struct Config {
     pub grpc_host: String,
     pub events_subscribe: Vec<String>,
     pub enable_sync: bool,
+    pub tasks_interval: u64,
 }
 
 impl Config {}
@@ -343,6 +344,8 @@ pub fn get_configuration() -> Result<Config, Error> {
         env::var("STATIC_DIRECTORY")?
     );
     let enable_sync = env::var("ENABLE_SYNC")?.parse()?;
+    let tasks_interval: u64 = env::var("TASKS_INTERVAL")?.parse()?;
+
     let mut hash_map_currencies: HashMap<String, Currency> = HashMap::new();
     let mut hash_map_pool_currency: HashMap<String, Currency> = HashMap::new();
 
@@ -392,6 +395,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         grpc_host,
         events_subscribe,
         enable_sync,
+        tasks_interval,
     };
 
     Ok(config)
