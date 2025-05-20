@@ -42,8 +42,6 @@ pub async fn parse_and_insert(
         LS_Close_Strategy_Ltv: amout,
     };
 
-    dbg!(&ls_auto_close_position);
-
     let isExists = app_state
         .database
         .ls_auto_close_position

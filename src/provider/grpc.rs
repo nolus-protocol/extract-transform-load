@@ -66,9 +66,7 @@ impl Grpc {
             .tls_config(tls_config)
             .context("Could not parse tls config")?;
 
-        let channel = endpoint.connect().await.with_context(|| {
-            format!(r#"Failed to parse gRPC URI, "{uri}"!"#)
-        })?;
+        let channel = endpoint.connect_lazy();
 
         let tendermint_client =
             TendermintServiceClient::with_origin(channel.clone(), uri.clone())
