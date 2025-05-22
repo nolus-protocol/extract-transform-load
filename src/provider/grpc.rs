@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{fmt::Debug, str::FromStr, time::Duration};
 
 use anyhow::{anyhow, Context as _, Result};
 use cosmrs::proto::{
@@ -30,7 +30,7 @@ use tokio::time::sleep;
 use tonic::{
     codegen::http::Uri,
     transport::{Channel, ClientTlsConfig, Endpoint},
-    IntoRequest,
+    IntoRequest, Status,
 };
 use tracing::error;
 
@@ -52,17 +52,21 @@ pub struct Grpc {
     pub wasm_query_client: WasmQueryClient<Channel>,
     pub bank_query_client: BankQueryClient<Channel>,
     pub tx_service_client: TxServiceClient<Channel>,
+    pub limit: usize,
 }
 
 impl Grpc {
     pub async fn new(config: Config) -> Result<Grpc, Error> {
         let host = config.grpc_host.to_owned();
+
         let uri = Uri::from_str(&host).context("Invalid grpc url")?;
         let tls_config = ClientTlsConfig::new().with_native_roots();
         let limit = 10 * 1024 * 1024;
 
         let endpoint = Endpoint::from(uri.clone())
+            .http2_keep_alive_interval(Duration::from_secs(30))
             .keep_alive_while_idle(true)
+            .keep_alive_timeout(Duration::from_secs(10))
             .tls_config(tls_config)
             .context("Could not parse tls config")?;
 
@@ -76,6 +80,7 @@ impl Grpc {
             WasmQueryClient::with_origin(channel.clone(), uri.clone())
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
+
         let bank_query_client =
             BankQueryClient::with_origin(channel.clone(), uri.clone())
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
@@ -92,7 +97,77 @@ impl Grpc {
             wasm_query_client: wasm_query_client.clone(),
             bank_query_client: bank_query_client.clone(),
             tx_service_client: tx_service_client.clone(),
+            limit,
         })
+    }
+
+    async fn with_retry<F>(&self, mut f: F) -> Result<Vec<u8>, Error>
+    where
+        F: AsyncFnMut(
+            WasmQueryClient<Channel>,
+        ) -> std::result::Result<Vec<u8>, Status>,
+    {
+        let mut attempts = 5;
+
+        loop {
+            let c = self.wasm_query_client.clone();
+            let k = f(c).await;
+
+            match k {
+                Ok(e) => return Ok(e),
+                Err(e) => match e.code() {
+                    tonic::Code::Cancelled
+                    | tonic::Code::Internal
+                    | tonic::Code::Unknown => {
+                        if attempts < 0 {
+                            return Err(Error::GrpsError(String::from(
+                                e.message(),
+                            )));
+                        }
+                        attempts -= 1;
+                        sleep(Duration::from_millis(
+                            self.config.tasks_interval,
+                        ))
+                        .await;
+                    },
+                    _ => {
+                        return Err(e.into());
+                    },
+                },
+            }
+        }
+    }
+
+    pub async fn get_lease_state_new(
+        &self,
+        contract: String,
+    ) -> Result<LS_State_Type, Error> {
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query lease contract new!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query lease contract new!";
+
+        let data = self
+            .with_retry(async move |mut client| {
+                let bytes = b"{\"state\": {}}";
+                let data = client
+                    .smart_contract_state(QuerySmartContractStateRequest {
+                        address: contract.clone(),
+                        query_data: bytes.to_vec(),
+                    })
+                    .await
+                    .map(|response| response.into_inner().data);
+
+                data
+            })
+            .await
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice::<LS_State_Type>(&data)
+                    .context(PARCE_MESSAGE_ERROR)
+            })?;
+
+        Ok(data)
     }
 
     pub async fn prepare_block(
@@ -286,7 +361,6 @@ impl Grpc {
             "Failed to run query against contract!";
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against contract!";
-
         let mut client = self.wasm_query_client.clone();
         let data = client
             .smart_contract_state(QuerySmartContractStateRequest {

@@ -5,7 +5,6 @@ use chrono::{DateTime, Utc};
 use tokio::{
     join,
     task::{JoinHandle, JoinSet},
-    time::{sleep, Duration},
 };
 
 use crate::{
@@ -46,7 +45,6 @@ pub async fn parse_and_insert(
                 data.push(record);
             }
         }
-        sleep(Duration::from_millis(app_state.config.tasks_interval)).await;
     }
     app_state.database.ls_state.insert_many(&data).await?;
 
@@ -59,7 +57,7 @@ async fn proceed(
     timestsamp: DateTime<Utc>,
 ) -> Result<Option<LS_State>, Error> {
     let contract = item.LS_contract_id.to_owned();
-    let data = state.grpc.get_lease_state(contract.to_owned()).await?;
+    let data = state.grpc.get_lease_state_new(contract.to_owned()).await?;
 
     if let Some(status) = data.opened {
         let pool_currency =

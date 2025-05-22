@@ -2,10 +2,7 @@ use std::str::FromStr as _;
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use tokio::{
-    task::{JoinHandle, JoinSet},
-    time::{sleep, Duration},
-};
+use tokio::task::{JoinHandle, JoinSet};
 
 use crate::{
     configuration::{AppState, State},
@@ -48,7 +45,6 @@ pub async fn parse_and_insert(
             let d = item??;
             data.push(d);
         }
-        sleep(Duration::from_millis(app_state.config.tasks_interval)).await;
     }
 
     app_state

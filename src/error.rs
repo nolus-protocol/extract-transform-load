@@ -23,6 +23,7 @@ use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;
 use thiserror::Error;
 use tokio::{task::JoinError, time::error::Elapsed};
+use tonic::Status;
 use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
 use url::ParseError as URL_ERROR;
 
@@ -123,6 +124,12 @@ pub enum Error {
 
     #[error("Policy not supported")]
     AutoClosePosition(),
+
+    #[error("Tonic status error")]
+    TonicStatus(#[from] Status),
+
+    #[error("Grps error: {0}")]
+    GrpsError(String),
 }
 
 impl ResponseError for Error {}

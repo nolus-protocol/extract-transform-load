@@ -5,10 +5,7 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use futures::TryFutureExt as _;
 use sqlx::Transaction;
-use tokio::{
-    task::JoinSet,
-    time::{sleep, Duration},
-};
+use tokio::task::JoinSet;
 use tracing::info;
 
 use crate::{
@@ -77,8 +74,6 @@ pub async fn proceed_leases(app_state: AppState<State>) -> Result<(), Error> {
         while let Some(item) = st.join_next().await {
             item??;
         }
-
-        sleep(Duration::from_millis(app_state.config.tasks_interval)).await;
     }
     info!("Loans Synchronization completed");
 
