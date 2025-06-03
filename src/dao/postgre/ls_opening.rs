@@ -959,12 +959,6 @@ impl Table<LS_Opening> {
                 WHEN o."LS_asset_symbol" = 'USDC_NOBLE' AND o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 100000000  -- BTC
                 WHEN o."LS_asset_symbol" = 'USDC_NOBLE' AND o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 1000000000 -- SOL
 
-                -- Long positions handled by asset symbol
-                WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN 100000000
-                WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN 1000000000
-                WHEN o."LS_asset_symbol" = 'PICA' THEN 1000000000000
-                WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN 1000000000000000000
-
                 -- Default to 1e6 (e.g., for USDC, ATOM, OSMO, etc.)
                 ELSE 1000000
                 END
