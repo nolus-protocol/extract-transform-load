@@ -17,6 +17,7 @@ mod ls_liquidation_warning;
 mod ls_loan_closing;
 mod ls_opening;
 mod ls_repayment;
+mod ls_slippage_anomaly;
 mod ls_state;
 mod mp_asset;
 mod mp_yield;

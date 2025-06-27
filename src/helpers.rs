@@ -19,15 +19,16 @@ use crate::{
         wasm_lp_deposit, wasm_lp_withdraw, wasm_ls_auto_close_position,
         wasm_ls_close, wasm_ls_close_position, wasm_ls_liquidation,
         wasm_ls_liquidation_warning, wasm_ls_open, wasm_ls_repay,
-        wasm_reserve_cover_loss, wasm_tr_profit, wasm_tr_rewards,
+        wasm_ls_slippage_anomaly, wasm_reserve_cover_loss, wasm_tr_profit,
+        wasm_tr_rewards,
     },
     model::{Block, Raw_Message},
     types::{
         Interest_values, LP_Deposit_Type, LP_Withdraw_Type,
         LS_Auto_Close_Position_Type, LS_Close_Position_Type, LS_Closing_Type,
         LS_Liquidation_Type, LS_Liquidation_Warning_Type, LS_Opening_Type,
-        LS_Repayment_Type, Reserve_Cover_Loss_Type, TR_Profit_Type,
-        TR_Rewards_Distribution_Type,
+        LS_Repayment_Type, LS_Slippage_Anomaly_Type, Reserve_Cover_Loss_Type,
+        TR_Profit_Type, TR_Rewards_Distribution_Type,
     },
 };
 
@@ -329,6 +330,32 @@ pub fn parse_wasm_ls_liquidation_warning(
         ltv: ls_liquidation_warning
             .get("ltv")
             .ok_or(Error::FieldNotExist(String::from("ltv")))?
+            .to_owned(),
+    };
+
+    Ok(c)
+}
+
+pub fn parse_wasm_ls_slippage_anomaly(
+    attributes: &Vec<EventAttribute>,
+) -> Result<LS_Slippage_Anomaly_Type, Error> {
+    let ls_slippage_anomaly = pasrse_data(attributes)?;
+    let c = LS_Slippage_Anomaly_Type {
+        customer: ls_slippage_anomaly
+            .get("customer")
+            .ok_or(Error::FieldNotExist(String::from("customer")))?
+            .to_owned(),
+        lease: ls_slippage_anomaly
+            .get("lease")
+            .ok_or(Error::FieldNotExist(String::from("lease")))?
+            .to_owned(),
+        lease_asset: ls_slippage_anomaly
+            .get("lease-asset")
+            .ok_or(Error::FieldNotExist(String::from("lease-asset")))?
+            .to_owned(),
+        max_slippage: ls_slippage_anomaly
+            .get("max_slippage")
+            .ok_or(Error::FieldNotExist(String::from("max_slippage")))?
             .to_owned(),
     };
 
@@ -650,6 +677,18 @@ pub async fn parse_event(
                 )
                 .await?;
             },
+            EventsType::LS_Slippage_Anomaly => {
+                let ls_slippage_anomaly =
+                    parse_wasm_ls_slippage_anomaly(&event.attributes)?;
+                wasm_ls_slippage_anomaly::parse_and_insert(
+                    &app_state,
+                    ls_slippage_anomaly,
+                    time_stamp,
+                    tx_hash,
+                    tx,
+                )
+                .await?;
+            },
             EventsType::LS_Auto_Close_Position => {
                 let ls_auto_close_position =
                     parse_wasm_ls_auto_close_position(&event.attributes)?;
@@ -820,6 +859,7 @@ pub enum EventsType {
     LS_Repay,
     LS_Liquidation,
     LS_Liquidation_Warning,
+    LS_Slippage_Anomaly,
     LS_Auto_Close_Position,
     Reserve_Cover_Loss,
 
@@ -848,6 +888,9 @@ impl fmt::Display for EventsType {
             EventsType::TR_Rewards_Distribution => write!(f, "wasm-tr-rewards"),
             EventsType::LS_Liquidation_Warning => {
                 write!(f, "wasm-ls-liquidation-warning")
+            },
+            EventsType::LS_Slippage_Anomaly => {
+                write!(f, "wasm-ls-slippage-anomaly")
             },
             EventsType::LS_Auto_Close_Position => {
                 write!(f, "wasm-ls-auto-close-position")
@@ -879,6 +922,9 @@ impl From<EventsType> for String {
             EventsType::LS_Liquidation_Warning => {
                 String::from("wasm-ls-liquidation-warning")
             },
+            EventsType::LS_Slippage_Anomaly => {
+                String::from("wasm-ls-slippage-anomaly")
+            },
             EventsType::LS_Auto_Close_Position => {
                 String::from("wasm-ls-auto-close-position")
             },
@@ -905,6 +951,7 @@ impl FromStr for EventsType {
             "wasm-ls-liquidation-warning" => {
                 Ok(EventsType::LS_Liquidation_Warning)
             },
+            "wasm-ls-slippage-anomaly" => Ok(EventsType::LS_Slippage_Anomaly),
             "wasm-ls-auto-close-position" => {
                 Ok(EventsType::LS_Auto_Close_Position)
             },

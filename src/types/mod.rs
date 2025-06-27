@@ -27,6 +27,7 @@ pub use self::{
     ls_max_interest::LS_Max_Interest,
     ls_opening_type::LS_Opening_Type,
     ls_repayment_type::LS_Repayment_Type,
+    ls_slippage_anomaly_type::LS_Slippage_Anomaly_Type,
     ls_state_type::LS_State_Type,
     max_lp_ratio::Max_LP_Ratio,
     msg_receive_packet::MsgReceivePacket,
@@ -67,6 +68,7 @@ mod ls_liquidation_warning_type;
 mod ls_max_interest;
 mod ls_opening_type;
 mod ls_repayment_type;
+mod ls_slippage_anomaly_type;
 mod ls_state_type;
 mod max_lp_ratio;
 mod msg_receive_packet;

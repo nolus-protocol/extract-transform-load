@@ -405,6 +405,19 @@ Aggragation is done over all records pertaining to the same _aggregation interva
 | Block             | Int(64)           |                                         | Block when loan is closed                      |
 | Active            | Boolean           |                                         | Indicates if loan is synced with blochain      |
 
+
+### **LS_Slippage_Anomaly** - Historical Aggregated Data [Primary key = Tx_Hash + LS_contract_id + LS_timestamp]
+
+| Property Name   | Type              | Query API                               | Description                                    |
+| --------------- | ----------------- | ----------------------------------------| ---------------------------------------------- |
+| LS_contract_id  | Alphanumeric(64)  | wasm-ls-slippage-anomaly.lease          | Lease address                                  |
+| LS_address_id   | Alphanumeric(44)  | wasm-ls-slippage-anomaly.customer       | User address                                   |
+| LS_asset_symbol | Alphanumeric(20)  | wasm-ls-slippage-anomaly.lease-asset    | Lease currency symbol.                         |
+| LS_max_slipagge | SMALLINT          | wasm-ls-slippage-anomaly.level          | Lease max slippage.                            |
+| LS_timestamp    | Timestamp         | timestamp | Block timestsamp            | Timestamp                                      |
+| Tx_Hash         | Alphanumeric(64)  | tx hash                                 | Transaction hash                               |
+
+
 #### Database types
 
 Due to the lack of unsigned integer types in the databases with more that 64 bits we define the mapping of Unsigned Int(128) as Decimal(log(2 ** 128, 10), 0), i.e. Decimal(39, 0). Simmilarly, the fields that accumulate such values we map into Decimal(log(2 ** 140, 10), 0), i.e. Decimal(42, 0).

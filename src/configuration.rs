@@ -102,6 +102,7 @@ impl State {
             "reserve_cover_loss.sql",
             "ls_loan_closing.sql",
             "ls_auto_close_position.sql",
+            "ls_slippage_anomaly.sql",
         ];
 
         let dir = env!("CARGO_MANIFEST_DIR");

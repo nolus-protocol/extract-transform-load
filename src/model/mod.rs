@@ -18,6 +18,7 @@ mod ls_liquidation_warning;
 mod ls_loan_closing;
 mod ls_opening;
 mod ls_repayment;
+mod ls_slippage_anomaly;
 mod ls_state;
 mod mp_asset;
 mod mp_yield;
@@ -55,6 +56,7 @@ pub use ls_loan_closing::{
 };
 pub use ls_opening::{LS_History, LS_Opening};
 pub use ls_repayment::LS_Repayment;
+pub use ls_slippage_anomaly::LS_Slippage_Anomaly;
 pub use ls_state::LS_State;
 pub use mp_asset::MP_Asset;
 pub use mp_yield::MP_Yield;

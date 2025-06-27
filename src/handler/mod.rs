@@ -18,6 +18,7 @@ pub mod wasm_ls_liquidation;
 pub mod wasm_ls_liquidation_warning;
 pub mod wasm_ls_open;
 pub mod wasm_ls_repay;
+pub mod wasm_ls_slippage_anomaly;
 pub mod wasm_reserve_cover_loss;
 pub mod wasm_tr_profit;
 pub mod wasm_tr_rewards;
