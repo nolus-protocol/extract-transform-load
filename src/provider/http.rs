@@ -77,6 +77,9 @@ impl HTTP {
             .send()
             .await?;
         let status = data.status().as_u16();
+        let text = data.text().await?;
+        tracing::info!("push status {:?}", &status);
+        tracing::info!("push text {:?}", &text);
 
         Ok(status)
     }
