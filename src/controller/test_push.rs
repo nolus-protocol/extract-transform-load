@@ -18,7 +18,10 @@ pub async fn index(
     let auth = data.auth.to_owned().context("Auth is required")?;
 
     if auth != state.config.auth {
-        return Ok(HttpResponse::Ok().json(Response { data: false }));
+        return Ok(HttpResponse::Ok().json(Response {
+            data: false,
+            version: String::from("1.0.0"),
+        }));
     };
 
     let push_type = PUSH_TYPES::from_str(&data.r#type)?;
