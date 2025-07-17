@@ -8,6 +8,7 @@ pub mod ls_loan_closing;
 pub mod ls_state;
 pub mod mp_assets;
 pub mod pl_state;
+pub mod send_push;
 pub mod tr_state;
 pub mod wasm_lp_deposit;
 pub mod wasm_lp_withdraw;

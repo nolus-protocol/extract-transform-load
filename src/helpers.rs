@@ -1,6 +1,5 @@
-use std::{collections::HashMap, fmt, io, str::FromStr};
-
 use anyhow::Context as _;
+use chrono::Local;
 use cosmrs::{
     proto::{
         cosmos::base::abci::v1beta1::TxResponse,
@@ -10,6 +9,7 @@ use cosmrs::{
     Any, Tx,
 };
 use sqlx::Transaction;
+use std::{collections::HashMap, fmt, io, str::FromStr};
 
 use crate::{
     configuration::{AppState, State},
@@ -22,15 +22,18 @@ use crate::{
         wasm_ls_slippage_anomaly, wasm_reserve_cover_loss, wasm_tr_profit,
         wasm_tr_rewards,
     },
-    model::{Block, Raw_Message},
+    model::{Block, Raw_Message, Subscription},
     types::{
-        Interest_values, LP_Deposit_Type, LP_Withdraw_Type,
+        Claims, Interest_values, LP_Deposit_Type, LP_Withdraw_Type,
         LS_Auto_Close_Position_Type, LS_Close_Position_Type, LS_Closing_Type,
         LS_Liquidation_Type, LS_Liquidation_Warning_Type, LS_Opening_Type,
-        LS_Repayment_Type, LS_Slippage_Anomaly_Type, Reserve_Cover_Loss_Type,
-        TR_Profit_Type, TR_Rewards_Distribution_Type,
+        LS_Repayment_Type, LS_Slippage_Anomaly_Type, PushData, PushHeader,
+        Reserve_Cover_Loss_Type, TR_Profit_Type, TR_Rewards_Distribution_Type,
     },
 };
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD as BASE64_URL, Engine};
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use reqwest::Url;
 
 #[derive(Debug)]
 pub enum Formatter {
@@ -851,6 +854,64 @@ pub async fn parse_raw_tx(
     Ok(())
 }
 
+pub fn send_push_task(
+    state: AppState<State>,
+    subscription: Subscription,
+    push_header: PushHeader,
+    push_data: PushData,
+) {
+    tokio::spawn(async move {
+        if let Err(e) =
+            send_push(state, subscription, push_header, push_data).await
+        {
+            eprintln!("Thread stopped with error: {}", e);
+        };
+    });
+}
+
+pub async fn send_push(
+    state: AppState<State>,
+    subscription: Subscription,
+    push_header: PushHeader,
+    push_data: PushData,
+) -> Result<(), Error> {
+    let url = Url::parse(&subscription.endpoint)?;
+    let exp = Local::now().timestamp_millis() / 1000 + push_header.ttl;
+
+    let scheme = url.scheme();
+    let host = if let Some(h) = url.host() {
+        h.to_string()
+    } else {
+        return Err(Error::InvalidOption {
+            option: String::from("host"),
+        });
+    };
+
+    let aud = format!("{}://{}", scheme, host);
+    let sub = format!("mailto:{}", &state.config.mail_to);
+
+    let key = EncodingKey::from_ec_pem(&state.config.vapid_private_key)?;
+    let claims = Claims { aud, sub, exp };
+    let token = encode(&Header::new(Algorithm::ES256), &claims, &key)?;
+
+    let p256dh = BASE64_URL.decode(subscription.p256dh)?;
+    let auth = BASE64_URL.decode(subscription.auth)?;
+
+    let data = ece::encrypt(&p256dh, &auth, push_data.to_string().as_bytes())?;
+    let endpoint = subscription.endpoint.to_string();
+
+    let status = state
+        .http
+        .post_push(subscription.endpoint, token, push_header, data)
+        .await?;
+
+    if state.config.status_code_to_delete.contains(&status) {
+        state.database.subscription.deactivate(endpoint).await?;
+    }
+
+    Ok(())
+}
+
 #[derive(Debug)]
 pub enum EventsType {
     LS_Opening,
@@ -1088,6 +1149,30 @@ impl FromStr for Auto_Close_Strategies {
                 io::ErrorKind::Other,
                 "Auto_Close_Strategies not supported",
             )),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Status {
+    Subscribed,
+    Unsubscribed,
+}
+
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Status::Subscribed => write!(f, "subscribed"),
+            Status::Unsubscribed => write!(f, "unsubscribed"),
+        }
+    }
+}
+
+impl From<Status> for String {
+    fn from(value: Status) -> Self {
+        match value {
+            Status::Subscribed => String::from("subscribed"),
+            Status::Unsubscribed => String::from("unsubscribed"),
         }
     }
 }

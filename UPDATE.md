@@ -306,3 +306,10 @@ ALTER TABLE "LS_Opening" ALTER COLUMN "LS_address_id" TYPE VARCHAR(64);
 
 CREATE INDEX idx_from ON raw_message("from");
 CREATE INDEX idx_to ON raw_message("to");
+
+
+15.07.2025
+
+CREATE INDEX idx_auth ON subscription("auth");
+update .env
+add certs

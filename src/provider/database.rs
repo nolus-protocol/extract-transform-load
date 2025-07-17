@@ -7,8 +7,8 @@ use crate::{
         LP_Pool_State, LP_Withdraw, LS_Auto_Close_Position, LS_Close_Position,
         LS_Closing, LS_Liquidation, LS_Liquidation_Warning, LS_Loan_Closing,
         LS_Opening, LS_Repayment, LS_Slippage_Anomaly, LS_State, MP_Asset,
-        MP_Yield, PL_State, Raw_Message, Reserve_Cover_Loss, TR_Profit,
-        TR_Rewards_Distribution, TR_State, Table,
+        MP_Yield, PL_State, Raw_Message, Reserve_Cover_Loss, Subscription,
+        TR_Profit, TR_Rewards_Distribution, TR_State, Table,
     },
 };
 
@@ -39,6 +39,7 @@ pub struct DatabasePool {
     pub raw_message: Table<Raw_Message>,
     pub ls_loan_closing: Table<LS_Loan_Closing>,
     pub ls_slippage_anomaly: Table<LS_Slippage_Anomaly>,
+    pub subscription: Table<Subscription>,
     pub pool: PoolType,
 }
 
@@ -78,6 +79,7 @@ impl<'c> DatabasePool {
             reserve_cover_loss: Table::new(pool.clone()),
             ls_loan_closing: Table::new(pool.clone()),
             ls_slippage_anomaly: Table::new(pool.clone()),
+            subscription: Table::new(pool.clone()),
             raw_message: Table::new(pool),
         })
     }

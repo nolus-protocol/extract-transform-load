@@ -1,6 +1,8 @@
 pub use self::{
     path::get_path,
-    types::{DBRow, DataBase, PoolOption, PoolType, QueryResult},
+    types::{
+        DBRow, DataBase, PoolOption, PoolType, QueryResult, DUPLICATE_ERROR,
+    },
 };
 mod action_history;
 mod block;
@@ -25,6 +27,7 @@ mod path;
 mod pl_state;
 mod raw_message;
 mod reserve_cover_loss;
+mod subscription;
 mod tr_profit;
 mod tr_rewards_distribution;
 mod tr_state;

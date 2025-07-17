@@ -15,7 +15,7 @@ use crate::{
     error::Error,
     helpers::{formatter, parse_tuple_string, Formatter, Protocol_Types},
     model::LP_Pool,
-    provider::{DatabasePool, Grpc},
+    provider::{DatabasePool, Grpc, HTTP},
     types::{AdminProtocolExtendType, Currency},
 };
 
@@ -54,6 +54,7 @@ pub struct State {
     pub grpc: Grpc,
     pub protocols: HashMap<String, AdminProtocolExtendType>,
     pub cache: Mutex<Cache>,
+    pub http: HTTP,
 }
 
 impl State {
@@ -61,6 +62,7 @@ impl State {
         config: Config,
         database: DatabasePool,
         grpc: Grpc,
+        http: HTTP,
     ) -> Result<State, Error> {
         Self::init_migrations(&database).await?;
         Self::init_pools(&config.lp_pools, &database).await?;
@@ -69,6 +71,7 @@ impl State {
             config,
             database,
             grpc,
+            http,
             protocols,
             cache: Mutex::new(Cache {
                 total_value_locked: None,
@@ -103,6 +106,7 @@ impl State {
             "ls_loan_closing.sql",
             "ls_auto_close_position.sql",
             "ls_slippage_anomaly.sql",
+            "subscription.sql",
         ];
 
         let dir = env!("CARGO_MANIFEST_DIR");
@@ -295,9 +299,25 @@ pub struct Config {
     pub events_subscribe: Vec<String>,
     pub enable_sync: bool,
     pub tasks_interval: u64,
+    pub status_code_to_delete: Vec<u16>,
+    pub mail_to: String,
+    pub vapid_private_key: Vec<u8>,
+    pub vapid_public_key: Vec<u8>,
+    pub auth: String,
 }
 
 impl Config {}
+
+fn parse_config_vapid_keys() -> Result<(Vec<u8>, Vec<u8>), Error> {
+    let directory = env!("CARGO_MANIFEST_DIR");
+    let private_key_dir = format!("{}/cert/vapid_private.pem", directory);
+    let public_key_dir = format!("{}/cert/vapid_public.b64", directory);
+
+    let private_key = fs::read(private_key_dir)?;
+    let public_key = fs::read(public_key_dir)?;
+
+    Ok((private_key, public_key))
+}
 
 pub fn get_configuration() -> Result<Config, Error> {
     let host = env::var("HOST")?;
@@ -368,6 +388,20 @@ pub fn get_configuration() -> Result<Config, Error> {
         .map(|item| item.to_owned())
         .collect();
 
+    let codes = env::var("STATUS_COODE_TO_DELETE")?
+        .split(",")
+        .map(|item| item.to_string())
+        .collect::<Vec<String>>();
+    let mut status_code_to_delete = vec![];
+    let mail_to: String = env::var("MAIL_TO")?;
+
+    for code in codes {
+        status_code_to_delete.push(code.parse::<u16>()?);
+    }
+
+    let (vapid_private_key, vapid_public_key) = parse_config_vapid_keys()?;
+    let auth = env::var("AUTH")?.parse()?;
+
     let config = Config {
         host,
         websocket_host,
@@ -397,6 +431,11 @@ pub fn get_configuration() -> Result<Config, Error> {
         events_subscribe,
         enable_sync,
         tasks_interval,
+        status_code_to_delete,
+        mail_to,
+        vapid_private_key,
+        vapid_public_key,
+        auth,
     };
 
     Ok(config)

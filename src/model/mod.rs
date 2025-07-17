@@ -26,6 +26,7 @@ mod pl_state;
 mod pnl_over_time;
 mod raw_message;
 mod reserve_cover_loss;
+mod subscription;
 mod supplied_borrowed_series;
 mod table;
 mod tr_profit;
@@ -49,7 +50,9 @@ pub use ls_amount::LS_Amount;
 pub use ls_auto_close_position::LS_Auto_Close_Position;
 pub use ls_close_position::LS_Close_Position;
 pub use ls_closing::LS_Closing;
-pub use ls_liquidation::{LS_Liquidation, LS_transactions};
+pub use ls_liquidation::{
+    LS_Liquidation, LS_Liquidation_Type, LS_transactions,
+};
 pub use ls_liquidation_warning::LS_Liquidation_Warning;
 pub use ls_loan_closing::{
     LS_Loan, LS_Loan_Closing, Pnl_Result, Realized_Pnl_Result,
@@ -64,6 +67,7 @@ pub use pl_state::PL_State;
 pub use pnl_over_time::Pnl_Over_Time;
 pub use raw_message::Raw_Message;
 pub use reserve_cover_loss::Reserve_Cover_Loss;
+pub use subscription::Subscription;
 pub use supplied_borrowed_series::Supplied_Borrowed_Series;
 pub use table::Table;
 pub use tr_profit::TR_Profit;

@@ -8,9 +8,10 @@ use crate::{
     configuration::{AppState, State},
     dao::DataBase,
     error::Error,
+    handler::send_push::send,
     helpers::Loan_Closing_Status,
-    model::LS_Liquidation,
-    types::LS_Liquidation_Type,
+    model::{LS_Liquidation, LS_Liquidation_Type as LS_Liquidation_Data},
+    types::{LS_Liquidation_Type, PushData, PUSH_TYPES},
 };
 
 use super::ls_loan_closing as ls_loan_closing_handler;
@@ -22,6 +23,7 @@ pub async fn parse_and_insert(
     block: i64,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
+    let contract = item.to.to_owned();
     let sec: i64 = item.at.parse()?;
     let at_sec = sec / 1_000_000_000;
     let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
@@ -90,6 +92,7 @@ pub async fn parse_and_insert(
         LS_loan_close: loan_close,
     };
 
+    let status = ls_liquidation.LS_transaction_type.to_owned();
     let isExists = app_state
         .database
         .ls_liquidation
@@ -115,6 +118,23 @@ pub async fn parse_and_insert(
         )
         .await?;
     }
+
+    let push_data = match LS_Liquidation_Data::from(status.as_str()) {
+        LS_Liquidation_Data::OverdueInterest => PushData {
+            r#type: PUSH_TYPES::PartiallyLiquidated.to_string(),
+            body: format!(r#"{{"position": "{}"}}"#, contract),
+        },
+        LS_Liquidation_Data::HighLiability => PushData {
+            r#type: PUSH_TYPES::FullyLiquidated.to_string(),
+            body: format!(r#"{{"position": "{}"}}"#, contract),
+        },
+        LS_Liquidation_Data::Unsupported => PushData {
+            r#type: PUSH_TYPES::Unsupported.to_string(),
+            body: format!(r#"{{}}"#,),
+        },
+    };
+
+    send(app_state.clone(), contract, push_data).await?;
 
     Ok(())
 }

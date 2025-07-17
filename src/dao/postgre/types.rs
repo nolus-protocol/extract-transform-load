@@ -8,3 +8,5 @@ pub type PoolOption = PgPoolOptions;
 pub type DBRow = PgRow;
 pub type QueryResult = PgQueryResult;
 pub type DataBase = Postgres;
+
+pub const DUPLICATE_ERROR: &str = "23505";

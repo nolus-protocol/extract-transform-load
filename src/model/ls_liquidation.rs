@@ -67,3 +67,49 @@ impl FromStr for LS_transactions {
         }
     }
 }
+
+pub enum LS_Liquidation_Type {
+    OverdueInterest,
+    HighLiability,
+    Unsupported,
+}
+
+impl fmt::Display for LS_Liquidation_Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LS_Liquidation_Type::OverdueInterest => {
+                write!(f, "overdue interest")
+            },
+            LS_Liquidation_Type::HighLiability => {
+                write!(f, "high liability")
+            },
+            LS_Liquidation_Type::Unsupported => {
+                write!(f, "unsupported")
+            },
+        }
+    }
+}
+
+impl From<LS_Liquidation_Type> for String {
+    fn from(value: LS_Liquidation_Type) -> Self {
+        match value {
+            LS_Liquidation_Type::OverdueInterest => {
+                String::from("overdue interest")
+            },
+            LS_Liquidation_Type::HighLiability => {
+                String::from("high liability")
+            },
+            LS_Liquidation_Type::Unsupported => String::from("unsupported"),
+        }
+    }
+}
+
+impl From<&str> for LS_Liquidation_Type {
+    fn from(value: &str) -> LS_Liquidation_Type {
+        match value {
+            "overdue interest" => LS_Liquidation_Type::OverdueInterest,
+            "high liability" => LS_Liquidation_Type::HighLiability,
+            _ => LS_Liquidation_Type::Unsupported,
+        }
+    }
+}

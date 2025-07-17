@@ -11,7 +11,7 @@ use etl::{
     error::Error,
     handler::{aggregation_task, cache_state, mp_assets},
     model::Actions,
-    provider::{DatabasePool, Event, Grpc},
+    provider::{DatabasePool, Event, Grpc, HTTP},
     server,
 };
 
@@ -54,8 +54,9 @@ async fn app_main() -> Result<(), Error> {
 
     let db_pool = database;
     let grpc = Grpc::new(config.clone()).await?;
+    let http = HTTP::new(config.clone())?;
 
-    let state = State::new(config.clone(), db_pool, grpc).await?;
+    let state = State::new(config.clone(), db_pool, grpc, http).await?;
     let app_state = AppState::new(state);
 
     mp_assets::fetch_insert(app_state.clone(), None).await?;
@@ -143,25 +144,3 @@ async fn start_aggregation_tasks(
     })
     .await?
 }
-
-// async fn test2(app_state: AppState<State>) -> Result<(), Error> {
-//     let mut interval = time::interval(Duration::from_secs(10));
-
-//     tokio::spawn(async move {
-//         loop {
-//             interval.tick().await;
-//             let app = app_state.clone();
-//             let grpc = &app.grpc;
-
-//             match grpc.parse_block(6406972).await {
-//                 Ok(data) => {
-//                     dbg!(data);
-//                 }
-//                 Err(err) => {
-//                     dbg!(err);
-//                 }
-//             };
-//         }
-//     })
-//     .await?
-// }

@@ -8,6 +8,7 @@ pub use self::{
     block::BlockValue,
     block_query::BlockQuery,
     block_response::{Attributes, BlockBody, EventData},
+    claim::Claims,
     coin_gecko_info::CoinGeckoInfo,
     coin_gecko_market_data::{CoinGeckoMarketData, MarketData},
     coin_gecko_price::CoinGeckoPrice,
@@ -33,7 +34,9 @@ pub use self::{
     msg_receive_packet::MsgReceivePacket,
     new_block_response::{NewBlockBody, NewBlockData},
     prices_type::{AmountObject, Prices},
+    push::{PushData, PushHeader, Urgency, PUSH_TYPES},
     query_response::QueryBody,
+    subscription::Subscription,
     tr_profit_type::TR_Profit_Type,
     tr_rewards_distribution_type::TR_Rewards_Distribution_Type,
     tr_state_type::TR_State_Type,
@@ -49,6 +52,7 @@ mod balance;
 mod block;
 mod block_query;
 mod block_response;
+mod claim;
 mod coin_gecko_info;
 mod coin_gecko_market_data;
 mod coin_gecko_price;
@@ -74,7 +78,9 @@ mod max_lp_ratio;
 mod msg_receive_packet;
 mod new_block_response;
 mod prices_type;
+mod push;
 mod query_response;
+mod subscription;
 mod tr_profit_type;
 mod tr_rewards_distribution_type;
 mod tr_state_type;

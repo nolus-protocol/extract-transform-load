@@ -19,6 +19,13 @@ use cosmrs::{
     proto::prost::{DecodeError as DECODE_ERROR, EncodeError as ENCODE_ERROR},
     tx::ErrorReport,
 };
+use ece::Error as ECE_ERROR;
+use jsonwebtoken::errors::Error as JWT_ERROR;
+use reqwest::header::{
+    InvalidHeaderName as INVALID_HEADER_NAME,
+    InvalidHeaderValue as INVALID_HEADER_VALUE,
+};
+use reqwest::Error as REQWEST_ERROR;
 use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;
 use thiserror::Error;
@@ -130,6 +137,24 @@ pub enum Error {
 
     #[error("Grps error: {0}")]
     GrpsError(String),
+
+    #[error("{0}")]
+    ReqwestError(#[from] REQWEST_ERROR),
+
+    #[error("{0}")]
+    InvalidHeaderName(#[from] INVALID_HEADER_NAME),
+
+    #[error("{0}")]
+    InvalidHeaderValue(#[from] INVALID_HEADER_VALUE),
+
+    #[error("Invalid option {option}")]
+    InvalidOption { option: String },
+
+    #[error("{0}")]
+    EceError(#[from] ECE_ERROR),
+
+    #[error("{0}")]
+    JWT(#[from] JWT_ERROR),
 }
 
 impl ResponseError for Error {}
