@@ -155,6 +155,9 @@ pub enum Error {
 
     #[error("{0}")]
     JWT(#[from] JWT_ERROR),
+
+    #[error("InvalidHeader error: {0}")]
+    InvalidHeader(String),
 }
 
 impl ResponseError for Error {}

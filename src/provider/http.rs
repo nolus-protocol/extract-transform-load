@@ -44,6 +44,11 @@ impl HTTP {
         let bearer = format!("Bearer {}", &signature);
 
         header_map.insert(
+            HeaderName::from_str("User-Agent")?,
+            HeaderValue::from_str(String::from("nolus-etl").as_str())?,
+        );
+
+        header_map.insert(
             HeaderName::from_str("authorization")?,
             HeaderValue::from_str(bearer.as_str())?,
         );
@@ -58,18 +63,20 @@ impl HTTP {
 
         header_map.insert(
             HeaderName::from_str("urgency")?,
-            HeaderValue::from_str(&String::from(push_header.urgency))?,
+            HeaderValue::from_str(&push_header.urgency.to_string())?,
         );
 
-        let vapid_pub_b64 =
-            String::from_utf8_lossy(&self.config.vapid_public_key);
-        let crypto_key_value = format!("p256ecdsa={}", vapid_pub_b64);
-
+        let vapid_pub_b64 = String::from_utf8(
+            self.config.vapid_public_key.clone(),
+        )
+        .map_err(|_| {
+            error::Error::InvalidHeader(String::from("invalid VAPID key"))
+        })?;
+        let crypto_key_value = format!("p256ecdsa={}", vapid_pub_b64.trim());
         header_map.insert(
             HeaderName::from_static("crypto-key"),
             HeaderValue::from_str(&crypto_key_value)?,
         );
-
         let data = client
             .post(url)
             .headers(header_map)
