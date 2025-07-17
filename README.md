@@ -52,6 +52,7 @@ SOCKET_RECONNECT_INTERVAL=5
 EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
 ENABLE_SYNC=true
 TASKS_INTERVAL=3000
+AUTH=
 ```
 
 HOST=pirin-cl.nolus.network:26657
@@ -83,6 +84,7 @@ SOCKET_RECONNECT_INTERVAL=5
 EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
 ENABLE_SYNC=true
 TASKS_INTERVAL=3000
+AUTH=
 ```
 
 TESTNET CURRENCIES WHEN FEEDERS NOT RETURN CORRECT DATA

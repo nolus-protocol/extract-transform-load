@@ -34,6 +34,7 @@ use crate::{
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD as BASE64_URL, Engine};
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use reqwest::Url;
+use tracing::info;
 
 #[derive(Debug)]
 pub enum Formatter {
@@ -861,9 +862,9 @@ pub fn send_push_task(
     push_data: PushData,
 ) {
     tokio::spawn(async move {
-        if let Err(e) =
-            send_push(state, subscription, push_header, push_data).await
-        {
+        let k = send_push(state, subscription, push_header, push_data).await;
+        info!("{:?}", &k);
+        if let Err(e) = k {
             eprintln!("Thread stopped with error: {}", e);
         };
     });
