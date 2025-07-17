@@ -33,12 +33,16 @@ pub async fn index(
     };
 
     send(state.as_ref().clone(), data.address.to_owned(), push_data).await?;
-    Ok(HttpResponse::Ok().json(Response { data: true }))
+    Ok(HttpResponse::Ok().json(Response {
+        data: true,
+        version: String::from("1.0.0"),
+    }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
     pub data: bool,
+    pub version: String,
 }
 
 #[derive(Debug, Deserialize)]
