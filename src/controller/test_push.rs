@@ -18,10 +18,7 @@ pub async fn index(
     let auth = data.auth.to_owned().context("Auth is required")?;
 
     if auth != state.config.auth {
-        return Ok(HttpResponse::Ok().json(Response {
-            data: false,
-            version: String::from("1.0.0"),
-        }));
+        return Ok(HttpResponse::Ok().json(Response { data: false }));
     };
 
     let push_type = PUSH_TYPES::from_str(&data.r#type)?;
@@ -36,16 +33,12 @@ pub async fn index(
     };
 
     send(state.as_ref().clone(), data.address.to_owned(), push_data).await?;
-    Ok(HttpResponse::Ok().json(Response {
-        data: true,
-        version: String::from("1.0.0"),
-    }))
+    Ok(HttpResponse::Ok().json(Response { data: true }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
     pub data: bool,
-    pub version: String,
 }
 
 #[derive(Debug, Deserialize)]
