@@ -41,7 +41,7 @@ impl HTTP {
     ) -> Result<u16, Error> {
         let client = Client::new();
         let mut header_map = HeaderMap::new();
-        let bearer = format!("Bearer {}", &signature);
+        let bearer = format!("WebPush {}", &signature);
 
         header_map.insert(
             HeaderName::from_str("User-Agent")?,
