@@ -19,7 +19,9 @@ pub async fn parse_and_insert(
     let mut tasks = vec![];
     let max_tasks = app_state.config.max_tasks;
     for item in items {
-        tasks.push(proceed(app_state.clone(), item, timestsamp));
+        if item.LP_status {
+            tasks.push(proceed(app_state.clone(), item, timestsamp));
+        }
     }
 
     while !tasks.is_empty() {

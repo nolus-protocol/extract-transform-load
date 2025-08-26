@@ -9,7 +9,7 @@ use crate::{
 pub async fn set_total_value_locked(
     app_state: AppState<State>,
 ) -> Result<(), Error> {
-    let neutron_usdc_noble = if let Some((neutron_usdc_noble, _, _)) =
+    let neutron_usdc_noble = if let Some((neutron_usdc_noble, _, _, _)) =
         app_state.config.lp_pools.get(0)
     {
         neutron_usdc_noble
@@ -17,14 +17,15 @@ pub async fn set_total_value_locked(
         return Err(Error::ProtocolError(String::from("neutron_usdc_noble")));
     };
 
-    let osmosis_usdc =
-        if let Some((osmosis_usdc, _, _)) = app_state.config.lp_pools.get(1) {
-            osmosis_usdc
-        } else {
-            return Err(Error::ProtocolError(String::from("osmosis_usdc")));
-        };
+    let osmosis_usdc = if let Some((osmosis_usdc, _, _, _)) =
+        app_state.config.lp_pools.get(1)
+    {
+        osmosis_usdc
+    } else {
+        return Err(Error::ProtocolError(String::from("osmosis_usdc")));
+    };
 
-    let neutron_usdc_axelar = if let Some((neutron_usdc_axelar, _, _)) =
+    let neutron_usdc_axelar = if let Some((neutron_usdc_axelar, _, _, _)) =
         app_state.config.lp_pools.get(2)
     {
         neutron_usdc_axelar
@@ -32,7 +33,7 @@ pub async fn set_total_value_locked(
         return Err(Error::ProtocolError(String::from("neutron_usdc_axelar")));
     };
 
-    let osmosis_usdc_noble = if let Some((osmosis_usdc_noble, _, _)) =
+    let osmosis_usdc_noble = if let Some((osmosis_usdc_noble, _, _, _)) =
         app_state.config.lp_pools.get(3)
     {
         osmosis_usdc_noble
@@ -40,7 +41,7 @@ pub async fn set_total_value_locked(
         return Err(Error::ProtocolError(String::from("osmosis_usdc_noble")));
     };
 
-    let osmosis_st_atom = if let Some((osmosis_st_atom, _, _)) =
+    let osmosis_st_atom = if let Some((osmosis_st_atom, _, _, _)) =
         app_state.config.lp_pools.get(4)
     {
         osmosis_st_atom
@@ -48,7 +49,7 @@ pub async fn set_total_value_locked(
         return Err(Error::ProtocolError(String::from("osmosis_st_atom")));
     };
 
-    let osmosis_all_btc = if let Some((osmosis_all_btc, _, _)) =
+    let osmosis_all_btc = if let Some((osmosis_all_btc, _, _, _)) =
         app_state.config.lp_pools.get(5)
     {
         osmosis_all_btc
@@ -56,7 +57,7 @@ pub async fn set_total_value_locked(
         return Err(Error::ProtocolError(String::from("osmosis_all_btc")));
     };
 
-    let osmosis_all_sol = if let Some((osmosis_all_sol, _, _)) =
+    let osmosis_all_sol = if let Some((osmosis_all_sol, _, _, _)) =
         app_state.config.lp_pools.get(6)
     {
         osmosis_all_sol
@@ -64,12 +65,13 @@ pub async fn set_total_value_locked(
         return Err(Error::ProtocolError(String::from("osmosis_all_sol")));
     };
 
-    let osmosis_akt =
-        if let Some((osmosis_akt, _, _)) = app_state.config.lp_pools.get(7) {
-            osmosis_akt
-        } else {
-            return Err(Error::ProtocolError(String::from("osmosis_akt")));
-        };
+    let osmosis_akt = if let Some((osmosis_akt, _, _, _)) =
+        app_state.config.lp_pools.get(7)
+    {
+        osmosis_akt
+    } else {
+        return Err(Error::ProtocolError(String::from("osmosis_akt")));
+    };
 
     let data = app_state
         .database

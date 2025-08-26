@@ -316,4 +316,5 @@ add certs
 
 26.08.2025
 
-delete from "LP_Pool" where "LP_Pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990';
+ALTER TABLE "LP_Pool" ADD COLUMN  "LP_status" BOOLEAN NOT NULL DEFAULT true;
+UPDATE "LP_Pool" SET "LP_status" = false WHERE "LP_Pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990';
