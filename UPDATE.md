@@ -313,3 +313,7 @@ CREATE INDEX idx_to ON raw_message("to");
 CREATE INDEX idx_auth ON subscription("auth");
 update .env
 add certs
+
+26.08.2025
+
+delete from "LP_Pool" where "LP_Pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990';
