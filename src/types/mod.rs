@@ -29,7 +29,7 @@ pub use self::{
     ls_opening_type::LS_Opening_Type,
     ls_repayment_type::LS_Repayment_Type,
     ls_slippage_anomaly_type::LS_Slippage_Anomaly_Type,
-    ls_state_type::LS_State_Type,
+    ls_state_type::{LS_Raw_State, LS_State_Type},
     max_lp_ratio::Max_LP_Ratio,
     msg_receive_packet::MsgReceivePacket,
     new_block_response::{NewBlockBody, NewBlockData},

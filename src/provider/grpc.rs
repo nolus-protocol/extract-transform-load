@@ -1,6 +1,7 @@
 use std::{fmt::Debug, str::FromStr, time::Duration};
 
 use anyhow::{anyhow, Context as _, Result};
+use cosmos_sdk_proto::cosmwasm::wasm::v1::QueryRawContractStateRequest;
 use cosmrs::proto::{
     cosmos::{
         bank::v1beta1::{
@@ -39,7 +40,7 @@ use crate::{
     error::Error,
     types::{
         AdminProtocolExtendType, AdminProtocolType, AmountObject, Balance,
-        LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type,
+        LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_Raw_State,
         LS_State_Type, Prices,
     },
 };
@@ -349,6 +350,38 @@ impl Grpc {
         Ok(data)
     }
 
+    pub async fn get_balances_by_block(
+        &self,
+        address: String,
+        height: i64,
+    ) -> Result<QueryAllBalancesResponse, Error> {
+        const QUERY_NODE_INFO_ERROR: &str = "Failed to query all balances!";
+
+        let mut request = QueryAllBalancesRequest {
+            address,
+            pagination: Some(PageRequest {
+                key: vec![],
+                offset: 0,
+                limit: 10,
+                count_total: true,
+                reverse: false,
+            }),
+            resolve_denom: false,
+        }
+        .into_request();
+
+        let metetadata = request.metadata_mut();
+        metetadata.append("x-cosmos-block-height", height.into());
+
+        let mut client = self.bank_query_client.clone();
+        let data = client.all_balances(request).await;
+
+        let data = data
+            .map(|response| response.into_inner())
+            .context(QUERY_NODE_INFO_ERROR)?;
+        Ok(data)
+    }
+
     pub async fn get_protocol_config(
         &self,
         contract: String,
@@ -524,15 +557,21 @@ impl Grpc {
         contract: String,
         height: i64,
     ) -> Result<LS_State_Type, Error> {
-        let bytes = b"{\"state\": {}}";
+        const STATE_CHANGE_BLOCK: i64 = 10958318;
 
-        const QUERY_CONTRACT_ERROR: &str =
-            "Failed to run query lease contract by block!";
+        let bytes: &[u8] = if height >= STATE_CHANGE_BLOCK {
+            b"{\"state\": {}}"
+        } else {
+            b"{}"
+        };
+
+        let QUERY_CONTRACT_ERROR =
+            format!("Failed to run query lease contract by block {}!", height);
 
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query lease contract!";
         let mut request = QuerySmartContractStateRequest {
-            address: contract,
+            address: contract.to_owned(),
             query_data: bytes.to_vec(),
         }
         .into_request();
@@ -545,11 +584,52 @@ impl Grpc {
 
         let data = data
             .map(|response| response.into_inner().data)
+            .context(QUERY_CONTRACT_ERROR);
+        if let Err(e) = &data {
+            dbg!(&contract);
+            dbg!(e);
+        }
+        let data = data.and_then(|data| {
+            let k = serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR);
+            k
+        })?;
+        Ok(data)
+    }
+
+    pub async fn get_lease_raw_state_by_block(
+        &self,
+        contract: String,
+        height: i64,
+    ) -> Result<LS_Raw_State, Error> {
+        let bytes = "state";
+
+        let QUERY_CONTRACT_ERROR = format!(
+            "Failed to run query lease contract by block raw{}!",
+            height
+        );
+
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query lease contract!";
+        let mut request = QueryRawContractStateRequest {
+            address: contract,
+            query_data: bytes.as_bytes().to_vec(),
+        }
+        .into_request();
+
+        let metetadata = request.metadata_mut();
+        metetadata.append("x-cosmos-block-height", height.into());
+
+        let mut client = self.wasm_query_client.clone();
+        let data = client.raw_contract_state(request).await;
+
+        let data = data
+            .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
-                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
+                let k =
+                    serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR);
+                k
             })?;
-
         Ok(data)
     }
 

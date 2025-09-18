@@ -6,6 +6,7 @@ use super::AmountTicker;
 pub struct LS_State_Type {
     pub opened: Option<Status_Opened>,
     pub paid: Option<Status_Paid>,
+    pub closing: Option<Status_Paid>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -29,4 +30,21 @@ pub struct Status_Opened {
 #[derive(Debug, Deserialize)]
 pub struct Status_Paid {
     pub amount: AmountTicker,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LS_Raw_State {
+    pub FullClose: Option<TransferInInit>,
+    pub PartialClose: Option<TransferInInit>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct TransferInInit {
+    pub TransferInInit: Option<AmountIn>,
+    pub TransferInFinish: Option<AmountIn>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct AmountIn {
+    pub amount_in: AmountTicker,
 }

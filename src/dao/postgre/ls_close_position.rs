@@ -155,4 +155,19 @@ impl Table<LS_Close_Position> {
         .await?;
         Ok(data)
     }
+
+    pub async fn get_closed_by_contract(
+        &self,
+        contract: String,
+    ) -> Result<LS_Close_Position, Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM "LS_Close_Position" WHERE "LS_contract_id" = $1 AND "LS_loan_close" = true;
+            "#,
+        )
+        .bind(&contract)
+        .persistent(false)
+        .fetch_one(&self.pool)
+        .await
+    }
 }

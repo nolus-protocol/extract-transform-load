@@ -114,6 +114,7 @@ pub async fn parse_and_insert(
             Loan_Closing_Status::Liquidation,
             at.to_owned(),
             block,
+            None,
             transaction,
         )
         .await?;

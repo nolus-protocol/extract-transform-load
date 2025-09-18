@@ -1,4 +1,4 @@
-use std::str::FromStr as _;
+use std::{collections::HashMap, str::FromStr as _};
 
 use anyhow::Context as _;
 use bigdecimal::BigDecimal;
@@ -13,8 +13,9 @@ use crate::{
     dao::DataBase,
     error::Error,
     helpers::{Loan_Closing_Status, Protocol_Types},
-    model::{LS_Loan, LS_Loan_Closing, LS_Opening},
+    model::{LS_Loan, LS_Loan_Closing, LS_Loan_Collect, LS_Opening},
     provider::is_sync_runing,
+    types::AmountTicker,
 };
 
 pub async fn parse_and_insert(
@@ -23,6 +24,7 @@ pub async fn parse_and_insert(
     r#type: Loan_Closing_Status,
     at: DateTime<Utc>,
     block: i64,
+    change_amount: Option<AmountTicker>,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let isExists = app_state
@@ -33,11 +35,192 @@ pub async fn parse_and_insert(
 
     if !isExists {
         let ls_loan_closing =
-            get_loan(app_state.clone(), contract, r#type, at, block).await?;
-        app_state
+            get_loan(app_state.clone(), contract.to_owned(), r#type, at, block)
+                .await?;
+
+        tokio::try_join!(
+            app_state
+                .database
+                .ls_loan_closing
+                .insert(ls_loan_closing.clone(), transaction)
+                .map_err(Error::from),
+            proceed_loan_collect(
+                app_state.clone(),
+                ls_loan_closing,
+                change_amount
+            )
+            .map_err(Error::from),
+        )?;
+    }
+
+    Ok(())
+}
+
+async fn proceed_loan_collect(
+    state: AppState<State>,
+    ls_loan_closing: LS_Loan_Closing,
+    change_amount: Option<AmountTicker>,
+) -> Result<(), Error> {
+    match Loan_Closing_Status::from_str(&ls_loan_closing.Type)? {
+        Loan_Closing_Status::Reypay => {
+            proceed_repayment(state, ls_loan_closing).await?;
+        },
+        Loan_Closing_Status::MarketClose => {
+            proceed_market_close(state, ls_loan_closing, change_amount).await?;
+        },
+        _ => {},
+    }
+
+    Ok(())
+}
+
+async fn proceed_repayment(
+    state: AppState<State>,
+    ls_loan_closing: LS_Loan_Closing,
+) -> Result<(), Error> {
+    let (balances, lease) = tokio::try_join!(
+        state.grpc.get_balances_by_block(
+            ls_loan_closing.LS_contract_id.to_owned(),
+            ls_loan_closing.Block - 1
+        ),
+        state.grpc.get_lease_state_by_block(
+            ls_loan_closing.LS_contract_id.to_owned(),
+            ls_loan_closing.Block - 1
+        )
+    )?;
+
+    let mut data: HashMap<String, LS_Loan_Collect> = HashMap::new();
+
+    if let Some(lease) = lease.opened {
+        data.insert(
+            lease.amount.ticker.to_owned(),
+            LS_Loan_Collect {
+                LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
+                LS_symbol: lease.amount.ticker.to_owned(),
+                LS_amount: BigDecimal::from_str(&lease.amount.amount)?,
+            },
+        );
+    }
+
+    for b in balances.balances {
+        let item = state.config.supported_currencies.iter().find(|item| {
+            return item.2 == b.denom.to_uppercase();
+        });
+
+        if let Some(c) = item {
+            data.insert(
+                c.0.to_owned(),
+                LS_Loan_Collect {
+                    LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
+                    LS_symbol: c.0.to_owned(),
+                    LS_amount: BigDecimal::from_str(&b.amount)?,
+                },
+            );
+        }
+    }
+
+    let contract_balances: Vec<LS_Loan_Collect> = data
+        .into_values()
+        .filter(|item| item.LS_symbol != state.config.native_currency)
+        .collect();
+
+    state
+        .database
+        .ls_loan_collect
+        .insert_many(&contract_balances)
+        .await?;
+
+    Ok(())
+}
+
+async fn proceed_market_close(
+    state: AppState<State>,
+    ls_loan_closing: LS_Loan_Closing,
+    change_amount: Option<AmountTicker>,
+) -> Result<(), Error> {
+    let (lease,) = tokio::try_join!(state.grpc.get_lease_raw_state_by_block(
+        ls_loan_closing.LS_contract_id.to_owned(),
+        ls_loan_closing.Block - 1
+    ),)?;
+
+    if let Some(_) = lease.FullClose {
+        let change_amount =
+            change_amount.context("LS_Change not set in market-close")?;
+        let data = vec![LS_Loan_Collect {
+            LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
+            LS_symbol: change_amount.ticker.to_owned(),
+            LS_amount: BigDecimal::from_str(&change_amount.amount)?,
+        }];
+
+        state.database.ls_loan_collect.insert_many(&data).await?;
+
+        return Ok(());
+    }
+
+    if let Some(_) = lease.PartialClose {
+        let mut data: HashMap<String, LS_Loan_Collect> = HashMap::new();
+
+        let (balances, lease_state) = tokio::try_join!(
+            state.grpc.get_balances_by_block(
+                ls_loan_closing.LS_contract_id.to_owned(),
+                ls_loan_closing.Block
+            ),
+            state.grpc.get_lease_state_by_block(
+                ls_loan_closing.LS_contract_id.to_owned(),
+                ls_loan_closing.Block
+            )
+        )?;
+
+        if let Some(paid) = &lease_state.paid {
+            data.insert(
+                paid.amount.ticker.to_owned(),
+                LS_Loan_Collect {
+                    LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
+                    LS_symbol: paid.amount.ticker.to_owned(),
+                    LS_amount: BigDecimal::from_str(&paid.amount.amount)?,
+                },
+            );
+        };
+
+        if let Some(paid) = &lease_state.closing {
+            data.insert(
+                paid.amount.ticker.to_owned(),
+                LS_Loan_Collect {
+                    LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
+                    LS_symbol: paid.amount.ticker.to_owned(),
+                    LS_amount: BigDecimal::from_str(&paid.amount.amount)?,
+                },
+            );
+        };
+
+        for b in balances.balances {
+            let item = state.config.supported_currencies.iter().find(|item| {
+                return item.2 == b.denom.to_uppercase();
+            });
+
+            if let Some(c) = item {
+                data.insert(
+                    c.0.to_owned(),
+                    LS_Loan_Collect {
+                        LS_contract_id: ls_loan_closing
+                            .LS_contract_id
+                            .to_owned(),
+                        LS_symbol: c.0.to_owned(),
+                        LS_amount: BigDecimal::from_str(&b.amount)?,
+                    },
+                );
+            }
+        }
+
+        let contract_balances: Vec<LS_Loan_Collect> = data
+            .into_values()
+            .filter(|item| item.LS_symbol != state.config.native_currency)
+            .collect();
+
+        state
             .database
-            .ls_loan_closing
-            .insert(ls_loan_closing, transaction)
+            .ls_loan_collect
+            .insert_many(&contract_balances)
             .await?;
     }
 

@@ -10,7 +10,7 @@ use crate::{
     error::Error,
     helpers::Loan_Closing_Status,
     model::LS_Close_Position,
-    types::LS_Close_Position_Type,
+    types::{AmountTicker, LS_Close_Position_Type},
 };
 
 use super::ls_loan_closing as ls_loan_closing_handler;
@@ -111,6 +111,10 @@ pub async fn parse_and_insert(
             Loan_Closing_Status::MarketClose,
             at.to_owned(),
             block,
+            Some(AmountTicker {
+                amount: item.change.to_owned(),
+                ticker: item.payment_symbol.to_owned(),
+            }),
             transaction,
         )
         .await?;

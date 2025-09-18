@@ -107,6 +107,7 @@ impl State {
             "ls_auto_close_position.sql",
             "ls_slippage_anomaly.sql",
             "subscription.sql",
+            "ls_loan_collect.sql",
         ];
 
         let dir = env!("CARGO_MANIFEST_DIR");
@@ -172,7 +173,7 @@ impl State {
         value: &str,
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
-        let Currency(symbol, _) = currency;
+        let Currency(symbol, _, _) = currency;
         let (stabe_price,) =
             self.database.mp_asset.get_price(symbol, protocol).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
@@ -188,7 +189,7 @@ impl State {
         date_time: &DateTime<Utc>,
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
-        let Currency(symbol, _) = currency;
+        let Currency(symbol, _, _) = currency;
 
         let (stabe_price,) = self
             .database
@@ -206,7 +207,7 @@ impl State {
         value: &str,
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency_by_pool_id(pool_id)?;
-        let Currency(symbol, _) = currency;
+        let Currency(symbol, _, _) = currency;
         let protocol = self.get_protocol_by_pool_id(pool_id);
 
         let (stabe_price,) =
@@ -499,10 +500,12 @@ fn get_supported_currencies() -> Result<Vec<Currency>, Error> {
 
     for c in supported_currencies {
         let items: Vec<&str> = c.split(',').collect();
-        assert_eq!(items.len(), 2);
+        assert_eq!(items.len(), 3);
         let ticker = items[0].to_owned();
         let decimal = items[1].parse()?;
-        data.push(Currency(ticker, decimal));
+        let ibc = items[2].parse::<String>()?.to_uppercase();
+
+        data.push(Currency(ticker, decimal, ibc));
     }
 
     Ok(data)

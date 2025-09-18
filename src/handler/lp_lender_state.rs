@@ -79,7 +79,7 @@ async fn proceed(
         &amount / &quote_amount
     };
 
-    let lpp_balance = BigDecimal::from_str(&balance.balance)?;
+    let lpp_balance = BigDecimal::from_str(&balance.amount)?;
     let value = lpp_balance * lpp_price;
     let amnt_stable = value.to_string();
     let amnt_stable =
@@ -91,7 +91,7 @@ async fn proceed(
         LP_timestamp: timestsamp,
         LP_Lender_stable: amnt_stable,
         LP_Lender_asset: value,
-        LP_Lender_receipts: BigDecimal::from_str(&balance.balance)?,
+        LP_Lender_receipts: BigDecimal::from_str(&balance.amount)?,
     };
 
     Ok(lp_lender_state)

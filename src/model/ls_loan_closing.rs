@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{types::BigDecimal, FromRow};
 
-#[derive(Debug, FromRow, Deserialize, Serialize)]
+#[derive(Debug, FromRow, Deserialize, Serialize, Clone)]
 pub struct LS_Loan_Closing {
     pub LS_contract_id: String,
     pub LS_amnt: BigDecimal,
