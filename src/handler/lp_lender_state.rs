@@ -1,5 +1,6 @@
 use std::str::FromStr as _;
 
+use anyhow::Context;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use tokio::task::{JoinHandle, JoinSet};
@@ -24,7 +25,14 @@ pub async fn parse_and_insert(
     let max_tasks = app_state.config.max_tasks;
 
     for item in items {
-        tasks.push(proceed(app_state.clone(), item, timestsamp));
+        let c = app_state
+            .config
+            .hash_map_lp_pools
+            .get(&item.1)
+            .context("protocol not found")?;
+        if c.3 {
+            tasks.push(proceed(app_state.clone(), item, timestsamp));
+        }
     }
 
     while !tasks.is_empty() {
