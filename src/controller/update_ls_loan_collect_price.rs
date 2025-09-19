@@ -76,20 +76,26 @@ async fn proceed(
         .ls_opening
         .get(ls_loan_closing.LS_contract_id.to_owned())
         .await?
-        .context("lease contract not found")?;
+        .context(format!(
+            "lease contract not found {}",
+            &ls_loan_closing.LS_contract_id
+        ))?;
 
-    let protocol = state
+    let protocol = match state
         .get_protocol_by_pool_id(&ls_opening.LS_loan_pool_id)
         .context(format!(
-        "protocol not found {}",
-        &ls_opening.LS_loan_pool_id
-    ))?;
+            "protocol not found {}",
+            &ls_opening.LS_loan_pool_id
+        )) {
+        Ok(p) => Some(p),
+        Err(_) => None,
+    };
 
     let amount = state
         .in_stabe_by_date(
             &ls_loan_collect.LS_symbol,
             &ls_loan_collect.LS_amount.to_string(),
-            Some(protocol.to_owned()),
+            protocol,
             &ls_loan_closing.LS_timestamp,
         )
         .await?;
