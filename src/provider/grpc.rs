@@ -585,10 +585,7 @@ impl Grpc {
         let data = data
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR);
-        if let Err(e) = &data {
-            dbg!(&contract);
-            dbg!(e);
-        }
+
         let data = data.and_then(|data| {
             let k = serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR);
             k

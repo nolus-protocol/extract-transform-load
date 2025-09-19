@@ -61,12 +61,28 @@ async fn proceed_loan_collect(
     ls_loan_closing: LS_Loan_Closing,
     change_amount: Option<AmountTicker>,
 ) -> Result<(), Error> {
+    let ls_opening = state
+        .database
+        .ls_opening
+        .get(ls_loan_closing.LS_contract_id.to_owned())
+        .await?;
     match Loan_Closing_Status::from_str(&ls_loan_closing.Type)? {
         Loan_Closing_Status::Reypay => {
-            proceed_repayment(state, ls_loan_closing).await?;
+            proceed_repayment(
+                state,
+                ls_loan_closing,
+                ls_opening.context("lease not found in loan collect")?,
+            )
+            .await?;
         },
         Loan_Closing_Status::MarketClose => {
-            proceed_market_close(state, ls_loan_closing, change_amount).await?;
+            proceed_market_close(
+                state,
+                ls_loan_closing,
+                ls_opening.context("lease not found in loan collect")?,
+                change_amount,
+            )
+            .await?;
         },
         _ => {},
     }
@@ -77,6 +93,7 @@ async fn proceed_loan_collect(
 async fn proceed_repayment(
     state: AppState<State>,
     ls_loan_closing: LS_Loan_Closing,
+    ls_opening: LS_Opening,
 ) -> Result<(), Error> {
     let (balances, lease) = tokio::try_join!(
         state.grpc.get_balances_by_block(
@@ -90,6 +107,12 @@ async fn proceed_repayment(
     )?;
 
     let mut data: HashMap<String, LS_Loan_Collect> = HashMap::new();
+    let protocol = state
+        .get_protocol_by_pool_id(&ls_opening.LS_loan_pool_id)
+        .context(format!(
+        "protocol not found {}",
+        &ls_opening.LS_loan_pool_id
+    ))?;
 
     if let Some(lease) = lease.opened {
         data.insert(
@@ -98,6 +121,14 @@ async fn proceed_repayment(
                 LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
                 LS_symbol: lease.amount.ticker.to_owned(),
                 LS_amount: BigDecimal::from_str(&lease.amount.amount)?,
+                LS_amount_stable: state
+                    .in_stabe_by_date(
+                        &lease.amount.ticker,
+                        &lease.amount.amount,
+                        Some(protocol.to_owned()),
+                        &ls_loan_closing.LS_timestamp,
+                    )
+                    .await?,
             },
         );
     }
@@ -114,6 +145,14 @@ async fn proceed_repayment(
                     LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
                     LS_symbol: c.0.to_owned(),
                     LS_amount: BigDecimal::from_str(&b.amount)?,
+                    LS_amount_stable: state
+                        .in_stabe_by_date(
+                            &c.0,
+                            &b.amount,
+                            Some(protocol.to_owned()),
+                            &ls_loan_closing.LS_timestamp,
+                        )
+                        .await?,
                 },
             );
         }
@@ -136,12 +175,19 @@ async fn proceed_repayment(
 async fn proceed_market_close(
     state: AppState<State>,
     ls_loan_closing: LS_Loan_Closing,
+    ls_opening: LS_Opening,
     change_amount: Option<AmountTicker>,
 ) -> Result<(), Error> {
     let (lease,) = tokio::try_join!(state.grpc.get_lease_raw_state_by_block(
         ls_loan_closing.LS_contract_id.to_owned(),
         ls_loan_closing.Block - 1
     ),)?;
+    let protocol = state
+        .get_protocol_by_pool_id(&ls_opening.LS_loan_pool_id)
+        .context(format!(
+        "protocol not found {}",
+        &ls_opening.LS_loan_pool_id
+    ))?;
 
     if let Some(_) = lease.FullClose {
         let change_amount =
@@ -150,6 +196,14 @@ async fn proceed_market_close(
             LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
             LS_symbol: change_amount.ticker.to_owned(),
             LS_amount: BigDecimal::from_str(&change_amount.amount)?,
+            LS_amount_stable: state
+                .in_stabe_by_date(
+                    &change_amount.ticker,
+                    &change_amount.amount,
+                    Some(protocol.to_owned()),
+                    &ls_loan_closing.LS_timestamp,
+                )
+                .await?,
         }];
 
         state.database.ls_loan_collect.insert_many(&data).await?;
@@ -178,6 +232,14 @@ async fn proceed_market_close(
                     LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
                     LS_symbol: paid.amount.ticker.to_owned(),
                     LS_amount: BigDecimal::from_str(&paid.amount.amount)?,
+                    LS_amount_stable: state
+                        .in_stabe_by_date(
+                            &paid.amount.ticker,
+                            &paid.amount.amount,
+                            Some(protocol.to_owned()),
+                            &ls_loan_closing.LS_timestamp,
+                        )
+                        .await?,
                 },
             );
         };
@@ -189,6 +251,14 @@ async fn proceed_market_close(
                     LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
                     LS_symbol: paid.amount.ticker.to_owned(),
                     LS_amount: BigDecimal::from_str(&paid.amount.amount)?,
+                    LS_amount_stable: state
+                        .in_stabe_by_date(
+                            &paid.amount.ticker,
+                            &paid.amount.amount,
+                            Some(protocol.to_owned()),
+                            &ls_loan_closing.LS_timestamp,
+                        )
+                        .await?,
                 },
             );
         };
@@ -207,6 +277,14 @@ async fn proceed_market_close(
                             .to_owned(),
                         LS_symbol: c.0.to_owned(),
                         LS_amount: BigDecimal::from_str(&b.amount)?,
+                        LS_amount_stable: state
+                            .in_stabe_by_date(
+                                &c.0,
+                                &b.amount,
+                                Some(protocol.to_owned()),
+                                &ls_loan_closing.LS_timestamp,
+                            )
+                            .await?,
                     },
                 );
             }

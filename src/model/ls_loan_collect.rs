@@ -6,4 +6,5 @@ pub struct LS_Loan_Collect {
     pub LS_contract_id: String,
     pub LS_symbol: String,
     pub LS_amount: BigDecimal,
+    pub LS_amount_stable: BigDecimal,
 }

@@ -13,8 +13,8 @@ use crate::{
         pnl_over_time, prices, realized_pnl, realized_pnl_stats, revenue,
         subscribe, supplied_borrowed_series, supplied_funds, test_push,
         total_tx_value, total_value_locked, txs, unrealized_pnl,
-        unrealized_pnl_by_address, update_ls_loan_collect, utilization_level,
-        version,
+        unrealized_pnl_by_address, update_ls_loan_collect_price,
+        utilization_level, version,
     },
     error::Error,
 };
@@ -98,7 +98,8 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(get_position_debt_value::index)
                     .service(subscribe::get_index)
                     .service(subscribe::post_index)
-                    .service(test_push::index),
+                    .service(test_push::index)
+                    .service(update_ls_loan_collect_price::index),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

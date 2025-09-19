@@ -322,3 +322,5 @@ UPDATE "LP_Pool" SET "LP_status" = false WHERE "LP_Pool_id" = 'nolus1jufcaqm6657
 17.09.2025
 
 UPDATE "LP_Pool" SET "LP_status" = false WHERE "LP_Pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94';
+
+ALTER TABLE "LS_Loan_Collect" ADD COLUMN  "LS_amount_stable" DECIMAL(39, 0) NOT NULL DEFAULT 0;

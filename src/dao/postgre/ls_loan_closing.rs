@@ -265,4 +265,17 @@ impl Table<LS_Loan_Closing> {
             .fetch_all(&self.pool)
             .await
     }
+
+    pub async fn get(
+        &self,
+        contract: String,
+    ) -> Result<LS_Loan_Closing, Error> {
+        sqlx::query_as(
+            r#"SELECT * FROM "LS_Loan_Closing" WHERE "LS_contract_id" = $1"#,
+        )
+        .bind(contract)
+        .persistent(false)
+        .fetch_one(&self.pool)
+        .await
+    }
 }
