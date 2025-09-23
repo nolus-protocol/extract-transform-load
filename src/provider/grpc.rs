@@ -660,6 +660,42 @@ impl Grpc {
         Ok(data)
     }
 
+    pub async fn get_balance_state_new(
+        &self,
+        contract: String,
+        address: String,
+    ) -> Result<Balance, Error> {
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query balance contract!";
+        const PARCE_MESSAGE_ERROR: &str =
+            "Failed to parse message query balance contract!";
+
+        let data = self
+            .with_retry(async move |mut client| {
+                let request =
+                    format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
+                let bytes = request.as_bytes();
+
+                let data = client
+                    .smart_contract_state(QuerySmartContractStateRequest {
+                        address: contract.clone(),
+                        query_data: bytes.to_vec(),
+                    })
+                    .await
+                    .map(|response| response.into_inner().data);
+
+                data
+            })
+            .await
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice::<Balance>(&data)
+                    .context(PARCE_MESSAGE_ERROR)
+            })?;
+
+        Ok(data)
+    }
+
     pub async fn get_lpp_price(
         &self,
         contract: String,
