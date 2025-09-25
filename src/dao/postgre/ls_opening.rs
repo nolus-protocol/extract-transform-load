@@ -5,8 +5,8 @@ use sqlx::{types::BigDecimal, Error, QueryBuilder, Transaction};
 
 use crate::{
     model::{
-        Borrow_APR, LS_Amount, LS_History, LS_Opening, Leased_Asset,
-        Leases_Monthly, Table,
+        Borrow_APR, LS_Amount, LS_History, LS_Opening, LS_Realized_Pnl_Data,
+        Leased_Asset, Leases_Monthly, Table,
     },
     types::LS_Max_Interest,
 };
@@ -970,6 +970,217 @@ impl Table<LS_Opening> {
             AND s."LS_timestamp" >= NOW() - INTERVAL '20 days'
             GROUP BY s."LS_timestamp"
             ORDER BY s."LS_timestamp"
+            "#,
+        )
+        .bind(address)
+        .persistent(false)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_realized_pnl_data(
+        &self,
+        address: String,
+    ) -> Result<Vec<LS_Realized_Pnl_Data>, Error> {
+        let data = sqlx::query_as(
+            r#"
+                WITH
+                -- Map loan pools -> shorted asset
+                pool_map AS (
+                SELECT * FROM (
+                    SELECT 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990'::text AS id, 'ST_ATOM'::text AS symbol
+                    UNION ALL SELECT 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3', 'ALL_BTC'
+                    UNION ALL SELECT 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', 'ALL_SOL'
+                    UNION ALL SELECT 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z', 'AKT'
+                    UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'ATOM'
+                    UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'OSMO'
+                ) p
+                ),
+
+                -- Openings for the wallet + derived position type and shorted asset (if any)
+                openings AS (
+                SELECT
+                    o."LS_contract_id",
+                    o."LS_timestamp",
+                    o."LS_asset_symbol",
+                    o."LS_loan_amnt",
+                    o."LS_cltr_symbol",
+                    o."LS_cltr_amnt_stable",
+                    o."LS_loan_pool_id",
+                    o."Tx_Hash" AS open_tx_hash,
+                    CASE WHEN o."LS_asset_symbol" IN ('USDC','USDC_NOBLE') THEN 'Short' ELSE 'Long' END AS pos_type,
+                    pm.symbol AS short_symbol
+                FROM "LS_Opening" o
+                LEFT JOIN pool_map pm
+                    ON pm.id = o."LS_loan_pool_id"
+                WHERE o."LS_address_id" = $1
+                ),
+
+                -- Sum of repayments per contract (USDC units)
+                repayments AS (
+                SELECT
+                    r."LS_contract_id",
+                    SUM(r."LS_payment_amnt_stable") / 1000000.0 AS total_repaid_stable
+                FROM "LS_Repayment" r
+                GROUP BY r."LS_contract_id"
+                ),
+
+                -- Sum of user collects per contract (normalize by LS_symbol)
+                collects AS (
+                SELECT
+                    lc."LS_contract_id",
+                    SUM(
+                    CASE
+                        WHEN lc."LS_symbol" IN ('ALL_BTC','WBTC','CRO') THEN lc."LS_amount_stable" / 100000000.0
+                        WHEN lc."LS_symbol" = 'ALL_SOL'                 THEN lc."LS_amount_stable" / 1000000000.0
+                        WHEN lc."LS_symbol" = 'PICA'                    THEN lc."LS_amount_stable" / 1000000000000.0
+                        WHEN lc."LS_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
+                                                                        THEN lc."LS_amount_stable" / 1000000000000000000.0
+                        ELSE lc."LS_amount_stable" / 1000000.0
+                    END
+                    ) AS total_collect_normalized
+                FROM "LS_Loan_Collect" lc
+                GROUP BY lc."LS_contract_id"
+                ),
+
+                -- Fully liquidated contracts
+                liqs AS (
+                SELECT li."LS_contract_id"
+                FROM "LS_Liquidation" li
+                WHERE li."LS_loan_close" = TRUE
+                ),
+
+                -- Close timestamps (one per contract)
+                closing_ts AS (
+                SELECT c."LS_contract_id", c."LS_timestamp" AS close_ts
+                FROM "LS_Loan_Closing" c
+                ),
+
+                -- Closing TxHash candidates
+                repayment_close_tx AS (
+                SELECT r."LS_contract_id", MAX(r."Tx_Hash") AS tx_hash
+                FROM "LS_Repayment" r
+                WHERE r."LS_loan_close" = TRUE
+                GROUP BY r."LS_contract_id"
+                ),
+                closepos_tx AS (
+                SELECT cp."LS_contract_id", MAX(cp."Tx_Hash") AS tx_hash
+                FROM "LS_Close_Position" cp
+                WHERE cp."LS_loan_close" = TRUE
+                GROUP BY cp."LS_contract_id"
+                ),
+                liquidation_tx AS (
+                SELECT li."LS_contract_id", MAX(li."Tx_Hash") AS tx_hash
+                FROM "LS_Liquidation" li
+                WHERE li."LS_loan_close" = TRUE
+                GROUP BY li."LS_contract_id"
+                ),
+
+                -- Only positions that are user-closed (has collects) OR fully liquidated
+                closable_positions AS (
+                SELECT o.*
+                FROM openings o
+                WHERE EXISTS (SELECT 1 FROM collects c WHERE c."LS_contract_id" = o."LS_contract_id")
+                    OR EXISTS (SELECT 1 FROM liqs     l WHERE l."LS_contract_id" = o."LS_contract_id")
+                ),
+
+                -- Opening row
+                opening_rows AS (
+                SELECT
+                    o."LS_timestamp" AS "Date",
+                    o."LS_contract_id" AS "Position ID",
+                    (
+                    CASE
+                        WHEN o."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_cltr_amnt_stable" / 100000000.0
+                        WHEN o."LS_cltr_symbol" = 'ALL_SOL'                 THEN o."LS_cltr_amnt_stable" / 1000000000.0
+                        WHEN o."LS_cltr_symbol" = 'PICA'                    THEN o."LS_cltr_amnt_stable" / 1000000000000.0
+                        WHEN o."LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
+                                                                        THEN o."LS_cltr_amnt_stable" / 1000000000000000000.0
+                        ELSE o."LS_cltr_amnt_stable" / 1000000.0
+                    END
+                    + COALESCE(r.total_repaid_stable, 0.0)
+                    ) AS "Sent Amount",
+                    'USDC' AS "Sent Currency",
+                    (CASE
+                    WHEN o."LS_asset_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_loan_amnt" / 100000000.0
+                    WHEN o."LS_asset_symbol" = 'ALL_SOL'                 THEN o."LS_loan_amnt" / 1000000000.0
+                    WHEN o."LS_asset_symbol" = 'PICA'                    THEN o."LS_loan_amnt" / 1000000000000.0
+                    WHEN o."LS_asset_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
+                                                                        THEN o."LS_loan_amnt" / 1000000000000000000.0
+                    ELSE o."LS_loan_amnt" / 1000000.0
+                    END) AS "Received Amount",
+                    CASE WHEN o."LS_asset_symbol" IN ('USDC','USDC_NOBLE') THEN 'USDC' ELSE o."LS_asset_symbol" END AS "Received Currency",
+                    0.0 AS "Fee Amount",
+                    'USDC' AS "Fee Currency",
+                    'margin trading' AS "Label",
+                    CASE
+                    WHEN o.pos_type = 'Short' THEN CONCAT(COALESCE(o.short_symbol,'Unknown'),' short opening')
+                    ELSE CONCAT(o."LS_asset_symbol",' long opening')
+                    END AS "Description",
+                    o.open_tx_hash AS "TxHash"
+                FROM closable_positions o
+                LEFT JOIN repayments r ON r."LS_contract_id" = o."LS_contract_id"
+                ),
+
+                -- Closing row
+                closing_rows AS (
+                SELECT
+                    cts.close_ts AS "Date",
+                    o."LS_contract_id" AS "Position ID",
+                    (CASE
+                    WHEN o."LS_asset_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_loan_amnt" / 100000000.0
+                    WHEN o."LS_asset_symbol" = 'ALL_SOL'                 THEN o."LS_loan_amnt" / 1000000000.0
+                    WHEN o."LS_asset_symbol" = 'PICA'                    THEN o."LS_loan_amnt" / 1000000000000.0
+                    WHEN o."LS_asset_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
+                                                                        THEN o."LS_loan_amnt" / 1000000000000000000.0
+                    ELSE o."LS_loan_amnt" / 1000000.0
+                    END) AS "Sent Amount",
+                    CASE WHEN o."LS_asset_symbol" IN ('USDC','USDC_NOBLE') THEN 'USDC' ELSE o."LS_asset_symbol" END AS "Sent Currency",
+                    COALESCE(c.total_collect_normalized,0.0) AS "Received Amount",
+                    'USDC' AS "Received Currency",
+                    0.0 AS "Fee Amount",
+                    'USDC' AS "Fee Currency",
+                    'margin trading' AS "Label",
+                    CASE
+                    WHEN COALESCE(c.total_collect_normalized,0.0) > 0
+                        THEN CASE WHEN o.pos_type='Short'
+                                THEN CONCAT(COALESCE(o.short_symbol,'Unknown'),' short closing')
+                                ELSE CONCAT(o."LS_asset_symbol",' long closing')
+                            END
+                    ELSE CASE WHEN o.pos_type='Short'
+                                THEN CONCAT(COALESCE(o.short_symbol,'Unknown'),' short liquidation')
+                                ELSE CONCAT(o."LS_asset_symbol",' long liquidation')
+                        END
+                    END AS "Description",
+                    COALESCE(rct.tx_hash,cpt.tx_hash,lqt.tx_hash) AS "TxHash"
+                FROM closable_positions o
+                INNER JOIN closing_ts cts ON cts."LS_contract_id"=o."LS_contract_id"
+                LEFT JOIN collects c ON c."LS_contract_id"=o."LS_contract_id"
+                LEFT JOIN repayment_close_tx rct ON rct."LS_contract_id"=o."LS_contract_id"
+                LEFT JOIN closepos_tx cpt ON cpt."LS_contract_id"=o."LS_contract_id"
+                LEFT JOIN liquidation_tx lqt ON lqt."LS_contract_id"=o."LS_contract_id"
+                )
+
+                -- Final output
+                SELECT
+                "Date",
+                "Position ID",
+                "Sent Amount",
+                "Sent Currency",
+                "Received Amount",
+                "Received Currency",
+                "Fee Amount",
+                "Fee Currency",
+                "Label",
+                "Description",
+                "TxHash"
+                FROM (
+                SELECT * FROM opening_rows
+                UNION ALL
+                SELECT * FROM closing_rows
+                ) x
+                ORDER BY "Date","Position ID","Sent Currency","Received Currency";
             "#,
         )
         .bind(address)

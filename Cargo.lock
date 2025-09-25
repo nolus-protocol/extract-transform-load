@@ -924,7 +924,7 @@ dependencies = [
 
 [[package]]
 name = "etl"
-version = "3.14.2"
+version = "3.14.3"
 dependencies = [
  "actix-cors",
  "actix-files",

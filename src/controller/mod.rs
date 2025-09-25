@@ -22,6 +22,7 @@ pub mod optimal;
 pub mod pnl_over_time;
 pub mod prices;
 pub mod realized_pnl;
+pub mod realized_pnl_data;
 pub mod realized_pnl_stats;
 pub mod revenue;
 pub mod subscribe;
@@ -33,9 +34,10 @@ pub mod total_value_locked;
 pub mod txs;
 pub mod unrealized_pnl;
 pub mod unrealized_pnl_by_address;
+
 // pub mod update;
 // pub mod update_ls_loan_collect;
-pub mod update_ls_loan_collect_price;
+// pub mod update_ls_loan_collect_price;
 
 pub mod utilization_level;
 pub mod version;

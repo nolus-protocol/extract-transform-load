@@ -328,5 +328,16 @@
         "type": "String"
       }
     ]
+  },
+  {
+    "description": "Realized pnl data",
+    "url": "/api/realized-pnl-data",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      }
+    ]
   }
 ]

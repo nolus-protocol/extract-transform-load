@@ -18,6 +18,7 @@ mod ls_liquidation_warning;
 mod ls_loan_closing;
 mod ls_loan_collect;
 mod ls_opening;
+mod ls_realized_pnl_data;
 mod ls_repayment;
 mod ls_slippage_anomaly;
 mod ls_state;
@@ -60,6 +61,7 @@ pub use ls_loan_closing::{
 };
 pub use ls_loan_collect::LS_Loan_Collect;
 pub use ls_opening::{LS_History, LS_Opening};
+pub use ls_realized_pnl_data::LS_Realized_Pnl_Data;
 pub use ls_repayment::LS_Repayment;
 pub use ls_slippage_anomaly::LS_Slippage_Anomaly;
 pub use ls_state::LS_State;
