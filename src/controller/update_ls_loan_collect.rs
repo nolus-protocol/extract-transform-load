@@ -227,7 +227,6 @@ async fn proceed_market_close(
                 ls_loan_closing.Block
             )
         )?;
-
         if let Some(paid) = &lease_state.ClosingTransferIn {
             let c = paid.clone();
             let paid_amount =
@@ -250,6 +249,32 @@ async fn proceed_market_close(
                     LS_amount: BigDecimal::from_str(
                         &paid_amount.amount_in.amount,
                     )?,
+                    LS_amount_stable: amount_stable,
+                },
+            );
+        };
+
+        if let Some(paid) = &lease_state.PaidActive {
+            let c = paid.lease.lease.position.clone();
+            let paid_amount = c
+                .context("missing paid_amount lease_state.PaidActive")?
+                .amount;
+
+            let amount_stable = get_stable_amount(
+                state.clone(),
+                ls_loan_closing.LS_contract_id.to_owned(),
+                paid_amount.amount.to_owned(),
+                paid_amount.ticker.to_owned(),
+                ls_loan_closing.LS_timestamp.to_owned(),
+            )
+            .await?;
+
+            data.insert(
+                paid_amount.ticker.to_owned(),
+                LS_Loan_Collect {
+                    LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
+                    LS_symbol: paid_amount.ticker.to_owned(),
+                    LS_amount: BigDecimal::from_str(&paid_amount.amount)?,
                     LS_amount_stable: amount_stable,
                 },
             );
@@ -288,7 +313,6 @@ async fn proceed_market_close(
             .into_values()
             .filter(|item| item.LS_symbol != state.config.native_currency)
             .collect();
-
         state
             .database
             .ls_loan_collect

@@ -38,6 +38,7 @@ pub struct LS_Raw_State {
     pub PartialClose: Option<TransferInInit>,
     pub OpenedActive: Option<Lease>,
     pub ClosingTransferIn: Option<TransferInInit>,
+    pub PaidActive: Option<Lease>,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]
@@ -67,7 +68,7 @@ pub struct PositionData {
     pub amount: Option<AmountTicker>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Position {
     pub amount: AmountTicker,
 }
