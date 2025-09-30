@@ -83,6 +83,10 @@ async fn init<'c>() -> Result<(Config, DatabasePool), Error> {
 async fn start_aggregation_tasks(
     app_state: AppState<State>,
 ) -> Result<(), Error> {
+    if !app_state.config.enable_sync {
+        return Ok(());
+    }
+
     let interval_value: u64 = app_state.config.aggregation_interval.into();
     let interval_value = interval_value * 60 * 60;
     let model = &app_state.database.action_history;

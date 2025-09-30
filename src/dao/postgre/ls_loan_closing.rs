@@ -260,10 +260,12 @@ impl Table<LS_Loan_Closing> {
     }
 
     pub async fn get_all(&self) -> Result<Vec<LS_Loan_Closing>, Error> {
-        sqlx::query_as(r#"SELECT * FROM "LS_Loan_Closing""#)
-            .persistent(false)
-            .fetch_all(&self.pool)
-            .await
+        sqlx::query_as(
+            r#"SELECT * FROM "LS_Loan_Closing" WHERE "Block" <= 3785599"#, //<= 3785599
+        )
+        .persistent(false)
+        .fetch_all(&self.pool)
+        .await
     }
 
     pub async fn get(

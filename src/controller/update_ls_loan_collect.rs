@@ -3,6 +3,7 @@ use std::{collections::HashMap, str::FromStr};
 use actix_web::{get, web, Responder};
 use anyhow::Context;
 use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinSet;
 
@@ -95,7 +96,7 @@ async fn proceed_repayment(
             ls_loan_closing.LS_contract_id.to_owned(),
             ls_loan_closing.Block - 1
         ),
-        state.grpc.get_lease_state_by_block(
+        state.grpc.get_lease_raw_state_by_block(
             ls_loan_closing.LS_contract_id.to_owned(),
             ls_loan_closing.Block - 1
         )
@@ -103,13 +104,33 @@ async fn proceed_repayment(
 
     let mut data: HashMap<String, LS_Loan_Collect> = HashMap::new();
 
-    if let Some(lease) = lease.opened {
+    if let Some(lease) = lease.OpenedActive {
+        let v1 = lease.lease.lease.position;
+        let v2 = lease.lease.lease.amount;
+
+        let value = if let Some(v) = v2 {
+            v
+        } else if let Some(v) = v1 {
+            v.amount
+        } else {
+            return Err(Error::MissingParams(String::from("missing params")));
+        };
+
+        let amount_stable = get_stable_amount(
+            state.clone(),
+            ls_loan_closing.LS_contract_id.to_owned(),
+            value.amount.to_owned(),
+            value.ticker.to_owned(),
+            ls_loan_closing.LS_timestamp.to_owned(),
+        )
+        .await?;
         data.insert(
-            lease.amount.ticker.to_owned(),
+            value.ticker.to_owned(),
             LS_Loan_Collect {
                 LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
-                LS_symbol: lease.amount.ticker.to_owned(),
-                LS_amount: BigDecimal::from_str(&lease.amount.amount)?,
+                LS_symbol: value.ticker.to_owned(),
+                LS_amount: BigDecimal::from_str(&value.amount)?,
+                LS_amount_stable: amount_stable,
             },
         );
     }
@@ -120,12 +141,22 @@ async fn proceed_repayment(
         });
 
         if let Some(c) = item {
+            let amount_stable = get_stable_amount(
+                state.clone(),
+                ls_loan_closing.LS_contract_id.to_owned(),
+                b.amount.to_owned(),
+                c.0.to_owned(),
+                ls_loan_closing.LS_timestamp.to_owned(),
+            )
+            .await?;
+
             data.insert(
                 c.0.to_owned(),
                 LS_Loan_Collect {
                     LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
                     LS_symbol: c.0.to_owned(),
                     LS_amount: BigDecimal::from_str(&b.amount)?,
+                    LS_amount_stable: amount_stable,
                 },
             );
         }
@@ -161,10 +192,20 @@ async fn proceed_market_close(
             .get_closed_by_contract(ls_loan_closing.LS_contract_id.to_owned())
             .await;
         if let Ok(l) = data {
+            let amount_stable = get_stable_amount(
+                state.clone(),
+                ls_loan_closing.LS_contract_id.to_owned(),
+                l.LS_change.to_string(),
+                l.LS_payment_symbol.to_owned(),
+                ls_loan_closing.LS_timestamp.to_owned(),
+            )
+            .await?;
+
             let data = vec![LS_Loan_Collect {
                 LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
                 LS_symbol: l.LS_payment_symbol,
                 LS_amount: l.LS_change,
+                LS_amount_stable: amount_stable,
             }];
 
             state.database.ls_loan_collect.insert_many(&data).await?;
@@ -181,30 +222,35 @@ async fn proceed_market_close(
                 ls_loan_closing.LS_contract_id.to_owned(),
                 ls_loan_closing.Block
             ),
-            state.grpc.get_lease_state_by_block(
+            state.grpc.get_lease_raw_state_by_block(
                 ls_loan_closing.LS_contract_id.to_owned(),
                 ls_loan_closing.Block
             )
         )?;
 
-        if let Some(paid) = &lease_state.paid {
-            data.insert(
-                paid.amount.ticker.to_owned(),
-                LS_Loan_Collect {
-                    LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
-                    LS_symbol: paid.amount.ticker.to_owned(),
-                    LS_amount: BigDecimal::from_str(&paid.amount.amount)?,
-                },
-            );
-        };
+        if let Some(paid) = &lease_state.ClosingTransferIn {
+            let c = paid.clone();
+            let paid_amount =
+                c.TransferInInit.context("Missing paid.TransferInInit")?;
 
-        if let Some(paid) = &lease_state.closing {
+            let amount_stable = get_stable_amount(
+                state.clone(),
+                ls_loan_closing.LS_contract_id.to_owned(),
+                paid_amount.amount_in.amount.to_owned(),
+                paid_amount.amount_in.ticker.to_owned(),
+                ls_loan_closing.LS_timestamp.to_owned(),
+            )
+            .await?;
+
             data.insert(
-                paid.amount.ticker.to_owned(),
+                paid_amount.amount_in.ticker.to_owned(),
                 LS_Loan_Collect {
                     LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
-                    LS_symbol: paid.amount.ticker.to_owned(),
-                    LS_amount: BigDecimal::from_str(&paid.amount.amount)?,
+                    LS_symbol: paid_amount.amount_in.ticker.to_owned(),
+                    LS_amount: BigDecimal::from_str(
+                        &paid_amount.amount_in.amount,
+                    )?,
+                    LS_amount_stable: amount_stable,
                 },
             );
         };
@@ -215,6 +261,15 @@ async fn proceed_market_close(
             });
 
             if let Some(c) = item {
+                let amount_stable = get_stable_amount(
+                    state.clone(),
+                    ls_loan_closing.LS_contract_id.to_owned(),
+                    b.amount.to_owned(),
+                    c.0.to_owned(),
+                    ls_loan_closing.LS_timestamp.to_owned(),
+                )
+                .await?;
+
                 data.insert(
                     c.0.to_owned(),
                     LS_Loan_Collect {
@@ -223,6 +278,7 @@ async fn proceed_market_close(
                             .to_owned(),
                         LS_symbol: c.0.to_owned(),
                         LS_amount: BigDecimal::from_str(&b.amount)?,
+                        LS_amount_stable: amount_stable,
                     },
                 );
             }
@@ -241,4 +297,35 @@ async fn proceed_market_close(
     }
 
     Ok(())
+}
+
+async fn get_stable_amount(
+    state: AppState<State>,
+    contract: String,
+    amount: String,
+    ticker: String,
+    date: DateTime<Utc>,
+) -> Result<BigDecimal, Error> {
+    let ls_opening = state
+        .database
+        .ls_opening
+        .get(contract.to_owned())
+        .await?
+        .context(format!("lease contract not found {}", &contract))?;
+
+    let protocol = match state
+        .get_protocol_by_pool_id(&ls_opening.LS_loan_pool_id)
+        .context(format!(
+            "protocol not found {}",
+            &ls_opening.LS_loan_pool_id
+        )) {
+        Ok(p) => Some(p),
+        Err(_) => None,
+    };
+
+    let amount_stable = state
+        .in_stabe_by_date(&ticker, &amount, protocol, &date)
+        .await?;
+
+    Ok(amount_stable)
 }

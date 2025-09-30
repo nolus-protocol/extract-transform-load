@@ -25,15 +25,15 @@ impl Event {
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {
+        if !self.app_state.config.enable_sync {
+            return Ok(());
+        }
+
         loop {
             let app = self.app_state.clone();
 
             if self.app_state.config.enable_sync {
                 if let Err(e) = tokio::try_join!(self.init(), start_sync(app)) {
-                    error!("{}", e);
-                }
-            } else {
-                if let Err(e) = tokio::try_join!(self.init()) {
                     error!("{}", e);
                 }
             }

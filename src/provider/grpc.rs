@@ -355,7 +355,8 @@ impl Grpc {
         address: String,
         height: i64,
     ) -> Result<QueryAllBalancesResponse, Error> {
-        const QUERY_NODE_INFO_ERROR: &str = "Failed to query all balances!";
+        let QUERY_NODE_INFO_ERROR =
+            format!("Failed to query all balances {}!", &height);
 
         let mut request = QueryAllBalancesRequest {
             address,
@@ -534,7 +535,7 @@ impl Grpc {
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query lease contract!";
         const PARCE_MESSAGE_ERROR: &str =
-            "Failed to parse message query lease contract!";
+            "Failed to parse message query lease contract get_lease_state!";
 
         let mut client = self.wasm_query_client.clone();
         let data = client
@@ -564,12 +565,13 @@ impl Grpc {
         } else {
             b"{}"
         };
-
-        let QUERY_CONTRACT_ERROR =
-            format!("Failed to run query lease contract by block {}!", height);
+        let QUERY_CONTRACT_ERROR = format!(
+            "Failed to run query lease contract by block {} {}!",
+            height, contract
+        );
 
         const PARCE_MESSAGE_ERROR: &str =
-            "Failed to parse message query lease contract!";
+            "Failed to parse message query lease contract get_lease_state_by_block!";
         let mut request = QuerySmartContractStateRequest {
             address: contract.to_owned(),
             query_data: bytes.to_vec(),
@@ -601,12 +603,12 @@ impl Grpc {
         let bytes = "state";
 
         let QUERY_CONTRACT_ERROR = format!(
-            "Failed to run query lease contract by block raw{}!",
-            height
+            "Failed to run query lease contract by block raw {} {}!",
+            height, contract
         );
 
-        const PARCE_MESSAGE_ERROR: &str =
-            "Failed to parse message query lease contract!";
+        let PARCE_MESSAGE_ERROR =
+            format!("Failed to parse message query lease contract get_lease_raw_state_by_block  {} {}!",height, contract);
         let mut request = QueryRawContractStateRequest {
             address: contract,
             query_data: bytes.as_bytes().to_vec(),
@@ -618,14 +620,11 @@ impl Grpc {
 
         let mut client = self.wasm_query_client.clone();
         let data = client.raw_contract_state(request).await;
-
         let data = data
             .map(|response| response.into_inner().data)
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
-                let k =
-                    serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR);
-                k
+                serde_json::from_slice(&data).context(PARCE_MESSAGE_ERROR)
             })?;
         Ok(data)
     }

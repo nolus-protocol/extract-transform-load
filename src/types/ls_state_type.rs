@@ -36,15 +36,38 @@ pub struct Status_Paid {
 pub struct LS_Raw_State {
     pub FullClose: Option<TransferInInit>,
     pub PartialClose: Option<TransferInInit>,
+    pub OpenedActive: Option<Lease>,
+    pub ClosingTransferIn: Option<TransferInInit>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 pub struct TransferInInit {
     pub TransferInInit: Option<AmountIn>,
     pub TransferInFinish: Option<AmountIn>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 pub struct AmountIn {
     pub amount_in: AmountTicker,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Lease {
+    pub lease: LeaseData,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LeaseData {
+    pub lease: PositionData,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PositionData {
+    pub position: Option<Position>,
+    pub amount: Option<AmountTicker>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Position {
+    pub amount: AmountTicker,
 }

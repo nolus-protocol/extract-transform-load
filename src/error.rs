@@ -158,6 +158,9 @@ pub enum Error {
 
     #[error("InvalidHeader error: {0}")]
     InvalidHeader(String),
+
+    #[error("Missing params: {0}")]
+    MissingParams(String),
 }
 
 impl ResponseError for Error {}

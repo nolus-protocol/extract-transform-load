@@ -120,6 +120,10 @@ pub async fn fetch_insert(
 }
 
 pub async fn mp_assets_task(app_state: AppState<State>) -> Result<(), Error> {
+    if !app_state.config.enable_sync {
+        return Ok(());
+    }
+
     let interval: u64 = app_state.config.mp_asset_interval.into();
 
     let mut interval = time::interval(Duration::from_secs(interval));
