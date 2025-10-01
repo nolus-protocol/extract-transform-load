@@ -24,24 +24,19 @@ pub struct LS_Loan {
     pub Active: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize, FromRow)]
+#[derive(Debug, FromRow, Deserialize, Serialize)]
 pub struct Pnl_Result {
+    #[sqlx(rename = "Position ID")]
     pub LS_contract_id: String,
-    pub LS_amnt: BigDecimal,
-    pub LS_amnt_stable: BigDecimal,
-    pub LS_pnl: BigDecimal,
-    pub LS_timestamp: DateTime<Utc>,
+    pub LS_asset_symbol: String,
+    pub LS_loan_pool_id: String,
     pub Type: String,
-    pub Block: i64,
-    pub LS_asset_symbol: String,
-    pub LS_loan_pool_id: String,
-    pub LS_Close_Strategy: Option<String>,
-    pub LS_Close_Strategy_Ltv: Option<i16>,
-}
-
-#[derive(Debug, Deserialize, Serialize, FromRow)]
-pub struct Realized_Pnl_Result {
-    pub LS_pnl: BigDecimal,
-    pub LS_loan_pool_id: String,
-    pub LS_asset_symbol: String,
+    #[sqlx(rename = "Close Date UTC")]
+    pub LS_timestamp: String,
+    #[sqlx(rename = "Sent (USDC, Opening)")]
+    pub Ls_sent: f64,
+    #[sqlx(rename = "Received (USDC, Closing)")]
+    pub Ls_receive: f64,
+    #[sqlx(rename = "Realized PnL (USDC)")]
+    pub LS_pnl: f64,
 }
