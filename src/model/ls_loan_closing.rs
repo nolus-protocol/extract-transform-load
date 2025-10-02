@@ -31,8 +31,7 @@ pub struct Pnl_Result {
     pub LS_asset_symbol: String,
     pub LS_loan_pool_id: String,
     pub Type: String,
-    #[sqlx(rename = "Close Date UTC")]
-    pub LS_timestamp: String,
+    pub LS_timestamp: DateTime<Utc>,
     #[sqlx(rename = "Sent (USDC, Opening)")]
     pub Ls_sent: f64,
     #[sqlx(rename = "Received (USDC, Closing)")]

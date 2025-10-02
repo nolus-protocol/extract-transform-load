@@ -254,6 +254,7 @@ impl Table<LS_Loan_Closing> {
                 o."LS_asset_symbol",
                 o."LS_loan_pool_id",
                 ct."Type",
+                ct.close_ts                                                               AS "LS_timestamp",
                 to_char(ct.close_ts, 'YYYY-MM-DD HH24:MI UTC')                            AS "Close Date UTC",
                 (
                     (CASE

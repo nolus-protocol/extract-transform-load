@@ -32,10 +32,8 @@ impl Event {
         loop {
             let app = self.app_state.clone();
 
-            if self.app_state.config.enable_sync {
-                if let Err(e) = tokio::try_join!(self.init(), start_sync(app)) {
-                    error!("{}", e);
-                }
+            if let Err(e) = tokio::try_join!(self.init(), start_sync(app)) {
+                error!("{}", e);
             }
 
             sleep(Duration::from_secs(
@@ -102,8 +100,7 @@ impl Event {
 
     async fn insert_tx(&mut self, height: u64) -> Result<(), Error> {
         let height = height.try_into()?;
-        let (txs, time_stamp) =
-            self.app_state.grpc.prepare_block(height).await?;
+        let (txs, time_stamp) = self.app_state.grpc.get_block(height).await?;
         insert_txs(self.app_state.clone(), txs, height, time_stamp).await?;
         Ok(())
     }

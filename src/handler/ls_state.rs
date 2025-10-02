@@ -57,7 +57,7 @@ async fn proceed(
     timestsamp: DateTime<Utc>,
 ) -> Result<Option<LS_State>, Error> {
     let contract = item.LS_contract_id.to_owned();
-    let data = state.grpc.get_lease_state_new(contract.to_owned()).await?;
+    let data = state.grpc.get_lease_state(contract.to_owned()).await?;
 
     if let Some(status) = data.opened {
         let pool_currency =

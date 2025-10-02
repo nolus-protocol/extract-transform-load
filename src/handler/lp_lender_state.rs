@@ -71,10 +71,9 @@ async fn proceed(
 ) -> Result<LP_Lender_State, Error> {
     let (LP_address_id, LP_Pool_id) = item;
     let (balance_task, lpp_price) = tokio::join!(
-        state.grpc.get_balance_state_new(
-            LP_Pool_id.to_owned(),
-            LP_address_id.to_owned()
-        ),
+        state
+            .grpc
+            .get_balance_state(LP_Pool_id.to_owned(), LP_address_id.to_owned()),
         state.grpc.get_lpp_price(LP_Pool_id.to_owned())
     );
 
