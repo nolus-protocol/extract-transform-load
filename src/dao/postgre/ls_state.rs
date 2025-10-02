@@ -298,81 +298,58 @@ impl Table<LS_State> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
     r#"
-        WITH DP_Loan_Table AS (
-        SELECT
-          "LS_Opening"."LS_contract_id" as "Contract ID",
-              CASE
-            WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_principal_stable" / 100000000
-            WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_principal_stable" / 1000000000
-            ELSE "LS_principal_stable" / 1000000
-          END AS "Loan",
-          CASE
-            WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
-            WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
-            WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
-            WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
-            ELSE "LS_cltr_amnt_stable" / 1000000
-          END AS "Down Payment"
-        FROM
-          (
-            SELECT
-              *
-            FROM
-              "LS_State" s1
-            WHERE
-              s1."LS_timestamp" >= NOW() - INTERVAL '1 hours'
-          ) AS "Opened"
-          LEFT JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "Opened"."LS_contract_id"
-      ),
-      Lease_Value_Table AS (
-        SELECT
-          "LS_Opening"."LS_contract_id" as "Contract ID",
-          CASE
-            WHEN "LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN "LS_amnt_stable" / 100000000
-            WHEN "LS_asset_symbol" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
-            WHEN "LS_asset_symbol" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000
-            WHEN "LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_amnt_stable" / 1000000000000000000
-            ELSE "LS_amnt_stable" / 1000000
-          END AS "Lease Value",
-      CASE
-        WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN ("LS_prev_margin_stable" + "LS_current_margin_stable") / 100000000
-        WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN ("LS_prev_margin_stable" + "LS_current_margin_stable") / 1000000000
-        ELSE ("LS_prev_margin_stable" + "LS_current_margin_stable") / 1000000
-      END AS "Margin Interest",
+        WITH Loan_Type_Map AS (
+          SELECT 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' AS id, 'Short' AS type, 'ALL_BTC' AS symbol, 100000000 AS denom
+            UNION ALL SELECT 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', 'Short', 'ALL_SOL', 1000000000
+            UNION ALL SELECT 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z', 'Short', 'AKT', 1000000
+            UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'Short', 'ATOM', 1000000
+            UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'Short', 'OSMO', 1000000
+        ),
+        Latest_States AS (
+          SELECT DISTINCT ON ("LS_contract_id") *
+          FROM "LS_State"
+          WHERE "LS_timestamp" > NOW() - INTERVAL '1 hour'
+          ORDER BY "LS_contract_id", "LS_timestamp" DESC
+        ),
+        Joined_States AS (
+          SELECT
+            o."LS_contract_id",
+            -- Lease Value
+            CASE
+              WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000.0
+              WHEN o."LS_asset_symbol" = 'ALL_SOL' THEN s."LS_amnt_stable" / 1000000000.0
+              WHEN o."LS_asset_symbol" = 'PICA' THEN s."LS_amnt_stable" / 1000000000000.0
+              WHEN o."LS_asset_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN s."LS_amnt_stable" / 1000000000000000000.0
+              ELSE s."LS_amnt_stable" / 1000000.0
+            END AS "Lease Value",
 
-      CASE
-        WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN ("LS_prev_interest_stable" + "LS_current_interest_stable") / 100000000
-        WHEN "LS_Opening"."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN ("LS_prev_interest_stable" + "LS_current_interest_stable") / 1000000000
-        ELSE ("LS_prev_interest_stable" + "LS_current_interest_stable") / 1000000
-      END AS "Loan Interest"
-        FROM
-          (
-            SELECT
-              *
-            FROM
-              "LS_State" s1
-            WHERE
-              s1."LS_timestamp" = (
-                SELECT
-                  MAX("LS_timestamp")
-                FROM
-                  "LS_State" s2
-                WHERE
-                  s1."LS_contract_id" = s2."LS_contract_id"
-                  and "LS_timestamp" > now() - INTERVAL '1 hours'
-              )
-            ORDER BY
-              "LS_timestamp"
-          ) AS "Opened"
-          LEFT JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "Opened"."LS_contract_id"
-        WHERE
-          "LS_amnt_stable" > 0
-      )
-      SELECT
-        SUM("Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest") AS "PnL"
-      FROM
-        Lease_Value_Table lvt
-        LEFT JOIN DP_Loan_Table dplt ON lvt."Contract ID" = dplt."Contract ID"
+            -- Loan
+            CASE
+              WHEN m.symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
+              WHEN m.symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
+              ELSE s."LS_principal_stable" / 1000000.0
+            END AS "Loan",
+
+            -- Down Payment
+            CASE
+              WHEN o."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_cltr_amnt_stable" / 100000000.0
+              WHEN o."LS_cltr_symbol" = 'ALL_SOL' THEN o."LS_cltr_amnt_stable" / 1000000000.0
+              WHEN o."LS_cltr_symbol" = 'PICA' THEN o."LS_cltr_amnt_stable" / 1000000000000.0
+              WHEN o."LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000.0
+              ELSE o."LS_cltr_amnt_stable" / 1000000.0
+            END AS "Down Payment",
+
+            -- Margin & Loan Interest
+            (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(m.denom, 1000000.0) AS "Margin Interest",
+            (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(m.denom, 1000000.0) AS "Loan Interest"
+          FROM Latest_States s
+          JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
+          LEFT JOIN Loan_Type_Map m ON o."LS_loan_pool_id" = m.id
+          WHERE s."LS_amnt_stable" > 0
+        )
+        SELECT
+          SUM("Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest") AS "PnL"
+        FROM Joined_States
         "#,
     )
     .persistent(false)
