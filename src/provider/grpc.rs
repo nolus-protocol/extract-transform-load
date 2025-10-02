@@ -67,7 +67,9 @@ impl Grpc {
             .keep_alive_while_idle(true)
             .keep_alive_timeout(Duration::from_secs(10))
             .tls_config(tls_config)
-            .context("Could not parse tls config")?;
+            .context("Could not parse tls config")?
+            .user_agent(String::from("nolus-etl").as_str())
+            .context("Could not set user agent")?;
 
         let channel = endpoint.connect_lazy();
 
