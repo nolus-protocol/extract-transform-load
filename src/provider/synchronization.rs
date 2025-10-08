@@ -1,6 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use anyhow::Context as _;
 use futures::future::try_join_all;
 use tracing::{error, info};
 
@@ -133,9 +132,7 @@ struct Handler {
 
 impl Handler {
     pub async fn new(app_state: AppState<State>) -> Result<Self, Error> {
-        let config = app_state.config.clone();
-        let grpc: Grpc =
-            Grpc::new(config).await.context("unable to start grpc")?;
+        let grpc = app_state.grpc.clone();
         Ok(Handler { app_state, grpc })
     }
     pub async fn init(&mut self, parts: Vec<(i64, i64)>) -> Result<(), Error> {

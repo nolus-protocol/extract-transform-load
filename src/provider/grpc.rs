@@ -1,4 +1,4 @@
-use std::{fmt::Debug, str::FromStr, time::Duration};
+use std::{fmt::Debug, future::Future, str::FromStr, time::Duration};
 
 use crate::{
     configuration::Config,
@@ -43,7 +43,7 @@ use tonic::{
     IntoRequest, Status,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Grpc {
     pub config: Config,
     pub endpoint: Endpoint,
@@ -57,37 +57,45 @@ pub struct Grpc {
 impl Grpc {
     pub async fn new(config: Config) -> Result<Grpc, Error> {
         let host = config.grpc_host.to_owned();
-
         let uri = Uri::from_str(&host).context("Invalid grpc url")?;
         let tls_config = ClientTlsConfig::new().with_native_roots();
         let limit = 10 * 1024 * 1024;
-
         let endpoint = Endpoint::from(uri.clone())
-            .http2_keep_alive_interval(Duration::from_secs(30))
-            .keep_alive_while_idle(true)
-            .keep_alive_timeout(Duration::from_secs(10))
+            .tcp_nodelay(true)
+            .tcp_keepalive(Some(Duration::from_secs(300)))
+            .http2_keep_alive_interval(Duration::from_secs(180))
+            .keep_alive_while_idle(false)
+            .keep_alive_timeout(Duration::from_secs(20))
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(60))
+            .http2_adaptive_window(true)
             .tls_config(tls_config)
-            .context("Could not parse tls config")?
-            .user_agent(String::from("nolus-etl").as_str())
-            .context("Could not set user agent")?;
+            .context("set tls config error")?
+            .user_agent("nolus-etl")
+            .context("set user agent error")?;
 
-        let channel = endpoint.connect_lazy();
+        let channel =
+            endpoint.connect().await.context("channel not connected")?;
 
         let tendermint_client =
             TendermintServiceClient::with_origin(channel.clone(), uri.clone())
+                .send_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
         let wasm_query_client =
             WasmQueryClient::with_origin(channel.clone(), uri.clone())
+                .send_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
 
         let bank_query_client =
             BankQueryClient::with_origin(channel.clone(), uri.clone())
+                .send_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
         let tx_service_client =
             TxServiceClient::with_origin(channel.clone(), uri.clone())
+                .send_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
 
@@ -102,135 +110,31 @@ impl Grpc {
         })
     }
 
-    async fn with_retry_wasm<F>(&self, mut f: F) -> Result<Vec<u8>, Error>
+    async fn with_retry<C, F, Fut, T>(
+        &self,
+        client_factory: impl Fn() -> C + Send,
+        mut f: F,
+    ) -> Result<T, Error>
     where
-        F: AsyncFnMut(
-            WasmQueryClient<Channel>,
-        ) -> std::result::Result<Vec<u8>, Status>,
+        C: Clone + Send + 'static,
+        F: FnMut(C) -> Fut + Send,
+        Fut: Future<Output = std::result::Result<T, Status>> + Send,
+        T: Send + 'static,
     {
         let mut attempts = 10;
 
         loop {
-            let c = self.wasm_query_client.clone();
-            let k = f(c).await;
+            let client = client_factory();
 
-            match k {
+            match f(client).await {
                 Ok(e) => return Ok(e),
                 Err(e) => match e.code() {
-                    tonic::Code::Cancelled
+                    tonic::Code::Unavailable
+                    | tonic::Code::ResourceExhausted
+                    | tonic::Code::DeadlineExceeded
                     | tonic::Code::Internal
-                    | tonic::Code::Unknown => {
-                        if attempts < 0 {
-                            return Err(Error::GrpsError(String::from(
-                                e.message(),
-                            )));
-                        }
-                        attempts -= 1;
-                        sleep(Duration::from_millis(
-                            self.config.tasks_interval,
-                        ))
-                        .await;
-                    },
-                    _ => {
-                        return Err(e.into());
-                    },
-                },
-            }
-        }
-    }
-
-    async fn with_retry_tendermint<F, T>(&self, mut f: F) -> Result<T, Error>
-    where
-        F: AsyncFnMut(
-            TendermintServiceClient<Channel>,
-        ) -> std::result::Result<T, Status>,
-    {
-        let mut attempts = 10;
-
-        loop {
-            let c = self.tendermint_client.clone();
-            let k = f(c).await;
-
-            match k {
-                Ok(e) => return Ok(e),
-                Err(e) => match e.code() {
-                    tonic::Code::Cancelled
-                    | tonic::Code::Internal
-                    | tonic::Code::Unknown => {
-                        if attempts < 0 {
-                            return Err(Error::GrpsError(String::from(
-                                e.message(),
-                            )));
-                        }
-                        attempts -= 1;
-                        sleep(Duration::from_millis(
-                            self.config.tasks_interval,
-                        ))
-                        .await;
-                    },
-                    _ => {
-                        return Err(e.into());
-                    },
-                },
-            }
-        }
-    }
-
-    async fn with_retry_tx_service<F, T>(&self, mut f: F) -> Result<T, Error>
-    where
-        F: AsyncFnMut(
-            TxServiceClient<Channel>,
-        ) -> std::result::Result<T, Status>,
-    {
-        let mut attempts = 10;
-
-        loop {
-            let c = self.tx_service_client.clone();
-            let k = f(c).await;
-
-            match k {
-                Ok(e) => return Ok(e),
-                Err(e) => match e.code() {
-                    tonic::Code::Cancelled
-                    | tonic::Code::Internal
-                    | tonic::Code::Unknown => {
-                        if attempts < 0 {
-                            return Err(Error::GrpsError(String::from(
-                                e.message(),
-                            )));
-                        }
-                        attempts -= 1;
-                        sleep(Duration::from_millis(
-                            self.config.tasks_interval,
-                        ))
-                        .await;
-                    },
-                    _ => {
-                        return Err(e.into());
-                    },
-                },
-            }
-        }
-    }
-
-    async fn with_retry_bank<F, T>(&self, mut f: F) -> Result<T, Error>
-    where
-        F: AsyncFnMut(
-            BankQueryClient<Channel>,
-        ) -> std::result::Result<T, Status>,
-    {
-        let mut attempts = 10;
-
-        loop {
-            let c = self.bank_query_client.clone();
-            let k = f(c).await;
-
-            match k {
-                Ok(e) => return Ok(e),
-                Err(e) => match e.code() {
-                    tonic::Code::Cancelled
-                    | tonic::Code::Internal
-                    | tonic::Code::Unknown => {
+                    | tonic::Code::Unknown
+                    | tonic::Code::Cancelled => {
                         if attempts < 0 {
                             return Err(Error::GrpsError(String::from(
                                 e.message(),
@@ -261,16 +165,19 @@ impl Grpc {
             "Query response doesn't contain block's header information!";
 
         let data = self
-            .with_retry_tendermint(async move |mut client| {
-                client.get_latest_block(GetLatestBlockRequest {}).await.map(
-                    |response| {
-                        response
-                            .into_inner()
-                            .sdk_block
-                            .context(MISSING_BLOCK_INFO_ERROR)
-                    },
-                )
-            })
+            .with_retry(
+                || self.tendermint_client.clone(),
+                |mut client| async move {
+                    client.get_latest_block(GetLatestBlockRequest {}).await.map(
+                        |response| {
+                            response
+                                .into_inner()
+                                .sdk_block
+                                .context(MISSING_BLOCK_INFO_ERROR)
+                        },
+                    )
+                },
+            )
             .await
             .context(QUERY_NODE_INFO_ERROR)?
             .and_then(|block| {
@@ -296,12 +203,15 @@ impl Grpc {
             "Query response doesn't contain block's data information!";
 
         let data = self
-            .with_retry_tendermint(async move |mut client| {
-                client
-                    .get_block_by_height(GetBlockByHeightRequest { height })
-                    .await
-                    .map(|response| response.into_inner())
-            })
+            .with_retry(
+                || self.tendermint_client.clone(),
+                |mut client| async move {
+                    client
+                        .get_block_by_height(GetBlockByHeightRequest { height })
+                        .await
+                        .map(|response| response.into_inner())
+                },
+            )
             .await
             .context(QUERY_NODE_INFO_ERROR)?;
 
@@ -336,18 +246,26 @@ impl Grpc {
             "Failed to parse message query lease contract new!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = b"{\"state\": {}}";
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = b"{\"state\": {}}";
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -369,14 +287,18 @@ impl Grpc {
         );
 
         let tx = self
-            .with_retry_tx_service(async move |mut client| {
-                let hash = tx_hash.to_owned();
-
-                client
-                    .get_tx(GetTxRequest { hash })
-                    .await
-                    .map(|response| response.into_inner())
-            })
+            .with_retry(
+                || self.tx_service_client.clone(),
+                |mut client| {
+                    let hash = tx_hash.to_owned();
+                    async move {
+                        client
+                            .get_tx(GetTxRequest { hash })
+                            .await
+                            .map(|response| response.into_inner())
+                    }
+                },
+            )
             .await
             .context(QUERY_NODE_INFO_ERROR)?;
 
@@ -390,24 +312,30 @@ impl Grpc {
         const QUERY_NODE_INFO_ERROR: &str = "Failed to query all balances!";
 
         let data = self
-            .with_retry_bank(async move |mut client| {
-                let data = QueryAllBalancesRequest {
-                    address: address.to_owned(),
-                    pagination: Some(PageRequest {
-                        key: vec![],
-                        offset: 0,
-                        limit: 1,
-                        count_total: true,
-                        reverse: false,
-                    }),
-                    resolve_denom: false,
-                };
+            .with_retry(
+                || self.bank_query_client.clone(),
+                |mut client| {
+                    let address = address.to_owned();
+                    async move {
+                        let data = QueryAllBalancesRequest {
+                            address,
+                            pagination: Some(PageRequest {
+                                key: vec![],
+                                offset: 0,
+                                limit: 1,
+                                count_total: true,
+                                reverse: false,
+                            }),
+                            resolve_denom: false,
+                        };
 
-                client
-                    .all_balances(data)
-                    .await
-                    .map(|response| response.into_inner())
-            })
+                        client
+                            .all_balances(data)
+                            .await
+                            .map(|response| response.into_inner())
+                    }
+                },
+            )
             .await
             .context(QUERY_NODE_INFO_ERROR)?;
 
@@ -423,25 +351,35 @@ impl Grpc {
             format!("Failed to query all balances {}!", &height);
 
         let data = self
-            .with_retry_bank(async move |mut client| {
-                let mut request = QueryAllBalancesRequest {
-                    address: address.to_owned(),
-                    pagination: Some(PageRequest {
-                        key: vec![],
-                        offset: 0,
-                        limit: 10,
-                        count_total: true,
-                        reverse: false,
-                    }),
-                    resolve_denom: false,
-                }
-                .into_request();
+            .with_retry(
+                || self.bank_query_client.clone(),
+                |mut client| {
+                    let address = address.to_owned();
+                    async move {
+                        let mut request = QueryAllBalancesRequest {
+                            address,
+                            pagination: Some(PageRequest {
+                                key: vec![],
+                                offset: 0,
+                                limit: 10,
+                                count_total: true,
+                                reverse: false,
+                            }),
+                            resolve_denom: false,
+                        }
+                        .into_request();
 
-                let metetadata = request.metadata_mut();
-                metetadata.append("x-cosmos-block-height", height.into());
+                        let metetadata = request.metadata_mut();
+                        metetadata
+                            .append("x-cosmos-block-height", height.into());
 
-                client.all_balances(request).await.map(|op| op.into_inner())
-            })
+                        client
+                            .all_balances(request)
+                            .await
+                            .map(|op| op.into_inner())
+                    }
+                },
+            )
             .await
             .context(QUERY_NODE_INFO_ERROR)?;
 
@@ -457,22 +395,32 @@ impl Grpc {
             "Failed to run query against contract!";
         const PARCE_MESSAGE_ERROR: &str =
             "Failed to parse message query against contract!";
-        let pt = protocol.to_owned();
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = format!(r#"{{"protocol": "{}"}}"#, pt).to_owned();
-                let bytes = bytes.as_bytes();
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    let protocol = protocol.to_owned();
 
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
+                    async move {
+                        let bytes =
+                            format!(r#"{{"protocol": "{}"}}"#, protocol)
+                                .to_owned();
+                        let bytes = bytes.as_bytes();
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -499,19 +447,26 @@ impl Grpc {
             "Failed to parse message query against oracle contract!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = b"{\"prices\": {}}";
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = b"{\"prices\": {}}";
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
-
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -532,19 +487,26 @@ impl Grpc {
             "Failed to parse message query against oracle base_currency contract!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = b"{\"base_currency\": {}}";
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = b"{\"base_currency\": {}}";
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
-
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -566,24 +528,33 @@ impl Grpc {
             "Failed to parse message query against oracle stable_price contract!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = format!(
-                    r#"{{"stable_price": {{ "currency": "{}" }} }}"#,
-                    ticker
-                )
-                .to_owned();
-                let bytes = bytes.as_bytes();
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let ticker = ticker.to_owned();
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = format!(
+                            r#"{{"stable_price": {{ "currency": "{}" }} }}"#,
+                            ticker
+                        )
+                        .to_owned();
+                        let bytes = bytes.as_bytes();
 
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -604,19 +575,27 @@ impl Grpc {
             "Failed to parse message query against admin config contract!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = b"{\"protocols\": {}}";
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = b"{\"protocols\": {}}";
 
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -642,26 +621,34 @@ impl Grpc {
             "Failed to parse message query lease contract get_lease_state_by_block!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes: &[u8] = if height >= STATE_CHANGE_BLOCK {
-                    b"{\"state\": {}}"
-                } else {
-                    b"{}"
-                };
-                let mut request = QuerySmartContractStateRequest {
-                    address: contract.to_owned(),
-                    query_data: bytes.to_vec(),
-                }
-                .into_request();
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes: &[u8] = if height >= STATE_CHANGE_BLOCK {
+                            b"{\"state\": {}}"
+                        } else {
+                            b"{}"
+                        };
+                        let mut request = QuerySmartContractStateRequest {
+                            address: contract,
+                            query_data: bytes.to_vec(),
+                        }
+                        .into_request();
 
-                let metetadata = request.metadata_mut();
-                metetadata.append("x-cosmos-block-height", height.into());
+                        let metetadata = request.metadata_mut();
+                        metetadata
+                            .append("x-cosmos-block-height", height.into());
 
-                let data = client.smart_contract_state(request).await;
-                let data = data.map(|response| response.into_inner().data);
+                        let data = client.smart_contract_state(request).await;
+                        let data =
+                            data.map(|response| response.into_inner().data);
 
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -686,23 +673,30 @@ impl Grpc {
             format!("Failed to parse message query lease contract get_lease_raw_state_by_block  {} {}!",height, contract);
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = "state";
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = "state";
+                        let mut request = QueryRawContractStateRequest {
+                            address: contract,
+                            query_data: bytes.as_bytes().to_vec(),
+                        }
+                        .into_request();
 
-                let mut request = QueryRawContractStateRequest {
-                    address: contract.to_owned(),
-                    query_data: bytes.as_bytes().to_vec(),
-                }
-                .into_request();
+                        let metetadata = request.metadata_mut();
+                        metetadata
+                            .append("x-cosmos-block-height", height.into());
 
-                let metetadata = request.metadata_mut();
-                metetadata.append("x-cosmos-block-height", height.into());
+                        let data = client.raw_contract_state(request).await;
+                        let data =
+                            data.map(|response| response.into_inner().data);
 
-                let data = client.raw_contract_state(request).await;
-                let data = data.map(|response| response.into_inner().data);
-
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -724,21 +718,32 @@ impl Grpc {
             "Failed to parse message query balance contract!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let request =
-                    format!(r#"{{"balance":{{"address": "{}" }} }}"#, address);
-                let bytes = request.as_bytes();
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    let address = address.to_owned();
 
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
+                    async move {
+                        let request = format!(
+                            r#"{{"balance":{{"address": "{}" }} }}"#,
+                            address
+                        );
+                        let bytes = request.as_bytes();
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -759,19 +764,26 @@ impl Grpc {
             "Failed to parse message query lpp contract new!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = b"{\"price\": []}";
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let bytes = b"{\"price\": []}";
+                    let contract = contract.to_owned();
+                    async move {
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
-
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -792,19 +804,26 @@ impl Grpc {
             "Failed to parse message query lpp balance state contract!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = b"{\"lpp_balance\": []}";
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let bytes = b"{\"lpp_balance\": []}";
+                    let contract = contract.to_owned();
+                    async move {
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
-
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
@@ -825,18 +844,26 @@ impl Grpc {
             "Failed to parse message query lpp config state contract!";
 
         let data = self
-            .with_retry_wasm(async move |mut client| {
-                let bytes = b"{\"config\": []}";
-                let data = client
-                    .smart_contract_state(QuerySmartContractStateRequest {
-                        address: contract.clone(),
-                        query_data: bytes.to_vec(),
-                    })
-                    .await
-                    .map(|response| response.into_inner().data);
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let bytes = b"{\"config\": []}";
+                    let contract = contract.to_owned();
+                    async move {
+                        let data = client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract.clone(),
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data);
 
-                data
-            })
+                        data
+                    }
+                },
+            )
             .await
             .context(QUERY_CONTRACT_ERROR)
             .and_then(|data| {
