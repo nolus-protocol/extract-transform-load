@@ -1,4 +1,6 @@
-use std::{fmt::Debug, future::Future, str::FromStr, time::Duration};
+use std::{
+    fmt::Debug, future::Future, str::FromStr, sync::Arc, time::Duration,
+};
 
 use crate::{
     configuration::Config,
@@ -9,7 +11,7 @@ use crate::{
         LS_State_Type, Prices,
     },
 };
-use anyhow::{Context as _, Result};
+use anyhow::Context as _;
 use cosmos_sdk_proto::cosmwasm::wasm::v1::QueryRawContractStateRequest;
 use cosmrs::proto::{
     cosmos::{
@@ -36,12 +38,26 @@ use cosmrs::proto::{
     Timestamp,
 };
 use sha256::digest;
-use tokio::time::sleep;
+use tokio::{sync::Semaphore, time::sleep};
 use tonic::{
     codegen::http::Uri,
+    metadata::MetadataValue,
     transport::{Channel, ClientTlsConfig, Endpoint},
     IntoRequest, Status,
 };
+
+fn is_retryable(c: tonic::Code) -> bool {
+    use tonic::Code::*;
+    matches!(
+        c,
+        Unavailable
+            | ResourceExhausted
+            | DeadlineExceeded
+            | Internal
+            | Unknown
+            | Cancelled
+    )
+}
 
 #[derive(Debug, Clone)]
 pub struct Grpc {
@@ -52,6 +68,7 @@ pub struct Grpc {
     pub bank_query_client: BankQueryClient<Channel>,
     pub tx_service_client: TxServiceClient<Channel>,
     pub limit: usize,
+    pub permits: Arc<Semaphore>,
 }
 
 impl Grpc {
@@ -79,25 +96,23 @@ impl Grpc {
 
         let tendermint_client =
             TendermintServiceClient::with_origin(channel.clone(), uri.clone())
-                .send_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
         let wasm_query_client =
             WasmQueryClient::with_origin(channel.clone(), uri.clone())
-                .send_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
 
         let bank_query_client =
             BankQueryClient::with_origin(channel.clone(), uri.clone())
-                .send_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
         let tx_service_client =
             TxServiceClient::with_origin(channel.clone(), uri.clone())
-                .send_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
+
+        let permits = Arc::new(Semaphore::new(config.grpc_connections));
 
         Ok(Grpc {
             config,
@@ -107,51 +122,50 @@ impl Grpc {
             bank_query_client: bank_query_client.clone(),
             tx_service_client: tx_service_client.clone(),
             limit,
+            permits,
         })
     }
 
     async fn with_retry<C, F, Fut, T>(
         &self,
-        client_factory: impl Fn() -> C + Send,
+        client_factory: impl Fn() -> C + Send + Sync,
         mut f: F,
     ) -> Result<T, Error>
     where
-        C: Clone + Send + 'static,
+        C: Clone + Send,
         F: FnMut(C) -> Fut + Send,
-        Fut: Future<Output = std::result::Result<T, Status>> + Send,
-        T: Send + 'static,
+        Fut: Future<Output = Result<T, Status>> + Send,
+        T: Send,
     {
-        let mut attempts = 10;
+        let max_attempts: u32 = 8;
 
-        loop {
+        for attempt in 0..=max_attempts {
+            let permit = self
+                .permits
+                .clone()
+                .acquire_owned()
+                .await
+                .map_err(|_| Error::GrpsError("semaphore closed".into()))?;
+
             let client = client_factory();
+            let res = f(client).await;
 
-            match f(client).await {
-                Ok(e) => return Ok(e),
-                Err(e) => match e.code() {
-                    tonic::Code::Unavailable
-                    | tonic::Code::ResourceExhausted
-                    | tonic::Code::DeadlineExceeded
-                    | tonic::Code::Internal
-                    | tonic::Code::Unknown
-                    | tonic::Code::Cancelled => {
-                        if attempts < 0 {
-                            return Err(Error::GrpsError(String::from(
-                                e.message(),
-                            )));
-                        }
-                        attempts -= 1;
-                        sleep(Duration::from_millis(
-                            self.config.tasks_interval,
-                        ))
+            drop(permit);
+
+            match res {
+                Ok(v) => return Ok(v),
+                Err(e) if is_retryable(e.code()) => {
+                    if attempt == max_attempts {
+                        return Err(Error::GrpsError(e.message().to_string()));
+                    }
+                    sleep(Duration::from_millis(self.config.tasks_interval))
                         .await;
-                    },
-                    _ => {
-                        return Err(e.into());
-                    },
                 },
+                Err(e) => return Err(e.into()),
             }
         }
+
+        Err(Error::GrpsError("max grpc request".into()))
     }
 
     pub async fn get_latest_block(&self) -> Result<i64, Error> {
@@ -228,7 +242,8 @@ impl Grpc {
         let mut tx_responses = vec![];
 
         for tx in txs {
-            let hash = digest(&tx);
+            let mut hash = digest(&tx);
+            hash.make_ascii_uppercase();
 
             tx_responses.push(self.get_tx(hash, height).await?);
         }
@@ -369,9 +384,15 @@ impl Grpc {
                         }
                         .into_request();
 
-                        let metetadata = request.metadata_mut();
-                        metetadata
-                            .append("x-cosmos-block-height", height.into());
+                        let metadata = request.metadata_mut();
+                        let height =
+                            MetadataValue::try_from(height.to_string())
+                                .map_err(|e| {
+                                    Status::invalid_argument(format!(
+                                        "invalid x-cosmos-block-height: {e}"
+                                    ))
+                                })?;
+                        metadata.insert("x-cosmos-block-height", height);
 
                         client
                             .all_balances(request)
@@ -637,9 +658,16 @@ impl Grpc {
                         }
                         .into_request();
 
-                        let metetadata = request.metadata_mut();
-                        metetadata
-                            .append("x-cosmos-block-height", height.into());
+                        let metadata = request.metadata_mut();
+                        let height =
+                            MetadataValue::try_from(height.to_string())
+                                .map_err(|e| {
+                                    Status::invalid_argument(format!(
+                                        "invalid x-cosmos-block-height: {e}"
+                                    ))
+                                })?;
+
+                        metadata.insert("x-cosmos-block-height", height);
 
                         let data = client.smart_contract_state(request).await;
                         let data =
@@ -685,9 +713,16 @@ impl Grpc {
                         }
                         .into_request();
 
-                        let metetadata = request.metadata_mut();
-                        metetadata
-                            .append("x-cosmos-block-height", height.into());
+                        let metadata = request.metadata_mut();
+                        let height =
+                            MetadataValue::try_from(height.to_string())
+                                .map_err(|e| {
+                                    Status::invalid_argument(format!(
+                                        "invalid x-cosmos-block-height: {e}"
+                                    ))
+                                })?;
+
+                        metadata.insert("x-cosmos-block-height", height);
 
                         let data = client.raw_contract_state(request).await;
                         let data =

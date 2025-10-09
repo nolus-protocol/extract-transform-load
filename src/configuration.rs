@@ -307,6 +307,7 @@ pub struct Config {
     pub vapid_private_key: Vec<u8>,
     pub vapid_public_key: Vec<u8>,
     pub auth: String,
+    pub grpc_connections: usize,
 }
 
 impl Config {}
@@ -369,6 +370,7 @@ pub fn get_configuration() -> Result<Config, Error> {
     );
     let enable_sync = env::var("ENABLE_SYNC")?.parse()?;
     let tasks_interval: u64 = env::var("TASKS_INTERVAL")?.parse()?;
+    let grpc_connections = env::var("GRPC_CONNECTIONS")?.parse()?;
 
     let mut hash_map_currencies: HashMap<String, Currency> = HashMap::new();
     let mut hash_map_pool_currency: HashMap<String, Currency> = HashMap::new();
@@ -439,6 +441,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         vapid_private_key,
         vapid_public_key,
         auth,
+        grpc_connections,
     };
 
     Ok(config)

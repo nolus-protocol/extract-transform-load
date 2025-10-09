@@ -52,6 +52,7 @@ SOCKET_RECONNECT_INTERVAL=5
 EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
 ENABLE_SYNC=true
 TASKS_INTERVAL=3000
+GRPC_CONNECTIONS=32
 AUTH=
 ```
 
@@ -84,6 +85,7 @@ SOCKET_RECONNECT_INTERVAL=5
 EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
 ENABLE_SYNC=true
 TASKS_INTERVAL=3000
+GRPC_CONNECTIONS=32
 AUTH=
 ```
 
