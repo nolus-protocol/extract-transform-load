@@ -29,7 +29,9 @@ use reqwest::Error as REQWEST_ERROR;
 use serde_json::Error as JSON_ERROR;
 use sqlx::error::Error as SQL_ERROR;
 use thiserror::Error;
-use tokio::{task::JoinError, time::error::Elapsed};
+use tokio::{
+    sync::AcquireError as ACQUIRE_ERROR, task::JoinError, time::error::Elapsed,
+};
 use tonic::Status;
 use tracing::subscriber::SetGlobalDefaultError as TRACING_GLOBAL_DEFAULT_ERROR;
 use url::ParseError as URL_ERROR;
@@ -161,6 +163,9 @@ pub enum Error {
 
     #[error("Missing params: {0}")]
     MissingParams(String),
+
+    #[error("{0}")]
+    AcquireError(#[from] ACQUIRE_ERROR),
 }
 
 impl ResponseError for Error {}

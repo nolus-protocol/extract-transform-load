@@ -78,13 +78,14 @@ impl Grpc {
         let tls_config = ClientTlsConfig::new().with_native_roots();
         let limit = 10 * 1024 * 1024;
         let endpoint = Endpoint::from(uri.clone())
+            .concurrency_limit(config.grpc_connections)
             .tcp_nodelay(true)
-            .tcp_keepalive(Some(Duration::from_secs(300)))
-            .http2_keep_alive_interval(Duration::from_secs(180))
-            .keep_alive_while_idle(false)
-            .keep_alive_timeout(Duration::from_secs(20))
+            .tcp_keepalive(Some(Duration::from_secs(60)))
+            .http2_keep_alive_interval(Duration::from_secs(30))
+            .keep_alive_while_idle(true)
+            .keep_alive_timeout(Duration::from_secs(10))
             .connect_timeout(Duration::from_secs(10))
-            .timeout(Duration::from_secs(60))
+            .timeout(Duration::from_secs(30))
             .http2_adaptive_window(true)
             .tls_config(tls_config)
             .context("set tls config error")?
@@ -140,28 +141,26 @@ impl Grpc {
         let max_attempts: u32 = 8;
 
         for attempt in 0..=max_attempts {
-            let permit = self
-                .permits
-                .clone()
-                .acquire_owned()
-                .await
-                .map_err(|_| Error::GrpsError("semaphore closed".into()))?;
-
-            let client = client_factory();
-            let res = f(client).await;
-
-            drop(permit);
+            let res = {
+                let _permit = self.permits.clone().acquire_owned().await?;
+                let client = client_factory();
+                f(client).await
+            };
 
             match res {
                 Ok(v) => return Ok(v),
                 Err(e) if is_retryable(e.code()) => {
                     if attempt == max_attempts {
+                        tracing::error!("With retry error {}", e);
                         return Err(Error::GrpsError(e.message().to_string()));
                     }
                     sleep(Duration::from_millis(self.config.tasks_interval))
                         .await;
                 },
-                Err(e) => return Err(e.into()),
+                Err(e) => {
+                    tracing::error!("With retry error end {}", e);
+                    return Err(e.into());
+                },
             }
         }
 
