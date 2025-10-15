@@ -53,6 +53,7 @@ EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
 ENABLE_SYNC=true
 TASKS_INTERVAL=3000
 GRPC_CONNECTIONS=32
+GRPC_PERMITS=12
 AUTH=
 ```
 
@@ -86,6 +87,7 @@ EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
 ENABLE_SYNC=true
 TASKS_INTERVAL=3000
 GRPC_CONNECTIONS=32
+GRPC_PERMITS=12
 AUTH=
 ```
 

@@ -80,10 +80,10 @@ impl Grpc {
         let endpoint = Endpoint::from(uri.clone())
             .concurrency_limit(config.grpc_connections)
             .tcp_nodelay(true)
-            .tcp_keepalive(Some(Duration::from_secs(60)))
-            .http2_keep_alive_interval(Duration::from_secs(30))
-            .keep_alive_while_idle(true)
-            .keep_alive_timeout(Duration::from_secs(10))
+            .tcp_keepalive(Some(Duration::from_secs(300)))
+            .http2_keep_alive_interval(Duration::from_secs(180))
+            .keep_alive_while_idle(false)
+            .keep_alive_timeout(Duration::from_secs(20))
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(30))
             .http2_adaptive_window(true)
@@ -113,7 +113,7 @@ impl Grpc {
                 .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
                 .max_decoding_message_size(limit);
 
-        let permits = Arc::new(Semaphore::new(config.grpc_connections));
+        let permits = Arc::new(Semaphore::new(config.grpc_permits));
 
         Ok(Grpc {
             config,
@@ -139,14 +139,11 @@ impl Grpc {
         T: Send,
     {
         let max_attempts: u32 = 8;
+        let _premit = self.permits.clone().acquire_owned().await?;
 
         for attempt in 0..=max_attempts {
-            let res = {
-                let _permit = self.permits.clone().acquire_owned().await?;
-                let client = client_factory();
-                f(client).await
-            };
-
+            let client = client_factory();
+            let res = f(client).await;
             match res {
                 Ok(v) => return Ok(v),
                 Err(e) if is_retryable(e.code()) => {
@@ -163,7 +160,6 @@ impl Grpc {
                 },
             }
         }
-
         Err(Error::GrpsError("max grpc request".into()))
     }
 
