@@ -682,6 +682,38 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
+    pub async fn get_leases_addresses(
+        &self,
+        address: String,
+        search: Option<String>,
+        skip: i64,
+        limit: i64,
+    ) -> Result<Vec<(String,)>, Error> {
+        let data = sqlx::query_as(
+            r#"
+                SELECT
+                    a."LS_contract_id"
+                FROM "LS_Opening" a
+                WHERE
+                    a."LS_address_id" = $1
+                    AND (
+                        $2::text IS NULL
+                        OR a."LS_contract_id"::text ILIKE '%' || $2 || '%'
+                    )
+                ORDER BY a."LS_timestamp" DESC
+                OFFSET $3 LIMIT $4
+                "#,
+        )
+        .bind(address)
+        .bind(search)
+        .bind(skip)
+        .bind(limit)
+        .persistent(false)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
     pub async fn get_leases_by_address(
         &self,
         address: String,
@@ -1181,6 +1213,22 @@ impl Table<LS_Opening> {
                 SELECT * FROM closing_rows
                 ) x
                 ORDER BY "Date","Position ID","Sent Currency","Received Currency";
+            "#,
+        )
+        .bind(address)
+        .persistent(false)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(data)
+    }
+
+    pub async fn get_addresses(
+        &self,
+        address: String,
+    ) -> Result<Vec<(String,)>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            SELECT "LS_contract_id" FROM "LS_Opening" WHERE "LS_address_id" = $1
             "#,
         )
         .bind(address)

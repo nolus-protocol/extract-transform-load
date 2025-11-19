@@ -7,8 +7,8 @@ use crate::{
     controller::{
         blocks, borrow_apr, borrowed, buyback, buyback_total,
         deposit_suspension, distributed, earn_apr, get_position_debt_value,
-        incentives_pool, leased_assets, leases, leases_monthly,
-        ls_loan_closing, ls_opening, ls_openings, max_lp_ratio,
+        history_stats, incentives_pool, leased_assets, leases, leases_monthly,
+        leases_search, ls_loan_closing, ls_opening, ls_openings, max_lp_ratio,
         max_ls_interest_7d, open_interest, open_position_value, optimal,
         pnl_over_time, prices, realized_pnl, realized_pnl_data,
         realized_pnl_stats, revenue, subscribe, supplied_borrowed_series,
@@ -98,7 +98,9 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(subscribe::get_index)
                     .service(subscribe::post_index)
                     .service(test_push::index)
-                    .service(realized_pnl_data::index),
+                    .service(realized_pnl_data::index)
+                    .service(history_stats::index)
+                    .service(leases_search::index),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

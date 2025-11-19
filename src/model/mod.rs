@@ -67,7 +67,7 @@ pub use mp_asset::MP_Asset;
 pub use mp_yield::MP_Yield;
 pub use pl_state::PL_State;
 pub use pnl_over_time::Pnl_Over_Time;
-pub use raw_message::Raw_Message;
+pub use raw_message::{CosmosTypes, Raw_Message};
 pub use reserve_cover_loss::Reserve_Cover_Loss;
 pub use subscription::Subscription;
 pub use supplied_borrowed_series::Supplied_Borrowed_Series;

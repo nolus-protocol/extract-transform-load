@@ -22,7 +22,7 @@ use crate::{
         wasm_ls_slippage_anomaly, wasm_reserve_cover_loss, wasm_tr_profit,
         wasm_tr_rewards,
     },
-    model::{Block, Raw_Message, Subscription},
+    model::{Block, CosmosTypes, Raw_Message, Subscription},
     types::{
         Claims, Interest_values, LP_Deposit_Type, LP_Withdraw_Type,
         LS_Auto_Close_Position_Type, LS_Close_Position_Type, LS_Closing_Type,
@@ -1172,6 +1172,88 @@ impl From<Status> for String {
         match value {
             Status::Subscribed => String::from("subscribed"),
             Status::Unsubscribed => String::from("unsubscribed"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Filter_Types {
+    Transfers,
+    Earn,
+    Staking,
+    Positions,
+    PositionsIds,
+}
+
+impl fmt::Display for Filter_Types {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Filter_Types::Transfers => write!(f, "transfers"),
+            Filter_Types::Earn => write!(f, "earn"),
+            Filter_Types::Staking => write!(f, "staking"),
+            Filter_Types::Positions => write!(f, "positions"),
+            Filter_Types::PositionsIds => write!(f, "positions_ids"),
+        }
+    }
+}
+
+impl From<Filter_Types> for String {
+    fn from(value: Filter_Types) -> Self {
+        match value {
+            Filter_Types::Transfers => String::from("transfers"),
+            Filter_Types::Earn => String::from("earn"),
+            Filter_Types::Staking => String::from("staking"),
+            Filter_Types::Positions => String::from("positions"),
+            Filter_Types::PositionsIds => String::from("positions_ids"),
+        }
+    }
+}
+
+impl FromStr for Filter_Types {
+    type Err = io::Error;
+
+    fn from_str(value: &str) -> Result<Filter_Types, Self::Err> {
+        match value {
+            "transfers" => Ok(Filter_Types::Transfers),
+            "earn" => Ok(Filter_Types::Earn),
+            "staking" => Ok(Filter_Types::Staking),
+            "positions" => Ok(Filter_Types::Positions),
+            "positions_ids" => Ok(Filter_Types::PositionsIds),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Filter_Types not supported",
+            )),
+        }
+    }
+}
+
+impl From<Filter_Types> for Vec<String> {
+    fn from(value: Filter_Types) -> Self {
+        match value {
+            Filter_Types::Transfers => {
+                vec![
+                    CosmosTypes::MsgSend.to_string(),
+                    CosmosTypes::MsgTransfer.to_string(),
+                    CosmosTypes::MsgRecvPacket.to_string(),
+                ]
+            },
+            Filter_Types::Earn => {
+                vec![CosmosTypes::MsgExecuteContract.to_string()]
+            },
+            Filter_Types::Staking => {
+                vec![
+                    CosmosTypes::MsgDelegate.to_string(),
+                    CosmosTypes::MsgUndelegate.to_string(),
+                    CosmosTypes::MsgBeginRedelegate.to_string(),
+                    CosmosTypes::MsgWithdrawDelegatorReward.to_string(),
+                ]
+            },
+            Filter_Types::Positions => {
+                vec![CosmosTypes::MsgExecuteContract.to_string()]
+            },
+            Filter_Types::PositionsIds => {
+                vec![CosmosTypes::MsgExecuteContract.to_string()]
+            },
         }
     }
 }

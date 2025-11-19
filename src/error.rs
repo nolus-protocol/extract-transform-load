@@ -98,6 +98,9 @@ pub enum Error {
     #[error("Detect more than one coin")]
     CoinLengthError(),
 
+    #[error("Max filter length 10")]
+    MaxFilterLength(),
+
     #[error("{0}")]
     ParseBoolError(#[from] PARSE_BOOL_ERROR),
 

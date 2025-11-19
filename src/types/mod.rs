@@ -8,6 +8,7 @@ pub use self::{
     block::BlockValue,
     block_query::BlockQuery,
     block_response::{Attributes, BlockBody, EventData},
+    bucket_type::Bucket_Type,
     claim::Claims,
     coin_gecko_info::CoinGeckoInfo,
     coin_gecko_market_data::{CoinGeckoMarketData, MarketData},
@@ -52,6 +53,7 @@ mod balance;
 mod block;
 mod block_query;
 mod block_response;
+mod bucket_type;
 mod claim;
 mod coin_gecko_info;
 mod coin_gecko_market_data;

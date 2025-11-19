@@ -339,5 +339,28 @@
         "type": "String"
       }
     ]
+  },
+  {
+    "description": "History stats",
+    "url": "/api/history-stats",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "description": "Leases search",
+    "url": "/api/leases-search",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String",
+        "default": null
+      }
+    ]
   }
 ]
