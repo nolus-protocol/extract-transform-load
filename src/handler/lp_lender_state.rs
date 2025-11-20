@@ -84,7 +84,7 @@ async fn proceed(
         let amount = BigDecimal::from_str(&price.amount.amount)?;
         let quote_amount = BigDecimal::from_str(&price.amount_quote.amount)?;
 
-        &amount / &quote_amount
+        &quote_amount / &amount
     };
 
     let lpp_balance = BigDecimal::from_str(&balance.amount)?;
