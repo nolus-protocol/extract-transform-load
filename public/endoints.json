@@ -362,5 +362,17 @@
         "default": null
       }
     ]
+  },
+  {
+    "description": "Earnings",
+    "url": "/api/earnings",
+    "type": "GET",
+    "params": [
+      {
+        "name": "address",
+        "type": "String",
+        "default": null
+      }
+    ]
   }
 ]

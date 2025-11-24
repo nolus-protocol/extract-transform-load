@@ -6,14 +6,15 @@ use crate::{
     configuration::{AppState, State},
     controller::{
         blocks, borrow_apr, borrowed, buyback, buyback_total,
-        deposit_suspension, distributed, earn_apr, get_position_debt_value,
-        history_stats, incentives_pool, leased_assets, leases, leases_monthly,
-        leases_search, ls_loan_closing, ls_opening, ls_openings, max_lp_ratio,
-        max_ls_interest_7d, open_interest, open_position_value, optimal,
-        pnl_over_time, prices, realized_pnl, realized_pnl_data,
-        realized_pnl_stats, revenue, subscribe, supplied_borrowed_series,
-        supplied_funds, test_push, total_tx_value, total_value_locked, txs,
-        unrealized_pnl, unrealized_pnl_by_address, utilization_level, version,
+        deposit_suspension, distributed, earn_apr, earnings,
+        get_position_debt_value, history_stats, incentives_pool, leased_assets,
+        leases, leases_monthly, leases_search, ls_loan_closing, ls_opening,
+        ls_openings, max_lp_ratio, max_ls_interest_7d, open_interest,
+        open_position_value, optimal, pnl_over_time, prices, realized_pnl,
+        realized_pnl_data, realized_pnl_stats, revenue, subscribe,
+        supplied_borrowed_series, supplied_funds, test_push, total_tx_value,
+        total_value_locked, txs, unrealized_pnl, unrealized_pnl_by_address,
+        utilization_level, version,
     },
     error::Error,
 };
@@ -100,7 +101,8 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(test_push::index)
                     .service(realized_pnl_data::index)
                     .service(history_stats::index)
-                    .service(leases_search::index),
+                    .service(leases_search::index)
+                    .service(earnings::index),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

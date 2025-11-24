@@ -6,6 +6,7 @@ pub mod buyback_total;
 pub mod deposit_suspension;
 pub mod distributed;
 pub mod earn_apr;
+pub mod earnings;
 pub mod get_position_debt_value;
 pub mod history_stats;
 pub mod incentives_pool;
@@ -36,7 +37,6 @@ pub mod total_value_locked;
 pub mod txs;
 pub mod unrealized_pnl;
 pub mod unrealized_pnl_by_address;
-
 // pub mod update;
 // pub mod update_ls_loan_collect;
 // pub mod update_ls_loan_collect_price;
