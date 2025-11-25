@@ -359,7 +359,7 @@ impl Table<Raw_Message> {
             ) p
             ),
             buckets AS (
-            SELECT 1 AS ord, '>0'    AS bucket UNION ALL
+            SELECT 1 AS ord, '<0'    AS bucket UNION ALL
             SELECT 2,        '0-50'               UNION ALL
             SELECT 3,        '51–100'             UNION ALL
             SELECT 4,        '101–300'            UNION ALL
@@ -452,7 +452,7 @@ impl Table<Raw_Message> {
             counts AS (
             SELECT
               CASE
-                WHEN pnl_pct < 0 THEN '>0'
+                WHEN pnl_pct < 0 THEN '<0'
                 WHEN pnl_pct >= 0   AND pnl_pct < 50  THEN '0-50'
                 WHEN pnl_pct >= 50  AND pnl_pct < 100 THEN '51–100'
                 WHEN pnl_pct >= 100 AND pnl_pct <= 300 THEN '101–300'

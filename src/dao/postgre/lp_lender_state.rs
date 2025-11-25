@@ -109,4 +109,42 @@ impl Table<LP_Lender_State> {
         .await?;
         Ok(value)
     }
+
+    pub async fn get_all(&self) -> Result<Vec<LP_Lender_State>, Error> {
+        sqlx::query_as(r#"SELECT * FROM "LP_Lender_State""#)
+            .persistent(false)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    //TODO: delete
+    pub async fn update(
+        &self,
+        data: LP_Lender_State,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            UPDATE 
+                "LP_Lender_State"
+            SET
+                "LP_Lender_stable" = $1,
+                "LP_Lender_asset" = $2
+            WHERE 
+                "LP_Lender_id" = $3
+                AND
+                "LP_Pool_id" = $4
+                 AND
+                "LP_timestamp" = $5
+
+        "#,
+        )
+        .bind(&data.LP_Lender_stable)
+        .bind(&data.LP_Lender_asset)
+        .bind(&data.LP_Lender_id)
+        .bind(&data.LP_Pool_id)
+        .bind(&data.LP_timestamp)
+        .persistent(false)
+        .execute(&self.pool)
+        .await
+    }
 }
