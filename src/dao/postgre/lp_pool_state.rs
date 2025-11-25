@@ -667,13 +667,7 @@ impl Table<LP_Pool_State> {
             ) p
         )
         SELECT
-            "LP_Pool_id",
-            "LP_Lender_id",
-            "current_balance_in_stable",
-            "deposited_in_stable",
-            "withdrawn_in_stable",
-            GREATEST("earnings_in_stable", 0) AS "earnings_in_stable",
-            (SELECT SUM(GREATEST("earnings_in_stable", 0)) FROM per_pool) AS "total_earnings_in_stable"
+            COALESCE(SUM(GREATEST("earnings_in_stable", 0)), 0)::numeric AS total_earnings_in_stable
         FROM per_pool
             "#,
         )
