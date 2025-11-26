@@ -1,6 +1,6 @@
 [package]
 name = "etl"
-version = "3.14.19"
+version = "3.14.20"
 edition = "2021"
 rust-version = "1.79.0"
 

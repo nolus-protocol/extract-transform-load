@@ -345,14 +345,14 @@ impl Table<LP_Pool_State> {
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(d."LP_amnt_stable"), 0)::numeric AS "deposited_raw"
                 FROM "LP_Deposit" d
-                WHERE d."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE d."LP_address_id" = $1
                 AND d."LP_Pool_id"    = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5'
                 AND d."LP_timestamp" <= ls."LP_timestamp"
             ) dep
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(w."LP_amnt_stable"), 0)::numeric AS "withdrawn_raw"
                 FROM "LP_Withdraw" w
-                WHERE w."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE w."LP_address_id" = $1
                 AND w."LP_Pool_id"    = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5'
                 AND w."LP_timestamp" <= ls."LP_timestamp"
             ) wdr
@@ -382,14 +382,14 @@ impl Table<LP_Pool_State> {
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(d."LP_amnt_stable"), 0)::numeric AS "deposited_raw"
                 FROM "LP_Deposit" d
-                WHERE d."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE d."LP_address_id" = $1
                 AND d."LP_Pool_id"    = 'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf'
                 AND d."LP_timestamp" <= ls."LP_timestamp"
             ) dep
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(w."LP_amnt_stable"), 0)::numeric AS "withdrawn_raw"
                 FROM "LP_Withdraw" w
-                WHERE w."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE w."LP_address_id" = $1
                 AND w."LP_Pool_id"    = 'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf'
                 AND w."LP_timestamp" <= ls."LP_timestamp"
             ) wdr
@@ -419,14 +419,14 @@ impl Table<LP_Pool_State> {
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(d."LP_amnt_stable"), 0)::numeric AS "deposited_raw"
                 FROM "LP_Deposit" d
-                WHERE d."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE d."LP_address_id" = $1
                 AND d."LP_Pool_id"    = 'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6'
                 AND d."LP_timestamp" <= ls."LP_timestamp"
             ) dep
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(w."LP_amnt_stable"), 0)::numeric AS "withdrawn_raw"
                 FROM "LP_Withdraw" w
-                WHERE w."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE w."LP_address_id" = $1
                 AND w."LP_Pool_id"    = 'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6'
                 AND w."LP_timestamp" <= ls."LP_timestamp"
             ) wdr
@@ -462,14 +462,14 @@ impl Table<LP_Pool_State> {
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(d."LP_amnt_asset"), 0)::numeric AS "deposited_asset"
                 FROM "LP_Deposit" d
-                WHERE d."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE d."LP_address_id" = $1
                 AND d."LP_Pool_id"    = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
                 AND d."LP_timestamp" <= ls."LP_timestamp"
             ) dep
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(w."LP_amnt_asset"), 0)::numeric AS "withdrawn_asset"
                 FROM "LP_Withdraw" w
-                WHERE w."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE w."LP_address_id" = $1
                 AND w."LP_Pool_id"    = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
                 AND w."LP_timestamp" <= ls."LP_timestamp"
             ) wdr
@@ -508,14 +508,14 @@ impl Table<LP_Pool_State> {
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(d."LP_amnt_asset"), 0)::numeric AS "deposited_asset"
                 FROM "LP_Deposit" d
-                WHERE d."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE d."LP_address_id" = $1
                 AND d."LP_Pool_id"    = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
                 AND d."LP_timestamp" <= ls."LP_timestamp"
             ) dep
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(w."LP_amnt_asset"), 0)::numeric AS "withdrawn_asset"
                 FROM "LP_Withdraw" w
-                WHERE w."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE w."LP_address_id" = $1
                 AND w."LP_Pool_id"    = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
                 AND w."LP_timestamp" <= ls."LP_timestamp"
             ) wdr
@@ -554,14 +554,14 @@ impl Table<LP_Pool_State> {
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(d."LP_amnt_asset"), 0)::numeric AS "deposited_asset"
                 FROM "LP_Deposit" d
-                WHERE d."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE d."LP_address_id" = $1
                 AND d."LP_Pool_id"    = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
                 AND d."LP_timestamp" <= ls."LP_timestamp"
             ) dep
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(w."LP_amnt_asset"), 0)::numeric AS "withdrawn_asset"
                 FROM "LP_Withdraw" w
-                WHERE w."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE w."LP_address_id" = $1
                 AND w."LP_Pool_id"    = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
                 AND w."LP_timestamp" <= ls."LP_timestamp"
             ) wdr
@@ -600,14 +600,14 @@ impl Table<LP_Pool_State> {
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(d."LP_amnt_asset"), 0)::numeric AS "deposited_asset"
                 FROM "LP_Deposit" d
-                WHERE d."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE d."LP_address_id" = $1
                 AND d."LP_Pool_id"    = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6'
                 AND d."LP_timestamp" <= ls."LP_timestamp"
             ) dep
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(w."LP_amnt_asset"), 0)::numeric AS "withdrawn_asset"
                 FROM "LP_Withdraw" w
-                WHERE w."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE w."LP_address_id" = $1
                 AND w."LP_Pool_id"    = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6'
                 AND w."LP_timestamp" <= ls."LP_timestamp"
             ) wdr
@@ -646,14 +646,14 @@ impl Table<LP_Pool_State> {
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(d."LP_amnt_asset"), 0)::numeric AS "deposited_asset"
                 FROM "LP_Deposit" d
-                WHERE d."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE d."LP_address_id" = $1
                 AND d."LP_Pool_id"    = 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t'
                 AND d."LP_timestamp" <= ls."LP_timestamp"
             ) dep
             CROSS JOIN LATERAL (
                 SELECT COALESCE(SUM(w."LP_amnt_asset"), 0)::numeric AS "withdrawn_asset"
                 FROM "LP_Withdraw" w
-                WHERE w."LP_address_id" = 'nolus1ncc58ptqrkd7r7uk60dx4eufvvqf2edhtktv0q'
+                WHERE w."LP_address_id" = $1
                 AND w."LP_Pool_id"    = 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t'
                 AND w."LP_timestamp" <= ls."LP_timestamp"
             ) wdr
