@@ -157,4 +157,16 @@ impl Table<LP_Withdraw> {
 
         Ok(amnt)
     }
+
+    pub async fn get_by_tx(&self, tx: String) -> Result<LP_Withdraw, Error> {
+        sqlx::query_as(
+            r#"
+             select * from "LP_Withdraw" WHERE "Tx_Hash" = $1
+            "#,
+        )
+        .bind(tx)
+        .persistent(false)
+        .fetch_one(&self.pool)
+        .await
+    }
 }

@@ -374,5 +374,17 @@
         "default": null
       }
     ]
+  },
+  {
+    "description": "LP Withdraw by tx hash",
+    "url": "/api/lp-withdraw",
+    "type": "GET",
+    "params": [
+      {
+        "name": "tx",
+        "type": "String",
+        "default": null
+      }
+    ]
   }
 ]

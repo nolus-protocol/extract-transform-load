@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::{types::BigDecimal, FromRow};
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Deserialize, Serialize)]
 pub struct LP_Withdraw {
     pub Tx_Hash: String,
     pub LP_withdraw_height: i64,
