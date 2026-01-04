@@ -118,7 +118,6 @@ impl Synchronization {
         }
 
         self.set_running(false);
-        println!();
 
         Ok(())
     }
