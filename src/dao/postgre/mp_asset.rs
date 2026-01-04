@@ -17,7 +17,7 @@ impl Table<MP_Asset> {
         .bind(data.MP_asset_timestamp)
         .bind(&data.MP_price_in_stable)
         .bind(&data.Protocol)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }
@@ -44,6 +44,7 @@ impl Table<MP_Asset> {
                 .push_bind(&mp.Protocol);
         });
 
+        // Dynamic query - cannot use prepared statement caching
         let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
 
@@ -66,7 +67,7 @@ impl Table<MP_Asset> {
         .bind(key)
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await
     }
@@ -94,7 +95,7 @@ impl Table<MP_Asset> {
         .bind(key)
         .bind(protocol)
         .bind(date_time)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await
     }
@@ -115,7 +116,7 @@ impl Table<MP_Asset> {
                 )
                 .bind(key)
                 .bind(protocol)
-                .persistent(false)
+                .persistent(true)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -128,7 +129,7 @@ impl Table<MP_Asset> {
                     "#,
                 )
                 .bind(key)
-                .persistent(false)
+                .persistent(true)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -160,7 +161,7 @@ impl Table<MP_Asset> {
                 .bind(key)
                 .bind(protocol)
                 .bind(date_time)
-                .persistent(false)
+                .persistent(true)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -179,7 +180,7 @@ impl Table<MP_Asset> {
                 )
                 .bind(key)
                 .bind(date_time)
-                .persistent(false)
+                .persistent(true)
                 .fetch_one(&self.pool)
                 .await
             },
