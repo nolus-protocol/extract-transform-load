@@ -6,6 +6,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use tokio::sync::Semaphore;
+
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use futures::future::join_all;
@@ -47,7 +49,9 @@ pub struct Cache {
     pub total_value_locked: Option<BigDecimal>,
 }
 
-#[derive(Debug)]
+/// Maximum number of concurrent push notification tasks
+const MAX_PUSH_TASKS: usize = 100;
+
 pub struct State {
     pub config: Config,
     pub database: DatabasePool,
@@ -55,6 +59,22 @@ pub struct State {
     pub protocols: HashMap<String, AdminProtocolExtendType>,
     pub cache: Mutex<Cache>,
     pub http: HTTP,
+    /// Semaphore to limit concurrent push notification tasks
+    pub push_permits: Arc<Semaphore>,
+}
+
+impl std::fmt::Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State")
+            .field("config", &self.config)
+            .field("database", &self.database)
+            .field("grpc", &self.grpc)
+            .field("protocols", &self.protocols)
+            .field("cache", &self.cache)
+            .field("http", &self.http)
+            .field("push_permits", &"<Semaphore>")
+            .finish()
+    }
 }
 
 impl State {
@@ -76,6 +96,7 @@ impl State {
             cache: Mutex::new(Cache {
                 total_value_locked: None,
             }),
+            push_permits: Arc::new(Semaphore::new(MAX_PUSH_TASKS)),
         })
     }
 

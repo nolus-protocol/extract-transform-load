@@ -643,10 +643,19 @@ pub fn send_push_task(
     push_header: PushHeader,
     push_data: PushData,
 ) {
+    let permits = state.push_permits.clone();
     tokio::spawn(async move {
+        // Acquire permit to limit concurrent push tasks
+        let _permit = match permits.acquire().await {
+            Ok(permit) => permit,
+            Err(_) => {
+                tracing::error!("Push notification semaphore closed");
+                return;
+            }
+        };
         let res = send_push(state, subscription, push_header, push_data).await;
         if let Err(e) = res {
-            eprintln!("Thread stopped with error: {}", e);
+            tracing::error!("Push notification failed: {}", e);
         };
     });
 }
