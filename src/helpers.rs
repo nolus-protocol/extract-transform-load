@@ -721,66 +721,37 @@ pub enum EventsType {
     TR_Rewards_Distribution,
 }
 
+impl EventsType {
+    /// Returns the canonical string representation of this event type.
+    /// Single source of truth for event type string mappings.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EventsType::LS_Opening => "wasm-ls-open",
+            EventsType::LS_Closing => "wasm-ls-close",
+            EventsType::LS_Close_Position => "wasm-ls-close-position",
+            EventsType::LS_Repay => "wasm-ls-repay",
+            EventsType::LS_Liquidation => "wasm-ls-liquidation",
+            EventsType::LS_Liquidation_Warning => "wasm-ls-liquidation-warning",
+            EventsType::LS_Slippage_Anomaly => "wasm-ls-slippage-anomaly",
+            EventsType::LS_Auto_Close_Position => "wasm-ls-auto-close-position",
+            EventsType::Reserve_Cover_Loss => "wasm-reserve-cover-loss",
+            EventsType::LP_deposit => "wasm-lp-deposit",
+            EventsType::LP_Withdraw => "wasm-lp-withdraw",
+            EventsType::TR_Profit => "wasm-tr-profit",
+            EventsType::TR_Rewards_Distribution => "wasm-tr-rewards",
+        }
+    }
+}
+
 impl fmt::Display for EventsType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            EventsType::LS_Opening => write!(f, "wasm-ls-open"),
-            EventsType::LS_Closing => write!(f, "wasm-ls-close"),
-            EventsType::LS_Close_Position => {
-                write!(f, "wasm-ls-close-position")
-            },
-            EventsType::LS_Repay => write!(f, "wasm-ls-repay"),
-            EventsType::LS_Liquidation => write!(f, "wasm-ls-liquidation"),
-            EventsType::Reserve_Cover_Loss => {
-                write!(f, "wasm-reserve-cover-loss")
-            },
-            EventsType::LP_deposit => write!(f, "wasm-lp-deposit"),
-            EventsType::LP_Withdraw => write!(f, "wasm-lp-withdraw"),
-            EventsType::TR_Profit => write!(f, "wasm-tr-profit"),
-            EventsType::TR_Rewards_Distribution => write!(f, "wasm-tr-rewards"),
-            EventsType::LS_Liquidation_Warning => {
-                write!(f, "wasm-ls-liquidation-warning")
-            },
-            EventsType::LS_Slippage_Anomaly => {
-                write!(f, "wasm-ls-slippage-anomaly")
-            },
-            EventsType::LS_Auto_Close_Position => {
-                write!(f, "wasm-ls-auto-close-position")
-            },
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
 impl From<EventsType> for String {
     fn from(value: EventsType) -> Self {
-        match value {
-            EventsType::LS_Opening => String::from("wasm-ls-open"),
-            EventsType::LS_Closing => String::from("wasm-ls-close"),
-            EventsType::LS_Close_Position => {
-                String::from("wasm-ls-close-position")
-            },
-            EventsType::LS_Repay => String::from("wasm-ls-repay"),
-            EventsType::LS_Liquidation => String::from("wasm-ls-liquidation"),
-            EventsType::Reserve_Cover_Loss => {
-                String::from("wasm-reserve-cover-loss")
-            },
-
-            EventsType::LP_deposit => String::from("wasm-lp-deposit"),
-            EventsType::LP_Withdraw => String::from("wasm-lp-withdraw"),
-            EventsType::TR_Profit => String::from("wasm-tr-profit"),
-            EventsType::TR_Rewards_Distribution => {
-                String::from("wasm-tr-rewards")
-            },
-            EventsType::LS_Liquidation_Warning => {
-                String::from("wasm-ls-liquidation-warning")
-            },
-            EventsType::LS_Slippage_Anomaly => {
-                String::from("wasm-ls-slippage-anomaly")
-            },
-            EventsType::LS_Auto_Close_Position => {
-                String::from("wasm-ls-auto-close-position")
-            },
-        }
+        value.as_str().to_string()
     }
 }
 
@@ -794,19 +765,14 @@ impl FromStr for EventsType {
             "wasm-ls-close-position" => Ok(EventsType::LS_Close_Position),
             "wasm-ls-repay" => Ok(EventsType::LS_Repay),
             "wasm-ls-liquidation" => Ok(EventsType::LS_Liquidation),
+            "wasm-ls-liquidation-warning" => Ok(EventsType::LS_Liquidation_Warning),
+            "wasm-ls-slippage-anomaly" => Ok(EventsType::LS_Slippage_Anomaly),
+            "wasm-ls-auto-close-position" => Ok(EventsType::LS_Auto_Close_Position),
             "wasm-reserve-cover-loss" => Ok(EventsType::Reserve_Cover_Loss),
-
             "wasm-lp-deposit" => Ok(EventsType::LP_deposit),
             "wasm-lp-withdraw" => Ok(EventsType::LP_Withdraw),
             "wasm-tr-profit" => Ok(EventsType::TR_Profit),
             "wasm-tr-rewards" => Ok(EventsType::TR_Rewards_Distribution),
-            "wasm-ls-liquidation-warning" => {
-                Ok(EventsType::LS_Liquidation_Warning)
-            },
-            "wasm-ls-slippage-anomaly" => Ok(EventsType::LS_Slippage_Anomaly),
-            "wasm-ls-auto-close-position" => {
-                Ok(EventsType::LS_Auto_Close_Position)
-            },
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Message Type not supported",
