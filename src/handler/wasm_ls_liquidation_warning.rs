@@ -37,19 +37,11 @@ pub async fn parse_and_insert(
         LS_timestamp: time_stamp,
     };
 
-    let isExists = app_state
+    app_state
         .database
         .ls_liquidation_warning
-        .isExists(&ls_liquidation_warning)
+        .insert_if_not_exists(ls_liquidation_warning, transaction)
         .await?;
-
-    if !isExists {
-        app_state
-            .database
-            .ls_liquidation_warning
-            .insert(ls_liquidation_warning, transaction)
-            .await?;
-    }
 
     let push_data = match PUSH_TYPES::from(level) {
         PUSH_TYPES::Funding => PushData {

@@ -22,15 +22,12 @@ pub async fn parse_and_insert(
         LS_contract_id: item.id,
         LS_timestamp: at,
     };
-    let isExists = app_state.database.ls_closing.isExists(&ls_closing).await?;
 
-    if !isExists {
-        app_state
-            .database
-            .ls_closing
-            .insert(ls_closing, transaction)
-            .await?;
-    }
+    app_state
+        .database
+        .ls_closing
+        .insert_if_not_exists(ls_closing, transaction)
+        .await?;
 
     Ok(())
 }

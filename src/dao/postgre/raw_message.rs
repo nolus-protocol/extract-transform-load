@@ -38,6 +38,35 @@ impl Table<Raw_Message> {
         .await
     }
 
+    pub async fn insert_if_not_exists(
+        &self,
+        data: Raw_Message,
+        transaction: &mut Transaction<'_, DataBase>,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO "raw_message" ("index", "from", "to", "tx_hash", "type", "value", "block", "fee_amount", "fee_denom", "memo", "timestamp", "rewards")
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            ON CONFLICT ("index", "tx_hash") DO NOTHING
+            "#,
+        )
+        .bind(data.index)
+        .bind(&data.from)
+        .bind(&data.to)
+        .bind(&data.tx_hash)
+        .bind(&data.r#type)
+        .bind(&data.value)
+        .bind(&data.block)
+        .bind(&data.fee_amount)
+        .bind(&data.fee_denom)
+        .bind(&data.memo)
+        .bind(&data.timestamp)
+        .bind(&data.rewards)
+        .persistent(true)
+        .execute(&mut **transaction)
+        .await
+    }
+
     pub async fn isExists(
         &self,
         data: &Raw_Message,

@@ -99,15 +99,12 @@ pub async fn parse_and_insert(
         LS_native_amnt_nolus: BigDecimal::from(0),
         LS_lpn_loan_amnt,
     };
-    let isExists = app_state.database.ls_opening.isExists(&ls_opening).await?;
 
-    if !isExists {
-        app_state
-            .database
-            .ls_opening
-            .insert(ls_opening, transaction)
-            .await?;
-    }
+    app_state
+        .database
+        .ls_opening
+        .insert_if_not_exists(ls_opening, transaction)
+        .await?;
 
     Ok(())
 }

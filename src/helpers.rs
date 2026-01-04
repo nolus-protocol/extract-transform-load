@@ -626,11 +626,11 @@ pub async fn parse_raw_tx(
         );
 
         if let Ok(msg) = msg {
-            let isExists =
-                app_state.database.raw_message.isExists(&msg).await?;
-            if !isExists {
-                app_state.database.raw_message.insert(msg, tx).await?;
-            }
+            app_state
+                .database
+                .raw_message
+                .insert_if_not_exists(msg, tx)
+                .await?;
         }
     }
 

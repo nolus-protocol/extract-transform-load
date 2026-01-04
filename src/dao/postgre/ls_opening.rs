@@ -88,6 +88,58 @@ impl Table<LS_Opening> {
         .await
     }
 
+    /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
+    /// This is more efficient than calling isExists() followed by insert().
+    pub async fn insert_if_not_exists(
+        &self,
+        data: LS_Opening,
+        transaction: &mut Transaction<'_, DataBase>,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO "LS_Opening" (
+                "LS_contract_id",
+                "LS_address_id",
+                "LS_asset_symbol",
+                "LS_interest",
+                "LS_timestamp",
+                "LS_loan_pool_id",
+                "LS_loan_amnt_stable",
+                "LS_loan_amnt_asset",
+                "LS_cltr_symbol",
+                "LS_cltr_amnt_stable",
+                "LS_cltr_amnt_asset",
+                "LS_native_amnt_stable",
+                "LS_native_amnt_nolus",
+                "Tx_Hash",
+                "LS_loan_amnt",
+                "LS_lpn_loan_amnt"
+            )
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            ON CONFLICT ("LS_contract_id") DO NOTHING
+            "#,
+        )
+        .bind(&data.LS_contract_id)
+        .bind(&data.LS_address_id)
+        .bind(&data.LS_asset_symbol)
+        .bind(data.LS_interest)
+        .bind(data.LS_timestamp)
+        .bind(&data.LS_loan_pool_id)
+        .bind(&data.LS_loan_amnt_stable)
+        .bind(&data.LS_loan_amnt_asset)
+        .bind(&data.LS_cltr_symbol)
+        .bind(&data.LS_cltr_amnt_stable)
+        .bind(&data.LS_cltr_amnt_asset)
+        .bind(&data.LS_native_amnt_stable)
+        .bind(&data.LS_native_amnt_nolus)
+        .bind(&data.Tx_Hash)
+        .bind(&data.LS_loan_amnt)
+        .bind(&data.LS_lpn_loan_amnt)
+        .persistent(true)
+        .execute(&mut **transaction)
+        .await
+    }
+
     pub async fn insert_many(
         &self,
         data: &Vec<LS_Opening>,

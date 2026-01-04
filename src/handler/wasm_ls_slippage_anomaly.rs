@@ -33,19 +33,11 @@ pub async fn parse_and_insert(
         LS_timestamp: time_stamp,
     };
 
-    let isExists = app_state
+    app_state
         .database
         .ls_slippage_anomaly
-        .isExists(&ls_slippage_anomaly)
+        .insert_if_not_exists(ls_slippage_anomaly, transaction)
         .await?;
-
-    if !isExists {
-        app_state
-            .database
-            .ls_slippage_anomaly
-            .insert(ls_slippage_anomaly, transaction)
-            .await?;
-    }
 
     Ok(())
 }

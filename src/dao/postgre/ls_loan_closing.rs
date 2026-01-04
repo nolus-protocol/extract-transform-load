@@ -66,6 +66,42 @@ impl Table<LS_Loan_Closing> {
         .await
     }
 
+    /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
+    /// This is more efficient than calling isExists() followed by insert().
+    pub async fn insert_if_not_exists(
+        &self,
+        data: LS_Loan_Closing,
+        transaction: &mut Transaction<'_, DataBase>,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO "LS_Loan_Closing" (
+                "LS_contract_id",
+                "LS_amnt",
+                "LS_amnt_stable",
+                "LS_pnl",
+                "LS_timestamp",
+                "Type",
+                "Block",
+                "Active"
+            )
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT ("LS_contract_id") DO NOTHING
+        "#,
+        )
+        .bind(&data.LS_contract_id)
+        .bind(&data.LS_amnt)
+        .bind(&data.LS_amnt_stable)
+        .bind(&data.LS_pnl)
+        .bind(&data.LS_timestamp)
+        .bind(&data.Type)
+        .bind(&data.Block)
+        .bind(&data.Active)
+        .persistent(true)
+        .execute(&mut **transaction)
+        .await
+    }
+
     pub async fn get_lease_amount(
         &self,
         contract_id: String,

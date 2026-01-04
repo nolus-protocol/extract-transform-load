@@ -42,19 +42,11 @@ pub async fn parse_and_insert(
         LS_Close_Strategy_Ltv: amout,
     };
 
-    let isExists = app_state
+    app_state
         .database
         .ls_auto_close_position
-        .isExists(&ls_auto_close_position)
+        .insert_if_not_exists(ls_auto_close_position, transaction)
         .await?;
-
-    if !isExists {
-        app_state
-            .database
-            .ls_auto_close_position
-            .insert(ls_auto_close_position, transaction)
-            .await?;
-    }
 
     Ok(())
 }

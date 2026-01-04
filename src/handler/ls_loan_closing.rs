@@ -27,30 +27,20 @@ pub async fn parse_and_insert(
     change_amount: Option<AmountTicker>,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
-    let isExists = app_state
+    let ls_loan_closing =
+        get_loan(app_state.clone(), contract.to_owned(), r#type, at, block)
+            .await?;
+
+    let result = app_state
         .database
         .ls_loan_closing
-        .isExists(contract.to_owned())
+        .insert_if_not_exists(ls_loan_closing.clone(), transaction)
         .await?;
 
-    if !isExists {
-        let ls_loan_closing =
-            get_loan(app_state.clone(), contract.to_owned(), r#type, at, block)
-                .await?;
-
-        tokio::try_join!(
-            app_state
-                .database
-                .ls_loan_closing
-                .insert(ls_loan_closing.clone(), transaction)
-                .map_err(Error::from),
-            proceed_loan_collect(
-                app_state.clone(),
-                ls_loan_closing,
-                change_amount
-            )
-            .map_err(Error::from),
-        )?;
+    // Only proceed with loan collect if we actually inserted a new record
+    if result.rows_affected() > 0 {
+        proceed_loan_collect(app_state.clone(), ls_loan_closing, change_amount)
+            .await?;
     }
 
     Ok(())
