@@ -83,51 +83,32 @@ pub fn parse_tuple_string(data: String) -> Vec<String> {
     items
 }
 
+/// Extracts a required field from a HashMap, returning an error if not found.
+/// Reduces verbosity of repeated `.get().ok_or(Error::FieldNotExist(...))?.to_owned()` pattern.
+fn extract_field(
+    map: &HashMap<String, String>,
+    key: &str,
+) -> Result<String, Error> {
+    map.get(key)
+        .cloned()
+        .ok_or_else(|| Error::FieldNotExist(key.to_string()))
+}
+
 pub fn parse_wasm_ls_open(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Opening_Type, Error> {
     let ls_open = pasrse_data(attributes)?;
     let c = LS_Opening_Type {
-        id: ls_open
-            .get("id")
-            .ok_or(Error::FieldNotExist(String::from("id")))?
-            .to_owned(),
-        customer: ls_open
-            .get("customer")
-            .ok_or(Error::FieldNotExist(String::from("customer")))?
-            .to_owned(),
-        currency: ls_open
-            .get("currency")
-            .ok_or(Error::FieldNotExist(String::from("currency")))?
-            .to_owned(),
-        air: ls_open
-            .get("air")
-            .ok_or(Error::FieldNotExist(String::from("air")))?
-            .to_owned(),
-        at: ls_open
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_owned(),
-        loan_pool_id: ls_open
-            .get("loan-pool-id")
-            .ok_or(Error::FieldNotExist(String::from("loan-pool-id")))?
-            .to_owned(),
-        loan_amount: ls_open
-            .get("loan-amount")
-            .ok_or(Error::FieldNotExist(String::from("loan-amount")))?
-            .to_owned(),
-        loan_symbol: ls_open
-            .get("loan-symbol")
-            .ok_or(Error::FieldNotExist(String::from("loan-symbol")))?
-            .to_owned(),
-        downpayment_amount: ls_open
-            .get("downpayment-amount")
-            .ok_or(Error::FieldNotExist(String::from("downpayment-amount")))?
-            .to_owned(),
-        downpayment_symbol: ls_open
-            .get("downpayment-symbol")
-            .ok_or(Error::FieldNotExist(String::from("downpayment-symbol")))?
-            .to_owned(),
+        id: extract_field(&ls_open, "id")?,
+        customer: extract_field(&ls_open, "customer")?,
+        currency: extract_field(&ls_open, "currency")?,
+        air: extract_field(&ls_open, "air")?,
+        at: extract_field(&ls_open, "at")?,
+        loan_pool_id: extract_field(&ls_open, "loan-pool-id")?,
+        loan_amount: extract_field(&ls_open, "loan-amount")?,
+        loan_symbol: extract_field(&ls_open, "loan-symbol")?,
+        downpayment_amount: extract_field(&ls_open, "downpayment-amount")?,
+        downpayment_symbol: extract_field(&ls_open, "downpayment-symbol")?,
     };
 
     Ok(c)
@@ -138,14 +119,8 @@ pub fn parse_wasm_ls_close(
 ) -> Result<LS_Closing_Type, Error> {
     let ls_close = pasrse_data(attributes)?;
     let c = LS_Closing_Type {
-        id: ls_close
-            .get("id")
-            .ok_or(Error::FieldNotExist(String::from("id")))?
-            .to_owned(),
-        at: ls_close
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_owned(),
+        id: extract_field(&ls_close, "id")?,
+        at: extract_field(&ls_close, "at")?,
     };
 
     Ok(c)
@@ -157,38 +132,17 @@ pub fn parse_wasm_ls_repayment(
     let ls_repayment = pasrse_data(attributes)?;
     let items = parseInterestValues(&ls_repayment)?;
     let c = LS_Repayment_Type {
-        height: ls_repayment
-            .get("height")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_owned(),
-        to: ls_repayment
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_owned(),
-        payment_symbol: ls_repayment
-            .get("payment-symbol")
-            .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
-            .to_owned(),
-        payment_amount: ls_repayment
-            .get("payment-amount")
-            .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
-            .to_owned(),
-        at: ls_repayment
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_owned(),
-        loan_close: ls_repayment
-            .get("loan-close")
-            .ok_or(Error::FieldNotExist(String::from("loan-close")))?
-            .to_owned(),
+        height: extract_field(&ls_repayment, "height")?,
+        to: extract_field(&ls_repayment, "to")?,
+        payment_symbol: extract_field(&ls_repayment, "payment-symbol")?,
+        payment_amount: extract_field(&ls_repayment, "payment-amount")?,
+        at: extract_field(&ls_repayment, "at")?,
+        loan_close: extract_field(&ls_repayment, "loan-close")?,
         prev_margin_interest: items.prev_margin_interest,
         prev_loan_interest: items.prev_loan_interest,
         curr_margin_interest: items.curr_margin_interest,
         curr_loan_interest: items.curr_loan_interest,
-        principal: ls_repayment
-            .get("principal")
-            .ok_or(Error::FieldNotExist(String::from("principal")))?
-            .to_owned(),
+        principal: extract_field(&ls_repayment, "principal")?,
     };
 
     Ok(c)
@@ -202,50 +156,20 @@ pub fn parse_wasm_ls_close_position(
     if ls_close_position.contains_key("height") {
         let items = parseInterestValues(&ls_close_position)?;
         let c = LS_Close_Position_Type {
-            height: ls_close_position
-                .get("height")
-                .ok_or(Error::FieldNotExist(String::from("height")))?
-                .to_owned(),
-            to: ls_close_position
-                .get("to")
-                .ok_or(Error::FieldNotExist(String::from("to")))?
-                .to_owned(),
-            change: ls_close_position
-                .get("change")
-                .ok_or(Error::FieldNotExist(String::from("change")))?
-                .to_owned(),
-            amount_amount: ls_close_position
-                .get("amount-amount")
-                .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
-                .to_owned(),
-            amount_symbol: ls_close_position
-                .get("amount-symbol")
-                .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
-                .to_owned(),
-            payment_symbol: ls_close_position
-                .get("payment-symbol")
-                .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
-                .to_owned(),
-            payment_amount: ls_close_position
-                .get("payment-amount")
-                .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
-                .to_owned(),
-            at: ls_close_position
-                .get("at")
-                .ok_or(Error::FieldNotExist(String::from("at")))?
-                .to_owned(),
-            loan_close: ls_close_position
-                .get("loan-close")
-                .ok_or(Error::FieldNotExist(String::from("loan_close")))?
-                .to_owned(),
+            height: extract_field(&ls_close_position, "height")?,
+            to: extract_field(&ls_close_position, "to")?,
+            change: extract_field(&ls_close_position, "change")?,
+            amount_amount: extract_field(&ls_close_position, "amount-amount")?,
+            amount_symbol: extract_field(&ls_close_position, "amount-symbol")?,
+            payment_symbol: extract_field(&ls_close_position, "payment-symbol")?,
+            payment_amount: extract_field(&ls_close_position, "payment-amount")?,
+            at: extract_field(&ls_close_position, "at")?,
+            loan_close: extract_field(&ls_close_position, "loan-close")?,
             prev_margin_interest: items.prev_margin_interest,
             prev_loan_interest: items.prev_loan_interest,
             curr_margin_interest: items.curr_margin_interest,
             curr_loan_interest: items.curr_loan_interest,
-            principal: ls_close_position
-                .get("principal")
-                .ok_or(Error::FieldNotExist(String::from("principal")))?
-                .to_owned(),
+            principal: extract_field(&ls_close_position, "principal")?,
         };
         return Ok(Some(c));
     }
@@ -260,50 +184,20 @@ pub fn parse_wasm_ls_liquidation(
     let items = parseInterestValues(&ls_liquidation)?;
 
     let c = LS_Liquidation_Type {
-        height: ls_liquidation
-            .get("height")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_owned(),
-        to: ls_liquidation
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_owned(),
-        amount_symbol: ls_liquidation
-            .get("amount-symbol")
-            .ok_or(Error::FieldNotExist(String::from("amount-symbol")))?
-            .to_owned(),
-        amount_amount: ls_liquidation
-            .get("amount-amount")
-            .ok_or(Error::FieldNotExist(String::from("amount-amount")))?
-            .to_owned(),
-        payment_symbol: ls_liquidation
-            .get("payment-symbol")
-            .ok_or(Error::FieldNotExist(String::from("payment-symbol")))?
-            .to_owned(),
-        payment_amount: ls_liquidation
-            .get("payment-amount")
-            .ok_or(Error::FieldNotExist(String::from("payment-amount")))?
-            .to_owned(),
-        at: ls_liquidation
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_owned(),
-        r#type: ls_liquidation
-            .get("cause")
-            .ok_or(Error::FieldNotExist(String::from("cause")))?
-            .to_owned(),
-        loan_close: ls_liquidation
-            .get("loan-close")
-            .ok_or(Error::FieldNotExist(String::from("loan_close")))?
-            .to_owned(),
+        height: extract_field(&ls_liquidation, "height")?,
+        to: extract_field(&ls_liquidation, "to")?,
+        amount_symbol: extract_field(&ls_liquidation, "amount-symbol")?,
+        amount_amount: extract_field(&ls_liquidation, "amount-amount")?,
+        payment_symbol: extract_field(&ls_liquidation, "payment-symbol")?,
+        payment_amount: extract_field(&ls_liquidation, "payment-amount")?,
+        at: extract_field(&ls_liquidation, "at")?,
+        r#type: extract_field(&ls_liquidation, "cause")?,
+        loan_close: extract_field(&ls_liquidation, "loan-close")?,
         prev_margin_interest: items.prev_margin_interest,
         prev_loan_interest: items.prev_loan_interest,
         curr_margin_interest: items.curr_margin_interest,
         curr_loan_interest: items.curr_loan_interest,
-        principal: ls_liquidation
-            .get("principal")
-            .ok_or(Error::FieldNotExist(String::from("principal")))?
-            .to_owned(),
+        principal: extract_field(&ls_liquidation, "principal")?,
     };
 
     Ok(c)
@@ -314,26 +208,11 @@ pub fn parse_wasm_ls_liquidation_warning(
 ) -> Result<LS_Liquidation_Warning_Type, Error> {
     let ls_liquidation_warning = pasrse_data(attributes)?;
     let c = LS_Liquidation_Warning_Type {
-        customer: ls_liquidation_warning
-            .get("customer")
-            .ok_or(Error::FieldNotExist(String::from("customer")))?
-            .to_owned(),
-        lease: ls_liquidation_warning
-            .get("lease")
-            .ok_or(Error::FieldNotExist(String::from("lease")))?
-            .to_owned(),
-        lease_asset: ls_liquidation_warning
-            .get("lease-asset")
-            .ok_or(Error::FieldNotExist(String::from("lease-asset")))?
-            .to_owned(),
-        level: ls_liquidation_warning
-            .get("level")
-            .ok_or(Error::FieldNotExist(String::from("level")))?
-            .to_owned(),
-        ltv: ls_liquidation_warning
-            .get("ltv")
-            .ok_or(Error::FieldNotExist(String::from("ltv")))?
-            .to_owned(),
+        customer: extract_field(&ls_liquidation_warning, "customer")?,
+        lease: extract_field(&ls_liquidation_warning, "lease")?,
+        lease_asset: extract_field(&ls_liquidation_warning, "lease-asset")?,
+        level: extract_field(&ls_liquidation_warning, "level")?,
+        ltv: extract_field(&ls_liquidation_warning, "ltv")?,
     };
 
     Ok(c)
@@ -344,22 +223,10 @@ pub fn parse_wasm_ls_slippage_anomaly(
 ) -> Result<LS_Slippage_Anomaly_Type, Error> {
     let ls_slippage_anomaly = pasrse_data(attributes)?;
     let c = LS_Slippage_Anomaly_Type {
-        customer: ls_slippage_anomaly
-            .get("customer")
-            .ok_or(Error::FieldNotExist(String::from("customer")))?
-            .to_owned(),
-        lease: ls_slippage_anomaly
-            .get("lease")
-            .ok_or(Error::FieldNotExist(String::from("lease")))?
-            .to_owned(),
-        lease_asset: ls_slippage_anomaly
-            .get("lease-asset")
-            .ok_or(Error::FieldNotExist(String::from("lease-asset")))?
-            .to_owned(),
-        max_slippage: ls_slippage_anomaly
-            .get("max_slippage")
-            .ok_or(Error::FieldNotExist(String::from("max_slippage")))?
-            .to_owned(),
+        customer: extract_field(&ls_slippage_anomaly, "customer")?,
+        lease: extract_field(&ls_slippage_anomaly, "lease")?,
+        lease_asset: extract_field(&ls_slippage_anomaly, "lease-asset")?,
+        max_slippage: extract_field(&ls_slippage_anomaly, "max_slippage")?,
     };
 
     Ok(c)
@@ -370,10 +237,7 @@ pub fn parse_wasm_ls_auto_close_position(
 ) -> Result<LS_Auto_Close_Position_Type, Error> {
     let ls_auto_close_position = pasrse_data(attributes)?;
     let c = LS_Auto_Close_Position_Type {
-        to: ls_auto_close_position
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_owned(),
+        to: extract_field(&ls_auto_close_position, "to")?,
         take_profit_ltv: ls_auto_close_position.get("take-profit-ltv").cloned(),
         stop_loss_ltv: ls_auto_close_position.get("stop-loss-ltv").cloned(),
     };
@@ -386,18 +250,9 @@ pub fn parse_wasm_reserve_cover_loss(
 ) -> Result<Reserve_Cover_Loss_Type, Error> {
     let reserve_cover_loss = pasrse_data(attributes)?;
     let c = Reserve_Cover_Loss_Type {
-        to: reserve_cover_loss
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_owned(),
-        payment_symbol: reserve_cover_loss
-            .get("payment-symbol")
-            .ok_or(Error::FieldNotExist(String::from("payment_symbol")))?
-            .to_owned(),
-        payment_amount: reserve_cover_loss
-            .get("payment-amount")
-            .ok_or(Error::FieldNotExist(String::from("payment_amount")))?
-            .to_owned(),
+        to: extract_field(&reserve_cover_loss, "to")?,
+        payment_symbol: extract_field(&reserve_cover_loss, "payment-symbol")?,
+        payment_amount: extract_field(&reserve_cover_loss, "payment-amount")?,
     };
 
     Ok(c)
@@ -453,34 +308,13 @@ pub fn parse_wasm_lp_deposit(
     let deposit = pasrse_data(attributes)?;
 
     let c = LP_Deposit_Type {
-        height: deposit
-            .get("height")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_owned(),
-        from: deposit
-            .get("from")
-            .ok_or(Error::FieldNotExist(String::from("from")))?
-            .to_owned(),
-        to: deposit
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_owned(),
-        at: deposit
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_owned(),
-        deposit_amount: deposit
-            .get("deposit-amount")
-            .ok_or(Error::FieldNotExist(String::from("deposit-amount")))?
-            .to_owned(),
-        deposit_symbol: deposit
-            .get("deposit-symbol")
-            .ok_or(Error::FieldNotExist(String::from("deposit-symbol")))?
-            .to_owned(),
-        receipts: deposit
-            .get("receipts")
-            .ok_or(Error::FieldNotExist(String::from("receipts")))?
-            .to_owned(),
+        height: extract_field(&deposit, "height")?,
+        from: extract_field(&deposit, "from")?,
+        to: extract_field(&deposit, "to")?,
+        at: extract_field(&deposit, "at")?,
+        deposit_amount: extract_field(&deposit, "deposit-amount")?,
+        deposit_symbol: extract_field(&deposit, "deposit-symbol")?,
+        receipts: extract_field(&deposit, "receipts")?,
     };
 
     Ok(c)
@@ -492,38 +326,14 @@ pub fn parse_wasm_lp_withdraw(
     let lp_withdraw = pasrse_data(attributes)?;
 
     let c = LP_Withdraw_Type {
-        height: lp_withdraw
-            .get("height")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_owned(),
-        from: lp_withdraw
-            .get("from")
-            .ok_or(Error::FieldNotExist(String::from("from")))?
-            .to_owned(),
-        to: lp_withdraw
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_owned(),
-        at: lp_withdraw
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_owned(),
-        withdraw_amount: lp_withdraw
-            .get("withdraw-amount")
-            .ok_or(Error::FieldNotExist(String::from("withdraw-amount")))?
-            .to_owned(),
-        withdraw_symbol: lp_withdraw
-            .get("withdraw-symbol")
-            .ok_or(Error::FieldNotExist(String::from("withdraw-symbol")))?
-            .to_owned(),
-        receipts: lp_withdraw
-            .get("receipts")
-            .ok_or(Error::FieldNotExist(String::from("receipts")))?
-            .to_owned(),
-        close: lp_withdraw
-            .get("close")
-            .ok_or(Error::FieldNotExist(String::from("close")))?
-            .to_owned(),
+        height: extract_field(&lp_withdraw, "height")?,
+        from: extract_field(&lp_withdraw, "from")?,
+        to: extract_field(&lp_withdraw, "to")?,
+        at: extract_field(&lp_withdraw, "at")?,
+        withdraw_amount: extract_field(&lp_withdraw, "withdraw-amount")?,
+        withdraw_symbol: extract_field(&lp_withdraw, "withdraw-symbol")?,
+        receipts: extract_field(&lp_withdraw, "receipts")?,
+        close: extract_field(&lp_withdraw, "close")?,
     };
 
     Ok(c)
@@ -535,22 +345,10 @@ pub fn parse_wasm_tr_profit(
     let tr_profit = pasrse_data(attributes)?;
 
     let c = TR_Profit_Type {
-        height: tr_profit
-            .get("height")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_owned(),
-        at: tr_profit
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_owned(),
-        profit_symbol: tr_profit
-            .get("profit-amount-symbol")
-            .ok_or(Error::FieldNotExist(String::from("profit-symbol")))?
-            .to_owned(),
-        profit_amount: tr_profit
-            .get("profit-amount-amount")
-            .ok_or(Error::FieldNotExist(String::from("profit-amount")))?
-            .to_owned(),
+        height: extract_field(&tr_profit, "height")?,
+        at: extract_field(&tr_profit, "at")?,
+        profit_symbol: extract_field(&tr_profit, "profit-amount-symbol")?,
+        profit_amount: extract_field(&tr_profit, "profit-amount-amount")?,
     };
 
     Ok(c)
@@ -562,26 +360,11 @@ pub fn parse_wasm_tr_rewards_distribution(
     let tr_rewards_distribution = pasrse_data(attributes)?;
 
     let c = TR_Rewards_Distribution_Type {
-        height: tr_rewards_distribution
-            .get("height")
-            .ok_or(Error::FieldNotExist(String::from("height")))?
-            .to_owned(),
-        to: tr_rewards_distribution
-            .get("to")
-            .ok_or(Error::FieldNotExist(String::from("to")))?
-            .to_owned(),
-        at: tr_rewards_distribution
-            .get("at")
-            .ok_or(Error::FieldNotExist(String::from("at")))?
-            .to_owned(),
-        rewards_symbol: tr_rewards_distribution
-            .get("rewards-symbol")
-            .ok_or(Error::FieldNotExist(String::from("rewards-symbol")))?
-            .to_owned(),
-        rewards_amount: tr_rewards_distribution
-            .get("rewards-amount")
-            .ok_or(Error::FieldNotExist(String::from("rewards-amount")))?
-            .to_owned(),
+        height: extract_field(&tr_rewards_distribution, "height")?,
+        to: extract_field(&tr_rewards_distribution, "to")?,
+        at: extract_field(&tr_rewards_distribution, "at")?,
+        rewards_symbol: extract_field(&tr_rewards_distribution, "rewards-symbol")?,
+        rewards_amount: extract_field(&tr_rewards_distribution, "rewards-amount")?,
     };
 
     Ok(c)
