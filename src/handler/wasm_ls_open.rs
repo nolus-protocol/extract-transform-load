@@ -1,7 +1,6 @@
 use std::str::FromStr as _;
 
 use bigdecimal::BigDecimal;
-use chrono::DateTime;
 use futures::TryFutureExt as _;
 use sqlx::Transaction;
 
@@ -9,6 +8,7 @@ use crate::{
     configuration::{AppState, State},
     dao::DataBase,
     error::Error,
+    handler::parse_event_timestamp,
     model::LS_Opening,
     types::LS_Opening_Type,
 };
@@ -20,15 +20,7 @@ pub async fn parse_and_insert(
     height: i64,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
-    let sec: i64 = item.at.parse()?;
-    let at_sec = sec / 1_000_000_000;
-
-    let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
-        Error::DecodeDateTimeError(format!(
-            "Wasm_LS_Open date parse {}",
-            at_sec
-        ))
-    })?;
+    let at = parse_event_timestamp(&item.at)?;
 
     let protocol = app_state.get_protocol_by_pool_id(&item.loan_pool_id);
     let lpn_currency = app_state.get_currency_by_pool_id(&item.loan_pool_id)?;

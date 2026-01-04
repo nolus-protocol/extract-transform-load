@@ -1,14 +1,13 @@
 use std::str::FromStr as _;
 
 use bigdecimal::BigDecimal;
-use chrono::DateTime;
 use sqlx::Transaction;
 
 use crate::{
     configuration::{AppState, State},
     dao::DataBase,
     error::Error,
-    handler::send_push::send,
+    handler::{parse_event_timestamp, send_push::send},
     helpers::Loan_Closing_Status,
     model::{LS_Liquidation, LS_Liquidation_Type as LS_Liquidation_Data},
     types::{LS_Liquidation_Type, PushData, PUSH_TYPES},
@@ -24,14 +23,7 @@ pub async fn parse_and_insert(
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let contract = item.to.to_owned();
-    let sec: i64 = item.at.parse()?;
-    let at_sec = sec / 1_000_000_000;
-    let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
-        Error::DecodeDateTimeError(format!(
-            "Wasm_LS_Liquidation date parse {}",
-            at_sec
-        ))
-    })?;
+    let at = parse_event_timestamp(&item.at)?;
     let lease = app_state
         .database
         .ls_opening

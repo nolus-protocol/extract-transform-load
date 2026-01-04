@@ -1,10 +1,10 @@
-use chrono::DateTime;
 use sqlx::Transaction;
 
 use crate::{
     configuration::{AppState, State},
     dao::DataBase,
     error::Error,
+    handler::parse_event_timestamp,
     model::LS_Closing,
     types::LS_Closing_Type,
 };
@@ -15,14 +15,7 @@ pub async fn parse_and_insert(
     tx_hash: String,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
-    let sec: i64 = item.at.parse()?;
-    let at_sec = sec / 1_000_000_000;
-    let at = DateTime::from_timestamp(at_sec, 0).ok_or_else(|| {
-        Error::DecodeDateTimeError(format!(
-            "Wasm_LS_close date parse {}",
-            at_sec
-        ))
-    })?;
+    let at = parse_event_timestamp(&item.at)?;
 
     let ls_closing = LS_Closing {
         Tx_Hash: tx_hash,

@@ -1,4 +1,17 @@
+use chrono::{DateTime, Utc};
+
+use crate::error::Error;
+
 pub use self::aggregation_task::aggregation_task;
+
+/// Parses a nanosecond timestamp string into a DateTime<Utc>.
+/// Blockchain events use nanosecond timestamps, this converts them to DateTime.
+pub fn parse_event_timestamp(nanos_str: &str) -> Result<DateTime<Utc>, Error> {
+    let nanos: i64 = nanos_str.parse()?;
+    let secs = nanos / 1_000_000_000;
+    DateTime::from_timestamp(secs, 0)
+        .ok_or_else(|| Error::DecodeDateTimeError(format!("timestamp: {}", secs)))
+}
 
 mod aggregation_task;
 pub mod cache_state;
