@@ -11,17 +11,17 @@ impl Table<LS_Liquidation> {
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "LS_Liquidation" 
-            WHERE 
+            FROM "LS_Liquidation"
+            WHERE
                 "LS_liquidation_height" = $1 AND
                 "LS_contract_id" = $2
             "#,
         )
         .bind(ls_liquidatiion.LS_liquidation_height)
         .bind(&ls_liquidatiion.LS_contract_id)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -78,7 +78,7 @@ impl Table<LS_Liquidation> {
         .bind(&data.LS_payment_amnt)
         .bind(&data.LS_payment_amnt_stable)
         .bind(&data.LS_loan_close)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -135,7 +135,7 @@ impl Table<LS_Liquidation> {
                 .push_bind(&ls.LS_loan_close);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -150,7 +150,7 @@ impl Table<LS_Liquidation> {
             "#,
         )
         .bind(&contract)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)

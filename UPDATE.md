@@ -163,7 +163,7 @@ insert into block(id) values (3659894);
 DELETE FROM "block" WHERE "id" >= 6871800;
 insert into block(id) values (6896464);
 
-insert into 
+insert into
   "LS_Repayment"
   (
     "LS_repayment_height",
@@ -180,10 +180,10 @@ insert into
     "LS_principal_stable",
     "Tx_Hash"
   )
-  
+
   values
 
-  (  
+  (
   1994921,
   'nolus1zkzrmqkrswrq42wpxs5fvevd76hvzww9v7rx27vafkd8qmfqrj9sr9pc47',f
   'USDC',
@@ -258,11 +258,11 @@ ALTER TABLE "raw_message" ADD COLUMN "rewards" TEXT DEFAULT NULL;
 
 05.11.2024
 
-UPDATE "LS_Opening" 
+UPDATE "LS_Opening"
 SET "LS_loan_amnt_stable" = "LS_loan_amnt_asset"
 WHERE "LS_loan_pool_id" = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5' AND "LS_loan_amnt_stable" != "LS_loan_amnt_asset";
 
-UPDATE "LS_Opening" 
+UPDATE "LS_Opening"
 SET "LS_loan_amnt_stable" = "LS_loan_amnt_asset"
 WHERE "LS_loan_pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94' AND "LS_loan_amnt_stable" != "LS_loan_amnt_asset";
 
@@ -324,3 +324,8 @@ UPDATE "LP_Pool" SET "LP_status" = false WHERE "LP_Pool_id" = 'nolus1jufcaqm6657
 UPDATE "LP_Pool" SET "LP_status" = false WHERE "LP_Pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94';
 
 ALTER TABLE "LS_Loan_Collect" ADD COLUMN  "LS_amount_stable" DECIMAL(39, 0) NOT NULL DEFAULT 0;
+
+
+01.01.2025
+
+ALTER TABLE "raw_message" ADD COLUMN "code" INT;

@@ -44,6 +44,7 @@ pub struct Raw_Message {
     pub memo: String,
     pub timestamp: DateTime<Utc>,
     pub rewards: Option<String>,
+    pub code: Option<i32>,
 }
 
 impl Raw_Message {
@@ -57,6 +58,7 @@ impl Raw_Message {
         memo: String,
         events: Vec<String>,
         tx_events: &Vec<Event>,
+        code: u32,
     ) -> Result<Raw_Message, anyhow::Error> {
         let k = CosmosTypes::from_str(&value.type_url)?;
         let seconds = time_stamp.seconds.try_into()?;
@@ -84,6 +86,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: None,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgTransfer => {
@@ -102,6 +105,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: None,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgVoteLegacy => {
@@ -120,6 +124,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: None,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgVote => {
@@ -138,6 +143,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: None,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgRecvPacket => {
@@ -160,6 +166,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: None,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgWithdrawDelegatorReward => {
@@ -183,6 +190,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: amount,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgDelegate => {
@@ -201,6 +209,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: None,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgBeginRedelegate => {
@@ -219,6 +228,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: None,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgUndelegate => {
@@ -237,6 +247,7 @@ impl Raw_Message {
                     value: BASE64_STANDARD.encode(value.value),
                     memo,
                     rewards: None,
+                    code: Some(code.try_into()?),
                 })
             },
             CosmosTypes::MsgExecuteContract => {
@@ -271,6 +282,7 @@ impl Raw_Message {
                             value: BASE64_STANDARD.encode(value.value),
                             memo,
                             rewards,
+                            code: Some(code.try_into()?),
                         });
                     }
                 }

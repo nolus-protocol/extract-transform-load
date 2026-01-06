@@ -20,15 +20,15 @@ impl Table<LS_Opening> {
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "LS_Opening" 
-            WHERE 
-                "LS_contract_id" = $1       
+            FROM "LS_Opening"
+            WHERE
+                "LS_contract_id" = $1
             "#,
         )
         .bind(&ls_opening.LS_contract_id)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -83,7 +83,7 @@ impl Table<LS_Opening> {
         .bind(&data.Tx_Hash)
         .bind(&data.LS_loan_amnt)
         .bind(&data.LS_lpn_loan_amnt)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -190,7 +190,7 @@ impl Table<LS_Opening> {
                 .push_bind(&ls.LS_lpn_loan_amnt);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -202,14 +202,14 @@ impl Table<LS_Opening> {
     ) -> Result<i64, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
             FROM "LS_Opening" WHERE "LS_timestamp" > $1 AND "LS_timestamp" <= $2
             "#,
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -222,14 +222,14 @@ impl Table<LS_Opening> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("LS_cltr_amnt_stable")
             FROM "LS_Opening" WHERE "LS_timestamp" > $1 AND "LS_timestamp" <= $2
             "#,
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -245,14 +245,14 @@ impl Table<LS_Opening> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("LS_loan_amnt_stable")
             FROM "LS_Opening" WHERE "LS_timestamp" > $1 AND "LS_timestamp" <= $2
             "#,
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -268,10 +268,10 @@ impl Table<LS_Opening> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("LS_cltr_amnt_stable")
             FROM "LS_Opening"
-            LEFT JOIN 
+            LEFT JOIN
                 "LS_Closing"
             ON
                 "LS_Opening"."LS_contract_id" = "LS_Closing"."LS_contract_id"
@@ -280,7 +280,7 @@ impl Table<LS_Opening> {
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -296,10 +296,10 @@ impl Table<LS_Opening> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("LS_loan_amnt_stable" + "LS_cltr_amnt_stable")
             FROM "LS_Opening"
-            LEFT JOIN 
+            LEFT JOIN
                 "LS_Closing"
             ON
                 "LS_Opening"."LS_contract_id" = "LS_Closing"."LS_contract_id"
@@ -308,7 +308,7 @@ impl Table<LS_Opening> {
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -331,7 +331,7 @@ impl Table<LS_Opening> {
         .bind(protocol)
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -347,7 +347,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(protocol)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -359,14 +359,14 @@ impl Table<LS_Opening> {
         let data = sqlx::query_as(
             r#"
             WITH LatestTimestamps AS (
-            SELECT 
-                "LS_contract_id", 
+            SELECT
+                "LS_contract_id",
                 MAX("LS_timestamp") AS "MaxTimestamp"
-            FROM 
+            FROM
                 "LS_State"
             WHERE
                 "LS_timestamp" > (now() - INTERVAL '1 hour')
-            GROUP BY 
+            GROUP BY
                 "LS_contract_id"
             ),
             Opened AS (
@@ -383,7 +383,7 @@ impl Table<LS_Opening> {
                     END AS "Asset Type"
                 FROM
                     "LS_State" s
-                INNER JOIN 
+                INNER JOIN
                     LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
@@ -403,18 +403,18 @@ impl Table<LS_Opening> {
                 FROM
                     Opened op
             )
-            SELECT 
-                "Asset", 
+            SELECT
+                "Asset",
                 SUM("Lease Value") AS "Loan"
-            FROM 
-                Lease_Value_Table 
-            GROUP BY 
+            FROM
+                Lease_Value_Table
+            GROUP BY
                 "Asset"
-            ORDER BY 
+            ORDER BY
                 "Loan" DESC;
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -465,15 +465,15 @@ impl Table<LS_Opening> {
                 )
                 SELECT
                     (POWER((1 + ("apr" / 100 / 365)), 365) - 1) * 100 AS "PERCENT"
-                FROM APRCalc  
-                        
+                FROM APRCalc
+
             "#,
             protocol.to_owned(),
             max_interest,
             protocol.to_owned()
         );
         let value: Option<(BigDecimal,)> = sqlx::query_as(&sql)
-            .persistent(false)
+            .persistent(true)
             .fetch_optional(&self.pool)
             .await?;
 
@@ -526,11 +526,11 @@ impl Table<LS_Opening> {
                 )
                 SELECT
                     (POWER((1 + ("apr" / 100 / 365)), 365) - 1) * 100 AS "PERCENT"
-                FROM APRCalc       
+                FROM APRCalc
             "#,
         )
         .bind(&protocol)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
@@ -548,7 +548,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(LS_contract_id)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await
     }
@@ -563,7 +563,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(protocol)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
@@ -579,7 +579,7 @@ impl Table<LS_Opening> {
                 SELECT SUM("LS_loan_amnt_asset" / 1000000) AS "Loan" FROM "LS_Opening"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));
@@ -599,7 +599,7 @@ impl Table<LS_Opening> {
 
         let query_str = format!(
             r#"
-            SELECT * FROM "LS_Opening" WHERE "LS_contract_id" IN({}) 
+            SELECT * FROM "LS_Opening" WHERE "LS_contract_id" IN({})
         "#,
             params
         );
@@ -610,7 +610,7 @@ impl Table<LS_Opening> {
             query = query.bind(i);
         }
 
-        let data = query.persistent(false).fetch_all(&self.pool).await?;
+        let data = query.persistent(true).fetch_all(&self.pool).await?;
         Ok(data)
     }
 
@@ -624,7 +624,7 @@ impl Table<LS_Opening> {
                     CASE
                         WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
                         WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
-                        WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000 
+                        WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
                         WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
                         ELSE "LS_cltr_amnt_stable" / 1000000
                     END AS "Down Payment Amount",
@@ -661,7 +661,7 @@ impl Table<LS_Opening> {
                         CASE
                         WHEN "LS_payment_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_payment_amnt_stable" / 100000000
                         WHEN "LS_payment_symbol" IN ('ALL_SOL') THEN "LS_payment_amnt_stable" / 1000000000
-                        WHEN "LS_payment_symbol" IN ('PICA') THEN "LS_payment_amnt_stable" / 1000000000000 
+                        WHEN "LS_payment_symbol" IN ('PICA') THEN "LS_payment_amnt_stable" / 1000000000000
                         WHEN "LS_payment_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_payment_amnt_stable" / 1000000000000000000
                         ELSE "LS_payment_amnt_stable" / 1000000
                         END AS "Volume"
@@ -672,7 +672,7 @@ impl Table<LS_Opening> {
                         CASE
                         WHEN "LS_payment_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_payment_amnt_stable" / 100000000
                         WHEN "LS_payment_symbol" IN ('ALL_SOL') THEN "LS_payment_amnt_stable" / 1000000000
-                        WHEN "LS_payment_symbol" IN ('PICA') THEN "LS_payment_amnt_stable" / 1000000000000 
+                        WHEN "LS_payment_symbol" IN ('PICA') THEN "LS_payment_amnt_stable" / 1000000000000
                         WHEN "LS_payment_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_payment_amnt_stable" / 1000000000000000000
                         ELSE "LS_payment_amnt_stable" / 1000000
                         END AS "Volume"
@@ -685,7 +685,7 @@ impl Table<LS_Opening> {
                         SELECT ("Down Payment Amount" + "Loan") AS "Volume" FROM Opened_Leases
                         UNION ALL
                         SELECT "Volume" FROM LP_Deposits
-                        UNION ALL 
+                        UNION ALL
                         SELECT "Volume" FROM LP_Withdrawals
                         UNION ALL
                     SELECT "Volume" FROM LS_Close
@@ -694,7 +694,7 @@ impl Table<LS_Opening> {
                     ) AS combined_data
               "#,
           )
-          .persistent(false)
+          .persistent(true)
           .fetch_optional(&self.pool)
           .await?;
 
@@ -728,7 +728,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(lpp_address)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -760,7 +760,7 @@ impl Table<LS_Opening> {
         .bind(search)
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -793,9 +793,9 @@ impl Table<LS_Opening> {
                     a."LS_lpn_loan_amnt"
                 FROM
                     "LS_Opening" as a
-                LEFT JOIN 
-                    "LS_Closing" as b 
-                ON a."LS_contract_id" = b."LS_contract_id" 
+                LEFT JOIN
+                    "LS_Closing" as b
+                ON a."LS_contract_id" = b."LS_contract_id"
                 WHERE
                     a."LS_address_id" = $1
                 ORDER BY "LS_timestamp" DESC
@@ -805,7 +805,7 @@ impl Table<LS_Opening> {
         .bind(address)
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -831,7 +831,7 @@ impl Table<LS_Opening> {
         );
 
         let data = sqlx::query_as(&parsed_string)
-            .persistent(false)
+            .persistent(true)
             .fetch_all(&self.pool)
             .await?;
         Ok(data)
@@ -843,17 +843,17 @@ impl Table<LS_Opening> {
     ) -> Result<(), crate::error::Error> {
         sqlx::query(
             r#"
-                    UPDATE 
-                        "LS_Opening" 
-                    SET 
+                    UPDATE
+                        "LS_Opening"
+                    SET
                         "LS_loan_amnt" = $1
-                    WHERE 
+                    WHERE
                         "LS_contract_id" = $2
                 "#,
         )
         .bind(&ls_opening.LS_loan_amnt)
         .bind(&ls_opening.LS_contract_id)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -865,17 +865,17 @@ impl Table<LS_Opening> {
     ) -> Result<(), crate::error::Error> {
         sqlx::query(
             r#"
-                    UPDATE 
-                        "LS_Opening" 
-                    SET 
+                    UPDATE
+                        "LS_Opening"
+                    SET
                         "LS_lpn_loan_amnt" = $1
-                    WHERE 
+                    WHERE
                         "LS_contract_id" = $2
                 "#,
         )
         .bind(&ls_opening.LS_lpn_loan_amnt)
         .bind(&ls_opening.LS_contract_id)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -899,9 +899,9 @@ impl Table<LS_Opening> {
 
                     FROM "LS_Repayment"
                     WHERE "LS_contract_id" = $1
-                    
+
                     UNION ALL
-                    
+
                     SELECT
                         "LS_payment_symbol" as "symbol",
                         "LS_payment_amnt" as "amount",
@@ -913,9 +913,9 @@ impl Table<LS_Opening> {
 
                     FROM "LS_Close_Position"
                     WHERE "LS_contract_id" = $1
-                    
+
                     UNION ALL
-                    
+
                     SELECT
                         "LS_payment_symbol" as "symbol",
                         "LS_payment_amnt" as "amount",
@@ -931,7 +931,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(contract_id)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
@@ -957,12 +957,12 @@ impl Table<LS_Opening> {
                 DATE_TRUNC('month', "LS_timestamp") AS "Date",
                 CASE
                 WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
-                WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000 
+                WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
                 WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
                 WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
                 ELSE "LS_cltr_amnt_stable" / 1000000
                 END AS "Down Payment Amount",
-                CASE 
+                CASE
                         WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
                         WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
                         WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
@@ -984,7 +984,7 @@ impl Table<LS_Opening> {
             "Date" DESC
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -1016,7 +1016,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(address)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -1057,7 +1057,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(address)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -1268,7 +1268,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(address)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -1284,7 +1284,7 @@ impl Table<LS_Opening> {
             "#,
         )
         .bind(address)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)

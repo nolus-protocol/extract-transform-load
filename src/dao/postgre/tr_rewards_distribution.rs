@@ -14,10 +14,10 @@ impl Table<TR_Rewards_Distribution> {
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "TR_Rewards_Distribution" 
-            WHERE 
+            FROM "TR_Rewards_Distribution"
+            WHERE
                 "TR_Rewards_height" = $1 AND
                 "TR_Rewards_Pool_id" = $2 AND
                 "Event_Block_Index" = $3
@@ -26,7 +26,7 @@ impl Table<TR_Rewards_Distribution> {
         .bind(tr_reward.TR_Rewards_height)
         .bind(&tr_reward.TR_Rewards_Pool_id)
         .bind(tr_reward.Event_Block_Index)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -63,7 +63,7 @@ impl Table<TR_Rewards_Distribution> {
         .bind(&data.TR_Rewards_amnt_nls)
         .bind(data.Event_Block_Index)
         .bind(data.Tx_Hash)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -100,7 +100,7 @@ impl Table<TR_Rewards_Distribution> {
                 .push_bind(&tr.Tx_Hash);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -112,14 +112,14 @@ impl Table<TR_Rewards_Distribution> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("TR_Rewards_amnt_stable")
             FROM "TR_Rewards_Distribution" WHERE "TR_Rewards_timestamp" > $1 AND "TR_Rewards_timestamp" <= $2
             "#,
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -135,14 +135,14 @@ impl Table<TR_Rewards_Distribution> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("TR_Rewards_amnt_nls")
             FROM "TR_Rewards_Distribution" WHERE "TR_Rewards_timestamp" > $1 AND "TR_Rewards_timestamp" <= $2
             "#,
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -159,7 +159,7 @@ impl Table<TR_Rewards_Distribution> {
                 SELECT SUM("TR_Rewards_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Rewards_Distribution"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 

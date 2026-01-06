@@ -14,15 +14,15 @@ impl Table<LS_Loan_Closing> {
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "LS_Loan_Closing" 
-            WHERE 
+            FROM "LS_Loan_Closing"
+            WHERE
                 "LS_contract_id" = $1
             "#,
         )
         .bind(contract)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -61,7 +61,7 @@ impl Table<LS_Loan_Closing> {
         .bind(&data.Type)
         .bind(&data.Block)
         .bind(&data.Active)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -127,7 +127,7 @@ impl Table<LS_Loan_Closing> {
             "#,
         )
         .bind(contract_id)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -141,7 +141,7 @@ impl Table<LS_Loan_Closing> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-                SELECT 
+                SELECT
                 SUM(
                     CASE
                     WHEN o."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN c."LS_pnl" / 100000000
@@ -151,17 +151,17 @@ impl Table<LS_Loan_Closing> {
                     ELSE c."LS_pnl" / 1000000
                     END
                 ) AS "Total Adjusted Stable Amount"
-                FROM 
+                FROM
                 "LS_Loan_Closing" c
-                LEFT JOIN 
-                "LS_Opening" o 
-                ON 
+                LEFT JOIN
+                "LS_Opening" o
+                ON
                 c."LS_contract_id" = o."LS_contract_id"
-                WHERE 
+                WHERE
                 c."LS_timestamp" >= '2025-01-01';
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -176,14 +176,14 @@ impl Table<LS_Loan_Closing> {
     ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
-            UPDATE 
+            UPDATE
                 "LS_Loan_Closing"
             SET
                 "LS_amnt" = $1,
                 "LS_amnt_stable" = $2,
                 "LS_pnl" = $3,
                 "Active" = $4
-            WHERE 
+            WHERE
                 "LS_contract_id" = $5
 
         "#,
@@ -193,7 +193,7 @@ impl Table<LS_Loan_Closing> {
         .bind(&data.LS_pnl)
         .bind(&data.Active)
         .bind(&data.LS_contract_id)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }
@@ -206,7 +206,7 @@ impl Table<LS_Loan_Closing> {
             SELECT * FROM "LS_Loan_Closing" WHERE "Active" = false;
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -323,16 +323,16 @@ impl Table<LS_Loan_Closing> {
                 LEFT JOIN collects   c ON c."LS_contract_id" = o."LS_contract_id"
                 INNER JOIN closing_ts ct ON ct."LS_contract_id" = o."LS_contract_id"
                 ORDER BY ct.close_ts DESC
-                OFFSET 
-                    $2 
-                LIMIT 
+                OFFSET
+                    $2
+                LIMIT
                     $3
             "#,
         )
         .bind(address)
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -445,7 +445,7 @@ impl Table<LS_Loan_Closing> {
             "#,
         )
         .bind(address)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -459,7 +459,7 @@ impl Table<LS_Loan_Closing> {
         sqlx::query_as(
             r#"SELECT * FROM "LS_Loan_Closing" WHERE "Block" <= 3785599"#, //<= 3785599
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await
     }
@@ -472,7 +472,7 @@ impl Table<LS_Loan_Closing> {
             r#"SELECT * FROM "LS_Loan_Closing" WHERE "LS_contract_id" = $1"#,
         )
         .bind(contract)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await
     }

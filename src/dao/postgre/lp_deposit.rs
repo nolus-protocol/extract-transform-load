@@ -14,10 +14,10 @@ impl Table<LP_Deposit> {
     ) -> Result<bool, Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "LP_Deposit" 
-            WHERE 
+            FROM "LP_Deposit"
+            WHERE
                 "LP_deposit_height" = $1 AND
                 "LP_address_id" = $2 AND
                 "LP_timestamp" = $3 AND
@@ -28,7 +28,7 @@ impl Table<LP_Deposit> {
         .bind(&ls_deposit.LP_address_id)
         .bind(ls_deposit.LP_timestamp)
         .bind(&ls_deposit.LP_Pool_id)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -67,7 +67,7 @@ impl Table<LP_Deposit> {
         .bind(&data.LP_amnt_asset)
         .bind(&data.LP_amnt_receipts)
         .bind(&data.Tx_Hash)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -106,7 +106,7 @@ impl Table<LP_Deposit> {
                 .push_bind(&lp.Tx_Hash);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
 
         Ok(())
@@ -119,14 +119,14 @@ impl Table<LP_Deposit> {
     ) -> Result<i64, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
             FROM "LP_Deposit" WHERE "LP_timestamp" > $1 AND "LP_timestamp" <= $2
             "#,
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -139,14 +139,14 @@ impl Table<LP_Deposit> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("LP_amnt_stable")
             FROM "LP_Deposit" WHERE "LP_timestamp" > $1 AND "LP_timestamp" <= $2
             "#,
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;

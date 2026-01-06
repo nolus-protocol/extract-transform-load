@@ -94,18 +94,18 @@ impl Table<Subscription> {
     ) -> Result<Option<Subscription>, Error> {
         sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 *
-            FROM "subscription" 
-            WHERE 
-                address=$1 
-            AND 
+            FROM "subscription"
+            WHERE
+                address=$1
+            AND
                 auth=$2
             "#,
         )
         .bind(address)
         .bind(auth)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await
     }
@@ -117,18 +117,18 @@ impl Table<Subscription> {
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "subscription" 
-            WHERE 
-                address=$1 
-            AND 
+            FROM "subscription"
+            WHERE
+                address=$1
+            AND
                 auth=$2
             "#,
         )
         .bind(address)
         .bind(auth)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 

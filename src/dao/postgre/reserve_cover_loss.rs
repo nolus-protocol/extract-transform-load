@@ -11,10 +11,10 @@ impl Table<Reserve_Cover_Loss> {
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "Reserve_Cover_Loss" 
-            WHERE 
+            FROM "Reserve_Cover_Loss"
+            WHERE
                 "LS_contract_id" = $1 AND
                 "Event_Block_Index" = $2 AND
                 "Tx_Hash" = $3
@@ -23,7 +23,7 @@ impl Table<Reserve_Cover_Loss> {
         .bind(&reserve_cover_loss.LS_contract_id)
         .bind(&reserve_cover_loss.Event_Block_Index)
         .bind(&reserve_cover_loss.Tx_Hash)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -58,7 +58,7 @@ impl Table<Reserve_Cover_Loss> {
         .bind(&data.LS_amnt)
         .bind(&data.Event_Block_Index)
         .bind(&data.LS_timestamp)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }

@@ -14,8 +14,7 @@ use crate::{
         realized_pnl, realized_pnl_data, realized_pnl_stats, revenue,
         subscribe, supplied_borrowed_series, supplied_funds, test_push,
         total_tx_value, total_value_locked, txs, unrealized_pnl,
-        unrealized_pnl_by_address, update_lp_lender_state, utilization_level,
-        version,
+        unrealized_pnl_by_address, update_raw_txs, utilization_level, version,
     },
     error::Error,
 };
@@ -104,8 +103,8 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(history_stats::index)
                     .service(leases_search::index)
                     .service(earnings::index)
-                    .service(update_lp_lender_state::index)
-                    .service(lp_withdraw::index),
+                    .service(lp_withdraw::index)
+                    .service(update_raw_txs::index),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

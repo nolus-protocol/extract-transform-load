@@ -17,8 +17,8 @@ impl Table<Raw_Message> {
     ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
-            INSERT INTO "raw_message" ("index", "from", "to", "tx_hash", "type", "value", "block", "fee_amount", "fee_denom", "memo", "timestamp", "rewards")
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            INSERT INTO "raw_message" ("index", "from", "to", "tx_hash", "type", "value", "block", "fee_amount", "fee_denom", "memo", "timestamp", "rewards", "code")
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             "#,
         )
         .bind(data.index)
@@ -33,7 +33,9 @@ impl Table<Raw_Message> {
         .bind(&data.memo)
         .bind(&data.timestamp)
         .bind(&data.rewards)
-        .persistent(false)
+		.bind(&data.rewards)
+		.bind(&data.code)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -45,8 +47,8 @@ impl Table<Raw_Message> {
     ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
-            INSERT INTO "raw_message" ("index", "from", "to", "tx_hash", "type", "value", "block", "fee_amount", "fee_denom", "memo", "timestamp", "rewards")
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            INSERT INTO "raw_message" ("index", "from", "to", "tx_hash", "type", "value", "block", "fee_amount", "fee_denom", "memo", "timestamp", "rewards", "code")
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             ON CONFLICT ("index", "tx_hash") DO NOTHING
             "#,
         )
@@ -62,6 +64,7 @@ impl Table<Raw_Message> {
         .bind(&data.memo)
         .bind(&data.timestamp)
         .bind(&data.rewards)
+		.bind(&data.code)
         .persistent(true)
         .execute(&mut **transaction)
         .await
@@ -73,17 +76,17 @@ impl Table<Raw_Message> {
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "raw_message" 
-            WHERE 
+            FROM "raw_message"
+            WHERE
                 "index" = $1 AND
                 "tx_hash" = $2
             "#,
         )
         .bind(data.index)
         .bind(&data.tx_hash)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -165,7 +168,7 @@ impl Table<Raw_Message> {
             .push_bind(limit);
 
         let query = qb.build_query_as::<Raw_Message>();
-        let rows = query.persistent(false).fetch_all(&self.pool).await?;
+        let rows = query.persistent(true).fetch_all(&self.pool).await?;
 
         Ok(rows)
     }
@@ -247,7 +250,7 @@ impl Table<Raw_Message> {
                 ) x
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .bind(address)
         .fetch_one(&self.pool)
         .await?;
@@ -360,7 +363,7 @@ impl Table<Raw_Message> {
                 FROM finalized
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .bind(address)
         .fetch_one(&self.pool)
         .await?;
@@ -509,9 +512,39 @@ impl Table<Raw_Message> {
             "#,
         )
         .bind(&address)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
+    }
+
+    pub async fn get_all(&self) -> Result<Vec<Raw_Message>, Error> {
+        sqlx::query_as(r#"SELECT * FROM "raw_message" where code is null"#)
+            .persistent(true)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    //TODO: delete
+    pub async fn update(
+        &self,
+        data: Raw_Message,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            UPDATE
+                "raw_message"
+            SET
+                "code" = $1
+            WHERE
+                "tx_hash" = $2
+
+        "#,
+        )
+        .bind(&data.code)
+        .bind(&data.tx_hash)
+        .persistent(true)
+        .execute(&self.pool)
+        .await
     }
 }

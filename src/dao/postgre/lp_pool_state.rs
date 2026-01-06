@@ -43,7 +43,7 @@ impl Table<LP_Pool_State> {
         .bind(&data.LP_Pool_total_borrowed_asset)
         .bind(&data.LP_Pool_total_yield_stable)
         .bind(&data.LP_Pool_total_yield_asset)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }
@@ -85,7 +85,7 @@ impl Table<LP_Pool_State> {
                 .push_bind(&data.LP_Pool_min_utilization_threshold);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&self.pool).await?;
         Ok(())
     }
@@ -100,15 +100,15 @@ impl Table<LP_Pool_State> {
             Option<BigDecimal>,
         ) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("LP_Pool_total_value_locked_stable"),
                 SUM("LP_Pool_total_borrowed_stable"),
-                SUM("LP_Pool_total_yield_stable") 
+                SUM("LP_Pool_total_yield_stable")
             FROM "LP_Pool_State" WHERE "LP_Pool_timestamp" = $1
             "#,
         )
         .bind(datetime)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (locked, borrowed, yield_amount) = value;
@@ -125,29 +125,29 @@ impl Table<LP_Pool_State> {
     ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
         let data = sqlx::query_as(
             r#"
-            SELECT 
-                "LP_Pool_State"."LP_Pool_timestamp", 
-                SUM(CASE 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000 
-                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000 
-                END) AS "Supplied", 
-                SUM(CASE 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000 
-                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000 
-                END) AS "Borrowed" 
+            SELECT
+                "LP_Pool_State"."LP_Pool_timestamp",
+                SUM(CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
+                END) AS "Supplied",
+                SUM(CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
+                END) AS "Borrowed"
             FROM
                 "LP_Pool_State"
             WHERE "LP_Pool_State"."LP_Pool_id" = $1
-            GROUP BY 
+            GROUP BY
                 "LP_Pool_State"."LP_Pool_timestamp"
-            ORDER BY 
+            ORDER BY
                 "LP_Pool_State"."LP_Pool_timestamp" DESC
             "#,
         )
         .bind(protocol)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -165,37 +165,37 @@ impl Table<LP_Pool_State> {
 
         let query_str = format!(
             r#"
-            SELECT 
-                "LP_Pool_State"."LP_Pool_timestamp", 
-                SUM(CASE 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000 
-                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000 
-                END) AS "Supplied", 
-                SUM(CASE 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000 
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000 
-                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000 
-                END) AS "Borrowed" 
+            SELECT
+                "LP_Pool_State"."LP_Pool_timestamp",
+                SUM(CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
+                END) AS "Supplied",
+                SUM(CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
+                END) AS "Borrowed"
             FROM
                 "LP_Pool_State"
             WHERE "LP_Pool_State"."LP_Pool_id" IN ({})
-            GROUP BY 
+            GROUP BY
                 "LP_Pool_State"."LP_Pool_timestamp"
-            ORDER BY 
+            ORDER BY
                 "LP_Pool_State"."LP_Pool_timestamp" DESC
             "#,
             params
         );
 
         let mut query: sqlx::query::QueryAs<'_, _, _, _> =
-            sqlx::query_as(&query_str).persistent(false);
+            sqlx::query_as(&query_str).persistent(true);
 
         for i in protocols {
             query = query.bind(i);
         }
 
-        let data = query.persistent(false).fetch_all(&self.pool).await?;
+        let data = query.persistent(true).fetch_all(&self.pool).await?;
         Ok(data)
     }
 
@@ -213,7 +213,7 @@ impl Table<LP_Pool_State> {
         .bind(protocol)
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -231,7 +231,7 @@ impl Table<LP_Pool_State> {
         )
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -259,7 +259,7 @@ impl Table<LP_Pool_State> {
             "#,
         )
         .bind(lpp_address)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -271,7 +271,7 @@ impl Table<LP_Pool_State> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
               WITH Latest_Pool_Data AS (
-                SELECT 
+                SELECT
                     "LP_Pool_id",
                     "LP_Pool_total_value_locked_stable",
                     RANK() OVER (PARTITION BY "LP_Pool_id" ORDER BY "LP_Pool_timestamp" DESC) AS rank
@@ -288,12 +288,12 @@ impl Table<LP_Pool_State> {
                     'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6'  -- ATOM_OSMOSIS
                 )
             )
-            SELECT 
+            SELECT
                 SUM(
-                    CASE 
-                        WHEN "LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' 
+                    CASE
+                        WHEN "LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
                             THEN "LP_Pool_total_value_locked_stable" / 100000000 -- ALL_BTC_OSMOSIS
-                        WHEN "LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' 
+                        WHEN "LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
                             THEN "LP_Pool_total_value_locked_stable" / 1000000000 -- ALL_SOL_OSMOSIS
                         ELSE "LP_Pool_total_value_locked_stable" / 1000000 -- All other pools
                     END
@@ -302,7 +302,7 @@ impl Table<LP_Pool_State> {
             WHERE rank = 1
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -671,7 +671,7 @@ impl Table<LP_Pool_State> {
         FROM per_pool
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .bind(address)
         .fetch_one(&self.pool)
         .await?;
@@ -694,13 +694,13 @@ impl Table<LP_Pool_State> {
                         "LP_Pool_id" = $1
                         AND
                         "LP_Pool_timestamp" >= $2
-        
+
                     ORDER BY "LP_Pool_timestamp" ASC LIMIT 1
                     "#,
         )
         .bind(protocol)
         .bind(date_time)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await
     }

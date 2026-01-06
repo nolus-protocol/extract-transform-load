@@ -40,7 +40,7 @@ impl Table<LS_State> {
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
         .bind(&data.LS_lpn_loan_amnt)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }
@@ -91,7 +91,7 @@ impl Table<LS_State> {
               )
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await
     }
@@ -140,7 +140,7 @@ impl Table<LS_State> {
                 .push_bind(&data.LS_principal_asset);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&self.pool).await?;
         Ok(())
     }
@@ -151,13 +151,13 @@ impl Table<LS_State> {
     ) -> Result<i64, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
             FROM "LS_State" WHERE "LS_timestamp" = $1
             "#,
         )
         .bind(timestamp)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -169,14 +169,14 @@ impl Table<LS_State> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
           WITH LatestTimestamps AS (
-          SELECT 
-              "LS_contract_id", 
+          SELECT
+              "LS_contract_id",
               MAX("LS_timestamp") AS "MaxTimestamp"
-          FROM 
+          FROM
               "LS_State"
           WHERE
               "LS_timestamp" > (now() - INTERVAL '1 hour')
-          GROUP BY 
+          GROUP BY
               "LS_contract_id"
       ),
       Opened AS (
@@ -192,7 +192,7 @@ impl Table<LS_State> {
               END AS "Asset Type"
           FROM
               "LS_State" s
-          INNER JOIN 
+          INNER JOIN
               LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
           INNER JOIN
               "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
@@ -215,7 +215,7 @@ impl Table<LS_State> {
       SELECT SUM("Lease Value") FROM Lease_Value_Table
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -235,14 +235,14 @@ impl Table<LS_State> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
       r#"
           WITH LatestTimestamps AS (
-              SELECT 
-                  "LS_contract_id", 
+              SELECT
+                  "LS_contract_id",
                   MAX("LS_timestamp") AS "MaxTimestamp"
-              FROM 
+              FROM
                   "LS_State"
               WHERE
                   "LS_timestamp" > (now() - INTERVAL '1 hour')
-              GROUP BY 
+              GROUP BY
                   "LS_contract_id"
           ),
           Opened AS (
@@ -258,7 +258,7 @@ impl Table<LS_State> {
                   END AS "Asset Type"
               FROM
                   "LS_State" s
-              INNER JOIN 
+              INNER JOIN
                   LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
               INNER JOIN
                   "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
@@ -279,7 +279,7 @@ impl Table<LS_State> {
           SELECT SUM("Total Interest Due") FROM Lease_Value_Table
           "#,
       )
-      .persistent(false)
+      .persistent(true)
       .fetch_optional(&self.pool)
       .await?;
 
@@ -352,7 +352,7 @@ impl Table<LS_State> {
         FROM Joined_States
         "#,
     )
-    .persistent(false)
+    .persistent(true)
     .fetch_optional(&self.pool)
     .await?;
 
@@ -476,7 +476,7 @@ impl Table<LS_State> {
           AND lvt."Hour" = rs."Hour"
         ORDER BY lvt."Hour";
       "#, contract_id.to_owned(), contract_id.to_owned(), contract_id.to_owned(), contract_id.to_owned()))
-      .persistent(false)
+      .persistent(true)
     .fetch_all(&self.pool)
   .await?;
 
@@ -506,9 +506,9 @@ impl Table<LS_State> {
               DATE_TRUNC('hour', fs."LS_timestamp") AS "Hour",
               SUM(
                 CASE
-                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' 
+                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
                   THEN fs."LS_principal_stable" / 100000000
-                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' 
+                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
                   THEN fs."LS_principal_stable" / 1000000000
                   ELSE fs."LS_principal_stable" / 1000000
                 END
@@ -541,18 +541,18 @@ impl Table<LS_State> {
               ) AS "Lease Value",
               SUM(
                 CASE
-                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' 
+                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
                   THEN (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 100000000
-                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' 
+                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
                   THEN (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 1000000000
                   ELSE (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 1000000
                 END
               ) AS "Margin Interest",
               SUM(
                 CASE
-                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' 
+                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
                   THEN (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 100000000
-                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' 
+                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
                   THEN (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 1000000000
                   ELSE (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 1000000
                 END
@@ -570,9 +570,9 @@ impl Table<LS_State> {
               DATE_TRUNC('hour', r."LS_timestamp") AS "Hour",
               SUM(
                 CASE
-                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' 
+                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
                   THEN (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 100000000
-                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' 
+                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
                   THEN (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 1000000000
                   ELSE (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 1000000
                 END
@@ -588,17 +588,17 @@ impl Table<LS_State> {
             (lvt."Lease Value" - dplt."Loan" - dplt."Down Payment" - lvt."Margin Interest" - lvt."Loan Interest" - COALESCE(rs."Cumulative Repayment", 0))
             AS "pnl"
           FROM Lease_Value_Table lvt
-          LEFT JOIN DP_Loan_Table dplt 
-            ON lvt."Contract ID" = dplt."Contract ID" 
+          LEFT JOIN DP_Loan_Table dplt
+            ON lvt."Contract ID" = dplt."Contract ID"
             AND lvt."Hour" = dplt."Hour"
-          LEFT JOIN Repayment_Summary rs 
+          LEFT JOIN Repayment_Summary rs
             ON lvt."Contract ID" = rs."Contract ID"
             AND lvt."Hour" >= rs."Hour"
           ORDER BY lvt."Hour";
           "#,
       )
       .bind(address)
-      .persistent(false)
+      .persistent(true)
       .fetch_all(&self.pool)
       .await?;
         Ok(data)
@@ -721,7 +721,7 @@ impl Table<LS_State> {
         .bind(osmosis_all_btc)
         .bind(osmosis_all_sol)
         .bind(osmosis_akt)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -791,7 +791,7 @@ impl Table<LS_State> {
         )
         .bind(osmosis_usdc_protocol)
         .bind(neutron_axelar_protocol)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -861,7 +861,7 @@ impl Table<LS_State> {
         )
         .bind(osmosis_usdc_protocol)
         .bind(neutron_axelar_protocol)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
 

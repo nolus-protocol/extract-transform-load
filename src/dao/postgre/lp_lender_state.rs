@@ -29,7 +29,7 @@ impl Table<LP_Lender_State> {
         .bind(&data.LP_Lender_stable)
         .bind(&data.LP_Lender_asset)
         .bind(&data.LP_Lender_receipts)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }
@@ -39,7 +39,7 @@ impl Table<LP_Lender_State> {
     ) -> Result<Vec<(String, String)>, Error> {
         sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 a."LP_address_id",
                 a."LP_Pool_id"
             FROM "LP_Deposit" as a
@@ -47,13 +47,13 @@ impl Table<LP_Lender_State> {
                 SELECT "LP_timestamp"
                 FROM "LP_Withdraw" as b
                 WHERE  "LP_deposit_close" = true AND  b."LP_address_id" = a."LP_address_id" AND  b."LP_Pool_id" = a."LP_Pool_id"
-                ORDER BY "LP_timestamp" DESC 
+                ORDER BY "LP_timestamp" DESC
                 LIMIT 1
             ), to_timestamp(0))
             GROUP BY "LP_address_id", "LP_Pool_id"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await
     }
@@ -87,7 +87,7 @@ impl Table<LP_Lender_State> {
                 .push_bind(&data.LP_Lender_receipts);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&self.pool).await?;
         Ok(())
     }
@@ -98,13 +98,13 @@ impl Table<LP_Lender_State> {
     ) -> Result<i64, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
             FROM "LP_Lender_State" WHERE "LP_timestamp" = $1
             "#,
         )
         .bind(timestamp)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -112,7 +112,7 @@ impl Table<LP_Lender_State> {
 
     pub async fn get_all(&self) -> Result<Vec<LP_Lender_State>, Error> {
         sqlx::query_as(r#"SELECT * FROM "LP_Lender_State""#)
-            .persistent(false)
+            .persistent(true)
             .fetch_all(&self.pool)
             .await
     }
@@ -124,12 +124,12 @@ impl Table<LP_Lender_State> {
     ) -> Result<QueryResult, Error> {
         sqlx::query(
             r#"
-            UPDATE 
+            UPDATE
                 "LP_Lender_State"
             SET
                 "LP_Lender_stable" = $1,
                 "LP_Lender_asset" = $2
-            WHERE 
+            WHERE
                 "LP_Lender_id" = $3
                 AND
                 "LP_Pool_id" = $4
@@ -143,7 +143,7 @@ impl Table<LP_Lender_State> {
         .bind(&data.LP_Lender_id)
         .bind(&data.LP_Pool_id)
         .bind(&data.LP_timestamp)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }

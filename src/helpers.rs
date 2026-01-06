@@ -161,8 +161,14 @@ pub fn parse_wasm_ls_close_position(
             change: extract_field(&ls_close_position, "change")?,
             amount_amount: extract_field(&ls_close_position, "amount-amount")?,
             amount_symbol: extract_field(&ls_close_position, "amount-symbol")?,
-            payment_symbol: extract_field(&ls_close_position, "payment-symbol")?,
-            payment_amount: extract_field(&ls_close_position, "payment-amount")?,
+            payment_symbol: extract_field(
+                &ls_close_position,
+                "payment-symbol",
+            )?,
+            payment_amount: extract_field(
+                &ls_close_position,
+                "payment-amount",
+            )?,
             at: extract_field(&ls_close_position, "at")?,
             loan_close: extract_field(&ls_close_position, "loan-close")?,
             prev_margin_interest: items.prev_margin_interest,
@@ -363,8 +369,14 @@ pub fn parse_wasm_tr_rewards_distribution(
         height: extract_field(&tr_rewards_distribution, "height")?,
         to: extract_field(&tr_rewards_distribution, "to")?,
         at: extract_field(&tr_rewards_distribution, "at")?,
-        rewards_symbol: extract_field(&tr_rewards_distribution, "rewards-symbol")?,
-        rewards_amount: extract_field(&tr_rewards_distribution, "rewards-amount")?,
+        rewards_symbol: extract_field(
+            &tr_rewards_distribution,
+            "rewards-symbol",
+        )?,
+        rewards_amount: extract_field(
+            &tr_rewards_distribution,
+            "rewards-amount",
+        )?,
     };
 
     Ok(c)
@@ -568,6 +580,7 @@ pub async fn insert_txs(
                     tx_results.txhash,
                     tx_data,
                     height,
+                    tx_results.code,
                     time_stamp.clone(),
                     &tx_results.events,
                     &mut tx,
@@ -605,6 +618,7 @@ pub async fn parse_raw_tx(
     tx_hash: String,
     tx_data: Any,
     height: i64,
+    code: u32,
     time_stamp: Timestamp,
     tx_events: &Vec<Event>,
     tx: &mut Transaction<'_, DataBase>,
@@ -623,6 +637,7 @@ pub async fn parse_raw_tx(
             memo,
             app_state.config.events_subscribe.clone(),
             tx_events,
+            code,
         );
 
         if let Ok(msg) = msg {
@@ -651,7 +666,7 @@ pub fn send_push_task(
             Err(_) => {
                 tracing::error!("Push notification semaphore closed");
                 return;
-            }
+            },
         };
         let res = send_push(state, subscription, push_header, push_data).await;
         if let Err(e) = res {
@@ -765,9 +780,13 @@ impl FromStr for EventsType {
             "wasm-ls-close-position" => Ok(EventsType::LS_Close_Position),
             "wasm-ls-repay" => Ok(EventsType::LS_Repay),
             "wasm-ls-liquidation" => Ok(EventsType::LS_Liquidation),
-            "wasm-ls-liquidation-warning" => Ok(EventsType::LS_Liquidation_Warning),
+            "wasm-ls-liquidation-warning" => {
+                Ok(EventsType::LS_Liquidation_Warning)
+            },
             "wasm-ls-slippage-anomaly" => Ok(EventsType::LS_Slippage_Anomaly),
-            "wasm-ls-auto-close-position" => Ok(EventsType::LS_Auto_Close_Position),
+            "wasm-ls-auto-close-position" => {
+                Ok(EventsType::LS_Auto_Close_Position)
+            },
             "wasm-reserve-cover-loss" => Ok(EventsType::Reserve_Cover_Loss),
             "wasm-lp-deposit" => Ok(EventsType::LP_deposit),
             "wasm-lp-withdraw" => Ok(EventsType::LP_Withdraw),

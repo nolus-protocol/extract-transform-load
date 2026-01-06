@@ -45,7 +45,7 @@ impl Table<MP_Asset> {
         });
 
         // Dynamic query - cannot use prepared statement caching
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&self.pool).await?;
 
         Ok(())
@@ -81,8 +81,8 @@ impl Table<MP_Asset> {
     ) -> Result<Vec<(DateTime<Utc>, BigDecimal)>, Error> {
         sqlx::query_as(
             r#"
-                SELECT 
-                    date_trunc('hour', "MP_asset_timestamp") + (((date_part('minute', "MP_asset_timestamp")::integer / $1::integer) * $2::integer) || ' minutes')::interval  AS "MP_asset_timestamp", 
+                SELECT
+                    date_trunc('hour', "MP_asset_timestamp") + (((date_part('minute', "MP_asset_timestamp")::integer / $1::integer) * $2::integer) || ' minutes')::interval  AS "MP_asset_timestamp",
                     MAX("MP_price_in_stable") AS "MP_price_in_stable"
                 FROM "MP_Asset"
                 WHERE "MP_asset_symbol" = $3 AND "Protocol" = $4 AND "MP_asset_timestamp" >= $5
@@ -150,11 +150,11 @@ impl Table<MP_Asset> {
                     FROM "MP_Asset"
                     WHERE
                         "MP_asset_symbol" = $1
-                        AND 
+                        AND
                         "Protocol" = $2
                         AND
                         "MP_asset_timestamp" >= $3
-        
+
                     ORDER BY "MP_asset_timestamp" ASC LIMIT 1
                     "#,
                 )
@@ -174,7 +174,7 @@ impl Table<MP_Asset> {
                         "MP_asset_symbol" = $1
                         AND
                         "MP_asset_timestamp" >= $2
-        
+
                     ORDER BY "MP_asset_timestamp" ASC LIMIT 1
                     "#,
                 )

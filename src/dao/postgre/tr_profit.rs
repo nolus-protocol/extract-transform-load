@@ -14,17 +14,17 @@ impl Table<TR_Profit> {
     ) -> Result<bool, crate::error::Error> {
         let (value,): (i64,) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)
-            FROM "TR_Profit" 
-            WHERE 
+            FROM "TR_Profit"
+            WHERE
                 "TR_Profit_height" = $1 AND
                 "TR_Profit_timestamp" = $2
             "#,
         )
         .bind(tr_profit.TR_Profit_height)
         .bind(tr_profit.TR_Profit_timestamp)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -57,7 +57,7 @@ impl Table<TR_Profit> {
         .bind(&data.TR_Profit_amnt_stable)
         .bind(&data.TR_Profit_amnt_nls)
         .bind(&data.Tx_Hash)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -90,7 +90,7 @@ impl Table<TR_Profit> {
                 .push_bind(&tr.Tx_Hash);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -102,7 +102,7 @@ impl Table<TR_Profit> {
     ) -> Result<(BigDecimal, BigDecimal), crate::error::Error> {
         let value: (Option<BigDecimal>, Option<BigDecimal>) = sqlx::query_as(
             r#"
-            SELECT 
+            SELECT
                 SUM("TR_Profit_amnt_stable"),
                 SUM("TR_Profit_amnt_nls")
             FROM "TR_Profit" WHERE "TR_Profit_timestamp" > $1 AND "TR_Profit_timestamp" <= $2
@@ -110,7 +110,7 @@ impl Table<TR_Profit> {
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt, amnt_nolus) = value;
@@ -132,7 +132,7 @@ impl Table<TR_Profit> {
         )
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -146,7 +146,7 @@ impl Table<TR_Profit> {
                 SELECT SUM("TR_Profit_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Profit"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -162,7 +162,7 @@ impl Table<TR_Profit> {
                 SELECT SUM("TR_Profit_amnt_stable") / 1000000 AS "Distributed" FROM "TR_Profit"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
