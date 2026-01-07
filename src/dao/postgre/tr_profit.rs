@@ -171,4 +171,27 @@ impl Table<TR_Profit> {
 
         Ok(amnt)
     }
+
+    pub async fn get_revenue_series(
+        &self,
+    ) -> Result<Vec<(DateTime<Utc>, BigDecimal, BigDecimal)>, crate::error::Error>
+    {
+        let data: Vec<(DateTime<Utc>, BigDecimal, BigDecimal)> = sqlx::query_as(
+            r#"
+            SELECT
+                DATE_TRUNC('day', "TR_Profit_timestamp") AS time,
+                SUM("TR_Profit_amnt_stable") / 1000000 AS daily,
+                SUM(SUM("TR_Profit_amnt_stable")) OVER (ORDER BY DATE_TRUNC('day', "TR_Profit_timestamp")) / 1000000 AS cumulative
+            FROM "TR_Profit"
+            WHERE "TR_Profit_amnt_stable" < 10000000000
+            GROUP BY DATE_TRUNC('day', "TR_Profit_timestamp")
+            ORDER BY time ASC
+            "#,
+        )
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
+    }
 }
