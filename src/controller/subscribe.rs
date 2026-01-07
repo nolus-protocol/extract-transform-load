@@ -20,11 +20,7 @@ pub async fn post_index(
         None
     };
 
-    let ip = if let Some(item) = req.peer_addr() {
-        Some(item.ip().to_string())
-    } else {
-        None
-    };
+    let ip = req.peer_addr().map(|item| item.ip().to_string());
 
     let expiration = if let Some(ms) = subscription.data.expiration_time {
         let sec = ms / 1000;

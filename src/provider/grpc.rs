@@ -668,10 +668,9 @@ impl Grpc {
                         metadata.insert("x-cosmos-block-height", height);
 
                         let data = client.smart_contract_state(request).await;
-                        let data =
-                            data.map(|response| response.into_inner().data);
+                        
 
-                        data
+                        data.map(|response| response.into_inner().data)
                     }
                 },
             )
@@ -723,10 +722,9 @@ impl Grpc {
                         metadata.insert("x-cosmos-block-height", height);
 
                         let data = client.raw_contract_state(request).await;
-                        let data =
-                            data.map(|response| response.into_inner().data);
+                        
 
-                        data
+                        data.map(|response| response.into_inner().data)
                     }
                 },
             )

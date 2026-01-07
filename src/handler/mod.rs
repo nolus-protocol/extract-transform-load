@@ -14,7 +14,7 @@ pub fn parse_event_timestamp(nanos_str: &str) -> Result<DateTime<Utc>, Error> {
 }
 
 mod aggregation_task;
-pub mod cache_state;
+pub mod cache_refresher;
 pub mod lp_lender_state;
 pub mod lp_pool_state;
 pub mod ls_loan_closing;

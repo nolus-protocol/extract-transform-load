@@ -5,7 +5,7 @@
     "url": "/api/total-value-locked",
     "type": "GET",
     "response": "{ total_value_locked: BigDecimal }",
-    "cache": "5 min"
+    "cache": "30 min"
   },
   {
     "category": "Platform Metrics",
@@ -13,7 +13,7 @@
     "url": "/api/total-tx-value",
     "type": "GET",
     "response": "{ total_tx_value: BigDecimal }",
-    "cache": "5 min"
+    "cache": "30 min"
   },
   {
     "category": "Platform Metrics",
@@ -21,7 +21,7 @@
     "url": "/api/revenue",
     "type": "GET",
     "response": "{ revenue: BigDecimal }",
-    "cache": "5 min"
+    "cache": "30 min"
   },
   {
     "category": "Platform Metrics",
@@ -82,7 +82,7 @@
     "url": "/api/realized-pnl-stats",
     "type": "GET",
     "response": "{ realized_pnl: BigDecimal }",
-    "cache": "5 min"
+    "cache": "30 min"
   },
   {
     "category": "Positions / Leases",
@@ -301,7 +301,7 @@
     "url": "/api/current-lenders",
     "type": "GET",
     "response": "[{ lender: String, pool: String, deposit: BigDecimal, deposit_usd: BigDecimal }]",
-    "cache": "5 min"
+    "cache": "30 min"
   },
   {
     "category": "Grafana Dashboard",
@@ -309,7 +309,7 @@
     "url": "/api/liquidations",
     "type": "GET",
     "response": "[{ date: DateTime, lease: String, user: String, amount: BigDecimal, liquidation_type: String }]",
-    "cache": "5 min",
+    "cache": "30 min",
     "params": [
       {
         "name": "skip",
@@ -336,7 +336,7 @@
     "url": "/api/lease-value-stats",
     "type": "GET",
     "response": "[{ protocol: String, min_value: BigDecimal, max_value: BigDecimal, avg_value: BigDecimal, total_value: BigDecimal }]",
-    "cache": "5 min"
+    "cache": "30 min"
   },
   {
     "category": "Grafana Dashboard",
@@ -422,7 +422,7 @@
     "url": "/api/realized-pnl-wallet",
     "type": "GET",
     "response": "[{ wallet: String, realized_pnl: BigDecimal, trade_count: Number }]",
-    "cache": "5 min",
+    "cache": "30 min",
     "params": [
       {
         "name": "skip",

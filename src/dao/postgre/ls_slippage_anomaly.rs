@@ -22,7 +22,7 @@ impl Table<LS_Slippage_Anomaly> {
         )
         .bind(&ls_slippage_anomaly.Tx_Hash)
         .bind(&ls_slippage_anomaly.LS_contract_id)
-        .bind(&ls_slippage_anomaly.LS_timestamp)
+        .bind(ls_slippage_anomaly.LS_timestamp)
         .persistent(true)
         .fetch_one(&self.pool)
         .await?;
@@ -56,8 +56,8 @@ impl Table<LS_Slippage_Anomaly> {
         .bind(&data.LS_contract_id)
         .bind(&data.LS_address_id)
         .bind(&data.LS_asset_symbol)
-        .bind(&data.LS_max_slipagge)
-        .bind(&data.LS_timestamp)
+        .bind(data.LS_max_slipagge)
+        .bind(data.LS_timestamp)
         .persistent(true)
         .execute(&mut **transaction)
         .await
@@ -86,8 +86,8 @@ impl Table<LS_Slippage_Anomaly> {
         .bind(&data.LS_contract_id)
         .bind(&data.LS_address_id)
         .bind(&data.LS_asset_symbol)
-        .bind(&data.LS_max_slipagge)
-        .bind(&data.LS_timestamp)
+        .bind(data.LS_max_slipagge)
+        .bind(data.LS_timestamp)
         .persistent(true)
         .execute(&mut **transaction)
         .await

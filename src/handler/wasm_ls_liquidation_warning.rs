@@ -19,7 +19,7 @@ pub async fn parse_and_insert(
     tx_hash: String,
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
-    let seconds = time_stamp.seconds.try_into()?;
+    let seconds = time_stamp.seconds;
     let nanos = time_stamp.nanos.try_into()?;
     let time_stamp = DateTime::from_timestamp(seconds, nanos)
         .context("Could not parse time stamp")?;
@@ -67,7 +67,7 @@ pub async fn parse_and_insert(
         },
         _ => PushData {
             r#type: PUSH_TYPES::Unsupported.to_string(),
-            body: format!(r#"{{}}"#),
+            body: r#"{}"#.to_string(),
         },
     };
 

@@ -68,7 +68,4 @@ ibc-proto = "0.52.0"
 ece = "2.3.1"
 
 [features]
-default = ["mainnet"]
-mainnet = []
-testnet = []
-devnet = []
+default = []

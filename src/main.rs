@@ -9,7 +9,7 @@ use etl::{
         get_configuration, set_configuration, AppState, Config, State,
     },
     error::Error,
-    handler::{aggregation_task, cache_state, mp_assets},
+    handler::{aggregation_task, cache_refresher, mp_assets},
     model::Actions,
     provider::{DatabasePool, Event, Grpc, HTTP},
     server,
@@ -67,13 +67,13 @@ async fn app_main() -> Result<(), Error> {
         mp_assets::mp_assets_task(app_state.clone()),
         start_aggregation_tasks(app_state.clone()),
         server::server_task(&app_state),
-        cache_state::cache_state_tasks(app_state.clone()),
+        cache_refresher::cache_refresh_task(app_state.clone()),
     )?;
 
     Ok(())
 }
 
-async fn init<'c>() -> Result<(Config, DatabasePool), Error> {
+async fn init() -> Result<(Config, DatabasePool), Error> {
     set_configuration()?;
     let config = get_configuration()?;
     let database = DatabasePool::new(&config).await?;

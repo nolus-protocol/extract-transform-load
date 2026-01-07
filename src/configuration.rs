@@ -60,8 +60,7 @@ impl<T> Deref for AppState<T> {
 }
 
 /// Cache TTL constants (in seconds)
-const CACHE_TTL_CURRENT: u64 = 300;      // 5 minutes for current/realtime data
-const CACHE_TTL_HISTORICAL: u64 = 1800;  // 30 minutes for historical data
+const CACHE_TTL_STANDARD: u64 = 1800;    // 30 minutes for most endpoints
 const CACHE_TTL_LONG: u64 = 3600;        // 1 hour for stable historical series
 
 /// Unified API response cache with TTL support
@@ -104,37 +103,39 @@ pub struct ApiCache {
 impl ApiCache {
     pub fn new() -> Self {
         Self {
-            total_value_locked: TimedCache::new(CACHE_TTL_CURRENT),
-            total_tx_value: TimedCache::new(CACHE_TTL_CURRENT),
-            realized_pnl_stats: TimedCache::new(CACHE_TTL_CURRENT),
-            revenue: TimedCache::new(CACHE_TTL_CURRENT),
-            open_position_value: TimedCache::new(CACHE_TTL_LONG),
-            open_interest: TimedCache::new(CACHE_TTL_LONG),
-            leased_assets: TimedCache::new(CACHE_TTL_LONG),
-            supplied_funds: TimedCache::new(CACHE_TTL_LONG),
-            positions: TimedCache::new(CACHE_TTL_LONG),
-            supplied_borrowed_history: TimedCache::new(CACHE_TTL_LONG),
-            leases_monthly: TimedCache::new(CACHE_TTL_LONG),
-            current_lenders: TimedCache::new(CACHE_TTL_CURRENT),
-            liquidations: TimedCache::new(CACHE_TTL_CURRENT),
-            lease_value_stats: TimedCache::new(CACHE_TTL_CURRENT),
-            historical_lenders: TimedCache::new(CACHE_TTL_HISTORICAL),
-            loans_granted: TimedCache::new(CACHE_TTL_HISTORICAL),
-            historically_liquidated: TimedCache::new(CACHE_TTL_HISTORICAL),
-            historically_repaid: TimedCache::new(CACHE_TTL_HISTORICAL),
-            historically_opened: TimedCache::new(CACHE_TTL_HISTORICAL),
-            realized_pnl_wallet: TimedCache::new(CACHE_TTL_CURRENT),
-            // Additional cached endpoints
+            // 30-minute TTL endpoints (auto-refreshed)
+            total_value_locked: TimedCache::new(CACHE_TTL_STANDARD),
+            total_tx_value: TimedCache::new(CACHE_TTL_STANDARD),
+            realized_pnl_stats: TimedCache::new(CACHE_TTL_STANDARD),
+            revenue: TimedCache::new(CACHE_TTL_STANDARD),
+            current_lenders: TimedCache::new(CACHE_TTL_STANDARD),
+            lease_value_stats: TimedCache::new(CACHE_TTL_STANDARD),
+            daily_positions: TimedCache::new(CACHE_TTL_STANDARD),
+            position_buckets: TimedCache::new(CACHE_TTL_STANDARD),
+            loans_by_token: TimedCache::new(CACHE_TTL_STANDARD),
+            open_positions_by_token: TimedCache::new(CACHE_TTL_STANDARD),
+            loans_granted: TimedCache::new(CACHE_TTL_STANDARD),
+            historically_repaid: TimedCache::new(CACHE_TTL_STANDARD),
+            historically_liquidated: TimedCache::new(CACHE_TTL_STANDARD),
+            // 1-hour TTL endpoints (auto-refreshed)
             buyback_total: TimedCache::new(CACHE_TTL_LONG),
             distributed: TimedCache::new(CACHE_TTL_LONG),
             incentives_pool: TimedCache::new(CACHE_TTL_LONG),
+            open_position_value: TimedCache::new(CACHE_TTL_LONG),
+            open_interest: TimedCache::new(CACHE_TTL_LONG),
+            supplied_funds: TimedCache::new(CACHE_TTL_LONG),
+            unrealized_pnl: TimedCache::new(CACHE_TTL_LONG),
+            leases_monthly: TimedCache::new(CACHE_TTL_LONG),
             monthly_active_wallets: TimedCache::new(CACHE_TTL_LONG),
             revenue_series: TimedCache::new(CACHE_TTL_LONG),
-            daily_positions: TimedCache::new(CACHE_TTL_HISTORICAL),
-            position_buckets: TimedCache::new(CACHE_TTL_HISTORICAL),
-            loans_by_token: TimedCache::new(CACHE_TTL_HISTORICAL),
-            open_positions_by_token: TimedCache::new(CACHE_TTL_HISTORICAL),
-            unrealized_pnl: TimedCache::new(CACHE_TTL_LONG),
+            // Paginated/parameterized endpoints (lazy cache only)
+            positions: TimedCache::new(CACHE_TTL_LONG),
+            leased_assets: TimedCache::new(CACHE_TTL_LONG),
+            supplied_borrowed_history: TimedCache::new(CACHE_TTL_LONG),
+            historical_lenders: TimedCache::new(CACHE_TTL_STANDARD),
+            historically_opened: TimedCache::new(CACHE_TTL_STANDARD),
+            liquidations: TimedCache::new(CACHE_TTL_STANDARD),
+            realized_pnl_wallet: TimedCache::new(CACHE_TTL_STANDARD),
         }
     }
 }
@@ -642,8 +643,8 @@ fn get_lp_pools() -> Result<Vec<(String, String, Protocol_Types, bool)>, Error>
         assert_eq!(items.len(), 4);
         let internal_symbl = items[0].to_owned();
         let symbol = items[1].to_owned();
-        let r#type = Protocol_Types::from_str(&items[2])?;
-        let status = (&items[3]).parse()?;
+        let r#type = Protocol_Types::from_str(items[2])?;
+        let status = items[3].parse()?;
         data.push((internal_symbl, symbol, r#type, status));
     }
 

@@ -22,7 +22,7 @@ impl Table<LS_Auto_Close_Position> {
         )
         .bind(&ls_auto_close_position.Tx_Hash)
         .bind(&ls_auto_close_position.LS_contract_id)
-        .bind(&ls_auto_close_position.LS_timestamp)
+        .bind(ls_auto_close_position.LS_timestamp)
         .fetch_one(&self.pool)
         .await?;
 
@@ -53,8 +53,8 @@ impl Table<LS_Auto_Close_Position> {
         .bind(&data.Tx_Hash)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_Close_Strategy)
-        .bind(&data.LS_Close_Strategy_Ltv)
-        .bind(&data.LS_timestamp)
+        .bind(data.LS_Close_Strategy_Ltv)
+        .bind(data.LS_timestamp)
         .execute(&mut **transaction)
         .await
     }
@@ -80,8 +80,8 @@ impl Table<LS_Auto_Close_Position> {
         .bind(&data.Tx_Hash)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_Close_Strategy)
-        .bind(&data.LS_Close_Strategy_Ltv)
-        .bind(&data.LS_timestamp)
+        .bind(data.LS_Close_Strategy_Ltv)
+        .bind(data.LS_timestamp)
         .persistent(true)
         .execute(&mut **transaction)
         .await

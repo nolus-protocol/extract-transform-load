@@ -137,8 +137,8 @@ pub enum Error {
     #[error("Policy not supported")]
     AutoClosePosition(),
 
-    #[error("Tonic status error")]
-    TonicStatus(#[from] Status),
+    #[error("Tonic status error: {0}")]
+    TonicStatus(Box<Status>),
 
     #[error("Grps error: {0}")]
     GrpsError(String),
@@ -172,3 +172,9 @@ pub enum Error {
 }
 
 impl ResponseError for Error {}
+
+impl From<Status> for Error {
+    fn from(status: Status) -> Self {
+        Error::TonicStatus(Box::new(status))
+    }
+}

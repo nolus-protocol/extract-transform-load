@@ -61,7 +61,7 @@ impl Table<LS_Close_Position> {
             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         "#,
         )
-        .bind(&data.LS_position_height)
+        .bind(data.LS_position_height)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_payment_amnt_stable)
         .bind(&data.LS_change)

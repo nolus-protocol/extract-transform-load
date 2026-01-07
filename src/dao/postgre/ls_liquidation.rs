@@ -84,7 +84,7 @@ impl Table<LS_Liquidation> {
             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         "#,
         )
-        .bind(&data.LS_liquidation_height)
+        .bind(data.LS_liquidation_height)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_amnt_symbol)
         .bind(data.LS_timestamp)
@@ -100,7 +100,7 @@ impl Table<LS_Liquidation> {
         .bind(&data.LS_payment_symbol)
         .bind(&data.LS_payment_amnt)
         .bind(&data.LS_payment_amnt_stable)
-        .bind(&data.LS_loan_close)
+        .bind(data.LS_loan_close)
         .persistent(true)
         .execute(&mut **transaction)
         .await
@@ -155,7 +155,7 @@ impl Table<LS_Liquidation> {
                 .push_bind(&ls.LS_payment_symbol)
                 .push_bind(&ls.LS_payment_amnt)
                 .push_bind(&ls.LS_payment_amnt_stable)
-                .push_bind(&ls.LS_loan_close);
+                .push_bind(ls.LS_loan_close);
         });
 
         let query = query_builder.build().persistent(true);
