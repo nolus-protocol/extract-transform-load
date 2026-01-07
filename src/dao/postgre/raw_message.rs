@@ -537,11 +537,14 @@ impl Table<Raw_Message> {
             SET
                 "code" = $1
             WHERE
-                "tx_hash" = $2
+				"index" = $2
+			AND
+				"tx_hash" = $3
 
         "#,
         )
         .bind(&data.code)
+        .bind(&data.index)
         .bind(&data.tx_hash)
         .persistent(true)
         .execute(&self.pool)

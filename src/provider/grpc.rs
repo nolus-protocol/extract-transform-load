@@ -38,7 +38,10 @@ use cosmrs::proto::{
     Timestamp,
 };
 use sha256::digest;
-use tokio::{sync::Semaphore, time::{sleep, timeout}};
+use tokio::{
+    sync::Semaphore,
+    time::{sleep, timeout},
+};
 use tonic::{
     codegen::http::Uri,
     metadata::MetadataValue,
@@ -140,9 +143,12 @@ impl Grpc {
     {
         let max_attempts: u32 = 8;
         let permit_timeout = Duration::from_secs(60);
-        let _permit = timeout(permit_timeout, self.permits.clone().acquire_owned())
-            .await
-            .map_err(|_| Error::GrpsError("gRPC permit acquisition timed out".into()))??;
+        let _permit =
+            timeout(permit_timeout, self.permits.clone().acquire_owned())
+                .await
+                .map_err(|_| {
+                    Error::GrpsError("gRPC permit acquisition timed out".into())
+                })??;
 
         for attempt in 0..=max_attempts {
             let client = client_factory();

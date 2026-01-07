@@ -1046,9 +1046,9 @@ pub fn to_csv_response<T: serde::Serialize>(
             Error::ServerError(format!("CSV serialization error: {}", e))
         })?;
     }
-    let csv_data = wtr.into_inner().map_err(|e| {
-        Error::ServerError(format!("CSV writer error: {}", e))
-    })?;
+    let csv_data = wtr
+        .into_inner()
+        .map_err(|e| Error::ServerError(format!("CSV writer error: {}", e)))?;
     let csv_string = String::from_utf8(csv_data)?;
 
     Ok(actix_web::HttpResponse::Ok()
