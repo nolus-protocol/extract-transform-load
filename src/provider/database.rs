@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{
     configuration::Config,
     dao::{PoolOption, PoolType},
@@ -49,7 +51,10 @@ impl DatabasePool {
     pub async fn new(config: &Config) -> Result<DatabasePool, Error> {
         let pool = PoolOption::new()
             .after_connect(|_conn, _meta| Box::pin(async move { Ok(()) }))
-            .max_connections(20)
+            .max_connections(config.db_max_connections)
+            .min_connections(config.db_min_connections)
+            .acquire_timeout(Duration::from_secs(config.db_acquire_timeout))
+            .idle_timeout(Duration::from_secs(config.db_idle_timeout))
             .connect(config.database_url.as_str())
             .await?;
 

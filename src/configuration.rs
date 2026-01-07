@@ -425,6 +425,11 @@ pub struct Config {
     pub auth: String,
     pub grpc_connections: usize,
     pub grpc_permits: usize,
+    // Database pool settings (optimized for PgBouncer)
+    pub db_max_connections: u32,
+    pub db_min_connections: u32,
+    pub db_acquire_timeout: u64,
+    pub db_idle_timeout: u64,
 }
 
 impl Config {}
@@ -525,6 +530,21 @@ pub fn get_configuration() -> Result<Config, Error> {
     let (vapid_private_key, vapid_public_key) = parse_config_vapid_keys()?;
     let auth = env::var("AUTH")?.parse()?;
 
+    // Database pool settings with PgBouncer-friendly defaults
+    // Low connection count works well with PgBouncer's connection multiplexing
+    let db_max_connections: u32 = env::var("DB_MAX_CONNECTIONS")
+        .unwrap_or_else(|_| "5".to_string())
+        .parse()?;
+    let db_min_connections: u32 = env::var("DB_MIN_CONNECTIONS")
+        .unwrap_or_else(|_| "1".to_string())
+        .parse()?;
+    let db_acquire_timeout: u64 = env::var("DB_ACQUIRE_TIMEOUT")
+        .unwrap_or_else(|_| "30".to_string())
+        .parse()?;
+    let db_idle_timeout: u64 = env::var("DB_IDLE_TIMEOUT")
+        .unwrap_or_else(|_| "300".to_string())
+        .parse()?;
+
     let config = Config {
         host,
         websocket_host,
@@ -561,6 +581,10 @@ pub fn get_configuration() -> Result<Config, Error> {
         auth,
         grpc_connections,
         grpc_permits,
+        db_max_connections,
+        db_min_connections,
+        db_acquire_timeout,
+        db_idle_timeout,
     };
 
     Ok(config)
