@@ -13,13 +13,12 @@ use crate::{
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let total_value_locked = if let Ok(item) = state.cache.lock() {
-        item.total_value_locked
-            .to_owned()
-            .unwrap_or(BigDecimal::from_str("0")?)
-    } else {
-        BigDecimal::from_str("0")?
-    };
+    let total_value_locked = state
+        .api_cache
+        .total_value_locked
+        .get("tvl")
+        .await
+        .unwrap_or(BigDecimal::from_str("0")?);
 
     Ok(web::Json(Response { total_value_locked }))
 }

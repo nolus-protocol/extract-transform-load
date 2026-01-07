@@ -87,12 +87,7 @@ pub async fn set_total_value_locked(
             osmosis_akt.to_owned(),
         )
         .await?;
-    let cache = &app_state.clone().cache;
-    let cache = cache.lock();
-
-    if let Ok(mut c) = cache {
-        c.total_value_locked = Some(data);
-    }
+    app_state.api_cache.total_value_locked.set("tvl", data).await;
 
     Ok(())
 }
@@ -125,12 +120,7 @@ pub async fn set_total_value_locked(
             neutron_usdc_axelar.to_owned(),
         )
         .await?;
-    let cache = &app_state.clone().cache;
-    let cache = cache.lock();
-
-    if let Ok(mut c) = cache {
-        c.total_value_locked = Some(data);
-    }
+    app_state.api_cache.total_value_locked.set("tvl", data).await;
 
     Ok(())
 }
@@ -163,12 +153,7 @@ pub async fn set_total_value_locked(
             neutron_usdc_axelar.to_owned(),
         )
         .await?;
-    let cache = &app_state.clone().cache;
-    let cache = cache.lock();
-
-    if let Ok(mut c) = cache {
-        c.total_value_locked = Some(data);
-    }
+    app_state.api_cache.total_value_locked.set("tvl", data).await;
 
     Ok(())
 }

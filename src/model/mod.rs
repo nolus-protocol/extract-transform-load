@@ -1,4 +1,5 @@
 mod action_history;
+mod cached_responses;
 mod block;
 mod borrow_apr;
 mod buyback;
@@ -26,6 +27,7 @@ mod mp_asset;
 mod mp_yield;
 mod pl_state;
 mod pnl_over_time;
+mod position;
 mod raw_message;
 mod reserve_cover_loss;
 mod subscription;
@@ -67,6 +69,7 @@ pub use mp_asset::MP_Asset;
 pub use mp_yield::MP_Yield;
 pub use pl_state::PL_State;
 pub use pnl_over_time::Pnl_Over_Time;
+pub use position::Position;
 pub use raw_message::{CosmosTypes, Raw_Message};
 pub use reserve_cover_loss::Reserve_Cover_Loss;
 pub use subscription::Subscription;
@@ -77,3 +80,7 @@ pub use tr_rewards_distribution::TR_Rewards_Distribution;
 pub use tr_state::TR_State;
 pub use unrealized_pnl::Unrealized_Pnl;
 pub use utilization_level::Utilization_Level;
+pub use cached_responses::{
+    DailyPositionsPoint, MonthlyActiveWallet, PositionBucket,
+    RevenueSeriesPoint, TokenLoan, TokenPosition,
+};
