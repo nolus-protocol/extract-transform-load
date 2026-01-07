@@ -430,6 +430,7 @@ pub struct Config {
     pub db_min_connections: u32,
     pub db_acquire_timeout: u64,
     pub db_idle_timeout: u64,
+    pub db_statement_timeout: u64,
 }
 
 impl Config {}
@@ -544,6 +545,9 @@ pub fn get_configuration() -> Result<Config, Error> {
     let db_idle_timeout: u64 = env::var("DB_IDLE_TIMEOUT")
         .unwrap_or_else(|_| "300".to_string())
         .parse()?;
+    let db_statement_timeout: u64 = env::var("DB_STATEMENT_TIMEOUT")
+        .unwrap_or_else(|_| "60".to_string())
+        .parse()?;
 
     let config = Config {
         host,
@@ -585,6 +589,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         db_min_connections,
         db_acquire_timeout,
         db_idle_timeout,
+        db_statement_timeout,
     };
 
     Ok(config)

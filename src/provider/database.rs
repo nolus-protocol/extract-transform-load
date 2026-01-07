@@ -49,8 +49,20 @@ pub struct DatabasePool {
 
 impl DatabasePool {
     pub async fn new(config: &Config) -> Result<DatabasePool, Error> {
+        let statement_timeout_ms = config.db_statement_timeout * 1000;
         let pool = PoolOption::new()
-            .after_connect(|_conn, _meta| Box::pin(async move { Ok(()) }))
+            .after_connect(move |conn, _meta| {
+                Box::pin(async move {
+                    // Set statement timeout to prevent runaway queries
+                    sqlx::query(&format!(
+                        "SET statement_timeout = '{}'",
+                        statement_timeout_ms
+                    ))
+                    .execute(conn)
+                    .await?;
+                    Ok(())
+                })
+            })
             .max_connections(config.db_max_connections)
             .min_connections(config.db_min_connections)
             .acquire_timeout(Duration::from_secs(config.db_acquire_timeout))
