@@ -1,13 +1,194 @@
 [
   {
-    "description": "Total Value Locked",
+    "category": "Platform Metrics",
+    "description": "Total Value Locked (TVL) in USD",
     "url": "/api/total-value-locked",
-    "type": "GET"
+    "type": "GET",
+    "response": "{ total_value_locked: BigDecimal }",
+    "cache": "5 min"
   },
   {
-    "description": "Borrow APR",
+    "category": "Platform Metrics",
+    "description": "Total transactions value in USD (all-time)",
+    "url": "/api/total-tx-value",
+    "type": "GET",
+    "response": "{ total_tx_value: BigDecimal }",
+    "cache": "5 min"
+  },
+  {
+    "category": "Platform Metrics",
+    "description": "Protocol revenue in USD (all-time)",
+    "url": "/api/revenue",
+    "type": "GET",
+    "response": "{ revenue: BigDecimal }",
+    "cache": "5 min"
+  },
+  {
+    "category": "Platform Metrics",
+    "description": "Total borrowed amount in USD across all pools",
+    "url": "/api/borrowed",
+    "type": "GET",
+    "response": "{ borrowed: BigDecimal }"
+  },
+  {
+    "category": "Platform Metrics",
+    "description": "Total supplied funds in USD across all pools",
+    "url": "/api/supplied-funds",
+    "type": "GET",
+    "response": "{ supplied_funds: BigDecimal }",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Platform Metrics",
+    "description": "Synced blocks count",
+    "url": "/api/blocks",
+    "type": "GET",
+    "response": "{ blocks: Number }"
+  },
+  {
+    "category": "Platform Metrics",
+    "description": "Service version",
+    "url": "/api/version",
+    "type": "GET",
+    "response": "{ version: String }"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "Open position value in USD (market value of all open positions)",
+    "url": "/api/open-position-value",
+    "type": "GET",
+    "response": "{ open_position_value: BigDecimal }",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "Open interest in USD (total debt of all open positions)",
+    "url": "/api/open-interest",
+    "type": "GET",
+    "response": "{ open_interest: BigDecimal }",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "Unrealized PnL in USD (sum of all open positions)",
+    "url": "/api/unrealized-pnl",
+    "type": "GET",
+    "response": "{ unrealized_pnl: BigDecimal }",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "Realized PnL stats in USD (sum of all closed positions)",
+    "url": "/api/realized-pnl-stats",
+    "type": "GET",
+    "response": "{ realized_pnl: BigDecimal }",
+    "cache": "5 min"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "Total leased assets value by token",
+    "url": "/api/leased-assets",
+    "type": "GET",
+    "response": "[{ symbol: String, value: BigDecimal }]",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "Active loans grouped by token",
+    "url": "/api/loans-by-token",
+    "type": "GET",
+    "response": "[{ symbol: String, value: BigDecimal }]",
+    "cache": "30 min"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "Open positions grouped by token with market value",
+    "url": "/api/open-positions-by-token",
+    "type": "GET",
+    "response": "[{ token: String, market_value: BigDecimal }]",
+    "cache": "30 min"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "Position size distribution buckets",
+    "url": "/api/position-buckets",
+    "type": "GET",
+    "response": "[{ loan_category: String, loan_count: Number, loan_size: BigDecimal }]",
+    "cache": "30 min"
+  },
+  {
+    "category": "Positions / Leases",
+    "description": "All positions with details (loan, down payment, PnL, prices)",
+    "url": "/api/positions",
+    "type": "GET",
+    "response": "[{ date: String, type: String, symbol: String, contract_id: String, user: String, loan: BigDecimal, down_payment: BigDecimal, lease_value: BigDecimal, pnl: BigDecimal, pnl_percent: BigDecimal, current_price: BigDecimal, liquidation_price: BigDecimal }]",
+    "cache": "1 hour",
+    "params": [
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 100,
+        "max": 1000
+      },
+      {
+        "name": "format",
+        "type": "String",
+        "default": "json",
+        "options": ["json", "csv"]
+      }
+    ]
+  },
+  {
+    "category": "Historical Data",
+    "description": "Monthly lease count and volume statistics",
+    "url": "/api/leases-monthly",
+    "type": "GET",
+    "response": "[{ month: String, lease_count: Number, total_value: BigDecimal }]",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Historical Data",
+    "description": "Daily opened and closed positions count",
+    "url": "/api/daily-positions",
+    "type": "GET",
+    "response": "[{ date: DateTime, closed_loans: BigDecimal, opened_loans: BigDecimal }]",
+    "cache": "30 min"
+  },
+  {
+    "category": "Historical Data",
+    "description": "Supplied vs Borrowed amounts over time",
+    "url": "/api/supplied-borrowed-history",
+    "type": "GET",
+    "response": "[{ date: DateTime, supplied: BigDecimal, borrowed: BigDecimal }]",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Historical Data",
+    "description": "Monthly active unique wallet addresses",
+    "url": "/api/monthly-active-wallets",
+    "type": "GET",
+    "response": "[{ month: String, unique_addresses: Number }]",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Historical Data",
+    "description": "Daily and cumulative revenue over time",
+    "url": "/api/revenue-series",
+    "type": "GET",
+    "response": "[{ time: DateTime, daily: BigDecimal, cumulative: BigDecimal }]",
+    "cache": "1 hour"
+  },
+  {
+    "category": "APR / Rates",
+    "description": "Borrow APR history (paginated)",
     "url": "/api/borrow-apr",
     "type": "GET",
+    "response": "[{ date: DateTime, apr: BigDecimal, protocol: String }]",
     "params": [
       {
         "name": "skip",
@@ -23,9 +204,11 @@
     ]
   },
   {
-    "description": "Earn APR",
+    "category": "APR / Rates",
+    "description": "Current Earn APR by protocol",
     "url": "/api/earn-apr",
     "type": "GET",
+    "response": "{ earn_apr: BigDecimal }",
     "params": [
       {
         "name": "protocol",
@@ -35,72 +218,11 @@
     ]
   },
   {
-    "description": "Realized pnl stats",
-    "url": "/api/realized-pnl-stats",
-    "type": "GET",
-    "params": []
-  },
-  {
-    "description": "Supplied funds",
-    "url": "/api/supplied-funds",
-    "type": "GET",
-    "params": []
-  },
-  {
-    "description": "Time series Supplied/Borrowed",
-    "url": "/api/time-series",
-    "type": "GET"
-  },
-  {
-    "description": "Unrealzied pnl by address",
-    "url": "/api/unrealized-pnl-by-address",
-    "type": "GET",
-    "params": [
-      {
-        "name": "address",
-        "type": "String"
-      }
-    ]
-  },
-  {
-    "description": "Pnl over time",
-    "url": "/api/pnl-over-time",
-    "type": "GET",
-    "params": [
-      {
-        "name": "address",
-        "type": "String"
-      },
-      {
-        "name": "interval",
-        "type": "String"
-      }
-    ]
-  },
-  {
-    "description": "Get leases monthly",
-    "url": "/api/leases-monthly",
-    "type": "GET"
-  },
-  {
-    "description": "Open position value",
-    "url": "/api/open-position-value",
-    "type": "GET"
-  },
-  {
-    "description": "Open interest",
-    "url": "/api/open-interest",
-    "type": "GET"
-  },
-  {
-    "description": "Unrealized pnl",
-    "url": "/api/unrealized-pnl",
-    "type": "GET"
-  },
-  {
-    "description": "Utilization Level",
+    "category": "APR / Rates",
+    "description": "Utilization level history (paginated)",
     "url": "/api/utilization-level",
     "type": "GET",
+    "response": "[{ date: DateTime, utilization: BigDecimal, protocol: String }]",
     "params": [
       {
         "name": "skip",
@@ -116,19 +238,25 @@
     ]
   },
   {
-    "description": "Optimal",
+    "category": "APR / Rates",
+    "description": "Optimal utilization rate (static)",
     "url": "/api/optimal",
-    "type": "GET"
+    "type": "GET",
+    "response": "{ optimal: String }"
   },
   {
-    "description": "Deposit Suspension",
+    "category": "APR / Rates",
+    "description": "Deposit suspension threshold (static)",
     "url": "/api/deposit-suspension",
-    "type": "GET"
+    "type": "GET",
+    "response": "{ deposit_suspension: String }"
   },
   {
-    "description": "Buyback list",
+    "category": "Treasury",
+    "description": "Buyback transactions list (paginated)",
     "url": "/api/buyback",
     "type": "GET",
+    "response": "[{ date: DateTime, amount: BigDecimal, tx_hash: String }]",
     "params": [
       {
         "name": "skip",
@@ -144,93 +272,80 @@
     ]
   },
   {
-    "description": "Incentives Pool",
-    "url": "/api/incentives-pool",
-    "type": "GET"
-  },
-  {
-    "description": "Buyback total",
+    "category": "Treasury",
+    "description": "Total buyback amount in USD",
     "url": "/api/buyback-total",
-    "type": "GET"
+    "type": "GET",
+    "response": "{ buyback_total: BigDecimal }",
+    "cache": "1 hour"
   },
   {
-    "description": "Distributed",
+    "category": "Treasury",
+    "description": "Total distributed rewards in USD",
     "url": "/api/distributed",
-    "type": "GET"
-  },
-  {
-    "description": "Leased Assets (Total)",
-    "url": "/api/leased-assets",
-    "type": "GET"
-  },
-  {
-    "description": "Borrowed",
-    "url": "/api/borrowed",
-    "type": "GET"
-  },
-  {
-    "description": "Protocol Revenue",
-    "url": "/api/revenue",
-    "type": "GET"
-  },
-  {
-    "description": "Get lease opening",
-    "url": "/api/ls-opening",
     "type": "GET",
+    "response": "{ distributed: BigDecimal }",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Treasury",
+    "description": "Current incentives pool balance",
+    "url": "/api/incentives-pool",
+    "type": "GET",
+    "response": "{ incentives_pool: BigDecimal }",
+    "cache": "1 hour"
+  },
+  {
+    "category": "Grafana Dashboard",
+    "description": "Current active lenders with deposit amounts",
+    "url": "/api/current-lenders",
+    "type": "GET",
+    "response": "[{ lender: String, pool: String, deposit: BigDecimal, deposit_usd: BigDecimal }]",
+    "cache": "5 min"
+  },
+  {
+    "category": "Grafana Dashboard",
+    "description": "Liquidation events with details",
+    "url": "/api/liquidations",
+    "type": "GET",
+    "response": "[{ date: DateTime, lease: String, user: String, amount: BigDecimal, liquidation_type: String }]",
+    "cache": "5 min",
     "params": [
       {
-        "name": "lease",
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 100,
+        "max": 500
+      },
+      {
+        "name": "format",
         "type": "String",
-        "default": null
+        "default": "json",
+        "options": ["json", "csv"]
       }
     ]
   },
   {
-    "description": "Synced blocks",
-    "url": "/api/blocks",
-    "type": "GET"
-  },
-  {
-    "description": "Opened leases",
-    "url": "/api/ls-openings",
+    "category": "Grafana Dashboard",
+    "description": "Lease value statistics (min, max, avg, sum)",
+    "url": "/api/lease-value-stats",
     "type": "GET",
-    "params": [
-      {
-        "name": "leases",
-        "type": "Array<String>",
-        "default": null
-      }
-    ]
+    "response": "[{ protocol: String, min_value: BigDecimal, max_value: BigDecimal, avg_value: BigDecimal, total_value: BigDecimal }]",
+    "cache": "5 min"
   },
   {
-    "description": "Total transactions value",
-    "url": "/api/total-tx-value",
-    "type": "GET"
-  },
-  {
-    "description": "Version",
-    "url": "/api/version",
-    "type": "GET"
-  },
-  {
-    "description": "Max ls interest for 7 days",
-    "url": "/api/max_ls_interest_7d/nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf",
-    "type": "GET"
-  },
-  {
-    "description": "Max lp ratio",
-    "url": "/api/max_lp_ratio/nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf",
-    "type": "GET"
-  },
-  {
-    "description": "Tx history",
-    "url": "/api/txs",
+    "category": "Grafana Dashboard",
+    "description": "Historical lenders (all deposits/withdrawals)",
+    "url": "/api/historical-lenders",
     "type": "GET",
+    "response": "[{ date: DateTime, lender: String, pool: String, action: String, amount: BigDecimal }]",
+    "cache": "30 min",
     "params": [
-      {
-        "name": "address",
-        "type": "String"
-      },
       {
         "name": "skip",
         "type": "Number",
@@ -239,20 +354,49 @@
       {
         "name": "limit",
         "type": "Number",
-        "default": 10,
-        "max": 100
+        "default": 100,
+        "max": 1000
+      },
+      {
+        "name": "format",
+        "type": "String",
+        "default": "json",
+        "options": ["json", "csv"]
       }
     ]
   },
   {
-    "description": "Lease history",
-    "url": "/api/leases",
+    "category": "Grafana Dashboard",
+    "description": "Loans granted summary",
+    "url": "/api/loans-granted",
     "type": "GET",
+    "response": "[{ protocol: String, count: Number, total_value: BigDecimal }]",
+    "cache": "30 min"
+  },
+  {
+    "category": "Grafana Dashboard",
+    "description": "Historically liquidated positions summary",
+    "url": "/api/historically-liquidated",
+    "type": "GET",
+    "response": "[{ protocol: String, count: Number, total_value: BigDecimal }]",
+    "cache": "30 min"
+  },
+  {
+    "category": "Grafana Dashboard",
+    "description": "Historically repaid positions summary",
+    "url": "/api/historically-repaid",
+    "type": "GET",
+    "response": "[{ protocol: String, count: Number, total_value: BigDecimal }]",
+    "cache": "30 min"
+  },
+  {
+    "category": "Grafana Dashboard",
+    "description": "Historically opened positions with details",
+    "url": "/api/historically-opened",
+    "type": "GET",
+    "response": "[{ date: DateTime, lease: String, user: String, amount: BigDecimal, symbol: String }]",
+    "cache": "30 min",
     "params": [
-      {
-        "name": "address",
-        "type": "String"
-      },
       {
         "name": "skip",
         "type": "Number",
@@ -261,15 +405,50 @@
       {
         "name": "limit",
         "type": "Number",
-        "default": 10,
-        "max": 100
+        "default": 100,
+        "max": 1000
+      },
+      {
+        "name": "format",
+        "type": "String",
+        "default": "json",
+        "options": ["json", "csv"]
       }
     ]
   },
   {
-    "description": "Get prices",
+    "category": "Grafana Dashboard",
+    "description": "Realized PnL per wallet",
+    "url": "/api/realized-pnl-wallet",
+    "type": "GET",
+    "response": "[{ wallet: String, realized_pnl: BigDecimal, trade_count: Number }]",
+    "cache": "5 min",
+    "params": [
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 100,
+        "max": 500
+      },
+      {
+        "name": "format",
+        "type": "String",
+        "default": "json",
+        "options": ["json", "csv"]
+      }
+    ]
+  },
+  {
+    "category": "Prices",
+    "description": "Asset price history",
     "url": "/api/prices",
     "type": "GET",
+    "response": "[{ date: DateTime, price: BigDecimal, symbol: String }]",
     "params": [
       {
         "name": "interval",
@@ -286,13 +465,48 @@
     ]
   },
   {
-    "description": "Lease pnl",
-    "url": "/api/ls-loan-closing",
+    "category": "User Data (requires address)",
+    "description": "Unrealized PnL for a specific wallet address",
+    "url": "/api/unrealized-pnl-by-address",
     "type": "GET",
+    "response": "{ unrealized_pnl: BigDecimal }",
     "params": [
       {
         "name": "address",
+        "type": "String",
+        "required": true
+      }
+    ]
+  },
+  {
+    "category": "User Data (requires address)",
+    "description": "PnL over time for a specific wallet",
+    "url": "/api/pnl-over-time",
+    "type": "GET",
+    "response": "[{ date: DateTime, pnl: BigDecimal }]",
+    "params": [
+      {
+        "name": "address",
+        "type": "String",
+        "required": true
+      },
+      {
+        "name": "interval",
         "type": "String"
+      }
+    ]
+  },
+  {
+    "category": "User Data (requires address)",
+    "description": "Transaction history for a wallet (paginated)",
+    "url": "/api/txs",
+    "type": "GET",
+    "response": "[{ date: DateTime, tx_hash: String, type: String, amount: BigDecimal }]",
+    "params": [
+      {
+        "name": "address",
+        "type": "String",
+        "required": true
       },
       {
         "name": "skip",
@@ -308,53 +522,117 @@
     ]
   },
   {
-    "description": "Realized pnl",
+    "category": "User Data (requires address)",
+    "description": "Lease history for a wallet (paginated)",
+    "url": "/api/leases",
+    "type": "GET",
+    "response": "[{ lease: String, status: String, opened: DateTime, closed: DateTime, pnl: BigDecimal }]",
+    "params": [
+      {
+        "name": "address",
+        "type": "String",
+        "required": true
+      },
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 10,
+        "max": 100
+      }
+    ]
+  },
+  {
+    "category": "User Data (requires address)",
+    "description": "Lease PnL details (paginated)",
+    "url": "/api/ls-loan-closing",
+    "type": "GET",
+    "response": "[{ lease: String, pnl: BigDecimal, closed_at: DateTime }]",
+    "params": [
+      {
+        "name": "address",
+        "type": "String",
+        "required": true
+      },
+      {
+        "name": "skip",
+        "type": "Number",
+        "default": 0
+      },
+      {
+        "name": "limit",
+        "type": "Number",
+        "default": 10,
+        "max": 100
+      }
+    ]
+  },
+  {
+    "category": "User Data (requires address)",
+    "description": "Realized PnL for a wallet",
     "url": "/api/realized-pnl",
     "type": "GET",
+    "response": "{ realized_pnl: BigDecimal }",
     "params": [
       {
         "name": "address",
-        "type": "String"
+        "type": "String",
+        "required": true
       }
     ]
   },
   {
-    "description": "Lease position/debt",
+    "category": "User Data (requires address)",
+    "description": "Position and debt value for a wallet",
     "url": "/api/position-debt-value",
     "type": "GET",
+    "response": "{ position_value: BigDecimal, debt_value: BigDecimal }",
     "params": [
       {
         "name": "address",
-        "type": "String"
+        "type": "String",
+        "required": true
       }
     ]
   },
   {
-    "description": "Realized pnl data",
+    "category": "User Data (requires address)",
+    "description": "Detailed realized PnL data for a wallet",
     "url": "/api/realized-pnl-data",
     "type": "GET",
+    "response": "[{ lease: String, pnl: BigDecimal, symbol: String }]",
     "params": [
       {
         "name": "address",
-        "type": "String"
+        "type": "String",
+        "required": true
       }
     ]
   },
   {
-    "description": "History stats",
+    "category": "User Data (requires address)",
+    "description": "Historical statistics for a wallet",
     "url": "/api/history-stats",
     "type": "GET",
+    "response": "{ total_trades: Number, win_rate: BigDecimal, avg_pnl: BigDecimal }",
     "params": [
       {
         "name": "address",
-        "type": "String"
+        "type": "String",
+        "required": true
       }
     ]
   },
   {
-    "description": "Leases search",
+    "category": "User Data (requires address)",
+    "description": "Search leases by wallet address",
     "url": "/api/leases-search",
     "type": "GET",
+    "response": "[{ lease: String, status: String, symbol: String }]",
     "params": [
       {
         "name": "address",
@@ -364,9 +642,11 @@
     ]
   },
   {
-    "description": "Earnings",
+    "category": "User Data (requires address)",
+    "description": "Earnings for a wallet",
     "url": "/api/earnings",
     "type": "GET",
+    "response": "{ earnings: BigDecimal }",
     "params": [
       {
         "name": "address",
@@ -376,9 +656,39 @@
     ]
   },
   {
-    "description": "LP Withdraw by tx hash",
+    "category": "Lookup",
+    "description": "Get lease opening details by lease ID",
+    "url": "/api/ls-opening",
+    "type": "GET",
+    "response": "{ lease: String, user: String, amount: BigDecimal, symbol: String, opened_at: DateTime }",
+    "params": [
+      {
+        "name": "lease",
+        "type": "String",
+        "default": null
+      }
+    ]
+  },
+  {
+    "category": "Lookup",
+    "description": "Get multiple lease openings by IDs",
+    "url": "/api/ls-openings",
+    "type": "GET",
+    "response": "[{ lease: String, user: String, amount: BigDecimal, symbol: String }]",
+    "params": [
+      {
+        "name": "leases",
+        "type": "Array<String>",
+        "default": null
+      }
+    ]
+  },
+  {
+    "category": "Lookup",
+    "description": "LP withdrawal details by transaction hash",
     "url": "/api/lp-withdraw",
     "type": "GET",
+    "response": "{ tx: String, amount: BigDecimal, pool: String }",
     "params": [
       {
         "name": "tx",
