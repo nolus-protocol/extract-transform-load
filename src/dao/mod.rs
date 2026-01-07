@@ -3,4 +3,4 @@ pub use self::postgre::{
     DUPLICATE_ERROR,
 };
 
-mod postgre;
+pub mod postgre;

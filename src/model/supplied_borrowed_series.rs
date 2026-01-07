@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-#[derive(Debug, FromRow, Deserialize, Serialize)]
+#[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
 pub struct Supplied_Borrowed_Series {
     #[sqlx(rename = "LP_Pool_timestamp")]
     pub lp_pool_timestamp: DateTime<Utc>,

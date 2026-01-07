@@ -3,8 +3,34 @@ use crate::model::{
     LS_Opening, LS_State, Pnl_Over_Time, Table, Unrealized_Pnl,
 };
 use chrono::{DateTime, Utc};
-use sqlx::{types::BigDecimal, Error, QueryBuilder};
+use sqlx::{types::BigDecimal, Error, FromRow, QueryBuilder};
 use std::str::FromStr as _;
+
+#[derive(Debug, FromRow)]
+pub struct OpenPositionsByToken {
+    pub token: String,
+    pub market_value: BigDecimal,
+}
+
+#[derive(Debug, FromRow)]
+pub struct PositionBucket {
+    pub loan_category: Option<String>,
+    pub loan_count: i64,
+    pub loan_size: BigDecimal,
+}
+
+#[derive(Debug, FromRow)]
+pub struct LoansByToken {
+    pub symbol: String,
+    pub value: BigDecimal,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct LeaseValueStats {
+    pub asset: String,
+    pub avg_value: BigDecimal,
+    pub max_value: BigDecimal,
+}
 
 impl Table<LS_State> {
     pub async fn insert(&self, data: LS_State) -> Result<QueryResult, Error> {
@@ -161,6 +187,196 @@ impl Table<LS_State> {
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
+    }
+
+    pub async fn get_loans_by_token(
+        &self,
+    ) -> Result<Vec<LoansByToken>, crate::error::Error> {
+        let data = sqlx::query_as(
+            r#"
+            WITH MaxTimestamps AS (
+                SELECT
+                    "LS_contract_id",
+                    MAX("LS_timestamp") AS "MaxTimestamp"
+                FROM
+                    "LS_State"
+                WHERE
+                    "LS_timestamp" > (now() - INTERVAL '1 hour')
+                GROUP BY
+                    "LS_contract_id"
+            ),
+            Opened AS (
+                SELECT
+                    lo."LS_asset_symbol" as "Symbol",
+                    s1."LS_contract_id" as "Contract ID",
+                    CASE
+                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN s1."LS_principal_stable" / 1000000
+                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN s1."LS_principal_stable" / 100000000
+                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN s1."LS_principal_stable" / 1000000000
+                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN s1."LS_principal_stable" / 1000000
+                        ELSE s1."LS_principal_stable" / 1000000
+                    END AS "Loan in Stables",
+                    CASE
+                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMO (Short)'
+                        ELSE lo."LS_asset_symbol"
+                    END AS "Asset Type"
+                FROM
+                    "LS_State" s1
+                INNER JOIN
+                    MaxTimestamps mt ON s1."LS_contract_id" = mt."LS_contract_id" AND s1."LS_timestamp" = mt."MaxTimestamp"
+                INNER JOIN
+                    "LS_Opening" lo ON lo."LS_contract_id" = s1."LS_contract_id"
+            )
+            SELECT
+                o."Asset Type" AS symbol,
+                SUM(o."Loan in Stables") AS value
+            FROM
+                Opened o
+            WHERE
+                o."Loan in Stables" > 0
+            GROUP BY
+                o."Asset Type"
+            ORDER BY
+                value ASC
+            "#,
+        )
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
+    }
+
+    pub async fn get_position_buckets(
+        &self,
+    ) -> Result<Vec<PositionBucket>, crate::error::Error> {
+        let data = sqlx::query_as(
+            r#"
+            WITH LatestStates AS (
+                SELECT
+                    "LS_contract_id",
+                    MAX("LS_timestamp") AS "MaxTimestamp"
+                FROM
+                    "LS_State"
+                WHERE
+                    "LS_timestamp" > (now() - INTERVAL '1 hour')
+                GROUP BY
+                    "LS_contract_id"
+            ),
+            OpenedLoans AS (
+                SELECT
+                    s."LS_contract_id",
+                    CASE
+                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN s."LS_principal_stable" / 1000000
+                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN s."LS_principal_stable" / 100000000
+                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN s."LS_principal_stable" / 1000000000
+                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN s."LS_principal_stable" / 1000000
+                        ELSE s."LS_principal_stable" / 1000000
+                    END AS "Loan in Stables"
+                FROM
+                    LatestStates ls
+                INNER JOIN
+                    "LS_State" s ON ls."LS_contract_id" = s."LS_contract_id" AND ls."MaxTimestamp" = s."LS_timestamp"
+                INNER JOIN
+                    "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+                WHERE
+                    s."LS_principal_stable" > 0
+            )
+            SELECT
+                CASE
+                    WHEN "Loan in Stables" < 1000 THEN '0-0.999k'
+                    WHEN "Loan in Stables" BETWEEN 1000 AND 1999 THEN '1-1.9k'
+                    WHEN "Loan in Stables" BETWEEN 2000 AND 4999 THEN '2-4.9k'
+                    WHEN "Loan in Stables" BETWEEN 5000 AND 9999 THEN '5-9.9k'
+                    WHEN "Loan in Stables" BETWEEN 10000 AND 14999 THEN '10-14.9k'
+                    WHEN "Loan in Stables" >= 15000 THEN '15k+'
+                END AS loan_category,
+                COUNT("Loan in Stables") AS loan_count,
+                SUM("Loan in Stables") AS loan_size
+            FROM
+                OpenedLoans
+            GROUP BY
+                loan_category
+            "#,
+        )
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
+    }
+
+    pub async fn get_open_positions_by_token(
+        &self,
+    ) -> Result<Vec<OpenPositionsByToken>, crate::error::Error> {
+        let data = sqlx::query_as(
+            r#"
+            WITH LatestTimestamps AS (
+                SELECT
+                    "LS_contract_id",
+                    MAX("LS_timestamp") AS "MaxTimestamp"
+                FROM
+                    "LS_State"
+                WHERE
+                    "LS_timestamp" > (now() - INTERVAL '1 hour')
+                GROUP BY
+                    "LS_contract_id"
+            ),
+            Opened AS (
+                SELECT
+                    s."LS_contract_id",
+                    s."LS_amnt_stable",
+                    CASE
+                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM (Short)'
+                        WHEN lo."LS_loan_pool_id" = 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMO (Short)'
+                        ELSE lo."LS_asset_symbol"
+                    END AS "Asset Type"
+                FROM
+                    "LS_State" s
+                INNER JOIN
+                    LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
+                INNER JOIN
+                    "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+                WHERE
+                    s."LS_amnt_stable" > 0
+            ),
+            Lease_Value_Table AS (
+                SELECT
+                    op."Asset Type" AS "Token",
+                    CASE
+                        WHEN "Asset Type" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_amnt_stable" / 100000000
+                        WHEN "Asset Type" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
+                        WHEN "Asset Type" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000
+                        WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_amnt_stable" / 1000000000000000000
+                    ELSE "LS_amnt_stable" / 1000000
+                END AS "Lease Value"
+                FROM
+                    Opened op
+            )
+            SELECT
+                "Token" AS token,
+                SUM("Lease Value") AS market_value
+            FROM
+                Lease_Value_Table
+            GROUP BY
+                "Token"
+            ORDER BY
+                market_value DESC
+            "#,
+        )
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
     }
 
     pub async fn get_open_position_value(
@@ -873,5 +1089,190 @@ impl Table<LS_State> {
         };
 
         Ok(amount.unwrap_or(default.to_owned()))
+    }
+
+    pub async fn get_lease_value_stats(
+        &self,
+    ) -> Result<Vec<LeaseValueStats>, crate::error::Error> {
+        let data = sqlx::query_as(
+            r#"
+            WITH Latest_States AS (
+                SELECT DISTINCT ON ("LS_contract_id") *
+                FROM "LS_State"
+                WHERE "LS_timestamp" > NOW() - INTERVAL '1 hour'
+                ORDER BY "LS_contract_id", "LS_timestamp" DESC
+            ),
+            Joined_States AS (
+                SELECT
+                    o."LS_asset_symbol" AS "Symbol",
+                    CASE
+                        WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000.0
+                        WHEN o."LS_asset_symbol" = 'ALL_SOL' THEN s."LS_amnt_stable" / 1000000000.0
+                        WHEN o."LS_asset_symbol" = 'PICA' THEN s."LS_amnt_stable" / 1000000000000.0
+                        WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN s."LS_amnt_stable" / 1000000000000000000.0
+                        ELSE s."LS_amnt_stable" / 1000000.0
+                    END AS "Lease Value"
+                FROM Latest_States s
+                JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
+                WHERE s."LS_amnt_stable" > 0
+            )
+            SELECT
+                js."Symbol" AS asset,
+                AVG("Lease Value") AS avg_value,
+                MAX("Lease Value") AS max_value
+            FROM Joined_States js
+            GROUP BY js."Symbol"
+            "#,
+        )
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
+    }
+
+    pub async fn get_positions(
+        &self,
+        skip: i64,
+        limit: i64,
+    ) -> Result<Vec<crate::model::Position>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            WITH Loan_Type_Map AS (
+              SELECT
+                'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' AS id, 'Short' AS type, 'ST_ATOM' AS symbol, 1000000 AS denom
+                UNION ALL SELECT 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3', 'Short', 'ALL_BTC', 100000000
+                UNION ALL SELECT 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', 'Short', 'ALL_SOL', 1000000000
+                UNION ALL SELECT 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z', 'Short', 'AKT', 1000000
+                UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'Short', 'ATOM', 1000000
+                UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'Short', 'OSMO', 1000000
+            ),
+            Latest_States AS (
+              SELECT DISTINCT ON ("LS_contract_id") *
+              FROM "LS_State"
+              WHERE "LS_timestamp" > NOW() - INTERVAL '1 hour'
+              ORDER BY "LS_contract_id", "LS_timestamp" DESC
+            ),
+            Repayments AS (
+              SELECT
+                r."LS_contract_id",
+                (
+                  SUM(
+                    r."LS_prev_margin_stable"
+                  + r."LS_prev_interest_stable"
+                  + r."LS_current_margin_stable"
+                  + r."LS_current_interest_stable"
+                  + r."LS_principal_stable"
+                  )
+                ) / 1000000.0 AS "Repayment Stable"
+              FROM "LS_Repayment" r
+              JOIN Latest_States ls ON ls."LS_contract_id" = r."LS_contract_id"
+              GROUP BY r."LS_contract_id"
+            ),
+            Joined_States AS (
+              SELECT
+                o."LS_timestamp" AS "Time",
+                o."LS_address_id" AS "User",
+                o."LS_contract_id" AS "Contract ID",
+                COALESCE(m.type, 'Long') AS "Type",
+                COALESCE(m.symbol, o."LS_asset_symbol") AS "Symbol",
+                COALESCE(m.denom, 1000000.0) AS denom,
+
+                -- Loan from LS_State
+                CASE
+                  WHEN m.symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
+                  WHEN m.symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
+                  ELSE s."LS_principal_stable" / 1000000.0
+                END AS "Loan",
+
+                -- Down Payment from LS_Opening
+                CASE
+                  WHEN o."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN o."LS_cltr_amnt_stable" / 100000000.0
+                  WHEN o."LS_cltr_symbol" = 'ALL_SOL' THEN o."LS_cltr_amnt_stable" / 1000000000.0
+                  WHEN o."LS_cltr_symbol" = 'PICA' THEN o."LS_cltr_amnt_stable" / 1000000000000.0
+                  WHEN o."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000.0
+                  ELSE o."LS_cltr_amnt_stable" / 1000000.0
+                END AS "Down Payment",
+
+                -- Lease Value from LS_State
+                CASE
+                  WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000.0
+                  WHEN o."LS_asset_symbol" = 'ALL_SOL' THEN s."LS_amnt_stable" / 1000000000.0
+                  WHEN o."LS_asset_symbol" = 'PICA' THEN s."LS_amnt_stable" / 1000000000000.0
+                  WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN s."LS_amnt_stable" / 1000000000000000000.0
+                  ELSE s."LS_amnt_stable" / 1000000.0
+                END AS "Lease Value",
+
+                -- Margin & Interest from LS_State
+                (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(m.denom, 1000000.0) AS "Margin Interest",
+                (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(m.denom, 1000000.0) AS "Loan Interest",
+
+                CASE
+                  WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
+                    THEN (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 100000000
+                  WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
+                    THEN (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 1000000000
+                  ELSE (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 1000000
+                END AS "Loan Token Amount"
+
+              FROM Latest_States s
+              JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
+              LEFT JOIN Loan_Type_Map m ON o."LS_loan_pool_id" = m.id
+              WHERE s."LS_amnt_stable" > 0
+            ),
+            SymbolsInUse AS (
+              SELECT DISTINCT "Symbol" AS "MP_asset_symbol"
+              FROM Joined_States
+            ),
+            Latest_Prices AS (
+              SELECT DISTINCT ON (a."MP_asset_symbol")
+                a."MP_asset_symbol",
+                a."MP_price_in_stable" AS "Current Price"
+              FROM
+                "MP_Asset" a
+                INNER JOIN SymbolsInUse s ON a."MP_asset_symbol" = s."MP_asset_symbol"
+              WHERE
+                a."Protocol" IN ('OSMOSIS-OSMOSIS-USDC_NOBLE', 'NEUTRON-ASTROPORT-USDC_NOBLE')
+                AND a."MP_asset_timestamp" > NOW() - INTERVAL '1 hour'
+              ORDER BY
+                a."MP_asset_symbol", a."MP_asset_timestamp" DESC
+            )
+            SELECT
+              TO_CHAR("Time", 'YYYY-MM-DD') AS "Date",
+              "Type",
+              js."Symbol",
+              "Contract ID",
+              "User",
+              "Loan",
+              "Down Payment",
+              "Lease Value",
+              (
+                "Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest"
+                - COALESCE(rp."Repayment Stable", 0)
+              ) AS "PnL",
+              ROUND((
+                (
+                  "Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest"
+                  - COALESCE(rp."Repayment Stable", 0)
+                ) / "Down Payment"
+              ) * 100, 2) AS "PnL %",
+              lp."Current Price",
+              CASE
+                WHEN "Type" = 'Long' THEN ROUND((("Loan" / 0.9) / "Lease Value") * lp."Current Price", 4)
+                WHEN "Type" = 'Short' THEN ROUND("Lease Value" / ("Loan Token Amount" / 0.9), 4)
+              END AS "Liquidation Price"
+            FROM Joined_States js
+            LEFT JOIN Latest_Prices lp ON js."Symbol" = lp."MP_asset_symbol"
+            LEFT JOIN Repayments rp ON js."Contract ID" = rp."LS_contract_id"
+            OFFSET $1 LIMIT $2
+            "#,
+        )
+        .bind(skip)
+        .bind(limit)
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
     }
 }

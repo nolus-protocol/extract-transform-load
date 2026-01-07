@@ -26,12 +26,10 @@ pub use self::{
     ls_closing_type::LS_Closing_Type,
     ls_liquidation_type::LS_Liquidation_Type,
     ls_liquidation_warning_type::LS_Liquidation_Warning_Type,
-    ls_max_interest::LS_Max_Interest,
     ls_opening_type::LS_Opening_Type,
     ls_repayment_type::LS_Repayment_Type,
     ls_slippage_anomaly_type::LS_Slippage_Anomaly_Type,
     ls_state_type::{LS_Raw_State, LS_State_Type},
-    max_lp_ratio::Max_LP_Ratio,
     msg_receive_packet::MsgReceivePacket,
     new_block_response::{NewBlockBody, NewBlockData},
     prices_type::{AmountObject, Prices},
@@ -71,12 +69,10 @@ mod ls_close_position_type;
 mod ls_closing_type;
 mod ls_liquidation_type;
 mod ls_liquidation_warning_type;
-mod ls_max_interest;
 mod ls_opening_type;
 mod ls_repayment_type;
 mod ls_slippage_anomaly_type;
 mod ls_state_type;
-mod max_lp_ratio;
 mod msg_receive_packet;
 mod new_block_response;
 mod prices_type;

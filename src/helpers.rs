@@ -1034,3 +1034,28 @@ impl From<Filter_Types> for Vec<String> {
         }
     }
 }
+
+/// Generate a CSV response from serializable data
+pub fn to_csv_response<T: serde::Serialize>(
+    data: &[T],
+    filename: &str,
+) -> Result<actix_web::HttpResponse, Error> {
+    let mut wtr = csv::Writer::from_writer(vec![]);
+    for record in data {
+        wtr.serialize(record).map_err(|e| {
+            Error::ServerError(format!("CSV serialization error: {}", e))
+        })?;
+    }
+    let csv_data = wtr.into_inner().map_err(|e| {
+        Error::ServerError(format!("CSV writer error: {}", e))
+    })?;
+    let csv_string = String::from_utf8(csv_data)?;
+
+    Ok(actix_web::HttpResponse::Ok()
+        .content_type("text/csv")
+        .insert_header((
+            "Content-Disposition",
+            format!("attachment; filename=\"{}\"", filename),
+        ))
+        .body(csv_string))
+}

@@ -3,7 +3,7 @@ use std::{
     env, fs,
     ops::Deref,
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use tokio::sync::Semaphore;
@@ -13,10 +13,25 @@ use chrono::{DateTime, Utc};
 use futures::future::join_all;
 
 use crate::{
-    dao::get_path,
+    cache::TimedCache,
+    dao::{
+        get_path,
+        postgre::{
+            lp_deposit::HistoricalLender,
+            lp_lender_state::CurrentLender,
+            ls_liquidation::{HistoricallyLiquidated, LiquidationData},
+            ls_opening::{HistoricallyOpened, LoanGranted, RealizedPnlWallet},
+            ls_repayment::HistoricallyRepaid,
+            ls_state::LeaseValueStats,
+        },
+    },
     error::Error,
     helpers::{formatter, parse_tuple_string, Formatter, Protocol_Types},
-    model::LP_Pool,
+    model::{
+        DailyPositionsPoint, Leased_Asset, Leases_Monthly, LP_Pool,
+        MonthlyActiveWallet, Position, PositionBucket, RevenueSeriesPoint,
+        Supplied_Borrowed_Series, TokenLoan, TokenPosition,
+    },
     provider::{DatabasePool, Grpc, HTTP},
     types::{AdminProtocolExtendType, Currency},
 };
@@ -44,9 +59,90 @@ impl<T> Deref for AppState<T> {
     }
 }
 
+/// Cache TTL constants (in seconds)
+const CACHE_TTL_CURRENT: u64 = 300;      // 5 minutes for current/realtime data
+const CACHE_TTL_HISTORICAL: u64 = 1800;  // 30 minutes for historical data
+const CACHE_TTL_LONG: u64 = 3600;        // 1 hour for stable historical series
+
+/// Unified API response cache with TTL support
 #[derive(Debug)]
-pub struct Cache {
-    pub total_value_locked: Option<BigDecimal>,
+pub struct ApiCache {
+    // Aggregates / Dashboard endpoints
+    pub total_value_locked: TimedCache<BigDecimal>,
+    pub total_tx_value: TimedCache<BigDecimal>,
+    pub realized_pnl_stats: TimedCache<BigDecimal>,
+    pub revenue: TimedCache<BigDecimal>,
+    pub open_position_value: TimedCache<BigDecimal>,
+    pub open_interest: TimedCache<BigDecimal>,
+    pub leased_assets: TimedCache<Vec<Leased_Asset>>,
+    pub supplied_funds: TimedCache<BigDecimal>,
+    pub positions: TimedCache<Vec<Position>>,
+    pub supplied_borrowed_history: TimedCache<Vec<Supplied_Borrowed_Series>>,
+    pub leases_monthly: TimedCache<Vec<Leases_Monthly>>,
+    pub current_lenders: TimedCache<Vec<CurrentLender>>,
+    pub liquidations: TimedCache<Vec<LiquidationData>>,
+    pub lease_value_stats: TimedCache<Vec<LeaseValueStats>>,
+    pub historical_lenders: TimedCache<Vec<HistoricalLender>>,
+    pub loans_granted: TimedCache<Vec<LoanGranted>>,
+    pub historically_liquidated: TimedCache<Vec<HistoricallyLiquidated>>,
+    pub historically_repaid: TimedCache<Vec<HistoricallyRepaid>>,
+    pub historically_opened: TimedCache<Vec<HistoricallyOpened>>,
+    pub realized_pnl_wallet: TimedCache<Vec<RealizedPnlWallet>>,
+    // Additional cached endpoints
+    pub buyback_total: TimedCache<BigDecimal>,
+    pub distributed: TimedCache<BigDecimal>,
+    pub incentives_pool: TimedCache<BigDecimal>,
+    pub monthly_active_wallets: TimedCache<Vec<MonthlyActiveWallet>>,
+    pub revenue_series: TimedCache<Vec<RevenueSeriesPoint>>,
+    pub daily_positions: TimedCache<Vec<DailyPositionsPoint>>,
+    pub position_buckets: TimedCache<Vec<PositionBucket>>,
+    pub loans_by_token: TimedCache<Vec<TokenLoan>>,
+    pub open_positions_by_token: TimedCache<Vec<TokenPosition>>,
+    pub unrealized_pnl: TimedCache<BigDecimal>,
+}
+
+impl ApiCache {
+    pub fn new() -> Self {
+        Self {
+            total_value_locked: TimedCache::new(CACHE_TTL_CURRENT),
+            total_tx_value: TimedCache::new(CACHE_TTL_CURRENT),
+            realized_pnl_stats: TimedCache::new(CACHE_TTL_CURRENT),
+            revenue: TimedCache::new(CACHE_TTL_CURRENT),
+            open_position_value: TimedCache::new(CACHE_TTL_LONG),
+            open_interest: TimedCache::new(CACHE_TTL_LONG),
+            leased_assets: TimedCache::new(CACHE_TTL_LONG),
+            supplied_funds: TimedCache::new(CACHE_TTL_LONG),
+            positions: TimedCache::new(CACHE_TTL_LONG),
+            supplied_borrowed_history: TimedCache::new(CACHE_TTL_LONG),
+            leases_monthly: TimedCache::new(CACHE_TTL_LONG),
+            current_lenders: TimedCache::new(CACHE_TTL_CURRENT),
+            liquidations: TimedCache::new(CACHE_TTL_CURRENT),
+            lease_value_stats: TimedCache::new(CACHE_TTL_CURRENT),
+            historical_lenders: TimedCache::new(CACHE_TTL_HISTORICAL),
+            loans_granted: TimedCache::new(CACHE_TTL_HISTORICAL),
+            historically_liquidated: TimedCache::new(CACHE_TTL_HISTORICAL),
+            historically_repaid: TimedCache::new(CACHE_TTL_HISTORICAL),
+            historically_opened: TimedCache::new(CACHE_TTL_HISTORICAL),
+            realized_pnl_wallet: TimedCache::new(CACHE_TTL_CURRENT),
+            // Additional cached endpoints
+            buyback_total: TimedCache::new(CACHE_TTL_LONG),
+            distributed: TimedCache::new(CACHE_TTL_LONG),
+            incentives_pool: TimedCache::new(CACHE_TTL_LONG),
+            monthly_active_wallets: TimedCache::new(CACHE_TTL_LONG),
+            revenue_series: TimedCache::new(CACHE_TTL_LONG),
+            daily_positions: TimedCache::new(CACHE_TTL_HISTORICAL),
+            position_buckets: TimedCache::new(CACHE_TTL_HISTORICAL),
+            loans_by_token: TimedCache::new(CACHE_TTL_HISTORICAL),
+            open_positions_by_token: TimedCache::new(CACHE_TTL_HISTORICAL),
+            unrealized_pnl: TimedCache::new(CACHE_TTL_LONG),
+        }
+    }
+}
+
+impl Default for ApiCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Maximum number of concurrent push notification tasks
@@ -57,7 +153,7 @@ pub struct State {
     pub database: DatabasePool,
     pub grpc: Grpc,
     pub protocols: HashMap<String, AdminProtocolExtendType>,
-    pub cache: Mutex<Cache>,
+    pub api_cache: ApiCache,
     pub http: HTTP,
     /// Semaphore to limit concurrent push notification tasks
     pub push_permits: Arc<Semaphore>,
@@ -70,7 +166,7 @@ impl std::fmt::Debug for State {
             .field("database", &self.database)
             .field("grpc", &self.grpc)
             .field("protocols", &self.protocols)
-            .field("cache", &self.cache)
+            .field("api_cache", &self.api_cache)
             .field("http", &self.http)
             .field("push_permits", &"<Semaphore>")
             .finish()
@@ -93,9 +189,7 @@ impl State {
             grpc,
             http,
             protocols,
-            cache: Mutex::new(Cache {
-                total_value_locked: None,
-            }),
+            api_cache: ApiCache::new(),
             push_permits: Arc::new(Semaphore::new(MAX_PUSH_TASKS)),
         })
     }

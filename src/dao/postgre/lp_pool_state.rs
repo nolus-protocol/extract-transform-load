@@ -3,11 +3,8 @@ use std::str::FromStr as _;
 use chrono::{DateTime, Utc};
 use sqlx::{types::BigDecimal, Error, QueryBuilder};
 
-use crate::{
-    model::{
-        LP_Pool_State, Supplied_Borrowed_Series, Table, Utilization_Level,
-    },
-    types::Max_LP_Ratio,
+use crate::model::{
+    LP_Pool_State, Supplied_Borrowed_Series, Table, Utilization_Level,
 };
 
 use super::{DataBase, QueryResult};
@@ -231,34 +228,6 @@ impl Table<LP_Pool_State> {
         )
         .bind(skip)
         .bind(limit)
-        .persistent(true)
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(data)
-    }
-
-    pub async fn get_max_ls_interest_7d(
-        &self,
-        lpp_address: String,
-    ) -> Result<Vec<Max_LP_Ratio>, Error> {
-        let data = sqlx::query_as(
-            r#"
-                SELECT
-                    DATE("LP_Pool_timestamp") AS "date",
-                    MAX(
-                    "LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable"
-                    ) AS "ratio"
-                FROM
-                    "LP_Pool_State"
-                WHERE
-                    "LP_Pool_timestamp" >= CURRENT_DATE - INTERVAL '7 days'
-                    AND "LP_Pool_id" = $1
-                GROUP BY
-                    "date"
-                ORDER BY "date" DESC
-            "#,
-        )
-        .bind(lpp_address)
         .persistent(true)
         .fetch_all(&self.pool)
         .await?;
