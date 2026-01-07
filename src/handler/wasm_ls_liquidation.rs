@@ -123,7 +123,7 @@ pub async fn parse_and_insert(
         },
         LS_Liquidation_Data::Unsupported => PushData {
             r#type: PUSH_TYPES::Unsupported.to_string(),
-            body: format!(r#"{{}}"#,),
+            body: r#"{}"#.to_string(),
         },
     };
 

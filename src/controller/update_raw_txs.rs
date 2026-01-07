@@ -48,7 +48,7 @@ async fn index(
         }
     }
 
-    return Ok(web::Json(Response { result: true }));
+    Ok(web::Json(Response { result: true }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]

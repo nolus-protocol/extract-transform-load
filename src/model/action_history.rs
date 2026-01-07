@@ -40,8 +40,7 @@ impl FromStr for Actions {
         match value {
             "0" => Ok(Actions::MpAssetAction),
             "1" => Ok(Actions::AggregationAction),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "Action Type not supported",
             )),
         }

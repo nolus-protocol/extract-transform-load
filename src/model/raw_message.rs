@@ -4,22 +4,15 @@ use anyhow::{anyhow, Context as _};
 use base64::engine::{general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use cosmrs::{
-    proto::{
-        cosmos::{
-            bank::v1beta1::MsgSend,
-            distribution::v1beta1::MsgWithdrawDelegatorReward,
-            gov::{v1::MsgVote, v1beta1::MsgVote as MsgVoteLegacy},
-            staking::v1beta1::{
-                MsgBeginRedelegate, MsgDelegate, MsgUndelegate,
-            },
-        },
-        cosmwasm::wasm::v1::MsgExecuteContract,
-        tendermint::abci::Event,
-        Timestamp,
+use cosmrs::proto::{
+    cosmos::{
+        bank::v1beta1::MsgSend,
+        distribution::v1beta1::MsgWithdrawDelegatorReward,
+        gov::{v1::MsgVote, v1beta1::MsgVote as MsgVoteLegacy},
+        staking::v1beta1::{MsgBeginRedelegate, MsgDelegate, MsgUndelegate},
     },
-    tx::Fee,
-    Any,
+    cosmwasm::wasm::v1::MsgExecuteContract,
+    tendermint::abci::Event,
 };
 use ibc_proto::ibc::{
     applications::transfer::v1::MsgTransfer, core::channel::v1::MsgRecvPacket,
@@ -28,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;
 
-use crate::{error::Error, types::MsgReceivePacket};
+use crate::{error::Error, model::RawMsgParams, types::MsgReceivePacket};
 
 #[derive(Debug, FromRow, Default, Serialize, Deserialize)]
 pub struct Raw_Message {
@@ -48,20 +41,22 @@ pub struct Raw_Message {
 }
 
 impl Raw_Message {
-    pub fn from_any(
-        index: i32,
-        value: Any,
-        tx_hash: String,
-        block: i64,
-        time_stamp: Timestamp,
-        fee: Fee,
-        memo: String,
-        events: Vec<String>,
-        tx_events: &Vec<Event>,
-        code: u32,
-    ) -> Result<Raw_Message, anyhow::Error> {
+    pub fn from_any(params: RawMsgParams<'_>) -> Result<Raw_Message, anyhow::Error> {
+        let RawMsgParams {
+            index,
+            value,
+            tx_hash,
+            block,
+            time_stamp,
+            fee,
+            memo,
+            events,
+            tx_events,
+            code,
+        } = params;
+
         let k = CosmosTypes::from_str(&value.type_url)?;
-        let seconds = time_stamp.seconds.try_into()?;
+        let seconds = time_stamp.seconds;
         let nanos = time_stamp.nanos.try_into()?;
         let coin: Option<&cosmrs::Coin> = fee.amount.first();
         let (fee_amount, fee_denom) = match coin {
@@ -255,7 +250,7 @@ impl Raw_Message {
                 let msg: Value = serde_json::from_slice(&m.msg)?;
 
                 for event in events {
-                    if let Some(_) = msg.get(&event) {
+                    if msg.get(&event).is_some() {
                         let rewards = {
                             if &event == "claim_rewards" {
                                 get_msg_execute_contract_rewards(
@@ -295,11 +290,11 @@ impl Raw_Message {
 pub fn get_withdraw_delegator_rewards(
     validator: String,
     delegator: String,
-    tx_events: &Vec<Event>,
+    tx_events: &[Event],
 ) -> Result<Option<String>, Error> {
     const EVENT: &str = "withdraw_rewards";
 
-    for (_index, event) in tx_events.iter().enumerate() {
+    for event in tx_events.iter() {
         if event.r#type == EVENT {
             let attributes = event.attributes.iter();
             let amount = attributes
@@ -327,7 +322,7 @@ pub fn get_withdraw_delegator_rewards(
 pub fn get_msg_execute_contract_rewards(
     recipient: String,
     sender: String,
-    tx_events: &Vec<Event>,
+    tx_events: &[Event],
 ) -> Result<Option<String>, Error> {
     const EVENT: &str = "transfer";
     for event in tx_events.iter() {
@@ -481,8 +476,7 @@ impl FromStr for CosmosTypes {
             "/cosmwasm.wasm.v1.MsgExecuteContract" => {
                 Ok(CosmosTypes::MsgExecuteContract)
             },
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 format!("CosmosTypes message not supported: {}", &value),
             )),
         }

@@ -21,7 +21,7 @@ impl Table<Reserve_Cover_Loss> {
             "#,
         )
         .bind(&reserve_cover_loss.LS_contract_id)
-        .bind(&reserve_cover_loss.Event_Block_Index)
+        .bind(reserve_cover_loss.Event_Block_Index)
         .bind(&reserve_cover_loss.Tx_Hash)
         .persistent(true)
         .fetch_one(&self.pool)
@@ -56,8 +56,8 @@ impl Table<Reserve_Cover_Loss> {
         .bind(&data.LS_contract_id)
         .bind(&data.LS_symbol)
         .bind(&data.LS_amnt)
-        .bind(&data.Event_Block_Index)
-        .bind(&data.LS_timestamp)
+        .bind(data.Event_Block_Index)
+        .bind(data.LS_timestamp)
         .persistent(true)
         .execute(&mut **transaction)
         .await

@@ -6,7 +6,7 @@ use cosmrs::{
         tendermint::abci::{Event, EventAttribute},
         Timestamp,
     },
-    Any, Tx,
+    Tx,
 };
 use sqlx::Transaction;
 use std::{collections::HashMap, fmt, io, str::FromStr};
@@ -22,7 +22,7 @@ use crate::{
         wasm_ls_slippage_anomaly, wasm_reserve_cover_loss, wasm_tr_profit,
         wasm_tr_rewards,
     },
-    model::{Block, CosmosTypes, Raw_Message, Subscription},
+    model::{Block, CosmosTypes, Raw_Message, RawMsgParams, RawTxParams, Subscription},
     types::{
         Claims, Interest_values, LP_Deposit_Type, LP_Withdraw_Type,
         LS_Auto_Close_Position_Type, LS_Close_Position_Type, LS_Closing_Type,
@@ -570,34 +570,34 @@ pub async fn insert_txs(
 
     if block.is_none() {
         let mut tx = app_state.database.pool.begin().await?;
-        for tx_results in txs {
-            if let Some(tx_results) = tx_results {
-                let hash = tx_results.txhash.to_owned();
-                let tx_data =
-                    tx_results.tx.context("could not find Any message")?;
-                parse_raw_tx(
-                    app_state.clone(),
-                    tx_results.txhash,
+        for tx_results in txs.into_iter().flatten() {
+            let hash = tx_results.txhash.to_owned();
+            let tx_data =
+                tx_results.tx.context("could not find Any message")?;
+            parse_raw_tx(
+                app_state.clone(),
+                RawTxParams {
+                    tx_hash: tx_results.txhash,
                     tx_data,
                     height,
-                    tx_results.code,
-                    time_stamp.clone(),
-                    &tx_results.events,
+                    code: tx_results.code,
+                    time_stamp,
+                    tx_events: &tx_results.events,
+                },
+                &mut tx,
+            )
+            .await?;
+            for (index, event) in tx_results.events.iter().enumerate() {
+                parse_event(
+                    app_state.clone(),
+                    event,
+                    index,
+                    time_stamp,
+                    hash.to_owned(),
+                    height,
                     &mut tx,
                 )
                 .await?;
-                for (index, event) in tx_results.events.iter().enumerate() {
-                    parse_event(
-                        app_state.clone(),
-                        event,
-                        index,
-                        time_stamp.clone(),
-                        hash.to_owned(),
-                        height,
-                        &mut tx,
-                    )
-                    .await?;
-                }
             }
         }
 
@@ -615,29 +615,26 @@ pub async fn insert_txs(
 
 pub async fn parse_raw_tx(
     app_state: AppState<State>,
-    tx_hash: String,
-    tx_data: Any,
-    height: i64,
-    code: u32,
-    time_stamp: Timestamp,
-    tx_events: &Vec<Event>,
+    params: RawTxParams<'_>,
     tx: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
-    let c = Tx::from_bytes(&tx_data.value)?;
+    let c = Tx::from_bytes(&params.tx_data.value)?;
     for (index, msg) in c.body.messages.iter().enumerate() {
         let fee = c.auth_info.fee.clone();
         let memo = c.body.memo.to_owned();
         let msg: Result<Raw_Message, anyhow::Error> = Raw_Message::from_any(
-            index.try_into()?,
-            msg.clone(),
-            tx_hash.to_owned(),
-            height,
-            time_stamp.clone(),
-            fee,
-            memo,
-            app_state.config.events_subscribe.clone(),
-            tx_events,
-            code,
+            RawMsgParams {
+                index: index.try_into()?,
+                value: msg.clone(),
+                tx_hash: params.tx_hash.clone(),
+                block: params.height,
+                time_stamp: params.time_stamp,
+                fee,
+                memo,
+                events: app_state.config.events_subscribe.clone(),
+                tx_events: params.tx_events,
+                code: params.code,
+            },
         );
 
         if let Ok(msg) = msg {
@@ -792,8 +789,7 @@ impl FromStr for EventsType {
             "wasm-lp-withdraw" => Ok(EventsType::LP_Withdraw),
             "wasm-tr-profit" => Ok(EventsType::TR_Profit),
             "wasm-tr-rewards" => Ok(EventsType::TR_Rewards_Distribution),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "Message Type not supported",
             )),
         }
@@ -843,8 +839,7 @@ impl FromStr for Loan_Closing_Status {
             "liquidation" => Ok(Loan_Closing_Status::Liquidation),
             "market-close" => Ok(Loan_Closing_Status::MarketClose),
             "none" => Ok(Loan_Closing_Status::None),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "Loan_Closing_Status not supported",
             )),
         }
@@ -882,8 +877,7 @@ impl FromStr for Protocol_Types {
         match value {
             "long" => Ok(Protocol_Types::Long),
             "short" => Ok(Protocol_Types::Short),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "Protocol_Types not supported",
             )),
         }
@@ -921,8 +915,7 @@ impl FromStr for Auto_Close_Strategies {
         match value {
             "take-profit" => Ok(Auto_Close_Strategies::TakeProfit),
             "stop-loss" => Ok(Auto_Close_Strategies::StopLoss),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "Auto_Close_Strategies not supported",
             )),
         }
@@ -996,8 +989,7 @@ impl FromStr for Filter_Types {
             "staking" => Ok(Filter_Types::Staking),
             "positions" => Ok(Filter_Types::Positions),
             "positions_ids" => Ok(Filter_Types::PositionsIds),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "Filter_Types not supported",
             )),
         }

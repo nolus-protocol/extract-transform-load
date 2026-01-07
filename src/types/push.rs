@@ -12,9 +12,9 @@ pub struct PushData {
     pub body: String,
 }
 
-impl ToString for PushData {
-    fn to_string(&self) -> String {
-        format!(r#"{{"type": "{}", "data": {}}}"#, self.r#type, self.body)
+impl fmt::Display for PushData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, r#"{{"type": "{}", "data": {}}}"#, self.r#type, self.body)
     }
 }
 
@@ -57,8 +57,7 @@ impl FromStr for Urgency {
             "low" => Ok(Urgency::Low),
             "normal" => Ok(Urgency::Normal),
             "high" => Ok(Urgency::High),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "Message Type not supported",
             )),
         }
@@ -116,8 +115,7 @@ impl FromStr for PUSH_TYPES {
             "PartiallyLiquidated" => Ok(PUSH_TYPES::PartiallyLiquidated),
             "FullyLiquidated" => Ok(PUSH_TYPES::FullyLiquidated),
             "Unsupported" => Ok(PUSH_TYPES::Unsupported),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "PUSH_TYPES not supported",
             )),
         }

@@ -17,7 +17,7 @@ impl Table<LP_Pool> {
         )
         .bind(&data.LP_Pool_id)
         .bind(&data.LP_symbol)
-        .bind(&data.LP_status)
+        .bind(data.LP_status)
         .bind(&data.LP_Pool_id)
         .persistent(true)
         .execute(&self.pool)

@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    cache_state, lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state,
+    cache_refresher, lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state,
 };
 
 pub fn aggregation_task(
@@ -71,7 +71,7 @@ pub fn aggregation_task(
             return Err(Error::ServerError(error.to_string()));
         };
 
-        cache_state::set_total_value_locked(app_state.clone()).await?;
+        cache_refresher::refresh_tvl_cache(&app_state).await?;
 
         Ok(())
     })

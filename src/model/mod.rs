@@ -36,6 +36,9 @@ mod table;
 mod tr_profit;
 mod tr_rewards_distribution;
 mod tr_state;
+mod tvl_pools;
+mod raw_tx_params;
+mod raw_msg_params;
 mod unrealized_pnl;
 mod utilization_level;
 
@@ -80,6 +83,9 @@ pub use tr_rewards_distribution::TR_Rewards_Distribution;
 pub use tr_state::TR_State;
 pub use unrealized_pnl::Unrealized_Pnl;
 pub use utilization_level::Utilization_Level;
+pub use tvl_pools::TvlPoolParams;
+pub use raw_tx_params::RawTxParams;
+pub use raw_msg_params::RawMsgParams;
 pub use cached_responses::{
     DailyPositionsPoint, MonthlyActiveWallet, PositionBucket,
     RevenueSeriesPoint, TokenLoan, TokenPosition,

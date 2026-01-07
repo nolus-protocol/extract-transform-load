@@ -17,7 +17,7 @@ impl Table<Subscription> {
         .bind(&subscription.p256dh)
         .bind(&subscription.auth)
         .bind(&subscription.endpoint)
-        .bind(&subscription.expiration)
+        .bind(subscription.expiration)
         .bind(&subscription.ip)
         .bind(&subscription.user_agent)
         .execute(&self.pool)

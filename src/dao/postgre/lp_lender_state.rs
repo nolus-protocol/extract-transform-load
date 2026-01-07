@@ -150,7 +150,7 @@ impl Table<LP_Lender_State> {
         .bind(&data.LP_Lender_asset)
         .bind(&data.LP_Lender_id)
         .bind(&data.LP_Pool_id)
-        .bind(&data.LP_timestamp)
+        .bind(data.LP_timestamp)
         .persistent(true)
         .execute(&self.pool)
         .await

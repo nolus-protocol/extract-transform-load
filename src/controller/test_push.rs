@@ -81,24 +81,20 @@ pub fn fund_now() -> PushData {
 pub fn partially_liquidated() -> PushData {
     PushData {
         r#type: PUSH_TYPES::PartiallyLiquidated.to_string(),
-        body: format!(
-            r#"{{"position": "nolus1tgjl63gyrpwx6323vgeehcenwj8myvdurzfd0pskrgyrl2pqp98sx527j4"}}"#,
-        ),
+        body: r#"{"position": "nolus1tgjl63gyrpwx6323vgeehcenwj8myvdurzfd0pskrgyrl2pqp98sx527j4"}"#.to_string(),
     }
 }
 
 pub fn fully_liquidated() -> PushData {
     PushData {
         r#type: PUSH_TYPES::FullyLiquidated.to_string(),
-        body: format!(
-            r#"{{"position": "nolus1tgjl63gyrpwx6323vgeehcenwj8myvdurzfd0pskrgyrl2pqp98sx527j4"}}"#
-        ),
+        body: r#"{"position": "nolus1tgjl63gyrpwx6323vgeehcenwj8myvdurzfd0pskrgyrl2pqp98sx527j4"}"#.to_string(),
     }
 }
 
 pub fn unsupported() -> PushData {
     PushData {
         r#type: PUSH_TYPES::Unsupported.to_string(),
-        body: format!(r#"{{}}"#),
+        body: r#"{}"#.to_string(),
     }
 }

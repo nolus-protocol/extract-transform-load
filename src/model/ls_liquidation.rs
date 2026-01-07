@@ -60,8 +60,7 @@ impl FromStr for LS_transactions {
         match value {
             "0" => Ok(LS_transactions::Interest_Overdue_Liquidation),
             "1" => Ok(LS_transactions::Liability_Exceeded_Liquidation),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
+            _ => Err(io::Error::other(
                 "LS_transactions not supported",
             )),
         }
