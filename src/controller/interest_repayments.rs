@@ -9,12 +9,14 @@ use crate::{
 };
 
 const DEFAULT_LIMIT: i64 = 100;
-const MAX_LIMIT: i64 = 1000;
+const MAX_LIMIT: i64 = 5000;
 
 #[derive(Debug, Deserialize)]
 pub struct Query {
     skip: Option<i64>,
     limit: Option<i64>,
+    /// Filter to only return repayments after this timestamp (exclusive)
+    from: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,7 +37,14 @@ async fn index(
 ) -> Result<HttpResponse, Error> {
     let skip = query.skip.unwrap_or(0);
     let limit = query.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
-    let cache_key = format!("interest_repayments_{}_{}", skip, limit);
+    let from = query.from;
+
+    // Build cache key including the 'from' parameter
+    let from_key = from
+        .map(|ts| ts.timestamp().to_string())
+        .unwrap_or_else(|| "none".to_string());
+    let cache_key =
+        format!("interest_repayments_{}_{}_{}", skip, limit, from_key);
 
     // Try cache first
     if let Some(cached) =
@@ -60,7 +69,7 @@ async fn index(
     let data = state
         .database
         .ls_repayment
-        .get_interest_repayments(skip, limit)
+        .get_interest_repayments(skip, limit, from)
         .await?;
 
     // Store in cache
