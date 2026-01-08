@@ -329,7 +329,15 @@ impl Table<LS_Repayment> {
         &self,
         skip: i64,
         limit: i64,
+        from: Option<DateTime<Utc>>,
     ) -> Result<Vec<InterestRepaymentData>, crate::error::Error> {
+        // Use a very old date as default if 'from' is not provided
+        let from_timestamp = from.unwrap_or_else(|| {
+            DateTime::parse_from_rfc3339("1970-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&Utc)
+        });
+
         let data = sqlx::query_as(
             r#"
             WITH Loan_Type_Map AS (
@@ -358,6 +366,7 @@ impl Table<LS_Repayment> {
                     (COALESCE(r."LS_prev_margin_stable", 0) + COALESCE(r."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
                     'repayment' AS event_type
                 FROM "LS_Repayment" r
+                WHERE r."LS_timestamp" > $3
             ),
             CloseEvents AS (
                 SELECT
@@ -367,6 +376,7 @@ impl Table<LS_Repayment> {
                     (COALESCE(c."LS_prev_margin_stable", 0) + COALESCE(c."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
                     'close' AS event_type
                 FROM "LS_Close_Position" c
+                WHERE c."LS_timestamp" > $3
             ),
             LiquidationEvents AS (
                 SELECT
@@ -376,6 +386,7 @@ impl Table<LS_Repayment> {
                     (COALESCE(l."LS_prev_margin_stable", 0) + COALESCE(l."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
                     'liquidation' AS event_type
                 FROM "LS_Liquidation" l
+                WHERE l."LS_timestamp" > $3
             ),
             AllEvents AS (
                 SELECT * FROM RepaymentEvents
@@ -400,6 +411,7 @@ impl Table<LS_Repayment> {
         )
         .bind(skip)
         .bind(limit)
+        .bind(from_timestamp)
         .persistent(true)
         .fetch_all(&self.pool)
         .await?;
