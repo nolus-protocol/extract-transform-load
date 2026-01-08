@@ -1,700 +1,571 @@
 [
   {
-    "category": "Platform Metrics",
-    "description": "Total Value Locked (TVL) in USD",
+    "category": "Protocol Analytics",
+    "description": "Returns the total value locked (TVL) across all liquidity pools in USD.",
     "url": "/api/total-value-locked",
     "type": "GET",
     "response": "{ total_value_locked: BigDecimal }",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "{ \"total_value_locked\": \"12543892.45\" }"
   },
   {
-    "category": "Platform Metrics",
-    "description": "Total transactions value in USD (all-time)",
+    "category": "Protocol Analytics",
+    "description": "Returns the cumulative value of all transactions processed by the protocol in USD.",
     "url": "/api/total-tx-value",
     "type": "GET",
     "response": "{ total_tx_value: BigDecimal }",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "{ \"total_tx_value\": \"89234521.12\" }"
   },
   {
-    "category": "Platform Metrics",
-    "description": "Protocol revenue in USD (all-time)",
+    "category": "Protocol Analytics",
+    "description": "Returns the total protocol revenue generated from fees and interest in USD.",
     "url": "/api/revenue",
     "type": "GET",
     "response": "{ revenue: BigDecimal }",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "{ \"revenue\": \"1823456.78\" }"
   },
   {
-    "category": "Platform Metrics",
-    "description": "Total borrowed amount in USD across all pools",
+    "category": "Protocol Analytics",
+    "description": "Returns the total amount currently borrowed across all lending pools in USD.",
     "url": "/api/borrowed",
     "type": "GET",
-    "response": "{ borrowed: BigDecimal }"
+    "response": "{ borrowed: BigDecimal }",
+    "example": "{ \"borrowed\": \"5432109.87\" }"
   },
   {
-    "category": "Platform Metrics",
-    "description": "Total supplied funds in USD across all pools",
+    "category": "Protocol Analytics",
+    "description": "Returns the total funds supplied by lenders across all pools in USD.",
     "url": "/api/supplied-funds",
     "type": "GET",
     "response": "{ supplied_funds: BigDecimal }",
-    "cache": "1 hour"
+    "cache": "1 hour",
+    "example": "{ \"supplied_funds\": \"18234567.90\" }"
   },
   {
-    "category": "Platform Metrics",
-    "description": "Synced blocks count",
+    "category": "Protocol Analytics",
+    "description": "Returns the number of blockchain blocks synced by the ETL service.",
     "url": "/api/blocks",
     "type": "GET",
-    "response": "{ blocks: Number }"
+    "response": "{ blocks: Number }",
+    "example": "{ \"blocks\": 15234567 }"
   },
   {
-    "category": "Platform Metrics",
-    "description": "Service version",
+    "category": "Protocol Analytics",
+    "description": "Returns the current version of the ETL service.",
     "url": "/api/version",
     "type": "GET",
-    "response": "{ version: String }"
+    "response": "{ version: String }",
+    "example": "{ \"version\": \"3.14.22\" }"
   },
   {
-    "category": "Positions / Leases",
-    "description": "Open position value in USD (market value of all open positions)",
+    "category": "Protocol Analytics",
+    "description": "Returns a time series of supplied vs borrowed amounts for tracking pool utilization trends.",
+    "url": "/api/supplied-borrowed-history",
+    "type": "GET",
+    "response": "[{ date: DateTime, supplied: BigDecimal, borrowed: BigDecimal }]",
+    "cache": "1 hour",
+    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"supplied\": \"18234567.90\", \"borrowed\": \"5432109.87\" }]"
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns the count of unique active wallet addresses per month.",
+    "url": "/api/monthly-active-wallets",
+    "type": "GET",
+    "response": "[{ month: String, unique_addresses: Number }]",
+    "cache": "1 hour",
+    "example": "[{ \"month\": \"2025-01\", \"unique_addresses\": 1523 }]"
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns daily and cumulative revenue over time for trend analysis.",
+    "url": "/api/revenue-series",
+    "type": "GET",
+    "response": "[{ time: DateTime, daily: BigDecimal, cumulative: BigDecimal }]",
+    "cache": "1 hour",
+    "example": "[{ \"time\": \"2025-01-15T00:00:00Z\", \"daily\": \"12345.67\", \"cumulative\": \"1823456.78\" }]"
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns historical borrow APR rates across protocols with pagination support.",
+    "url": "/api/borrow-apr",
+    "type": "GET",
+    "response": "[{ date: DateTime, apr: BigDecimal, protocol: String }]",
+    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"apr\": \"12.5\", \"protocol\": \"OSMOSIS-OSMOSIS-USDC\" }]",
+    "params": [
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 32, "max": 100 }
+    ]
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns the current earn APR for liquidity providers, optionally filtered by protocol.",
+    "url": "/api/earn-apr",
+    "type": "GET",
+    "response": "{ earn_apr: BigDecimal }",
+    "example": "{ \"earn_apr\": \"8.75\" }",
+    "params": [
+      { "name": "protocol", "type": "String", "default": null }
+    ]
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns historical pool utilization levels with pagination support.",
+    "url": "/api/utilization-level",
+    "type": "GET",
+    "response": "[{ date: DateTime, utilization: BigDecimal, protocol: String }]",
+    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"utilization\": \"68.5\", \"protocol\": \"OSMOSIS-OSMOSIS-USDC\" }]",
+    "params": [
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 32, "max": 100 }
+    ]
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns the optimal utilization rate threshold configured for the protocol.",
+    "url": "/api/optimal",
+    "type": "GET",
+    "response": "{ optimal: String }",
+    "example": "{ \"optimal\": \"80\" }"
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns the deposit suspension threshold percentage.",
+    "url": "/api/deposit-suspension",
+    "type": "GET",
+    "response": "{ deposit_suspension: String }",
+    "example": "{ \"deposit_suspension\": \"95\" }"
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns a paginated list of NLS token buyback transactions.",
+    "url": "/api/buyback",
+    "type": "GET",
+    "response": "[{ date: DateTime, amount: BigDecimal, tx_hash: String }]",
+    "example": "[{ \"date\": \"2025-01-15T12:30:00Z\", \"amount\": \"50000.00\", \"tx_hash\": \"ABC123...\" }]",
+    "params": [
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 32, "max": 100 }
+    ]
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns the total amount spent on NLS token buybacks in USD.",
+    "url": "/api/buyback-total",
+    "type": "GET",
+    "response": "{ buyback_total: BigDecimal }",
+    "cache": "1 hour",
+    "example": "{ \"buyback_total\": \"2345678.90\" }"
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns the total rewards distributed to stakers in USD.",
+    "url": "/api/distributed",
+    "type": "GET",
+    "response": "{ distributed: BigDecimal }",
+    "cache": "1 hour",
+    "example": "{ \"distributed\": \"987654.32\" }"
+  },
+  {
+    "category": "Protocol Analytics",
+    "description": "Returns the current balance of the incentives pool in USD.",
+    "url": "/api/incentives-pool",
+    "type": "GET",
+    "response": "{ incentives_pool: BigDecimal }",
+    "cache": "1 hour",
+    "example": "{ \"incentives_pool\": \"1234567.89\" }"
+  },
+  {
+    "category": "Position Analytics",
+    "description": "Returns the total market value of all open positions in USD.",
     "url": "/api/open-position-value",
     "type": "GET",
     "response": "{ open_position_value: BigDecimal }",
-    "cache": "1 hour"
+    "cache": "1 hour",
+    "example": "{ \"open_position_value\": \"8765432.10\" }"
   },
   {
-    "category": "Positions / Leases",
-    "description": "Open interest in USD (total debt of all open positions)",
+    "category": "Position Analytics",
+    "description": "Returns the total outstanding debt across all open positions in USD.",
     "url": "/api/open-interest",
     "type": "GET",
     "response": "{ open_interest: BigDecimal }",
-    "cache": "1 hour"
+    "cache": "1 hour",
+    "example": "{ \"open_interest\": \"4321098.76\" }"
   },
   {
-    "category": "Positions / Leases",
-    "description": "Unrealized PnL in USD (sum of all open positions)",
+    "category": "Position Analytics",
+    "description": "Returns the aggregate unrealized profit and loss for all open positions in USD.",
     "url": "/api/unrealized-pnl",
     "type": "GET",
     "response": "{ unrealized_pnl: BigDecimal }",
-    "cache": "1 hour"
+    "cache": "1 hour",
+    "example": "{ \"unrealized_pnl\": \"234567.89\" }"
   },
   {
-    "category": "Positions / Leases",
-    "description": "Realized PnL stats in USD (sum of all closed positions)",
+    "category": "Position Analytics",
+    "description": "Returns the aggregate realized profit and loss from all closed positions in USD.",
     "url": "/api/realized-pnl-stats",
     "type": "GET",
     "response": "{ realized_pnl: BigDecimal }",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "{ \"realized_pnl\": \"567890.12\" }"
   },
   {
-    "category": "Positions / Leases",
-    "description": "Total leased assets value by token",
+    "category": "Position Analytics",
+    "description": "Returns the total value of leased assets grouped by token symbol.",
     "url": "/api/leased-assets",
     "type": "GET",
     "response": "[{ symbol: String, value: BigDecimal }]",
-    "cache": "1 hour"
+    "cache": "1 hour",
+    "example": "[{ \"symbol\": \"ATOM\", \"value\": \"1234567.89\" }, { \"symbol\": \"OSMO\", \"value\": \"987654.32\" }]"
   },
   {
-    "category": "Positions / Leases",
-    "description": "Active loans grouped by token",
+    "category": "Position Analytics",
+    "description": "Returns active loan amounts grouped by token symbol.",
     "url": "/api/loans-by-token",
     "type": "GET",
     "response": "[{ symbol: String, value: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"symbol\": \"USDC\", \"value\": \"2345678.90\" }, { \"symbol\": \"USDC_NOBLE\", \"value\": \"1234567.89\" }]"
   },
   {
-    "category": "Positions / Leases",
-    "description": "Open positions grouped by token with market value",
+    "category": "Position Analytics",
+    "description": "Returns open positions grouped by token with their current market values.",
     "url": "/api/open-positions-by-token",
     "type": "GET",
     "response": "[{ token: String, market_value: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"token\": \"ATOM\", \"market_value\": \"1234567.89\" }]"
   },
   {
-    "category": "Positions / Leases",
-    "description": "Position size distribution buckets",
+    "category": "Position Analytics",
+    "description": "Returns position count and size distribution across predefined loan size buckets.",
     "url": "/api/position-buckets",
     "type": "GET",
     "response": "[{ loan_category: String, loan_count: Number, loan_size: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"loan_category\": \"$1k-$5k\", \"loan_count\": 145, \"loan_size\": \"432100.00\" }]"
   },
   {
-    "category": "Positions / Leases",
-    "description": "All positions with details (loan, down payment, PnL, prices)",
+    "category": "Position Analytics",
+    "description": "Returns detailed information for all positions including PnL, prices, and liquidation levels.",
     "url": "/api/positions",
     "type": "GET",
     "response": "[{ date: String, type: String, symbol: String, contract_id: String, user: String, loan: BigDecimal, down_payment: BigDecimal, lease_value: BigDecimal, pnl: BigDecimal, pnl_percent: BigDecimal, current_price: BigDecimal, liquidation_price: BigDecimal }]",
     "cache": "1 hour",
+    "example": "[{ \"date\": \"2025-01-15\", \"type\": \"Long\", \"symbol\": \"ATOM\", \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"loan\": \"5000.00\", \"down_payment\": \"1000.00\", \"lease_value\": \"6500.00\", \"pnl\": \"500.00\", \"pnl_percent\": \"8.33\", \"current_price\": \"9.50\", \"liquidation_price\": \"7.20\" }]",
     "params": [
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 100,
-        "max": 1000
-      },
-      {
-        "name": "format",
-        "type": "String",
-        "default": "json",
-        "options": ["json", "csv"]
-      }
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 100, "max": 1000 },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
   },
   {
-    "category": "Historical Data",
-    "description": "Monthly lease count and volume statistics",
+    "category": "Position Analytics",
+    "description": "Returns monthly aggregated lease count and total volume statistics.",
     "url": "/api/leases-monthly",
     "type": "GET",
     "response": "[{ month: String, lease_count: Number, total_value: BigDecimal }]",
-    "cache": "1 hour"
+    "cache": "1 hour",
+    "example": "[{ \"month\": \"2025-01\", \"lease_count\": 234, \"total_value\": \"4567890.12\" }]"
   },
   {
-    "category": "Historical Data",
-    "description": "Daily opened and closed positions count",
+    "category": "Position Analytics",
+    "description": "Returns daily counts of opened and closed positions for trend analysis.",
     "url": "/api/daily-positions",
     "type": "GET",
     "response": "[{ date: DateTime, closed_loans: BigDecimal, opened_loans: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"closed_loans\": \"12\", \"opened_loans\": \"18\" }]"
   },
   {
-    "category": "Historical Data",
-    "description": "Supplied vs Borrowed amounts over time",
-    "url": "/api/supplied-borrowed-history",
-    "type": "GET",
-    "response": "[{ date: DateTime, supplied: BigDecimal, borrowed: BigDecimal }]",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Historical Data",
-    "description": "Monthly active unique wallet addresses",
-    "url": "/api/monthly-active-wallets",
-    "type": "GET",
-    "response": "[{ month: String, unique_addresses: Number }]",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Historical Data",
-    "description": "Daily and cumulative revenue over time",
-    "url": "/api/revenue-series",
-    "type": "GET",
-    "response": "[{ time: DateTime, daily: BigDecimal, cumulative: BigDecimal }]",
-    "cache": "1 hour"
-  },
-  {
-    "category": "APR / Rates",
-    "description": "Borrow APR history (paginated)",
-    "url": "/api/borrow-apr",
-    "type": "GET",
-    "response": "[{ date: DateTime, apr: BigDecimal, protocol: String }]",
-    "params": [
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 32,
-        "max": 100
-      }
-    ]
-  },
-  {
-    "category": "APR / Rates",
-    "description": "Current Earn APR by protocol",
-    "url": "/api/earn-apr",
-    "type": "GET",
-    "response": "{ earn_apr: BigDecimal }",
-    "params": [
-      {
-        "name": "protocol",
-        "type": "String",
-        "default": null
-      }
-    ]
-  },
-  {
-    "category": "APR / Rates",
-    "description": "Utilization level history (paginated)",
-    "url": "/api/utilization-level",
-    "type": "GET",
-    "response": "[{ date: DateTime, utilization: BigDecimal, protocol: String }]",
-    "params": [
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 32,
-        "max": 100
-      }
-    ]
-  },
-  {
-    "category": "APR / Rates",
-    "description": "Optimal utilization rate (static)",
-    "url": "/api/optimal",
-    "type": "GET",
-    "response": "{ optimal: String }"
-  },
-  {
-    "category": "APR / Rates",
-    "description": "Deposit suspension threshold (static)",
-    "url": "/api/deposit-suspension",
-    "type": "GET",
-    "response": "{ deposit_suspension: String }"
-  },
-  {
-    "category": "Treasury",
-    "description": "Buyback transactions list (paginated)",
-    "url": "/api/buyback",
-    "type": "GET",
-    "response": "[{ date: DateTime, amount: BigDecimal, tx_hash: String }]",
-    "params": [
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 32,
-        "max": 100
-      }
-    ]
-  },
-  {
-    "category": "Treasury",
-    "description": "Total buyback amount in USD",
-    "url": "/api/buyback-total",
-    "type": "GET",
-    "response": "{ buyback_total: BigDecimal }",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Treasury",
-    "description": "Total distributed rewards in USD",
-    "url": "/api/distributed",
-    "type": "GET",
-    "response": "{ distributed: BigDecimal }",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Treasury",
-    "description": "Current incentives pool balance",
-    "url": "/api/incentives-pool",
-    "type": "GET",
-    "response": "{ incentives_pool: BigDecimal }",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Grafana Dashboard",
-    "description": "Current active lenders with deposit amounts",
+    "category": "Lending Analytics",
+    "description": "Returns a list of currently active lenders with their deposit amounts per pool.",
     "url": "/api/current-lenders",
     "type": "GET",
     "response": "[{ lender: String, pool: String, deposit: BigDecimal, deposit_usd: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"lender\": \"nolus1abc...\", \"pool\": \"USDC_NOBLE\", \"deposit\": \"10000.00\", \"deposit_usd\": \"10000.00\" }]"
   },
   {
-    "category": "Grafana Dashboard",
-    "description": "Liquidation events with details",
+    "category": "Lending Analytics",
+    "description": "Returns a paginated list of liquidation events with position and amount details.",
     "url": "/api/liquidations",
     "type": "GET",
     "response": "[{ date: DateTime, lease: String, user: String, amount: BigDecimal, liquidation_type: String }]",
     "cache": "30 min",
+    "example": "[{ \"date\": \"2025-01-15T14:30:00Z\", \"lease\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"amount\": \"2500.00\", \"liquidation_type\": \"partial\" }]",
     "params": [
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 100,
-        "max": 500
-      },
-      {
-        "name": "format",
-        "type": "String",
-        "default": "json",
-        "options": ["json", "csv"]
-      }
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 100, "max": 500 },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
   },
   {
-    "category": "Grafana Dashboard",
-    "description": "Lease value statistics (min, max, avg, sum)",
+    "category": "Lending Analytics",
+    "description": "Returns statistical aggregates (min, max, avg, sum) of lease values per protocol.",
     "url": "/api/lease-value-stats",
     "type": "GET",
     "response": "[{ protocol: String, min_value: BigDecimal, max_value: BigDecimal, avg_value: BigDecimal, total_value: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC\", \"min_value\": \"100.00\", \"max_value\": \"50000.00\", \"avg_value\": \"5432.10\", \"total_value\": \"2345678.90\" }]"
   },
   {
-    "category": "Grafana Dashboard",
-    "description": "Historical lenders (all deposits/withdrawals)",
+    "category": "Lending Analytics",
+    "description": "Returns a paginated history of all lender deposit and withdrawal actions.",
     "url": "/api/historical-lenders",
     "type": "GET",
     "response": "[{ date: DateTime, lender: String, pool: String, action: String, amount: BigDecimal }]",
     "cache": "30 min",
+    "example": "[{ \"date\": \"2025-01-15T10:00:00Z\", \"lender\": \"nolus1abc...\", \"pool\": \"USDC_NOBLE\", \"action\": \"deposit\", \"amount\": \"5000.00\" }]",
     "params": [
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 100,
-        "max": 1000
-      },
-      {
-        "name": "format",
-        "type": "String",
-        "default": "json",
-        "options": ["json", "csv"]
-      }
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 100, "max": 1000 },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
   },
   {
-    "category": "Grafana Dashboard",
-    "description": "Loans granted summary",
+    "category": "Lending Analytics",
+    "description": "Returns a summary of loans granted per protocol with count and total value.",
     "url": "/api/loans-granted",
     "type": "GET",
     "response": "[{ protocol: String, count: Number, total_value: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC\", \"count\": 1234, \"total_value\": \"12345678.90\" }]"
   },
   {
-    "category": "Grafana Dashboard",
-    "description": "Historically liquidated positions summary",
+    "category": "Lending Analytics",
+    "description": "Returns a summary of historically liquidated positions per protocol.",
     "url": "/api/historically-liquidated",
     "type": "GET",
     "response": "[{ protocol: String, count: Number, total_value: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC\", \"count\": 89, \"total_value\": \"234567.89\" }]"
   },
   {
-    "category": "Grafana Dashboard",
-    "description": "Historically repaid positions summary",
+    "category": "Lending Analytics",
+    "description": "Returns a summary of historically repaid positions per protocol.",
     "url": "/api/historically-repaid",
     "type": "GET",
     "response": "[{ protocol: String, count: Number, total_value: BigDecimal }]",
-    "cache": "30 min"
+    "cache": "30 min",
+    "example": "[{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC\", \"count\": 567, \"total_value\": \"5678901.23\" }]"
   },
   {
-    "category": "Grafana Dashboard",
-    "description": "Historically opened positions with details",
+    "category": "Lending Analytics",
+    "description": "Returns interest repayment data aggregated from repayments, position closes, and liquidations.",
+    "url": "/api/interest-repayments",
+    "type": "GET",
+    "response": "[{ timestamp: DateTime, contract_id: String, position_owner: String, position_type: String, event_type: String, loan_interest_repaid: BigDecimal, margin_interest_repaid: BigDecimal }]",
+    "cache": "1 hour",
+    "example": "[{ \"timestamp\": \"2025-01-15T14:30:00Z\", \"contract_id\": \"nolus1abc...\", \"position_owner\": \"nolus1xyz...\", \"position_type\": \"Long\", \"event_type\": \"repayment\", \"loan_interest_repaid\": \"45.67\", \"margin_interest_repaid\": \"12.34\" }]",
+    "params": [
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 100, "max": 1000 }
+    ]
+  },
+  {
+    "category": "Lending Analytics",
+    "description": "Returns a paginated list of historically opened positions with details.",
     "url": "/api/historically-opened",
     "type": "GET",
     "response": "[{ date: DateTime, lease: String, user: String, amount: BigDecimal, symbol: String }]",
     "cache": "30 min",
+    "example": "[{ \"date\": \"2025-01-15T10:00:00Z\", \"lease\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"amount\": \"5000.00\", \"symbol\": \"ATOM\" }]",
     "params": [
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 100,
-        "max": 1000
-      },
-      {
-        "name": "format",
-        "type": "String",
-        "default": "json",
-        "options": ["json", "csv"]
-      }
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 100, "max": 1000 },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
   },
   {
-    "category": "Grafana Dashboard",
-    "description": "Realized PnL per wallet",
+    "category": "Lending Analytics",
+    "description": "Returns realized PnL aggregated per wallet address with trade counts.",
     "url": "/api/realized-pnl-wallet",
     "type": "GET",
     "response": "[{ wallet: String, realized_pnl: BigDecimal, trade_count: Number }]",
     "cache": "30 min",
+    "example": "[{ \"wallet\": \"nolus1abc...\", \"realized_pnl\": \"1234.56\", \"trade_count\": 15 }]",
     "params": [
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 100,
-        "max": 500
-      },
-      {
-        "name": "format",
-        "type": "String",
-        "default": "json",
-        "options": ["json", "csv"]
-      }
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 100, "max": 500 },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
   },
   {
-    "category": "Prices",
-    "description": "Asset price history",
+    "category": "Market Data",
+    "description": "Returns historical price data for assets with optional interval and protocol filtering.",
     "url": "/api/prices",
     "type": "GET",
     "response": "[{ date: DateTime, price: BigDecimal, symbol: String }]",
+    "example": "[{ \"date\": \"2025-01-15T12:00:00Z\", \"price\": \"9.45\", \"symbol\": \"ATOM\" }]",
     "params": [
-      {
-        "name": "interval",
-        "type": "Number"
-      },
-      {
-        "name": "key",
-        "type": "String"
-      },
-      {
-        "name": "protocol",
-        "type": "String"
-      }
+      { "name": "interval", "type": "Number" },
+      { "name": "key", "type": "String" },
+      { "name": "protocol", "type": "String" }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Unrealized PnL for a specific wallet address",
+    "category": "Wallet Analytics",
+    "description": "Returns the unrealized profit and loss for a specific wallet address.",
     "url": "/api/unrealized-pnl-by-address",
     "type": "GET",
     "response": "{ unrealized_pnl: BigDecimal }",
+    "example": "{ \"unrealized_pnl\": \"567.89\" }",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      }
+      { "name": "address", "type": "String", "required": true }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "PnL over time for a specific wallet",
+    "category": "Wallet Analytics",
+    "description": "Returns PnL progression over time for a specific wallet address.",
     "url": "/api/pnl-over-time",
     "type": "GET",
     "response": "[{ date: DateTime, pnl: BigDecimal }]",
+    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"pnl\": \"234.56\" }]",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      },
-      {
-        "name": "interval",
-        "type": "String"
-      }
+      { "name": "address", "type": "String", "required": true },
+      { "name": "interval", "type": "String" }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Transaction history for a wallet (paginated)",
+    "category": "Wallet Analytics",
+    "description": "Returns a paginated transaction history for a specific wallet address.",
     "url": "/api/txs",
     "type": "GET",
     "response": "[{ date: DateTime, tx_hash: String, type: String, amount: BigDecimal }]",
+    "example": "[{ \"date\": \"2025-01-15T14:30:00Z\", \"tx_hash\": \"ABC123...\", \"type\": \"open_lease\", \"amount\": \"5000.00\" }]",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      },
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 10,
-        "max": 100
-      }
+      { "name": "address", "type": "String", "required": true },
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 10, "max": 100 }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Lease history for a wallet (paginated)",
+    "category": "Wallet Analytics",
+    "description": "Returns a paginated list of leases for a specific wallet address.",
     "url": "/api/leases",
     "type": "GET",
     "response": "[{ lease: String, status: String, opened: DateTime, closed: DateTime, pnl: BigDecimal }]",
+    "example": "[{ \"lease\": \"nolus1abc...\", \"status\": \"closed\", \"opened\": \"2025-01-01T10:00:00Z\", \"closed\": \"2025-01-15T14:00:00Z\", \"pnl\": \"234.56\" }]",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      },
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 10,
-        "max": 100
-      }
+      { "name": "address", "type": "String", "required": true },
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 10, "max": 100 }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Lease PnL details (paginated)",
+    "category": "Wallet Analytics",
+    "description": "Returns paginated lease closing details with PnL for a specific wallet.",
     "url": "/api/ls-loan-closing",
     "type": "GET",
     "response": "[{ lease: String, pnl: BigDecimal, closed_at: DateTime }]",
+    "example": "[{ \"lease\": \"nolus1abc...\", \"pnl\": \"345.67\", \"closed_at\": \"2025-01-15T14:00:00Z\" }]",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      },
-      {
-        "name": "skip",
-        "type": "Number",
-        "default": 0
-      },
-      {
-        "name": "limit",
-        "type": "Number",
-        "default": 10,
-        "max": 100
-      }
+      { "name": "address", "type": "String", "required": true },
+      { "name": "skip", "type": "Number", "default": 0 },
+      { "name": "limit", "type": "Number", "default": 10, "max": 100 }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Realized PnL for a wallet",
+    "category": "Wallet Analytics",
+    "description": "Returns the total realized profit and loss for a specific wallet address.",
     "url": "/api/realized-pnl",
     "type": "GET",
     "response": "{ realized_pnl: BigDecimal }",
+    "example": "{ \"realized_pnl\": \"1234.56\" }",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      }
+      { "name": "address", "type": "String", "required": true }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Position and debt value for a wallet",
+    "category": "Wallet Analytics",
+    "description": "Returns the current position value and outstanding debt for a specific wallet.",
     "url": "/api/position-debt-value",
     "type": "GET",
     "response": "{ position_value: BigDecimal, debt_value: BigDecimal }",
+    "example": "{ \"position_value\": \"6500.00\", \"debt_value\": \"5000.00\" }",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      }
+      { "name": "address", "type": "String", "required": true }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Detailed realized PnL data for a wallet",
+    "category": "Wallet Analytics",
+    "description": "Returns detailed realized PnL breakdown per lease for a specific wallet.",
     "url": "/api/realized-pnl-data",
     "type": "GET",
     "response": "[{ lease: String, pnl: BigDecimal, symbol: String }]",
+    "example": "[{ \"lease\": \"nolus1abc...\", \"pnl\": \"234.56\", \"symbol\": \"ATOM\" }]",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      }
+      { "name": "address", "type": "String", "required": true }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Historical statistics for a wallet",
+    "category": "Wallet Analytics",
+    "description": "Returns trading statistics including total trades, win rate, and average PnL for a wallet.",
     "url": "/api/history-stats",
     "type": "GET",
     "response": "{ total_trades: Number, win_rate: BigDecimal, avg_pnl: BigDecimal }",
+    "example": "{ \"total_trades\": 25, \"win_rate\": \"68.00\", \"avg_pnl\": \"123.45\" }",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "required": true
-      }
+      { "name": "address", "type": "String", "required": true }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Search leases by wallet address",
+    "category": "Wallet Analytics",
+    "description": "Searches and returns leases associated with a specific wallet address.",
     "url": "/api/leases-search",
     "type": "GET",
     "response": "[{ lease: String, status: String, symbol: String }]",
+    "example": "[{ \"lease\": \"nolus1abc...\", \"status\": \"open\", \"symbol\": \"ATOM\" }]",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "default": null
-      }
+      { "name": "address", "type": "String", "default": null }
     ]
   },
   {
-    "category": "User Data (requires address)",
-    "description": "Earnings for a wallet",
+    "category": "Wallet Analytics",
+    "description": "Returns the total earnings from lending for a specific wallet address.",
     "url": "/api/earnings",
     "type": "GET",
     "response": "{ earnings: BigDecimal }",
+    "example": "{ \"earnings\": \"456.78\" }",
     "params": [
-      {
-        "name": "address",
-        "type": "String",
-        "default": null
-      }
+      { "name": "address", "type": "String", "default": null }
     ]
   },
   {
-    "category": "Lookup",
-    "description": "Get lease opening details by lease ID",
+    "category": "Record Lookup",
+    "description": "Returns the opening details for a specific lease by its contract ID.",
     "url": "/api/ls-opening",
     "type": "GET",
     "response": "{ lease: String, user: String, amount: BigDecimal, symbol: String, opened_at: DateTime }",
+    "example": "{ \"lease\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"amount\": \"5000.00\", \"symbol\": \"ATOM\", \"opened_at\": \"2025-01-15T10:00:00Z\" }",
     "params": [
-      {
-        "name": "lease",
-        "type": "String",
-        "default": null
-      }
+      { "name": "lease", "type": "String", "default": null }
     ]
   },
   {
-    "category": "Lookup",
-    "description": "Get multiple lease openings by IDs",
+    "category": "Record Lookup",
+    "description": "Returns opening details for multiple leases by their contract IDs.",
     "url": "/api/ls-openings",
     "type": "GET",
     "response": "[{ lease: String, user: String, amount: BigDecimal, symbol: String }]",
+    "example": "[{ \"lease\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"amount\": \"5000.00\", \"symbol\": \"ATOM\" }]",
     "params": [
-      {
-        "name": "leases",
-        "type": "Array<String>",
-        "default": null
-      }
+      { "name": "leases", "type": "Array<String>", "default": null }
     ]
   },
   {
-    "category": "Lookup",
-    "description": "LP withdrawal details by transaction hash",
+    "category": "Record Lookup",
+    "description": "Returns LP withdrawal details for a specific transaction hash.",
     "url": "/api/lp-withdraw",
     "type": "GET",
     "response": "{ tx: String, amount: BigDecimal, pool: String }",
+    "example": "{ \"tx\": \"ABC123...\", \"amount\": \"5000.00\", \"pool\": \"USDC_NOBLE\" }",
     "params": [
-      {
-        "name": "tx",
-        "type": "String",
-        "default": null
-      }
+      { "name": "tx", "type": "String", "default": null }
     ]
   }
 ]

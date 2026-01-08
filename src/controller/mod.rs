@@ -16,6 +16,7 @@ pub mod historically_opened;
 pub mod historically_repaid;
 pub mod history_stats;
 pub mod incentives_pool;
+pub mod interest_repayments;
 pub mod leased_assets;
 pub mod lease_value_stats;
 pub mod leases;

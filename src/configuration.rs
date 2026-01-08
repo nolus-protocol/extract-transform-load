@@ -21,7 +21,7 @@ use crate::{
             lp_lender_state::CurrentLender,
             ls_liquidation::{HistoricallyLiquidated, LiquidationData},
             ls_opening::{HistoricallyOpened, LoanGranted, RealizedPnlWallet},
-            ls_repayment::HistoricallyRepaid,
+            ls_repayment::{HistoricallyRepaid, InterestRepaymentData},
             ls_state::LeaseValueStats,
         },
     },
@@ -86,6 +86,7 @@ pub struct ApiCache {
     pub historically_liquidated: TimedCache<Vec<HistoricallyLiquidated>>,
     pub historically_repaid: TimedCache<Vec<HistoricallyRepaid>>,
     pub historically_opened: TimedCache<Vec<HistoricallyOpened>>,
+    pub interest_repayments: TimedCache<Vec<InterestRepaymentData>>,
     pub realized_pnl_wallet: TimedCache<Vec<RealizedPnlWallet>>,
     // Additional cached endpoints
     pub buyback_total: TimedCache<BigDecimal>,
@@ -118,6 +119,7 @@ impl ApiCache {
             historically_repaid: TimedCache::new(CACHE_TTL_STANDARD),
             historically_liquidated: TimedCache::new(CACHE_TTL_STANDARD),
             // 1-hour TTL endpoints (auto-refreshed)
+            interest_repayments: TimedCache::new(CACHE_TTL_LONG),
             buyback_total: TimedCache::new(CACHE_TTL_LONG),
             distributed: TimedCache::new(CACHE_TTL_LONG),
             incentives_pool: TimedCache::new(CACHE_TTL_LONG),

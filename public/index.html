@@ -1,165 +1,256 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport"
-          content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Nolus Stats API</title>
-    <link rel="icon"
-          href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nolus ETL API Documentation</title>
+    <link rel="icon" href="/favicon.svg" />
     <script>
         const host = window.location.origin;
+        let endpoints = [];
+
         document.addEventListener('DOMContentLoaded', () => {
             const queries = document.getElementById('queries');
+            const search = document.getElementById('search');
+            const categoryFilter = document.getElementById('category-filter');
+
             fetch(`${host}/endoints.json`).then(async (data) => {
-                const endpoints = await data.json();
+                endpoints = await data.json();
+                populateCategoryFilter(endpoints, categoryFilter);
                 parseView(queries, endpoints);
+                updateStats(endpoints);
             }).catch((error) => console.log(error));
+
+            search.addEventListener('input', () => filterEndpoints());
+            categoryFilter.addEventListener('change', () => filterEndpoints());
         });
 
+        function updateStats(endpoints) {
+            const categories = [...new Set(endpoints.map(e => e.category))];
+            document.getElementById('endpoint-count').innerText = endpoints.length;
+            document.getElementById('category-count').innerText = categories.length;
+        }
+
+        function populateCategoryFilter(endpoints, select) {
+            const categories = [...new Set(endpoints.map(e => e.category))];
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.innerText = cat;
+                select.appendChild(option);
+            });
+        }
+
+        function filterEndpoints() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const category = document.getElementById('category-filter').value;
+            const queries = document.getElementById('queries');
+
+            const filtered = endpoints.filter(item => {
+                const matchesSearch = !searchTerm || 
+                    item.url.toLowerCase().includes(searchTerm) ||
+                    item.description.toLowerCase().includes(searchTerm);
+                const matchesCategory = !category || item.category === category;
+                return matchesSearch && matchesCategory;
+            });
+
+            queries.innerHTML = '';
+            parseView(queries, filtered);
+        }
+
         function queryItem(item, query) {
+            const resultEl = query.querySelector('.result');
+            const loadingEl = query.querySelector('.loading');
+            
+            if (resultEl) resultEl.remove();
+            
+            // Show loading
+            const loading = document.createElement('div');
+            loading.classList.add('loading');
+            loading.innerHTML = '<span class="spinner"></span> Loading...';
+            query.appendChild(loading);
+
             fetch(`${host}${item.url}`).then(async (data) => {
+                loading.remove();
                 const result = await data.json();
                 const element = document.createElement('div');
-                const child = query.querySelector('#result');
-
-                if (child) {
-                    query.removeChild(child);
-                }
-
-                element.classList.add("result");
-                element.innerHTML = JSON.stringify(result, null, "\t");
-                element.id = "result";
+                element.classList.add('result');
+                
+                const resultHeader = document.createElement('div');
+                resultHeader.classList.add('result-header');
+                resultHeader.innerHTML = `<span class="status success">200 OK</span><button class="copy-btn" onclick="copyResult(this)">Copy</button>`;
+                
+                const resultBody = document.createElement('pre');
+                resultBody.classList.add('result-body');
+                resultBody.innerText = JSON.stringify(result, null, 2);
+                
+                element.appendChild(resultHeader);
+                element.appendChild(resultBody);
                 query.appendChild(element);
+            }).catch((error) => {
+                loading.remove();
+                const element = document.createElement('div');
+                element.classList.add('result', 'error');
+                element.innerHTML = `<div class="result-header"><span class="status error">Error</span></div><pre class="result-body">${error.message}</pre>`;
+                query.appendChild(element);
+            });
+        }
 
-            }).catch((error) => console.log(error));
+        function copyResult(btn) {
+            const resultBody = btn.closest('.result').querySelector('.result-body');
+            navigator.clipboard.writeText(resultBody.innerText);
+            btn.innerText = 'Copied!';
+            setTimeout(() => btn.innerText = 'Copy', 2000);
+        }
+
+        function copyUrl(url) {
+            navigator.clipboard.writeText(host + url);
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function toggleExample(btn) {
+            const example = btn.closest('.endpoint-card').querySelector('.example-section');
+            example.classList.toggle('expanded');
+            btn.innerText = example.classList.contains('expanded') ? 'Hide Example' : 'Show Example';
         }
 
         function parseView(queries, endpoints) {
             let currentCategory = null;
 
             for (const item of endpoints) {
-                // Add category header if category changed
                 if (item.category && item.category !== currentCategory) {
                     currentCategory = item.category;
-                    const categoryHeader = document.createElement('h2');
-                    categoryHeader.classList.add('category');
-                    categoryHeader.innerText = currentCategory;
+                    const categoryHeader = document.createElement('div');
+                    categoryHeader.classList.add('category-header');
+                    categoryHeader.innerHTML = `<h2>${currentCategory}</h2><span class="category-count">${endpoints.filter(e => e.category === currentCategory).length} endpoints</span>`;
                     queries.appendChild(categoryHeader);
                 }
 
-                const query = document.createElement('div');
-                query.classList.add('query');
+                const card = document.createElement('div');
+                card.classList.add('endpoint-card');
 
-                const type = document.createElement('div');
-                const href = document.createElement('a');
-                const description = document.createElement('p');
-                const querySpan = document.createElement('span');
-
-                querySpan.innerText = 'query';
-                type.classList.add('type');
-                type.onclick = function () { queryItem(item, query) };
-                type.innerText = item.type;
-                type.appendChild(querySpan);
-
-                href.target = '_blank';
-                href.href = `${host}${item.url}`;
-                href.innerText = item.url
-
-                description.innerText = item.description;
-
-                query.appendChild(type);
-                query.appendChild(href);
-                query.appendChild(description);
-
-                // Add cache badge if present
+                // Header row
+                const header = document.createElement('div');
+                header.classList.add('card-header');
+                
+                const methodBadge = document.createElement('span');
+                methodBadge.classList.add('method-badge', item.type.toLowerCase());
+                methodBadge.innerText = item.type;
+                
+                const urlContainer = document.createElement('div');
+                urlContainer.classList.add('url-container');
+                
+                const urlLink = document.createElement('a');
+                urlLink.href = `${host}${item.url}`;
+                urlLink.target = '_blank';
+                urlLink.classList.add('endpoint-url');
+                urlLink.innerText = item.url;
+                
+                const copyBtn = document.createElement('button');
+                copyBtn.classList.add('icon-btn');
+                copyBtn.title = 'Copy URL';
+                copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+                copyBtn.onclick = () => copyUrl(item.url);
+                
+                urlContainer.appendChild(urlLink);
+                urlContainer.appendChild(copyBtn);
+                
                 if (item.cache) {
                     const cacheBadge = document.createElement('span');
                     cacheBadge.classList.add('cache-badge');
-                    cacheBadge.innerText = `Cache: ${item.cache}`;
-                    query.appendChild(cacheBadge);
+                    cacheBadge.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${item.cache}`;
+                    header.appendChild(cacheBadge);
                 }
 
-                // Add response type section
-                if (item.response) {
-                    const responseSection = document.createElement('div');
-                    responseSection.classList.add('response-section');
+                header.insertBefore(urlContainer, header.firstChild);
+                header.insertBefore(methodBadge, header.firstChild);
+                
+                card.appendChild(header);
 
-                    const responseLabel = document.createElement('span');
-                    responseLabel.classList.add('response-label');
-                    responseLabel.innerText = 'Response:';
+                // Description
+                const desc = document.createElement('p');
+                desc.classList.add('description');
+                desc.innerText = item.description;
+                card.appendChild(desc);
 
-                    const responseType = document.createElement('code');
-                    responseType.classList.add('response-type');
-                    responseType.innerText = item.response;
+                // Response type
+                const responseSection = document.createElement('div');
+                responseSection.classList.add('response-section');
+                responseSection.innerHTML = `<span class="section-label">Response</span><code class="response-type">${item.response}</code>`;
+                card.appendChild(responseSection);
 
-                    responseSection.appendChild(responseLabel);
-                    responseSection.appendChild(responseType);
-                    query.appendChild(responseSection);
+                // Example section
+                if (item.example) {
+                    const exampleSection = document.createElement('div');
+                    exampleSection.classList.add('example-section');
+                    exampleSection.innerHTML = `<span class="section-label">Example Response</span><pre class="example-code">${item.example}</pre>`;
+                    card.appendChild(exampleSection);
+                    
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.classList.add('toggle-example-btn');
+                    toggleBtn.innerText = 'Show Example';
+                    toggleBtn.onclick = () => toggleExample(toggleBtn);
+                    responseSection.appendChild(toggleBtn);
                 }
 
+                // Parameters
                 if (item.params && item.params.length > 0) {
-                    let url = '?';
-                    const h4 = document.createElement('h4');
-                    h4.innerText = 'Parameters';
-                    query.appendChild(h4);
-
+                    const paramsSection = document.createElement('div');
+                    paramsSection.classList.add('params-section');
+                    paramsSection.innerHTML = '<span class="section-label">Parameters</span>';
+                    
+                    const paramsTable = document.createElement('div');
+                    paramsTable.classList.add('params-table');
+                    
                     for (const param of item.params) {
-                        const paramElement = document.createElement('div');
-                        paramElement.classList.add('param');
-
-                        const name = document.createElement('span');
-                        name.classList.add('name');
-                        name.innerText = `${param.name}`;
-
-                        const typeParam = document.createElement('span');
-                        typeParam.classList.add('param-type');
-                        typeParam.innerText = param.type;
-
-                        paramElement.appendChild(name);
-                        paramElement.appendChild(typeParam);
-
+                        const paramRow = document.createElement('div');
+                        paramRow.classList.add('param-row');
+                        
+                        let paramInfo = `<span class="param-name">${param.name}</span><span class="param-type">${param.type}</span>`;
+                        
                         if (param.required) {
-                            const requiredBadge = document.createElement('span');
-                            requiredBadge.classList.add('required');
-                            requiredBadge.innerText = 'required';
-                            paramElement.appendChild(requiredBadge);
+                            paramInfo += '<span class="param-required">required</span>';
                         }
-
+                        
+                        let meta = [];
                         if (param.default !== undefined && param.default !== null) {
-                            const defaultParam = document.createElement('span');
-                            defaultParam.classList.add('default');
-                            defaultParam.innerText = `default: ${param.default}`;
-                            paramElement.appendChild(defaultParam);
+                            meta.push(`default: ${param.default}`);
                         }
-
                         if (param.max) {
-                            const maxParam = document.createElement('span');
-                            maxParam.classList.add('max');
-                            maxParam.innerText = `max: ${param.max}`;
-                            paramElement.appendChild(maxParam);
+                            meta.push(`max: ${param.max}`);
                         }
-
                         if (param.options) {
-                            const optionsParam = document.createElement('span');
-                            optionsParam.classList.add('options');
-                            optionsParam.innerText = `options: ${param.options.join(', ')}`;
-                            paramElement.appendChild(optionsParam);
+                            meta.push(`options: ${param.options.join(', ')}`);
                         }
-
-                        query.appendChild(paramElement);
-
-                        if (param.default !== undefined && param.default !== null) {
-                            url += `${param.name}=${param.default}&`;
+                        
+                        if (meta.length > 0) {
+                            paramInfo += `<span class="param-meta">${meta.join(' | ')}</span>`;
                         }
+                        
+                        paramRow.innerHTML = paramInfo;
+                        paramsTable.appendChild(paramRow);
                     }
-                    if (url.length > 1) {
-                        href.href += url.slice(0, -1);
-                    }
+                    
+                    paramsSection.appendChild(paramsTable);
+                    card.appendChild(paramsSection);
                 }
 
-                queries.appendChild(query);
+                // Try it button
+                const actions = document.createElement('div');
+                actions.classList.add('card-actions');
+                
+                const tryBtn = document.createElement('button');
+                tryBtn.classList.add('try-btn');
+                tryBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Try it';
+                tryBtn.onclick = () => queryItem(item, card);
+                
+                actions.appendChild(tryBtn);
+                card.appendChild(actions);
+
+                queries.appendChild(card);
             }
         }
     </script>
@@ -167,231 +258,584 @@
     <style>
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            margin: 0;
-            padding: 16px;
-            background: #fafafa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.6;
+            min-height: 100vh;
         }
 
-        h1 {
-            font-size: 28px;
-            font-weight: 600;
-            margin: 0 0 8px 0;
-            color: #1a1a1a;
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 1px solid #334155;
+            padding: 24px 32px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        h2.category {
-            font-size: 18px;
-            font-weight: 600;
-            margin: 24px 0 8px 0;
-            padding: 8px 12px;
-            background: #e8f4fd;
-            border-left: 4px solid #61affe;
-            color: #1a1a1a;
-            max-width: 920px;
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
-        h2.category:first-of-type {
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 4px;
+        }
+
+        .header h1 span {
+            color: #38bdf8;
+        }
+
+        .header-subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 24px;
             margin-top: 16px;
         }
 
-        div#queries {
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #38bdf8;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #1e293b;
+            color: #e2e8f0;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: #38bdf8;
+        }
+
+        .search-box input::placeholder {
+            color: #64748b;
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        .filter-select {
+            padding: 10px 32px 10px 12px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #1e293b;
+            color: #e2e8f0;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        .filter-select:focus {
+            border-color: #38bdf8;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 32px;
+        }
+
+        #queries {
             display: flex;
             flex-direction: column;
+            gap: 12px;
         }
 
-        div.query {
+        .category-header {
             display: flex;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            background: white;
-            width: 100%;
-            max-width: 920px;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-            margin: 4px 0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            gap: 8px;
+            align-items: center;
+            gap: 12px;
+            margin-top: 24px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #334155;
         }
 
-        div.query:hover {
-            border-color: #61affe;
+        .category-header:first-child {
+            margin-top: 0;
         }
 
-        div.query div.type {
-            background: #61affe;
-            padding: 8px 12px;
-            border-radius: 6px;
-            color: white;
-            font-size: 14px;
+        .category-header h2 {
+            font-size: 16px;
             font-weight: 600;
-            user-select: none;
-            cursor: pointer;
-            min-width: 60px;
-            text-align: center;
+            color: #f8fafc;
         }
 
-        div.query div.type:hover {
-            background: #4a9ae8;
-        }
-
-        div.query div.type span {
-            display: block;
-            font-size: 9px;
-            font-weight: 400;
-            text-align: center;
-            margin-top: 2px;
-            opacity: 0.9;
-        }
-
-        div.query a {
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 600;
-            color: #2563eb;
-            font-family: 'Monaco', 'Menlo', monospace;
-        }
-
-        div.query a:hover {
-            text-decoration: underline;
-        }
-
-        div.query p {
-            font-size: 14px;
-            color: #555;
-            margin: 0;
-            flex: 1;
-        }
-
-        div.query .cache-badge {
-            background: #dcfce7;
-            color: #166534;
-            font-size: 11px;
-            font-weight: 500;
-            padding: 3px 8px;
+        .category-header .category-count {
+            font-size: 12px;
+            color: #64748b;
+            background: #1e293b;
+            padding: 4px 8px;
             border-radius: 12px;
-            white-space: nowrap;
         }
 
-        div.query .response-section {
-            flex-basis: 100%;
-            margin-top: 8px;
-            padding: 8px 10px;
-            background: #f8f9fa;
+        .endpoint-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .endpoint-card:hover {
+            border-color: #475569;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .method-badge {
+            padding: 6px 10px;
             border-radius: 6px;
-            border: 1px solid #e9ecef;
-        }
-
-        div.query .response-label {
             font-size: 12px;
-            font-weight: 600;
-            color: #666;
-            margin-right: 8px;
-        }
-
-        div.query .response-type {
-            font-size: 12px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            color: #d63384;
-            word-break: break-all;
-        }
-
-        div.query div.result {
-            flex-basis: 100%;
-            white-space: pre;
-            margin-top: 8px;
-            padding: 12px;
-            background: #1e1e1e;
-            color: #4ec9b0;
-            border-radius: 8px;
-            font-size: 12px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            overflow: auto;
-            max-height: 400px;
-        }
-
-        div.query h4 {
-            margin: 12px 0 8px 0;
-            font-size: 13px;
-            font-weight: 600;
-            flex-basis: 100%;
-            color: #444;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        div.query div.param {
-            flex-basis: 100%;
+        .method-badge.get {
+            background: #166534;
+            color: #bbf7d0;
+        }
+
+        .method-badge.post {
+            background: #1d4ed8;
+            color: #bfdbfe;
+        }
+
+        .url-container {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 4px 0;
+            flex: 1;
+        }
+
+        .endpoint-url {
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            font-weight: 500;
+            color: #38bdf8;
+            text-decoration: none;
+        }
+
+        .endpoint-url:hover {
+            text-decoration: underline;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            color: #94a3b8;
+            background: #334155;
+        }
+
+        .cache-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #a5b4fc;
+            background: rgba(99, 102, 241, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            margin-left: auto;
+        }
+
+        .description {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 12px;
+        }
+
+        .section-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .response-section {
+            margin-top: 16px;
+            padding: 12px;
+            background: #0f172a;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .response-type {
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: #f472b6;
+            word-break: break-all;
+        }
+
+        .toggle-example-btn {
+            position: absolute;
+            right: 12px;
+            top: 12px;
+            background: #334155;
+            border: none;
+            color: #94a3b8;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .toggle-example-btn:hover {
+            background: #475569;
+            color: #e2e8f0;
+        }
+
+        .example-section {
+            margin-top: 12px;
+            padding: 12px;
+            background: #0f172a;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .example-section.expanded {
+            display: block;
+        }
+
+        .example-code {
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: #4ade80;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .params-section {
+            margin-top: 16px;
+        }
+
+        .params-table {
+            background: #0f172a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .param-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #1e293b;
             flex-wrap: wrap;
         }
 
-        div.query div.param span.name {
-            font-size: 13px;
-            font-weight: 600;
-            color: #1a1a1a;
-            font-family: 'Monaco', 'Menlo', monospace;
+        .param-row:last-child {
+            border-bottom: none;
         }
 
-        div.query div.param span.param-type {
-            font-size: 12px;
-            font-weight: 500;
-            color: #7c3aed;
-            background: #f3e8ff;
+        .param-name {
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .param-type {
+            font-size: 11px;
+            color: #c084fc;
+            background: rgba(192, 132, 252, 0.1);
             padding: 2px 6px;
             border-radius: 4px;
         }
 
-        div.query div.param span.required {
+        .param-required {
             font-size: 10px;
             font-weight: 600;
-            color: #dc2626;
-            background: #fef2f2;
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.1);
             padding: 2px 6px;
             border-radius: 4px;
             text-transform: uppercase;
         }
 
-        div.query div.param span.default {
+        .param-meta {
             font-size: 12px;
-            color: #666;
+            color: #64748b;
+            margin-left: auto;
         }
 
-        div.query div.param span.max {
-            font-size: 12px;
-            color: #666;
+        .card-actions {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #334155;
         }
 
-        div.query div.param span.options {
-            font-size: 12px;
-            color: #0369a1;
-            font-style: italic;
+        .try-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #2563eb;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
         }
 
-        .subtitle {
+        .try-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #334155;
+            border-top-color: #38bdf8;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+        }
+
+        .status {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .status.success {
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+        }
+
+        .status.error {
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+        }
+
+        .copy-btn {
+            background: #334155;
+            border: none;
+            color: #94a3b8;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover {
+            background: #475569;
+            color: #e2e8f0;
+        }
+
+        .result-body {
+            padding: 16px;
+            background: #020617;
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: #4ade80;
+            overflow-x: auto;
+            max-height: 400px;
+            margin: 0;
+        }
+
+        .result.error .result-body {
+            color: #f87171;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 12px 20px;
+            border-radius: 8px;
             font-size: 14px;
-            color: #666;
-            margin: 0 0 16px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            border: 1px solid #334155;
+        }
+
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 640px) {
+            .header {
+                padding: 16px;
+            }
+
+            .main-content {
+                padding: 16px;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .search-box {
+                max-width: none;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .cache-badge {
+                margin-left: 0;
+            }
+
+            .param-meta {
+                margin-left: 0;
+                flex-basis: 100%;
+            }
         }
     </style>
 </head>
 
 <body>
+    <header class="header">
+        <div class="header-content">
+            <h1>Nolus <span>ETL API</span></h1>
+            <p class="header-subtitle">REST API documentation for the Nolus blockchain data service</p>
+            
+            <div class="stats">
+                <div class="stat">
+                    <span class="stat-value" id="endpoint-count">0</span>
+                    <span>Endpoints</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="category-count">0</span>
+                    <span>Categories</span>
+                </div>
+            </div>
 
-    <h1>Nolus Stats API</h1>
-    <p class="subtitle">HTTP API Console - Click GET to query an endpoint</p>
+            <div class="controls">
+                <div class="search-box">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="search" placeholder="Search endpoints..." />
+                </div>
+                <select id="category-filter" class="filter-select">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+        </div>
+    </header>
 
-    <div id="queries">
+    <main class="main-content">
+        <div id="queries"></div>
+    </main>
 
-    </div>
-
+    <div id="toast">URL copied to clipboard</div>
 </body>
 
 </html>

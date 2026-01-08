@@ -9,7 +9,7 @@ use crate::{
         daily_positions, deposit_suspension, distributed, earn_apr, earnings,
         get_position_debt_value, historical_lenders, historically_liquidated,
         historically_opened, historically_repaid, history_stats, incentives_pool,
-        leased_assets,
+        interest_repayments, leased_assets,
         lease_value_stats, leases, leases_monthly, leases_search, liquidations,
         loans_by_token, loans_granted,
         lp_withdraw,
@@ -123,6 +123,7 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(historically_liquidated::index)
                     .service(historically_repaid::index)
                     .service(historically_opened::index)
+                    .service(interest_repayments::index)
                     .service(realized_pnl_wallet::index)
                     .service(positions::index),
             )
