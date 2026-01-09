@@ -158,7 +158,7 @@ impl Table<LS_Loan_Closing> {
                 ON
                 c."LS_contract_id" = o."LS_contract_id"
                 WHERE
-                c."LS_timestamp" >= '2025-01-01';
+                c."LS_timestamp" >= '2025-01-01'
             "#,
         )
         .persistent(true)

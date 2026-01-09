@@ -167,10 +167,26 @@ impl Table<LP_Deposit> {
     pub async fn get_historical_lenders_with_window(
         &self,
         months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<HistoricalLender>, crate::error::Error> {
-        let time_condition = match months {
-            Some(m) => format!("WHERE timestamp > NOW() - INTERVAL '{} months'", m),
-            None => String::new(),
+        // Build time conditions dynamically
+        let mut conditions = Vec::new();
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                "timestamp > NOW() - INTERVAL '{} months'",
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push("timestamp > $1".to_string());
+        }
+
+        let time_condition = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
         };
 
         let query = format!(
@@ -232,10 +248,13 @@ impl Table<LP_Deposit> {
             time_condition
         );
 
-        let data = sqlx::query_as(&query)
-            .persistent(false)
-            .fetch_all(&self.pool)
-            .await?;
+        let mut query_builder = sqlx::query_as::<_, HistoricalLender>(&query);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
 
         Ok(data)
     }
@@ -243,6 +262,6 @@ impl Table<LP_Deposit> {
     pub async fn get_all_historical_lenders(
         &self,
     ) -> Result<Vec<HistoricalLender>, crate::error::Error> {
-        self.get_historical_lenders_with_window(None).await
+        self.get_historical_lenders_with_window(None, None).await
     }
 }

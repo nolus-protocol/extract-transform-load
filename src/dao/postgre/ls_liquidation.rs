@@ -169,7 +169,7 @@ impl Table<LS_Liquidation> {
     ) -> Result<Vec<LS_Liquidation>, Error> {
         let data = sqlx::query_as(
             r#"
-            SELECT * FROM "LS_Liquidation" WHERE "LS_contract_id" = $1;
+            SELECT * FROM "LS_Liquidation" WHERE "LS_contract_id" = $1
             "#,
         )
         .bind(&contract)
@@ -182,10 +182,26 @@ impl Table<LS_Liquidation> {
     pub async fn get_liquidations_with_window(
         &self,
         months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<LiquidationData>, crate::error::Error> {
-        let time_condition = match months {
-            Some(m) => format!("WHERE \"LS_Liquidation\".\"LS_timestamp\" >= NOW() - INTERVAL '{} months'", m),
-            None => String::new(),
+        // Build time conditions dynamically
+        let mut conditions = Vec::new();
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                "\"LS_Liquidation\".\"LS_timestamp\" >= NOW() - INTERVAL '{} months'",
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push("\"LS_Liquidation\".\"LS_timestamp\" > $1".to_string());
+        }
+
+        let time_condition = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
         };
 
         let query = format!(
@@ -244,10 +260,13 @@ impl Table<LS_Liquidation> {
             time_condition
         );
 
-        let data = sqlx::query_as(&query)
-            .persistent(false)
-            .fetch_all(&self.pool)
-            .await?;
+        let mut query_builder = sqlx::query_as::<_, LiquidationData>(&query);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
 
         Ok(data)
     }
@@ -255,7 +274,7 @@ impl Table<LS_Liquidation> {
     pub async fn get_all_liquidations(
         &self,
     ) -> Result<Vec<LiquidationData>, crate::error::Error> {
-        self.get_liquidations_with_window(None).await
+        self.get_liquidations_with_window(None, None).await
     }
 
     pub async fn get_historically_liquidated(
@@ -309,10 +328,26 @@ impl Table<LS_Liquidation> {
     pub async fn get_historically_liquidated_with_window(
         &self,
         months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<HistoricallyLiquidated>, crate::error::Error> {
-        let time_condition = match months {
-            Some(m) => format!("WHERE lso.\"LS_timestamp\" >= NOW() - INTERVAL '{} months'", m),
-            None => String::new(),
+        // Build time conditions dynamically
+        let mut conditions = Vec::new();
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                "lso.\"LS_timestamp\" >= NOW() - INTERVAL '{} months'",
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push("lso.\"LS_timestamp\" > $1".to_string());
+        }
+
+        let time_condition = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
         };
 
         let query = format!(
@@ -355,10 +390,13 @@ impl Table<LS_Liquidation> {
             time_condition
         );
 
-        let data = sqlx::query_as(&query)
-            .persistent(true)
-            .fetch_all(&self.pool)
-            .await?;
+        let mut query_builder = sqlx::query_as::<_, HistoricallyLiquidated>(&query);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
 
         Ok(data)
     }

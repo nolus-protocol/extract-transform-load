@@ -1,11 +1,12 @@
 use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    helpers::{parse_period_months, to_csv_response},
+    helpers::{build_cache_key_with_protocol, parse_period_months, to_csv_response},
 };
 
 #[derive(Debug, Deserialize)]
@@ -13,6 +14,8 @@ pub struct Query {
     format: Option<String>,
     period: Option<String>,
     protocol: Option<String>,
+    /// Only return records after this timestamp (exclusive), for incremental syncing
+    from: Option<DateTime<Utc>>,
 }
 
 #[get("/borrow-apr")]
@@ -28,7 +31,7 @@ async fn index(
         let admin = state.protocols.get(&protocol_key);
 
         if let Some(protocol) = admin {
-            let cache_key = format!("borrow_apr_{}_{}", protocol_key, period_str);
+            let cache_key = build_cache_key_with_protocol("borrow_apr", &protocol_key, period_str, query.from);
 
             // Try cache first
             if let Some(cached) = state.api_cache.borrow_apr.get(&cache_key).await {
@@ -44,7 +47,7 @@ async fn index(
             let data = state
                 .database
                 .ls_opening
-                .get_borrow_apr_with_window(protocol.contracts.lpp.clone(), months)
+                .get_borrow_apr_with_window(protocol.contracts.lpp.clone(), months, query.from)
                 .await?;
 
             // Store in cache

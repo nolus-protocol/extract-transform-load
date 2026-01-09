@@ -1,16 +1,19 @@
 use actix_web::{get, web, HttpResponse};
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    helpers::{parse_period_months, to_csv_response, to_streaming_csv_response},
+    helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
 
 #[derive(Debug, Deserialize)]
 pub struct Query {
     format: Option<String>,
     period: Option<String>,
+    /// Only return records after this timestamp (exclusive), for incremental syncing
+    from: Option<DateTime<Utc>>,
 }
 
 #[get("/realized-pnl-wallet")]
@@ -20,7 +23,7 @@ async fn index(
 ) -> Result<HttpResponse, Error> {
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("12m");
-    let cache_key = format!("realized_pnl_wallet_{}", period_str);
+    let cache_key = build_cache_key("realized_pnl_wallet", period_str, query.from);
 
     // Try cache first
     if let Some(cached) = state.api_cache.realized_pnl_wallet.get(&cache_key).await {
@@ -34,7 +37,7 @@ async fn index(
     let data = state
         .database
         .ls_opening
-        .get_realized_pnl_by_wallet_with_window(months)
+        .get_realized_pnl_by_wallet_with_window(months, query.from)
         .await?;
 
     // Store in cache
@@ -57,7 +60,7 @@ pub async fn export(state: web::Data<AppState<State>>) -> Result<HttpResponse, E
     let data = state
         .database
         .ls_opening
-        .get_realized_pnl_by_wallet_with_window(None)
+        .get_realized_pnl_by_wallet_with_window(None, None)
         .await?;
 
     state.api_cache.realized_pnl_wallet.set(CACHE_KEY, data.clone()).await;

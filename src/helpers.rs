@@ -1027,6 +1027,52 @@ impl From<Filter_Types> for Vec<String> {
     }
 }
 
+use chrono::{DateTime, Utc};
+
+/// Time window filter parameters for historical endpoints.
+/// Supports both period-based filtering (3m/6m/12m/all) and
+/// timestamp-based filtering (from) for incremental syncing.
+#[derive(Debug, Clone)]
+pub struct TimeWindowParams {
+    /// Number of months to look back (None = all time)
+    pub months: Option<i32>,
+    /// Only return records after this timestamp (exclusive)
+    pub from: Option<DateTime<Utc>>,
+}
+
+/// Build a cache key for period-based endpoints.
+/// Includes endpoint name, period, and optional from timestamp.
+///
+/// # Examples
+/// ```
+/// build_cache_key("liquidations", "12m", None) // "liquidations_12m_none"
+/// build_cache_key("liquidations", "3m", Some(ts)) // "liquidations_3m_1234567890"
+/// ```
+pub fn build_cache_key(
+    endpoint: &str,
+    period: &str,
+    from: Option<DateTime<Utc>>,
+) -> String {
+    let from_key = from
+        .map(|ts| ts.timestamp().to_string())
+        .unwrap_or_else(|| "none".to_string());
+    format!("{}_{}_{}",endpoint, period, from_key)
+}
+
+/// Build a cache key for protocol-specific period-based endpoints.
+/// Includes endpoint name, protocol, period, and optional from timestamp.
+pub fn build_cache_key_with_protocol(
+    endpoint: &str,
+    protocol: &str,
+    period: &str,
+    from: Option<DateTime<Utc>>,
+) -> String {
+    let from_key = from
+        .map(|ts| ts.timestamp().to_string())
+        .unwrap_or_else(|| "none".to_string());
+    format!("{}_{}_{}_{}",endpoint, protocol, period, from_key)
+}
+
 /// Parse period query parameter to number of months for time window filtering.
 /// Returns Some(months) for time-limited queries, None for "all" (no limit).
 /// Default is 12 months if no period specified.
@@ -1040,6 +1086,18 @@ pub fn parse_period_months(period: &Option<String>) -> Result<Option<i32>, Error
             option: format!("period '{}'. Valid options: 3m, 6m, 12m, all", p),
         }),
     }
+}
+
+/// Parse period and from parameters into TimeWindowParams.
+/// - period: time window (3m/6m/12m/all), default 12m
+/// - from: optional timestamp to filter records after (exclusive)
+/// Both filters are applied together (AND logic).
+pub fn parse_time_window(
+    period: &Option<String>,
+    from: Option<DateTime<Utc>>,
+) -> Result<TimeWindowParams, Error> {
+    let months = parse_period_months(period)?;
+    Ok(TimeWindowParams { months, from })
 }
 
 /// Generate a CSV response from serializable data

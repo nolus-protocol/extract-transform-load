@@ -1,17 +1,20 @@
 use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    helpers::{parse_period_months, to_csv_response, to_streaming_csv_response},
+    helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
 
 #[derive(Debug, Deserialize)]
 pub struct Query {
     format: Option<String>,
     period: Option<String>,
+    /// Only return records after this timestamp (exclusive), for incremental syncing
+    from: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,7 +43,7 @@ async fn index(
 ) -> Result<HttpResponse, Error> {
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("12m");
-    let cache_key = format!("historically_liquidated_{}", period_str);
+    let cache_key = build_cache_key("historically_liquidated", period_str, query.from);
 
     if let Some(cached) = state.api_cache.historically_liquidated.get(&cache_key).await {
         let data: Vec<HistoricallyLiquidated> = cached.into_iter().map(Into::into).collect();
@@ -53,7 +56,7 @@ async fn index(
     let data = state
         .database
         .ls_liquidation
-        .get_historically_liquidated_with_window(months)
+        .get_historically_liquidated_with_window(months, query.from)
         .await?;
 
     state.api_cache.historically_liquidated.set(&cache_key, data.clone()).await;

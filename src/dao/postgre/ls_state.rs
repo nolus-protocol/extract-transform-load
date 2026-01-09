@@ -692,7 +692,7 @@ impl Table<LS_State> {
           AND lvt."Hour" = rs."Hour"
         ORDER BY lvt."Hour";
       "#, contract_id.to_owned(), contract_id.to_owned(), contract_id.to_owned(), contract_id.to_owned()))
-      .persistent(true)
+      .persistent(false)
     .fetch_all(&self.pool)
   .await?;
 

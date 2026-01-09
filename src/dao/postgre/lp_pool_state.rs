@@ -239,39 +239,41 @@ impl Table<LP_Pool_State> {
         &self,
         protocol: String,
         months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<Utilization_Level>, Error> {
-        let data = match months {
-            Some(m) => {
-                sqlx::query_as(
-                    r#"
-                    SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable")*100 as "Utilization_Level"
-                    FROM "LP_Pool_State"
-                    WHERE "LP_Pool_id" = $1
-                      AND "LP_Pool_timestamp" >= NOW() - INTERVAL '1 month' * $2
-                    ORDER BY "LP_Pool_timestamp" DESC
-                    "#,
-                )
-                .bind(&protocol)
-                .bind(m)
-                .persistent(true)
-                .fetch_all(&self.pool)
-                .await?
-            }
-            None => {
-                sqlx::query_as(
-                    r#"
-                    SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable")*100 as "Utilization_Level"
-                    FROM "LP_Pool_State"
-                    WHERE "LP_Pool_id" = $1
-                    ORDER BY "LP_Pool_timestamp" DESC
-                    "#,
-                )
-                .bind(&protocol)
-                .persistent(true)
-                .fetch_all(&self.pool)
-                .await?
-            }
-        };
+        // Build time conditions dynamically
+        let mut conditions = vec![r#""LP_Pool_id" = $1"#.to_string()];
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                r#""LP_Pool_timestamp" >= NOW() - INTERVAL '{} months'"#,
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push(r#""LP_Pool_timestamp" > $2"#.to_string());
+        }
+
+        let where_clause = conditions.join(" AND ");
+        let query = format!(
+            r#"
+            SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable")*100 as "Utilization_Level"
+            FROM "LP_Pool_State"
+            WHERE {}
+            ORDER BY "LP_Pool_timestamp" DESC
+            "#,
+            where_clause
+        );
+
+        let mut query_builder =
+            sqlx::query_as::<_, Utilization_Level>(&query).bind(&protocol);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
         Ok(data)
     }
 
@@ -294,7 +296,7 @@ impl Table<LP_Pool_State> {
                     'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990', -- ST_ATOM_OSMOSIS
                     'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3', -- ALL_BTC_OSMOSIS (÷ 100M)
                     'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', -- ALL_SOL_OSMOSIS (÷ 1B)
-                    'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'  -- AKT_OSMOSIS
+                    'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z',  -- AKT_OSMOSIS
                     'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6'  -- ATOM_OSMOSIS
                 )
             )

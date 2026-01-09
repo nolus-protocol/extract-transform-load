@@ -1,261 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nolus ETL API Documentation</title>
-    <link rel="icon" href="/favicon.svg" />
-    <script>
-        const host = window.location.origin;
-        let endpoints = [];
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const queries = document.getElementById('queries');
-            const search = document.getElementById('search');
-            const categoryFilter = document.getElementById('category-filter');
-
-            fetch(`${host}/endoints.json`).then(async (data) => {
-                endpoints = await data.json();
-                populateCategoryFilter(endpoints, categoryFilter);
-                parseView(queries, endpoints);
-                updateStats(endpoints);
-            }).catch((error) => console.log(error));
-
-            search.addEventListener('input', () => filterEndpoints());
-            categoryFilter.addEventListener('change', () => filterEndpoints());
-        });
-
-        function updateStats(endpoints) {
-            const categories = [...new Set(endpoints.map(e => e.category))];
-            document.getElementById('endpoint-count').innerText = endpoints.length;
-            document.getElementById('category-count').innerText = categories.length;
-        }
-
-        function populateCategoryFilter(endpoints, select) {
-            const categories = [...new Set(endpoints.map(e => e.category))];
-            categories.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat;
-                option.innerText = cat;
-                select.appendChild(option);
-            });
-        }
-
-        function filterEndpoints() {
-            const searchTerm = document.getElementById('search').value.toLowerCase();
-            const category = document.getElementById('category-filter').value;
-            const queries = document.getElementById('queries');
-
-            const filtered = endpoints.filter(item => {
-                const matchesSearch = !searchTerm || 
-                    item.url.toLowerCase().includes(searchTerm) ||
-                    item.description.toLowerCase().includes(searchTerm);
-                const matchesCategory = !category || item.category === category;
-                return matchesSearch && matchesCategory;
-            });
-
-            queries.innerHTML = '';
-            parseView(queries, filtered);
-        }
-
-        function queryItem(item, query) {
-            const resultEl = query.querySelector('.result');
-            const loadingEl = query.querySelector('.loading');
-            
-            if (resultEl) resultEl.remove();
-            
-            // Show loading
-            const loading = document.createElement('div');
-            loading.classList.add('loading');
-            loading.innerHTML = '<span class="spinner"></span> Loading...';
-            query.appendChild(loading);
-
-            fetch(`${host}${item.url}`).then(async (data) => {
-                loading.remove();
-                const result = await data.json();
-                const element = document.createElement('div');
-                element.classList.add('result');
-                
-                const resultHeader = document.createElement('div');
-                resultHeader.classList.add('result-header');
-                resultHeader.innerHTML = `<span class="status success">200 OK</span><button class="copy-btn" onclick="copyResult(this)">Copy</button>`;
-                
-                const resultBody = document.createElement('pre');
-                resultBody.classList.add('result-body');
-                resultBody.innerText = JSON.stringify(result, null, 2);
-                
-                element.appendChild(resultHeader);
-                element.appendChild(resultBody);
-                query.appendChild(element);
-            }).catch((error) => {
-                loading.remove();
-                const element = document.createElement('div');
-                element.classList.add('result', 'error');
-                element.innerHTML = `<div class="result-header"><span class="status error">Error</span></div><pre class="result-body">${error.message}</pre>`;
-                query.appendChild(element);
-            });
-        }
-
-        function copyResult(btn) {
-            const resultBody = btn.closest('.result').querySelector('.result-body');
-            navigator.clipboard.writeText(resultBody.innerText);
-            btn.innerText = 'Copied!';
-            setTimeout(() => btn.innerText = 'Copy', 2000);
-        }
-
-        function copyUrl(url) {
-            navigator.clipboard.writeText(host + url);
-            const toast = document.getElementById('toast');
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
-        }
-
-        function toggleExample(btn) {
-            const example = btn.closest('.endpoint-card').querySelector('.example-section');
-            example.classList.toggle('expanded');
-            btn.innerText = example.classList.contains('expanded') ? 'Hide Example' : 'Show Example';
-        }
-
-        function parseView(queries, endpoints) {
-            let currentCategory = null;
-
-            for (const item of endpoints) {
-                if (item.category && item.category !== currentCategory) {
-                    currentCategory = item.category;
-                    const categoryHeader = document.createElement('div');
-                    categoryHeader.classList.add('category-header');
-                    categoryHeader.innerHTML = `<h2>${currentCategory}</h2><span class="category-count">${endpoints.filter(e => e.category === currentCategory).length} endpoints</span>`;
-                    queries.appendChild(categoryHeader);
-                }
-
-                const card = document.createElement('div');
-                card.classList.add('endpoint-card');
-
-                // Header row
-                const header = document.createElement('div');
-                header.classList.add('card-header');
-                
-                const methodBadge = document.createElement('span');
-                methodBadge.classList.add('method-badge', item.type.toLowerCase());
-                methodBadge.innerText = item.type;
-                
-                const urlContainer = document.createElement('div');
-                urlContainer.classList.add('url-container');
-                
-                const urlLink = document.createElement('a');
-                urlLink.href = `${host}${item.url}`;
-                urlLink.target = '_blank';
-                urlLink.classList.add('endpoint-url');
-                urlLink.innerText = item.url;
-                
-                const copyBtn = document.createElement('button');
-                copyBtn.classList.add('icon-btn');
-                copyBtn.title = 'Copy URL';
-                copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-                copyBtn.onclick = () => copyUrl(item.url);
-                
-                urlContainer.appendChild(urlLink);
-                urlContainer.appendChild(copyBtn);
-                
-                if (item.cache) {
-                    const cacheBadge = document.createElement('span');
-                    cacheBadge.classList.add('cache-badge');
-                    cacheBadge.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${item.cache}`;
-                    header.appendChild(cacheBadge);
-                }
-
-                header.insertBefore(urlContainer, header.firstChild);
-                header.insertBefore(methodBadge, header.firstChild);
-                
-                card.appendChild(header);
-
-                // Description
-                const desc = document.createElement('p');
-                desc.classList.add('description');
-                desc.innerText = item.description;
-                card.appendChild(desc);
-
-                // Response type
-                const responseSection = document.createElement('div');
-                responseSection.classList.add('response-section');
-                responseSection.innerHTML = `<span class="section-label">Response</span><code class="response-type">${item.response}</code>`;
-                card.appendChild(responseSection);
-
-                // Example section
-                if (item.example) {
-                    const exampleSection = document.createElement('div');
-                    exampleSection.classList.add('example-section');
-                    exampleSection.innerHTML = `<span class="section-label">Example Response</span><pre class="example-code">${item.example}</pre>`;
-                    card.appendChild(exampleSection);
-                    
-                    const toggleBtn = document.createElement('button');
-                    toggleBtn.classList.add('toggle-example-btn');
-                    toggleBtn.innerText = 'Show Example';
-                    toggleBtn.onclick = () => toggleExample(toggleBtn);
-                    responseSection.appendChild(toggleBtn);
-                }
-
-                // Parameters
-                if (item.params && item.params.length > 0) {
-                    const paramsSection = document.createElement('div');
-                    paramsSection.classList.add('params-section');
-                    paramsSection.innerHTML = '<span class="section-label">Parameters</span>';
-                    
-                    const paramsTable = document.createElement('div');
-                    paramsTable.classList.add('params-table');
-                    
-                    for (const param of item.params) {
-                        const paramRow = document.createElement('div');
-                        paramRow.classList.add('param-row');
-                        
-                        let paramInfo = `<span class="param-name">${param.name}</span><span class="param-type">${param.type}</span>`;
-                        
-                        if (param.required) {
-                            paramInfo += '<span class="param-required">required</span>';
-                        }
-                        
-                        let meta = [];
-                        if (param.default !== undefined && param.default !== null) {
-                            meta.push(`default: ${param.default}`);
-                        }
-                        if (param.max) {
-                            meta.push(`max: ${param.max}`);
-                        }
-                        if (param.options) {
-                            meta.push(`options: ${param.options.join(', ')}`);
-                        }
-                        
-                        if (meta.length > 0) {
-                            paramInfo += `<span class="param-meta">${meta.join(' | ')}</span>`;
-                        }
-                        
-                        paramRow.innerHTML = paramInfo;
-                        paramsTable.appendChild(paramRow);
-                    }
-                    
-                    paramsSection.appendChild(paramsTable);
-                    card.appendChild(paramsSection);
-                }
-
-                // Try it button
-                const actions = document.createElement('div');
-                actions.classList.add('card-actions');
-                
-                const tryBtn = document.createElement('button');
-                tryBtn.classList.add('try-btn');
-                tryBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Try it';
-                tryBtn.onclick = () => queryItem(item, card);
-                
-                actions.appendChild(tryBtn);
-                card.appendChild(actions);
-
-                queries.appendChild(card);
-            }
-        }
-    </script>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nolus ETL API</title>
+    <link rel="icon" href="/favicon.svg">
     <style>
+        :root {
+            --bg: #fafafa;
+            --bg-card: #ffffff;
+            --border: #e5e5e5;
+            --text: #171717;
+            --text-secondary: #525252;
+            --text-muted: #a3a3a3;
+            --accent: #0a0a0a;
+            --accent-light: #f5f5f5;
+            --green: #16a34a;
+            --green-bg: #f0fdf4;
+            --blue: #2563eb;
+            --blue-bg: #eff6ff;
+            --purple: #7c3aed;
+            --purple-bg: #f5f3ff;
+            --red: #dc2626;
+            --red-bg: #fef2f2;
+            --orange: #ea580c;
+            --orange-bg: #fff7ed;
+            --mono: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -263,579 +35,582 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #0f172a;
-            color: #e2e8f0;
-            line-height: 1.6;
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            font-size: 14px;
         }
 
-        .header {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border-bottom: 1px solid #334155;
-            padding: 24px 32px;
+        header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 24px;
             position: sticky;
             top: 0;
             z-index: 100;
         }
 
-        .header-content {
-            max-width: 1200px;
+        .header-inner {
+            max-width: 960px;
             margin: 0 auto;
         }
 
-        .header h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: #f8fafc;
-            margin-bottom: 4px;
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
-        .header h1 span {
-            color: #38bdf8;
-        }
-
-        .header-subtitle {
-            color: #94a3b8;
-            font-size: 14px;
+        h1 {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.025em;
         }
 
         .stats {
             display: flex;
-            gap: 24px;
-            margin-top: 16px;
-        }
-
-        .stat {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            gap: 16px;
             font-size: 13px;
-            color: #94a3b8;
+            color: var(--text-secondary);
         }
 
-        .stat-value {
-            font-weight: 600;
-            color: #38bdf8;
+        .stats strong {
+            color: var(--text);
         }
 
         .controls {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             margin-top: 16px;
-            flex-wrap: wrap;
         }
 
-        .search-box {
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: var(--bg-card);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        #search {
             flex: 1;
             min-width: 200px;
-            max-width: 400px;
-            position: relative;
         }
 
-        .search-box input {
-            width: 100%;
-            padding: 10px 12px 10px 36px;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            background: #1e293b;
-            color: #e2e8f0;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .search-box input:focus {
-            border-color: #38bdf8;
-        }
-
-        .search-box input::placeholder {
-            color: #64748b;
-        }
-
-        .search-box svg {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #64748b;
-        }
-
-        .filter-select {
-            padding: 10px 32px 10px 12px;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            background: #1e293b;
-            color: #e2e8f0;
-            font-size: 14px;
-            outline: none;
+        select {
             cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
         }
 
-        .filter-select:focus {
-            border-color: #38bdf8;
-        }
-
-        .main-content {
-            max-width: 1200px;
+        main {
+            max-width: 960px;
             margin: 0 auto;
-            padding: 24px 32px;
+            padding: 24px;
         }
 
-        #queries {
+        .category {
+            margin-bottom: 32px;
+        }
+
+        .category-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .endpoints {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
         }
 
-        .category-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 24px;
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #334155;
-        }
-
-        .category-header:first-child {
-            margin-top: 0;
-        }
-
-        .category-header h2 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #f8fafc;
-        }
-
-        .category-header .category-count {
-            font-size: 12px;
-            color: #64748b;
-            background: #1e293b;
-            padding: 4px 8px;
-            border-radius: 12px;
-        }
-
-        .endpoint-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
+        .endpoint {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
             padding: 16px;
-            transition: border-color 0.2s;
+            transition: box-shadow 0.15s;
         }
 
-        .endpoint-card:hover {
-            border-color: #475569;
+        .endpoint:hover {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
 
-        .card-header {
+        .endpoint-header {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
-        .method-badge {
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 700;
+        .method {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 6px;
+            border-radius: 4px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        .method-badge.get {
-            background: #166534;
-            color: #bbf7d0;
+        .method.get {
+            background: var(--green-bg);
+            color: var(--green);
         }
 
-        .method-badge.post {
-            background: #1d4ed8;
-            color: #bfdbfe;
+        .method.post {
+            background: var(--blue-bg);
+            color: var(--blue);
         }
 
-        .url-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-        }
-
-        .endpoint-url {
-            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-            font-size: 14px;
+        .url {
+            font-family: var(--mono);
+            font-size: 13px;
             font-weight: 500;
-            color: #38bdf8;
+            color: var(--text);
             text-decoration: none;
         }
 
-        .endpoint-url:hover {
+        .url:hover {
             text-decoration: underline;
         }
 
-        .icon-btn {
-            background: transparent;
-            border: none;
-            color: #64748b;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .icon-btn:hover {
-            color: #94a3b8;
-            background: #334155;
-        }
-
-        .cache-badge {
-            display: flex;
-            align-items: center;
-            gap: 4px;
+        .cache {
             font-size: 11px;
-            color: #a5b4fc;
-            background: rgba(99, 102, 241, 0.1);
-            padding: 4px 8px;
-            border-radius: 6px;
+            color: var(--text-muted);
             margin-left: auto;
         }
 
         .description {
-            color: #94a3b8;
-            font-size: 14px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .details {
             margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
         }
 
-        .section-label {
-            display: block;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #64748b;
-            margin-bottom: 6px;
-        }
-
-        .response-section {
-            margin-top: 16px;
-            padding: 12px;
-            background: #0f172a;
-            border-radius: 8px;
-            position: relative;
-        }
-
-        .response-type {
-            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+        .detail-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
             font-size: 12px;
-            color: #f472b6;
+        }
+
+        .detail-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            color: var(--text-muted);
+            min-width: 70px;
+        }
+
+        .detail-value {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
             word-break: break-all;
         }
 
-        .toggle-example-btn {
-            position: absolute;
-            right: 12px;
-            top: 12px;
-            background: #334155;
-            border: none;
-            color: #94a3b8;
-            font-size: 11px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
+        .params {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
-        .toggle-example-btn:hover {
-            background: #475569;
-            color: #e2e8f0;
-        }
-
-        .example-section {
-            margin-top: 12px;
-            padding: 12px;
-            background: #0f172a;
-            border-radius: 8px;
-            display: none;
-        }
-
-        .example-section.expanded {
-            display: block;
-        }
-
-        .example-code {
-            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+        .param {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
             font-size: 12px;
-            color: #4ade80;
+            padding: 2px 8px;
+            background: var(--accent-light);
+            border-radius: 4px;
+        }
+
+        .param-name {
+            font-family: var(--mono);
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .param-type {
+            color: var(--purple);
+        }
+
+        .param-required {
+            color: var(--red);
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .param-meta {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            font-size: 12px;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: #262626;
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-light);
+            color: var(--text);
+        }
+
+        .result {
+            margin-top: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--accent-light);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .status {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status.success {
+            color: var(--green);
+        }
+
+        .status.error {
+            color: var(--red);
+        }
+
+        .result-body {
+            padding: 12px;
+            background: #fafafa;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+            overflow-x: auto;
+            max-height: 300px;
             white-space: pre-wrap;
             word-break: break-all;
         }
 
-        .params-section {
-            margin-top: 16px;
-        }
-
-        .params-table {
-            background: #0f172a;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .param-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 12px;
-            border-bottom: 1px solid #1e293b;
-            flex-wrap: wrap;
-        }
-
-        .param-row:last-child {
-            border-bottom: none;
-        }
-
-        .param-name {
-            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-            font-size: 13px;
-            font-weight: 600;
-            color: #e2e8f0;
-        }
-
-        .param-type {
-            font-size: 11px;
-            color: #c084fc;
-            background: rgba(192, 132, 252, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-
-        .param-required {
-            font-size: 10px;
-            font-weight: 600;
-            color: #f87171;
-            background: rgba(248, 113, 113, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-            text-transform: uppercase;
-        }
-
-        .param-meta {
-            font-size: 12px;
-            color: #64748b;
-            margin-left: auto;
-        }
-
-        .card-actions {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #334155;
-        }
-
-        .try-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            background: #2563eb;
-            border: none;
-            border-radius: 6px;
-            color: white;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .try-btn:hover {
-            background: #1d4ed8;
-        }
-
         .loading {
+            padding: 16px;
+            color: var(--text-muted);
+            font-size: 13px;
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 16px;
-            color: #94a3b8;
-            font-size: 13px;
         }
 
         .spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid #334155;
-            border-top-color: #38bdf8;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.6s linear infinite;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        .result {
-            margin-top: 16px;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #334155;
-        }
-
-        .result-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            background: #0f172a;
-            border-bottom: 1px solid #334155;
-        }
-
-        .status {
-            font-size: 12px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
-
-        .status.success {
-            background: rgba(74, 222, 128, 0.1);
-            color: #4ade80;
-        }
-
-        .status.error {
-            background: rgba(248, 113, 113, 0.1);
-            color: #f87171;
-        }
-
-        .copy-btn {
-            background: #334155;
-            border: none;
-            color: #94a3b8;
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .copy-btn:hover {
-            background: #475569;
-            color: #e2e8f0;
-        }
-
-        .result-body {
-            padding: 16px;
-            background: #020617;
-            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-            font-size: 12px;
-            color: #4ade80;
-            overflow-x: auto;
-            max-height: 400px;
-            margin: 0;
-        }
-
-        .result.error .result-body {
-            color: #f87171;
-        }
-
-        #toast {
+        .toast {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            transform: translateY(100px);
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            transform: translateY(80px);
             opacity: 0;
-            transition: all 0.3s;
-            border: 1px solid #334155;
+            transition: all 0.2s;
         }
 
-        #toast.show {
+        .toast.show {
             transform: translateY(0);
             opacity: 1;
         }
 
+        .example-section {
+            display: none;
+            margin-top: 8px;
+        }
+
+        .example-section.show {
+            display: block;
+        }
+
+        .example-code {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--accent-light);
+            padding: 10px 12px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+        }
+
         @media (max-width: 640px) {
-            .header {
-                padding: 16px;
-            }
-
-            .main-content {
-                padding: 16px;
-            }
-
-            .stats {
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .controls {
-                flex-direction: column;
-            }
-
-            .search-box {
-                max-width: none;
-            }
-
-            .card-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .cache-badge {
-                margin-left: 0;
-            }
-
-            .param-meta {
-                margin-left: 0;
-                flex-basis: 100%;
-            }
+            header { padding: 16px; }
+            main { padding: 16px; }
+            .header-top { flex-direction: column; align-items: flex-start; }
+            .stats { margin-top: 8px; }
+            .controls { flex-direction: column; }
+            .cache { margin-left: 0; margin-top: 8px; }
+            .endpoint-header { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
-
 <body>
-    <header class="header">
-        <div class="header-content">
-            <h1>Nolus <span>ETL API</span></h1>
-            <p class="header-subtitle">REST API documentation for the Nolus blockchain data service</p>
-            
-            <div class="stats">
-                <div class="stat">
-                    <span class="stat-value" id="endpoint-count">0</span>
-                    <span>Endpoints</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value" id="category-count">0</span>
-                    <span>Categories</span>
+    <header>
+        <div class="header-inner">
+            <div class="header-top">
+                <h1>Nolus ETL API</h1>
+                <div class="stats">
+                    <span><strong id="endpoint-count">0</strong> endpoints</span>
+                    <span><strong id="category-count">0</strong> categories</span>
                 </div>
             </div>
-
             <div class="controls">
-                <div class="search-box">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                    <input type="text" id="search" placeholder="Search endpoints..." />
-                </div>
-                <select id="category-filter" class="filter-select">
-                    <option value="">All Categories</option>
+                <input type="text" id="search" placeholder="Search endpoints...">
+                <select id="category-filter">
+                    <option value="">All categories</option>
                 </select>
             </div>
         </div>
     </header>
 
-    <main class="main-content">
-        <div id="queries"></div>
-    </main>
+    <main id="content"></main>
+    <div class="toast" id="toast">Copied to clipboard</div>
 
-    <div id="toast">URL copied to clipboard</div>
+    <script>
+        const host = window.location.origin;
+        let endpoints = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch(`${host}/endpoints.json`)
+                .then(r => r.json())
+                .then(data => {
+                    endpoints = data;
+                    initFilters();
+                    render();
+                })
+                .catch(console.error);
+
+            document.getElementById('search').addEventListener('input', render);
+            document.getElementById('category-filter').addEventListener('change', render);
+        });
+
+        function initFilters() {
+            const categories = [...new Set(endpoints.map(e => e.category))];
+            const select = document.getElementById('category-filter');
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                select.appendChild(opt);
+            });
+            document.getElementById('endpoint-count').textContent = endpoints.length;
+            document.getElementById('category-count').textContent = categories.length;
+        }
+
+        function render() {
+            const search = document.getElementById('search').value.toLowerCase();
+            const category = document.getElementById('category-filter').value;
+            const content = document.getElementById('content');
+
+            const filtered = endpoints.filter(e => {
+                const matchSearch = !search || e.url.toLowerCase().includes(search) || e.description.toLowerCase().includes(search);
+                const matchCat = !category || e.category === category;
+                return matchSearch && matchCat;
+            });
+
+            if (filtered.length === 0) {
+                content.innerHTML = '<div class="empty-state">No endpoints found</div>';
+                return;
+            }
+
+            const grouped = {};
+            filtered.forEach(e => {
+                if (!grouped[e.category]) grouped[e.category] = [];
+                grouped[e.category].push(e);
+            });
+
+            content.innerHTML = Object.entries(grouped).map(([cat, items]) => `
+                <div class="category">
+                    <div class="category-title">${cat}</div>
+                    <div class="endpoints">
+                        ${items.map((e, i) => renderEndpoint(e, `${cat}-${i}`)).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderEndpoint(e, id) {
+            const params = e.params ? e.params.map(p => {
+                let meta = [];
+                if (p.default !== undefined && p.default !== null) meta.push(`=${p.default}`);
+                if (p.max) meta.push(`max:${p.max}`);
+                if (p.options) meta.push(p.options.join('|'));
+                return `<span class="param">
+                    <span class="param-name">${p.name}</span>
+                    <span class="param-type">${p.type}</span>
+                    ${p.required ? '<span class="param-required">*</span>' : ''}
+                    ${meta.length ? `<span class="param-meta">${meta.join(' ')}</span>` : ''}
+                </span>`;
+            }).join('') : '';
+
+            return `
+                <div class="endpoint" id="${id}">
+                    <div class="endpoint-header">
+                        <span class="method ${e.type.toLowerCase()}">${e.type}</span>
+                        <a href="${host}${e.url}" target="_blank" class="url">${e.url}</a>
+                        ${e.cache ? `<span class="cache">cache: ${e.cache}</span>` : ''}
+                    </div>
+                    <p class="description">${e.description}</p>
+                    <div class="details">
+                        <div class="detail-row">
+                            <span class="detail-label">Response</span>
+                            <span class="detail-value">${e.response}</span>
+                        </div>
+                        ${params ? `<div class="detail-row"><span class="detail-label">Params</span><div class="params">${params}</div></div>` : ''}
+                    </div>
+                    ${e.example ? `<div class="example-section" id="ex-${id}"><pre class="example-code">${e.example}</pre></div>` : ''}
+                    <div class="actions">
+                        <button class="btn-primary" onclick="tryEndpoint('${id}', '${e.url}')">Try it</button>
+                        <button class="btn-secondary" onclick="copyUrl('${e.url}')">Copy URL</button>
+                        ${e.example ? `<button class="btn-secondary" onclick="toggleExample('ex-${id}', this)">Example</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function tryEndpoint(id, url) {
+            const card = document.getElementById(id);
+            const existing = card.querySelector('.result');
+            if (existing) existing.remove();
+
+            const loading = document.createElement('div');
+            loading.className = 'loading';
+            loading.innerHTML = '<span class="spinner"></span> Loading...';
+            card.appendChild(loading);
+
+            fetch(host + url)
+                .then(r => r.json())
+                .then(data => {
+                    loading.remove();
+                    const result = document.createElement('div');
+                    result.className = 'result';
+                    result.innerHTML = `
+                        <div class="result-header">
+                            <span class="status success">200 OK</span>
+                            <button class="btn-secondary" onclick="copyResult(this)">Copy</button>
+                        </div>
+                        <pre class="result-body">${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    card.appendChild(result);
+                })
+                .catch(err => {
+                    loading.remove();
+                    const result = document.createElement('div');
+                    result.className = 'result';
+                    result.innerHTML = `
+                        <div class="result-header"><span class="status error">Error</span></div>
+                        <pre class="result-body">${err.message}</pre>
+                    `;
+                    card.appendChild(result);
+                });
+        }
+
+        function copyUrl(url) {
+            navigator.clipboard.writeText(host + url);
+            showToast();
+        }
+
+        function copyResult(btn) {
+            const text = btn.closest('.result').querySelector('.result-body').textContent;
+            navigator.clipboard.writeText(text);
+            btn.textContent = 'Copied';
+            setTimeout(() => btn.textContent = 'Copy', 1500);
+        }
+
+        function toggleExample(id, btn) {
+            const el = document.getElementById(id);
+            el.classList.toggle('show');
+            btn.textContent = el.classList.contains('show') ? 'Hide' : 'Example';
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    </script>
 </body>
-
 </html>
