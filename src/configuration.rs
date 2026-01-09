@@ -250,10 +250,11 @@ impl State {
             "ls_slippage_anomaly.sql",
             "subscription.sql",
             "ls_loan_collect.sql",
-            // Performance optimization migrations
-            "indexes.sql",
+            // Performance optimization migrations (run manually - multi-statement files)
+            // "indexes.sql",  // Contains multiple CREATE INDEX statements
             "pool_config.sql",
-            "ls_opening_precompute.sql",
+            "pool_config_data.sql",
+            // "ls_opening_precompute.sql",  // Contains multiple ALTER TABLE statements
         ];
 
         let dir = env!("CARGO_MANIFEST_DIR");
