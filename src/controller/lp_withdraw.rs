@@ -1,4 +1,4 @@
-use actix_web::{get, web, Responder};
+use actix_web::{get, web, HttpResponse};
 use serde::Deserialize;
 
 use crate::{
@@ -10,10 +10,14 @@ use crate::{
 async fn index(
     state: web::Data<AppState<State>>,
     data: web::Query<Query>,
-) -> Result<impl Responder, Error> {
+) -> Result<HttpResponse, Error> {
     let tx = data.tx.to_owned();
-    let data = state.database.lp_withdraw.get_by_tx(tx).await?;
-    Ok(web::Json(data))
+    match state.database.lp_withdraw.get_by_tx(tx).await? {
+        Some(data) => Ok(HttpResponse::Ok().json(data)),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({
+            "error": "Transaction not found"
+        }))),
+    }
 }
 
 #[derive(Debug, Deserialize)]
