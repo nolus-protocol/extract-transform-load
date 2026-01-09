@@ -189,7 +189,7 @@ impl Table<LP_Lender_State> {
                 ORDER BY lpd_inner."LP_address_id", lpd_inner."LP_timestamp" DESC
             ) AS unique_lpd ON lps."LP_Lender_id" = unique_lpd."LP_address_id"
             WHERE
-                lps."LP_timestamp" > now() - INTERVAL '1 hours'
+                lps."LP_timestamp" > now() - INTERVAL '2 hours'
             "#,
         )
         .persistent(true)

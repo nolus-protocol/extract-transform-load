@@ -484,7 +484,7 @@ impl Table<LS_Opening> {
             FROM
                 "LS_State"
             WHERE
-                "LS_timestamp" > (now() - INTERVAL '1 hour')
+                "LS_timestamp" > (now() - INTERVAL '2 hours')
             GROUP BY
                 "LS_contract_id"
             ),
@@ -552,7 +552,7 @@ impl Table<LS_Opening> {
                 FROM
                     "LS_State"
                 WHERE
-                    "LS_timestamp" >= NOW() - INTERVAL '1 hour'
+                    "LS_timestamp" >= NOW() - INTERVAL '2 hours'
                 ),
                 Last_Hour_Pool_State AS (
                 SELECT
@@ -613,7 +613,7 @@ impl Table<LS_Opening> {
                 FROM
                     "LS_State"
                 WHERE
-                    "LS_timestamp" >= NOW() - INTERVAL '1 hour'
+                    "LS_timestamp" >= NOW() - INTERVAL '2 hours'
                 ),
                 Last_Hour_Pool_State AS (
                 SELECT

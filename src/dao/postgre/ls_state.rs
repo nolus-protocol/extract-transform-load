@@ -201,7 +201,7 @@ impl Table<LS_State> {
                 FROM
                     "LS_State"
                 WHERE
-                    "LS_timestamp" > (now() - INTERVAL '1 hour')
+                    "LS_timestamp" > (now() - INTERVAL '2 hours')
                 GROUP BY
                     "LS_contract_id"
             ),
@@ -264,7 +264,7 @@ impl Table<LS_State> {
                 FROM
                     "LS_State"
                 WHERE
-                    "LS_timestamp" > (now() - INTERVAL '1 hour')
+                    "LS_timestamp" > (now() - INTERVAL '2 hours')
                 GROUP BY
                     "LS_contract_id"
             ),
@@ -323,7 +323,7 @@ impl Table<LS_State> {
                 FROM
                     "LS_State"
                 WHERE
-                    "LS_timestamp" > (now() - INTERVAL '1 hour')
+                    "LS_timestamp" > (now() - INTERVAL '2 hours')
                 GROUP BY
                     "LS_contract_id"
             ),
@@ -391,7 +391,7 @@ impl Table<LS_State> {
           FROM
               "LS_State"
           WHERE
-              "LS_timestamp" > (now() - INTERVAL '1 hour')
+              "LS_timestamp" > (now() - INTERVAL '2 hours')
           GROUP BY
               "LS_contract_id"
       ),
@@ -457,7 +457,7 @@ impl Table<LS_State> {
               FROM
                   "LS_State"
               WHERE
-                  "LS_timestamp" > (now() - INTERVAL '1 hour')
+                  "LS_timestamp" > (now() - INTERVAL '2 hours')
               GROUP BY
                   "LS_contract_id"
           ),
@@ -524,7 +524,7 @@ impl Table<LS_State> {
         Latest_States AS (
           SELECT DISTINCT ON ("LS_contract_id") *
           FROM "LS_State"
-          WHERE "LS_timestamp" > NOW() - INTERVAL '1 hour'
+          WHERE "LS_timestamp" > NOW() - INTERVAL '2 hours'
           ORDER BY "LS_contract_id", "LS_timestamp" DESC
         ),
         Joined_States AS (
@@ -713,7 +713,7 @@ impl Table<LS_State> {
           Active_Positions AS (
             SELECT DISTINCT "LS_contract_id"
             FROM "LS_State"
-            WHERE "LS_timestamp" >= NOW() - INTERVAL '1 hour'
+            WHERE "LS_timestamp" >= NOW() - INTERVAL '2 hours'
           ),
           DP_Loan_Table AS (
             SELECT
@@ -847,7 +847,7 @@ impl Table<LS_State> {
               "LS_State" s
             LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
             LEFT JOIN Lease_Value_Divisor d ON o."LS_asset_symbol" = d."LS_asset_symbol"
-            WHERE s."LS_timestamp" > NOW() - INTERVAL '1 hours'
+            WHERE s."LS_timestamp" > NOW() - INTERVAL '2 hours'
           ),
           Available_Assets_Osmosis AS (
             SELECT
@@ -951,7 +951,7 @@ impl Table<LS_State> {
             WITH Latest_States AS (
                 SELECT DISTINCT ON ("LS_contract_id") *
                 FROM "LS_State"
-                WHERE "LS_timestamp" > NOW() - INTERVAL '1 hour'
+                WHERE "LS_timestamp" > NOW() - INTERVAL '2 hours'
                 ORDER BY "LS_contract_id", "LS_timestamp" DESC
             ),
             Joined_States AS (
@@ -1002,7 +1002,7 @@ impl Table<LS_State> {
             Latest_States AS (
               SELECT DISTINCT ON ("LS_contract_id") *
               FROM "LS_State"
-              WHERE "LS_timestamp" > NOW() - INTERVAL '1 hour'
+              WHERE "LS_timestamp" > NOW() - INTERVAL '2 hours'
               ORDER BY "LS_contract_id", "LS_timestamp" DESC
             ),
             Repayments AS (
@@ -1085,7 +1085,7 @@ impl Table<LS_State> {
                 INNER JOIN SymbolsInUse s ON a."MP_asset_symbol" = s."MP_asset_symbol"
               WHERE
                 a."Protocol" IN ('OSMOSIS-OSMOSIS-USDC_NOBLE', 'NEUTRON-ASTROPORT-USDC_NOBLE')
-                AND a."MP_asset_timestamp" > NOW() - INTERVAL '1 hour'
+                AND a."MP_asset_timestamp" > NOW() - INTERVAL '2 hours'
               ORDER BY
                 a."MP_asset_symbol", a."MP_asset_timestamp" DESC
             )
@@ -1146,7 +1146,7 @@ impl Table<LS_State> {
             Latest_States AS (
               SELECT DISTINCT ON ("LS_contract_id") *
               FROM "LS_State"
-              WHERE "LS_timestamp" > NOW() - INTERVAL '1 hour'
+              WHERE "LS_timestamp" > NOW() - INTERVAL '2 hours'
               ORDER BY "LS_contract_id", "LS_timestamp" DESC
             ),
             Repayments AS (
@@ -1229,7 +1229,7 @@ impl Table<LS_State> {
                 INNER JOIN SymbolsInUse s ON a."MP_asset_symbol" = s."MP_asset_symbol"
               WHERE
                 a."Protocol" IN ('OSMOSIS-OSMOSIS-USDC_NOBLE', 'NEUTRON-ASTROPORT-USDC_NOBLE')
-                AND a."MP_asset_timestamp" > NOW() - INTERVAL '1 hour'
+                AND a."MP_asset_timestamp" > NOW() - INTERVAL '2 hours'
               ORDER BY
                 a."MP_asset_symbol", a."MP_asset_timestamp" DESC
             )
