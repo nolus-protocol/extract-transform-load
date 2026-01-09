@@ -910,15 +910,15 @@ impl Table<LS_State> {
             SELECT SUM("Lease Value") AS "Total Lease Value" FROM Lease_Value
           )
           SELECT
-            COALESCE((SELECT "Total Lease Value" FROM Lease_Value_Sum), 0) +
-            COALESCE((SELECT "Available Assets" FROM Available_Assets_Osmosis), 0) +
-            COALESCE((SELECT "Available Assets" FROM Available_Assets_Neutron), 0) +
-            COALESCE((SELECT "Available Assets" FROM Available_Osmosis_Noble), 0) +
-            COALESCE((SELECT "Available Assets" FROM Available_Neutron_Noble), 0) +
-            COALESCE((SELECT "Available Assets" FROM Available_ST_ATOM_OSMOSIS), 0) +
-            COALESCE((SELECT "Available Assets" FROM Available_ALL_BTC_OSMOSIS), 0) +
-            COALESCE((SELECT "Available Assets" FROM Available_ALL_SOL_OSMOSIS), 0) +
-            COALESCE((SELECT "Available Assets" FROM Available_AKT_OSMOSIS), 0) AS "TVL"
+            (SELECT "Total Lease Value" FROM Lease_Value_Sum) +
+            (SELECT "Available Assets" FROM Available_Assets_Osmosis) +
+            (SELECT "Available Assets" FROM Available_Assets_Neutron) +
+            (SELECT "Available Assets" FROM Available_Osmosis_Noble) +
+            (SELECT "Available Assets" FROM Available_Neutron_Noble) +
+            (SELECT "Available Assets" FROM Available_ST_ATOM_OSMOSIS) +
+            (SELECT "Available Assets" FROM Available_ALL_BTC_OSMOSIS) +
+            (SELECT "Available Assets" FROM Available_ALL_SOL_OSMOSIS) +
+            (SELECT "Available Assets" FROM Available_AKT_OSMOSIS) AS "TVL"
             "#,
         )
         .bind(pools.osmosis_usdc)
