@@ -40,7 +40,7 @@ impl Table<LP_Pool_State> {
         .bind(&data.LP_Pool_total_borrowed_asset)
         .bind(&data.LP_Pool_total_yield_stable)
         .bind(&data.LP_Pool_total_yield_asset)
-        .persistent(true)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -82,7 +82,7 @@ impl Table<LP_Pool_State> {
                 .push_bind(&data.LP_Pool_min_utilization_threshold);
         });
 
-        let query = query_builder.build().persistent(true);
+        let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
         Ok(())
     }
@@ -105,7 +105,7 @@ impl Table<LP_Pool_State> {
             "#,
         )
         .bind(datetime)
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (locked, borrowed, yield_amount) = value;
@@ -144,7 +144,7 @@ impl Table<LP_Pool_State> {
             "#,
         )
         .bind(protocol)
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -186,13 +186,13 @@ impl Table<LP_Pool_State> {
         );
 
         let mut query: sqlx::query::QueryAs<'_, _, _, _> =
-            sqlx::query_as(&query_str).persistent(true);
+            sqlx::query_as(&query_str).persistent(false);
 
         for i in protocols {
             query = query.bind(i);
         }
 
-        let data = query.persistent(true).fetch_all(&self.pool).await?;
+        let data = query.persistent(false).fetch_all(&self.pool).await?;
         Ok(data)
     }
 
@@ -210,7 +210,7 @@ impl Table<LP_Pool_State> {
         .bind(protocol)
         .bind(skip)
         .bind(limit)
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -228,7 +228,7 @@ impl Table<LP_Pool_State> {
         )
         .bind(skip)
         .bind(limit)
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -314,7 +314,7 @@ impl Table<LP_Pool_State> {
             WHERE rank = 1
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -683,7 +683,7 @@ impl Table<LP_Pool_State> {
         FROM per_pool
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .bind(address)
         .fetch_one(&self.pool)
         .await?;
@@ -712,7 +712,7 @@ impl Table<LP_Pool_State> {
         )
         .bind(protocol)
         .bind(date_time)
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await
     }
@@ -768,7 +768,7 @@ impl Table<LP_Pool_State> {
             ORDER BY protocol
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
 

@@ -37,7 +37,7 @@ impl Table<LP_Lender_State> {
         .bind(&data.LP_Lender_stable)
         .bind(&data.LP_Lender_asset)
         .bind(&data.LP_Lender_receipts)
-        .persistent(true)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -61,7 +61,7 @@ impl Table<LP_Lender_State> {
             GROUP BY "LP_address_id", "LP_Pool_id"
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await
     }
@@ -95,7 +95,7 @@ impl Table<LP_Lender_State> {
                 .push_bind(&data.LP_Lender_receipts);
         });
 
-        let query = query_builder.build().persistent(true);
+        let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
         Ok(())
     }
@@ -112,7 +112,7 @@ impl Table<LP_Lender_State> {
             "#,
         )
         .bind(timestamp)
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -120,7 +120,7 @@ impl Table<LP_Lender_State> {
 
     pub async fn get_all(&self) -> Result<Vec<LP_Lender_State>, Error> {
         sqlx::query_as(r#"SELECT * FROM "LP_Lender_State""#)
-            .persistent(true)
+            .persistent(false)
             .fetch_all(&self.pool)
             .await
     }
@@ -151,7 +151,7 @@ impl Table<LP_Lender_State> {
         .bind(&data.LP_Lender_id)
         .bind(&data.LP_Pool_id)
         .bind(data.LP_timestamp)
-        .persistent(true)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -192,7 +192,7 @@ impl Table<LP_Lender_State> {
                 lps."LP_timestamp" > now() - INTERVAL '2 hours'
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
 

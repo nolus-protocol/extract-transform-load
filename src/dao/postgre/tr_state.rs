@@ -18,7 +18,7 @@ impl Table<TR_State> {
         .bind(data.TR_timestamp)
         .bind(&data.TR_amnt_stable)
         .bind(&data.TR_amnt_nls)
-        .persistent(true)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -43,7 +43,7 @@ impl Table<TR_State> {
                 .push_bind(&data.TR_amnt_nls);
         });
 
-        let query = query_builder.build().persistent(true);
+        let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
         Ok(())
     }
@@ -62,7 +62,7 @@ impl Table<TR_State> {
         )
         .bind(from)
         .bind(to)
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -85,7 +85,7 @@ impl Table<TR_State> {
         )
         .bind(from)
         .bind(to)
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (amnt,) = value;
@@ -102,7 +102,7 @@ impl Table<TR_State> {
                 SELECT "TR_amnt_nls" / 1000000 AS "Incentives Pool" FROM "TR_State" ORDER BY "TR_timestamp" DESC LIMIT 1
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await?;
         let amnt = value.unwrap_or((BigDecimal::from_str("0")?,));

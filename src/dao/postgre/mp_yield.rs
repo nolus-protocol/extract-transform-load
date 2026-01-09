@@ -19,7 +19,7 @@ impl Table<MP_Yield> {
         .bind(&data.MP_yield_symbol)
         .bind(data.MP_yield_timestamp)
         .bind(data.MP_apy_permilles)
-        .persistent(true)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }

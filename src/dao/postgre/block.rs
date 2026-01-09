@@ -17,7 +17,7 @@ impl Table<Block> {
             "#,
         )
         .bind(block.id)
-        .persistent(true)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -40,7 +40,7 @@ impl Table<Block> {
             WHERE gap > 1
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await
     }
@@ -51,7 +51,7 @@ impl Table<Block> {
             SELECT id FROM block ORDER BY id ASC
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await
     }
@@ -62,7 +62,7 @@ impl Table<Block> {
             SELECT id FROM block ORDER BY id DESC
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await
     }
@@ -74,7 +74,7 @@ impl Table<Block> {
             "#,
         )
         .bind(id)
-        .persistent(true)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await
     }
@@ -85,7 +85,7 @@ impl Table<Block> {
              SELECT COUNT(1) FROM "block"
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         Ok(count)
@@ -98,7 +98,7 @@ impl Table<Block> {
             "#,
         )
         .bind(block)
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 

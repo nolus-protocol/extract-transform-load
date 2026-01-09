@@ -49,7 +49,7 @@ impl Table<LS_Repayment> {
         .bind(ls_repayment.LS_repayment_height)
         .bind(&ls_repayment.LS_contract_id)
         .bind(ls_repayment.LS_timestamp)
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
 
@@ -98,7 +98,7 @@ impl Table<LS_Repayment> {
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
         .bind(&data.Tx_Hash)
-        .persistent(true)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
@@ -147,7 +147,7 @@ impl Table<LS_Repayment> {
                 .push_bind(&ls.Tx_Hash);
         });
 
-        let query = query_builder.build().persistent(true);
+        let query = query_builder.build().persistent(false);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -179,7 +179,7 @@ impl Table<LS_Repayment> {
         )
         .bind(from)
         .bind(to)
-        .persistent(true)
+        .persistent(false)
         .fetch_one(&self.pool)
         .await?;
         let (
@@ -238,7 +238,7 @@ impl Table<LS_Repayment> {
             "#,
         )
         .bind(contract)
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -318,7 +318,7 @@ impl Table<LS_Repayment> {
                 RepaidLeases rl
             "#,
         )
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
 
@@ -523,7 +523,7 @@ impl Table<LS_Repayment> {
         .bind(skip)
         .bind(limit)
         .bind(from_timestamp)
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await?;
 

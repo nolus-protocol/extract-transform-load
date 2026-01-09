@@ -17,7 +17,7 @@ impl Table<MP_Asset> {
         .bind(data.MP_asset_timestamp)
         .bind(&data.MP_price_in_stable)
         .bind(&data.Protocol)
-        .persistent(true)
+        .persistent(false)
         .execute(&self.pool)
         .await
     }
@@ -45,7 +45,7 @@ impl Table<MP_Asset> {
         });
 
         // Dynamic query - cannot use prepared statement caching
-        let query = query_builder.build().persistent(true);
+        let query = query_builder.build().persistent(false);
         query.execute(&self.pool).await?;
 
         Ok(())
@@ -67,7 +67,7 @@ impl Table<MP_Asset> {
         .bind(key)
         .bind(from)
         .bind(to)
-        .persistent(true)
+        .persistent(false)
         .fetch_optional(&self.pool)
         .await
     }
@@ -95,7 +95,7 @@ impl Table<MP_Asset> {
         .bind(key)
         .bind(protocol)
         .bind(date_time)
-        .persistent(true)
+        .persistent(false)
         .fetch_all(&self.pool)
         .await
     }
@@ -116,7 +116,7 @@ impl Table<MP_Asset> {
                 )
                 .bind(key)
                 .bind(protocol)
-                .persistent(true)
+                .persistent(false)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -129,7 +129,7 @@ impl Table<MP_Asset> {
                     "#,
                 )
                 .bind(key)
-                .persistent(true)
+                .persistent(false)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -161,7 +161,7 @@ impl Table<MP_Asset> {
                 .bind(key)
                 .bind(protocol)
                 .bind(date_time)
-                .persistent(true)
+                .persistent(false)
                 .fetch_one(&self.pool)
                 .await
             },
@@ -180,7 +180,7 @@ impl Table<MP_Asset> {
                 )
                 .bind(key)
                 .bind(date_time)
-                .persistent(true)
+                .persistent(false)
                 .fetch_one(&self.pool)
                 .await
             },

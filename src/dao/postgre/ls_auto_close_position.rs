@@ -82,7 +82,7 @@ impl Table<LS_Auto_Close_Position> {
         .bind(&data.LS_Close_Strategy)
         .bind(data.LS_Close_Strategy_Ltv)
         .bind(data.LS_timestamp)
-        .persistent(true)
+        .persistent(false)
         .execute(&mut **transaction)
         .await
     }
