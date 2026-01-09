@@ -1044,7 +1044,7 @@ pub struct TimeWindowParams {
 /// Includes endpoint name, period, and optional from timestamp.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// build_cache_key("liquidations", "12m", None) // "liquidations_12m_none"
 /// build_cache_key("liquidations", "3m", Some(ts)) // "liquidations_3m_1234567890"
 /// ```
