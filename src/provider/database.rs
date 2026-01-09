@@ -62,12 +62,12 @@ impl DatabasePool {
             .after_connect(move |conn, _meta| {
                 Box::pin(async move {
                     // Set statement timeout to prevent runaway queries
-                    sqlx::query(&format!(
+                    // Use raw execute to avoid prepared statement issues with PgBouncer
+                    use sqlx::Executor;
+                    conn.execute(format!(
                         "SET statement_timeout = '{}'",
                         statement_timeout_ms
-                    ))
-                    .persistent(false)
-                    .execute(conn)
+                    ).as_str())
                     .await?;
                     Ok(())
                 })
