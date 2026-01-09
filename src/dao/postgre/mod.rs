@@ -6,10 +6,11 @@ pub use self::{
 };
 mod action_history;
 mod block;
+mod pool_config;
 pub mod lp_deposit;
 pub mod lp_lender_state;
 mod lp_pool;
-mod lp_pool_state;
+pub mod lp_pool_state;
 mod lp_withdraw;
 mod ls_auto_close_position;
 mod ls_close_position;

@@ -20,6 +20,12 @@ pub struct LS_Opening {
     pub LS_native_amnt_nolus: BigDecimal,
     pub LS_lpn_loan_amnt: BigDecimal,
     pub Tx_Hash: String,
+    // Pre-computed columns for query optimization
+    pub LS_position_type: Option<String>,
+    pub LS_lpn_symbol: Option<String>,
+    pub LS_lpn_decimals: Option<i64>,
+    pub LS_opening_price: Option<BigDecimal>,
+    pub LS_liquidation_price_at_open: Option<BigDecimal>,
 }
 
 #[derive(Debug, FromRow, Deserialize, Serialize)]

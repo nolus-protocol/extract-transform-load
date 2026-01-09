@@ -6,81 +6,15 @@ use serde::{Deserialize, Serialize};
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    helpers::to_csv_response,
+    helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
-
-const DEFAULT_LIMIT: i64 = 100;
-const MAX_LIMIT: i64 = 1000;
 
 #[derive(Debug, Deserialize)]
 pub struct Query {
-    skip: Option<i64>,
-    limit: Option<i64>,
     format: Option<String>,
-}
-
-#[get("/historically-opened")]
-async fn index(
-    state: web::Data<AppState<State>>,
-    query: web::Query<Query>,
-) -> Result<HttpResponse, Error> {
-    let skip = query.skip.unwrap_or(0);
-    let limit = query.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
-    let cache_key = format!("historically_opened_{}_{}", skip, limit);
-
-    // Try cache first
-    if let Some(cached) = state.api_cache.historically_opened.get(&cache_key).await {
-        let opened: Vec<HistoricallyOpened> = cached
-            .into_iter()
-            .map(|o| HistoricallyOpened {
-                contract_id: o.contract_id,
-                user: o.user,
-                leased_asset: o.leased_asset,
-                opening_date: o.opening_date,
-                position_type: o.position_type,
-                down_payment_amount: o.down_payment_amount,
-                down_payment_asset: o.down_payment_asset,
-                loan: o.loan,
-                total_position_amount_lpn: o.total_position_amount_lpn,
-                price: o.price,
-                open: o.open,
-                liquidation_price: o.liquidation_price,
-            })
-            .collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&opened, "historically-opened.csv"),
-            _ => Ok(HttpResponse::Ok().json(opened)),
-        };
-    }
-
-    // Cache miss - query DB
-    let data = state.database.ls_opening.get_historically_opened(skip, limit).await?;
-
-    // Store in cache
-    state.api_cache.historically_opened.set(&cache_key, data.clone()).await;
-
-    let opened: Vec<HistoricallyOpened> = data
-        .into_iter()
-        .map(|o| HistoricallyOpened {
-            contract_id: o.contract_id,
-            user: o.user,
-            leased_asset: o.leased_asset,
-            opening_date: o.opening_date,
-            position_type: o.position_type,
-            down_payment_amount: o.down_payment_amount,
-            down_payment_asset: o.down_payment_asset,
-            loan: o.loan,
-            total_position_amount_lpn: o.total_position_amount_lpn,
-            price: o.price,
-            open: o.open,
-            liquidation_price: o.liquidation_price,
-        })
-        .collect();
-
-    match query.format.as_deref() {
-        Some("csv") => to_csv_response(&opened, "historically-opened.csv"),
-        _ => Ok(HttpResponse::Ok().json(opened)),
-    }
+    period: Option<String>,
+    /// Only return records after this timestamp (exclusive), for incremental syncing
+    from: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -97,4 +31,72 @@ pub struct HistoricallyOpened {
     pub price: Option<BigDecimal>,
     pub open: bool,
     pub liquidation_price: Option<BigDecimal>,
+}
+
+impl From<crate::dao::postgre::ls_opening::HistoricallyOpened> for HistoricallyOpened {
+    fn from(o: crate::dao::postgre::ls_opening::HistoricallyOpened) -> Self {
+        Self {
+            contract_id: o.contract_id,
+            user: o.user,
+            leased_asset: o.leased_asset,
+            opening_date: o.opening_date,
+            position_type: o.position_type,
+            down_payment_amount: o.down_payment_amount,
+            down_payment_asset: o.down_payment_asset,
+            loan: o.loan,
+            total_position_amount_lpn: o.total_position_amount_lpn,
+            price: o.price,
+            open: o.open,
+            liquidation_price: o.liquidation_price,
+        }
+    }
+}
+
+#[get("/historically-opened")]
+async fn index(
+    state: web::Data<AppState<State>>,
+    query: web::Query<Query>,
+) -> Result<HttpResponse, Error> {
+    let months = parse_period_months(&query.period)?;
+    let period_str = query.period.as_deref().unwrap_or("12m");
+    let cache_key = build_cache_key("historically_opened", period_str, query.from);
+
+    if let Some(cached) = state.api_cache.historically_opened.get(&cache_key).await {
+        let data: Vec<HistoricallyOpened> = cached.into_iter().map(Into::into).collect();
+        return match query.format.as_deref() {
+            Some("csv") => to_csv_response(&data, "historically-opened.csv"),
+            _ => Ok(HttpResponse::Ok().json(data)),
+        };
+    }
+
+    let data = state
+        .database
+        .ls_opening
+        .get_historically_opened_with_window(months, query.from)
+        .await?;
+
+    state.api_cache.historically_opened.set(&cache_key, data.clone()).await;
+
+    let response: Vec<HistoricallyOpened> = data.into_iter().map(Into::into).collect();
+
+    match query.format.as_deref() {
+        Some("csv") => to_csv_response(&response, "historically-opened.csv"),
+        _ => Ok(HttpResponse::Ok().json(response)),
+    }
+}
+
+#[get("/historically-opened/export")]
+pub async fn export(state: web::Data<AppState<State>>) -> Result<HttpResponse, Error> {
+    const CACHE_KEY: &str = "historically_opened_all";
+
+    if let Some(cached) = state.api_cache.historically_opened.get(CACHE_KEY).await {
+        let data: Vec<HistoricallyOpened> = cached.into_iter().map(Into::into).collect();
+        return to_streaming_csv_response(data, "historically-opened.csv");
+    }
+
+    let data = state.database.ls_opening.get_all_historically_opened().await?;
+    state.api_cache.historically_opened.set(CACHE_KEY, data.clone()).await;
+
+    let response: Vec<HistoricallyOpened> = data.into_iter().map(Into::into).collect();
+    to_streaming_csv_response(response, "historically-opened.csv")
 }

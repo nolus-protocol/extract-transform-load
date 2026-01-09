@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-#[derive(Debug, FromRow, Deserialize, Serialize)]
+#[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
 pub struct Buyback {
     #[sqlx(rename = "Bought-back")]
     pub bought_back: BigDecimal,

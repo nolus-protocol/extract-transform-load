@@ -169,7 +169,7 @@ impl Table<LS_Liquidation> {
     ) -> Result<Vec<LS_Liquidation>, Error> {
         let data = sqlx::query_as(
             r#"
-            SELECT * FROM "LS_Liquidation" WHERE "LS_contract_id" = $1;
+            SELECT * FROM "LS_Liquidation" WHERE "LS_contract_id" = $1
             "#,
         )
         .bind(&contract)
@@ -179,12 +179,32 @@ impl Table<LS_Liquidation> {
         Ok(data)
     }
 
-    pub async fn get_liquidations(
+    pub async fn get_liquidations_with_window(
         &self,
-        skip: i64,
-        limit: i64,
+        months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<LiquidationData>, crate::error::Error> {
-        let data = sqlx::query_as(
+        // Build time conditions dynamically
+        let mut conditions = Vec::new();
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                "\"LS_Liquidation\".\"LS_timestamp\" >= NOW() - INTERVAL '{} months'",
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push("\"LS_Liquidation\".\"LS_timestamp\" > $1".to_string());
+        }
+
+        let time_condition = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
+        };
+
+        let query = format!(
             r#"
             WITH Liquidation_With_DP AS (
                 SELECT
@@ -205,6 +225,7 @@ impl Table<LS_Liquidation> {
                 FROM
                     "LS_Liquidation"
                     LEFT JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_Liquidation"."LS_contract_id"
+                {}
             ),
             Current_Market_Prices AS (
                 SELECT
@@ -235,16 +256,25 @@ impl Table<LS_Liquidation> {
                     AND ldp."Ticker" = cmp."MP_asset_symbol"
             ORDER BY
                 ldp."Timestamp" DESC
-            OFFSET $1 LIMIT $2
             "#,
-        )
-        .bind(skip)
-        .bind(limit)
-        .persistent(true)
-        .fetch_all(&self.pool)
-        .await?;
+            time_condition
+        );
+
+        let mut query_builder = sqlx::query_as::<_, LiquidationData>(&query);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
 
         Ok(data)
+    }
+
+    pub async fn get_all_liquidations(
+        &self,
+    ) -> Result<Vec<LiquidationData>, crate::error::Error> {
+        self.get_liquidations_with_window(None, None).await
     }
 
     pub async fn get_historically_liquidated(
@@ -290,6 +320,83 @@ impl Table<LS_Liquidation> {
         .persistent(true)
         .fetch_all(&self.pool)
         .await?;
+
+        Ok(data)
+    }
+
+    /// Get historically liquidated positions with optional time window filter
+    pub async fn get_historically_liquidated_with_window(
+        &self,
+        months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<Vec<HistoricallyLiquidated>, crate::error::Error> {
+        // Build time conditions dynamically
+        let mut conditions = Vec::new();
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                "lso.\"LS_timestamp\" >= NOW() - INTERVAL '{} months'",
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push("lso.\"LS_timestamp\" > $1".to_string());
+        }
+
+        let time_condition = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
+        };
+
+        let query = format!(
+            r#"
+            WITH LiquidationAmounts AS (
+                SELECT
+                    lso."LS_contract_id",
+                    CASE
+                        WHEN lso."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
+                        WHEN lso."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
+                        WHEN lso."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
+                        WHEN lso."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                        ELSE lso."LS_asset_symbol"
+                    END AS "Asset",
+                    lso."LS_loan_amnt_asset" / 1000000 AS "Loan",
+                    CASE
+                        WHEN lso."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN lsl."LS_amnt_stable" / 100000000
+                        WHEN lso."LS_asset_symbol" IN ('ALL_SOL') THEN lsl."LS_amnt_stable" / 1000000000
+                        WHEN lso."LS_asset_symbol" IN ('PICA') THEN lsl."LS_amnt_stable" / 1000000000000
+                        WHEN lso."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN lsl."LS_amnt_stable" / 1000000000000000000
+                        ELSE lsl."LS_amnt_stable" / 1000000
+                    END AS "Liquidation Amount"
+                FROM
+                    "LS_Opening" lso
+                    LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"
+                {}
+            )
+            SELECT
+                "LS_contract_id" AS contract_id,
+                "Asset" AS asset,
+                "Loan" AS loan,
+                SUM("Liquidation Amount") AS total_liquidated
+            FROM
+                LiquidationAmounts
+            GROUP BY
+                "LS_contract_id",
+                "Asset",
+                "Loan"
+            "#,
+            time_condition
+        );
+
+        let mut query_builder = sqlx::query_as::<_, HistoricallyLiquidated>(&query);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
 
         Ok(data)
     }

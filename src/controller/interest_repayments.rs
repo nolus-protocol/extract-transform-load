@@ -6,16 +6,14 @@ use serde::{Deserialize, Serialize};
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
-
-const DEFAULT_LIMIT: i64 = 100;
-const MAX_LIMIT: i64 = 5000;
 
 #[derive(Debug, Deserialize)]
 pub struct Query {
-    skip: Option<i64>,
-    limit: Option<i64>,
-    /// Filter to only return repayments after this timestamp (exclusive)
+    format: Option<String>,
+    period: Option<String>,
+    /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
 }
 
@@ -30,58 +28,9 @@ pub struct InterestRepayment {
     pub margin_interest_repaid: BigDecimal,
 }
 
-#[get("/interest-repayments")]
-async fn index(
-    state: web::Data<AppState<State>>,
-    query: web::Query<Query>,
-) -> Result<HttpResponse, Error> {
-    let skip = query.skip.unwrap_or(0);
-    let limit = query.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
-    let from = query.from;
-
-    // Build cache key including the 'from' parameter
-    let from_key = from
-        .map(|ts| ts.timestamp().to_string())
-        .unwrap_or_else(|| "none".to_string());
-    let cache_key =
-        format!("interest_repayments_{}_{}_{}", skip, limit, from_key);
-
-    // Try cache first
-    if let Some(cached) =
-        state.api_cache.interest_repayments.get(&cache_key).await
-    {
-        let repayments: Vec<InterestRepayment> = cached
-            .into_iter()
-            .map(|r| InterestRepayment {
-                timestamp: r.timestamp,
-                contract_id: r.contract_id,
-                position_owner: r.position_owner,
-                position_type: r.position_type,
-                event_type: r.event_type,
-                loan_interest_repaid: r.loan_interest_repaid,
-                margin_interest_repaid: r.margin_interest_repaid,
-            })
-            .collect();
-        return Ok(HttpResponse::Ok().json(repayments));
-    }
-
-    // Cache miss - query DB
-    let data = state
-        .database
-        .ls_repayment
-        .get_interest_repayments(skip, limit, from)
-        .await?;
-
-    // Store in cache
-    state
-        .api_cache
-        .interest_repayments
-        .set(&cache_key, data.clone())
-        .await;
-
-    let repayments: Vec<InterestRepayment> = data
-        .into_iter()
-        .map(|r| InterestRepayment {
+impl From<crate::dao::postgre::ls_repayment::InterestRepaymentData> for InterestRepayment {
+    fn from(r: crate::dao::postgre::ls_repayment::InterestRepaymentData) -> Self {
+        Self {
             timestamp: r.timestamp,
             contract_id: r.contract_id,
             position_owner: r.position_owner,
@@ -89,8 +38,63 @@ async fn index(
             event_type: r.event_type,
             loan_interest_repaid: r.loan_interest_repaid,
             margin_interest_repaid: r.margin_interest_repaid,
-        })
-        .collect();
+        }
+    }
+}
 
-    Ok(HttpResponse::Ok().json(repayments))
+#[get("/interest-repayments")]
+async fn index(
+    state: web::Data<AppState<State>>,
+    query: web::Query<Query>,
+) -> Result<HttpResponse, Error> {
+    let months = parse_period_months(&query.period)?;
+    let period_str = query.period.as_deref().unwrap_or("12m");
+    let cache_key = build_cache_key("interest_repayments", period_str, query.from);
+
+    // Try cache first
+    if let Some(cached) = state.api_cache.interest_repayments.get(&cache_key).await {
+        let data: Vec<InterestRepayment> = cached.into_iter().map(Into::into).collect();
+        return match query.format.as_deref() {
+            Some("csv") => to_csv_response(&data, "interest-repayments.csv"),
+            _ => Ok(HttpResponse::Ok().json(data)),
+        };
+    }
+
+    // Cache miss - query DB
+    let data = state
+        .database
+        .ls_repayment
+        .get_interest_repayments_with_window(months, query.from)
+        .await?;
+
+    // Store in cache
+    state.api_cache.interest_repayments.set(&cache_key, data.clone()).await;
+
+    let response: Vec<InterestRepayment> = data.into_iter().map(Into::into).collect();
+
+    match query.format.as_deref() {
+        Some("csv") => to_csv_response(&response, "interest-repayments.csv"),
+        _ => Ok(HttpResponse::Ok().json(response)),
+    }
+}
+
+#[get("/interest-repayments/export")]
+pub async fn export(state: web::Data<AppState<State>>) -> Result<HttpResponse, Error> {
+    const CACHE_KEY: &str = "interest_repayments_all";
+
+    if let Some(cached) = state.api_cache.interest_repayments.get(CACHE_KEY).await {
+        let data: Vec<InterestRepayment> = cached.into_iter().map(Into::into).collect();
+        return to_streaming_csv_response(data, "interest-repayments.csv");
+    }
+
+    let data = state
+        .database
+        .ls_repayment
+        .get_interest_repayments_with_window(None, None)
+        .await?;
+
+    state.api_cache.interest_repayments.set(CACHE_KEY, data.clone()).await;
+
+    let response: Vec<InterestRepayment> = data.into_iter().map(Into::into).collect();
+    to_streaming_csv_response(response, "interest-repayments.csv")
 }

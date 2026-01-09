@@ -109,9 +109,14 @@ impl Table<LS_Opening> {
                 "LS_native_amnt_nolus",
                 "Tx_Hash",
                 "LS_loan_amnt",
-                "LS_lpn_loan_amnt"
+                "LS_lpn_loan_amnt",
+                "LS_position_type",
+                "LS_lpn_symbol",
+                "LS_lpn_decimals",
+                "LS_opening_price",
+                "LS_liquidation_price_at_open"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
             "#,
         )
         .bind(&data.LS_contract_id)
@@ -130,6 +135,11 @@ impl Table<LS_Opening> {
         .bind(&data.Tx_Hash)
         .bind(&data.LS_loan_amnt)
         .bind(&data.LS_lpn_loan_amnt)
+        .bind(&data.LS_position_type)
+        .bind(&data.LS_lpn_symbol)
+        .bind(&data.LS_lpn_decimals)
+        .bind(&data.LS_opening_price)
+        .bind(&data.LS_liquidation_price_at_open)
         .persistent(true)
         .execute(&mut **transaction)
         .await
@@ -160,9 +170,14 @@ impl Table<LS_Opening> {
                 "LS_native_amnt_nolus",
                 "Tx_Hash",
                 "LS_loan_amnt",
-                "LS_lpn_loan_amnt"
+                "LS_lpn_loan_amnt",
+                "LS_position_type",
+                "LS_lpn_symbol",
+                "LS_lpn_decimals",
+                "LS_opening_price",
+                "LS_liquidation_price_at_open"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
             ON CONFLICT ("LS_contract_id") DO NOTHING
             "#,
         )
@@ -182,6 +197,11 @@ impl Table<LS_Opening> {
         .bind(&data.Tx_Hash)
         .bind(&data.LS_loan_amnt)
         .bind(&data.LS_lpn_loan_amnt)
+        .bind(&data.LS_position_type)
+        .bind(&data.LS_lpn_symbol)
+        .bind(&data.LS_lpn_decimals)
+        .bind(&data.LS_opening_price)
+        .bind(&data.LS_liquidation_price_at_open)
         .persistent(true)
         .execute(&mut **transaction)
         .await
@@ -214,7 +234,12 @@ impl Table<LS_Opening> {
                 "LS_native_amnt_nolus",
                 "Tx_Hash",
                 "LS_loan_amnt",
-                "LS_lpn_loan_amnt"
+                "LS_lpn_loan_amnt",
+                "LS_position_type",
+                "LS_lpn_symbol",
+                "LS_lpn_decimals",
+                "LS_opening_price",
+                "LS_liquidation_price_at_open"
             )"#,
         );
 
@@ -234,7 +259,12 @@ impl Table<LS_Opening> {
                 .push_bind(&ls.LS_native_amnt_nolus)
                 .push_bind(&ls.Tx_Hash)
                 .push_bind(&ls.LS_loan_amnt)
-                .push_bind(&ls.LS_lpn_loan_amnt);
+                .push_bind(&ls.LS_lpn_loan_amnt)
+                .push_bind(&ls.LS_position_type)
+                .push_bind(&ls.LS_lpn_symbol)
+                .push_bind(&ls.LS_lpn_decimals)
+                .push_bind(&ls.LS_opening_price)
+                .push_bind(&ls.LS_liquidation_price_at_open);
         });
 
         let query = query_builder.build().persistent(true);
@@ -384,6 +414,48 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
+    /// Get borrow APR with time window filtering
+    pub async fn get_borrow_apr_with_window(
+        &self,
+        protocol: String,
+        months: Option<i32>,
+        from: Option<DateTime<Utc>>,
+    ) -> Result<Vec<Borrow_APR>, Error> {
+        // Build time conditions dynamically
+        let mut conditions = vec![r#""LS_loan_pool_id" = $1"#.to_string()];
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                r#""LS_timestamp" >= NOW() - INTERVAL '{} months'"#,
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push(r#""LS_timestamp" > $2"#.to_string());
+        }
+
+        let where_clause = conditions.join(" AND ");
+        let query = format!(
+            r#"
+            SELECT "LS_interest" / 10.0 AS "APR"
+            FROM "LS_Opening"
+            WHERE {}
+            ORDER BY "LS_timestamp" DESC
+            "#,
+            where_clause
+        );
+
+        let mut query_builder = sqlx::query_as::<_, Borrow_APR>(&query).bind(&protocol);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
+        Ok(data)
+    }
+
     pub async fn get_leased_assets(
         &self,
         protocol: String,
@@ -520,7 +592,7 @@ impl Table<LS_Opening> {
             protocol.to_owned()
         );
         let value: Option<(BigDecimal,)> = sqlx::query_as(&sql)
-            .persistent(true)
+            .persistent(false)
             .fetch_optional(&self.pool)
             .await?;
 
@@ -837,24 +909,29 @@ impl Table<LS_Opening> {
         &self,
         leases: Vec<String>,
     ) -> Result<Vec<LS_Opening>, Error> {
-        let mut s = String::from("");
-
-        for (index, lease) in leases.iter().enumerate() {
-            s += &format!("'{}'", lease);
-            if index < leases.len() - 1 {
-                s += ","
-            }
+        if leases.is_empty() {
+            return Ok(vec![]);
         }
 
-        let parsed_string = format!(
+        // Build parameterized query to avoid SQL injection
+        let mut params = String::from("$1");
+        for i in 1..leases.len() {
+            params += &format!(", ${}", i + 1);
+        }
+
+        let query_str = format!(
             r#"SELECT * FROM "LS_Opening" WHERE "LS_contract_id" IN ({})"#,
-            s
+            params
         );
 
-        let data = sqlx::query_as(&parsed_string)
-            .persistent(true)
-            .fetch_all(&self.pool)
-            .await?;
+        let mut query: sqlx::query::QueryAs<'_, _, LS_Opening, _> =
+            sqlx::query_as(&query_str);
+
+        for lease in &leases {
+            query = query.bind(lease);
+        }
+
+        let data = query.persistent(false).fetch_all(&self.pool).await?;
         Ok(data)
     }
 
@@ -1599,6 +1676,267 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
+    /// Get historically opened positions with optional time window filter
+    /// If months is Some(n), only returns positions opened in the last n months
+    /// If months is None, returns all positions
+    /// 
+    /// OPTIMIZED: Uses pre-computed columns (LS_position_type, LS_opening_price, LS_liquidation_price_at_open)
+    /// when available, with fallback to computed values for rows not yet backfilled.
+    pub async fn get_historically_opened_with_window(
+        &self,
+        months: Option<i32>,
+        from: Option<DateTime<Utc>>,
+    ) -> Result<Vec<HistoricallyOpened>, crate::error::Error> {
+        // Build time conditions dynamically
+        let mut conditions = Vec::new();
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                "o.\"LS_timestamp\" >= NOW() - INTERVAL '{} months'",
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push("o.\"LS_timestamp\" > $1".to_string());
+        }
+
+        let time_condition = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
+        };
+
+        // Optimized query using pre-computed columns with fallbacks
+        let query = format!(
+            r#"
+            SELECT
+                o."LS_contract_id" AS contract_id,
+                o."LS_address_id" AS "user",
+                -- Use pool_config label for short positions, otherwise asset symbol
+                COALESCE(
+                    CASE 
+                        WHEN o."LS_position_type" = 'Short' THEN pc."label"
+                        ELSE NULL
+                    END,
+                    CASE
+                        WHEN o."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
+                        WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
+                        WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
+                        WHEN o."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
+                        ELSE o."LS_asset_symbol"
+                    END
+                ) AS leased_asset,
+                o."LS_timestamp" AS opening_date,
+                -- Use pre-computed position_type or fallback to computed
+                COALESCE(
+                    o."LS_position_type",
+                    CASE
+                        WHEN o."LS_loan_pool_id" IN (
+                            'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
+                            'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
+                            'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
+                            'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
+                        ) THEN 'Short' ELSE 'Long'
+                    END
+                ) AS position_type,
+                -- Normalized down payment amount
+                CASE
+                    WHEN o."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_cltr_amnt_stable" / 100000000
+                    WHEN o."LS_cltr_symbol" IN ('ALL_SOL') THEN o."LS_cltr_amnt_stable" / 1000000000
+                    WHEN o."LS_cltr_symbol" IN ('PICA') THEN o."LS_cltr_amnt_stable" / 1000000000000
+                    WHEN o."LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000
+                    ELSE o."LS_cltr_amnt_stable" / 1000000
+                END AS down_payment_amount,
+                o."LS_cltr_symbol" AS down_payment_asset,
+                -- Normalized loan amount
+                CASE
+                    WHEN o."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN o."LS_loan_amnt_stable" / 1000000
+                    WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN o."LS_loan_amnt_stable" / 100000000
+                    WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN o."LS_loan_amnt_stable" / 1000000000
+                    WHEN o."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN o."LS_loan_amnt_stable" / 1000000
+                    ELSE o."LS_loan_amnt_asset" / 1000000
+                END AS loan,
+                -- Total position amount in LPN
+                COALESCE(o."LS_lpn_loan_amnt" / COALESCE(o."LS_lpn_decimals", 1000000)::numeric, 0) AS total_position_amount_lpn,
+                -- Use pre-computed opening_price or fallback to LATERAL join
+                COALESCE(
+                    o."LS_opening_price",
+                    (
+                        SELECT m."MP_price_in_stable"
+                        FROM "MP_Asset" m
+                        WHERE m."MP_asset_symbol" = o."LS_asset_symbol"
+                          AND m."MP_asset_timestamp" <= o."LS_timestamp"
+                        ORDER BY m."MP_asset_timestamp" DESC
+                        LIMIT 1
+                    )
+                ) AS price,
+                -- Check if position is still open
+                EXISTS (
+                    SELECT 1
+                    FROM "LS_State" s
+                    WHERE s."LS_contract_id" = o."LS_contract_id"
+                      AND s."LS_timestamp" >= NOW() - interval '1 hour'
+                ) AS open,
+                -- Use pre-computed liquidation_price or fallback to computed
+                COALESCE(
+                    o."LS_liquidation_price_at_open",
+                    CASE
+                        WHEN COALESCE(o."LS_position_type", 
+                            CASE WHEN o."LS_loan_pool_id" IN (
+                                'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
+                                'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
+                                'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
+                                'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
+                            ) THEN 'Short' ELSE 'Long' END
+                        ) = 'Long' THEN
+                            (o."LS_loan_amnt_stable" / 1000000.0 / 0.9) / 
+                            NULLIF((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / 1000000.0, 0) *
+                            COALESCE(o."LS_opening_price", (
+                                SELECT m."MP_price_in_stable"
+                                FROM "MP_Asset" m
+                                WHERE m."MP_asset_symbol" = o."LS_asset_symbol"
+                                  AND m."MP_asset_timestamp" <= o."LS_timestamp"
+                                ORDER BY m."MP_asset_timestamp" DESC
+                                LIMIT 1
+                            ))
+                        WHEN COALESCE(o."LS_position_type",
+                            CASE WHEN o."LS_loan_pool_id" IN (
+                                'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
+                                'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
+                                'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
+                                'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
+                            ) THEN 'Short' ELSE 'Long' END
+                        ) = 'Short' THEN
+                            ((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / 1000000.0) /
+                            NULLIF(o."LS_lpn_loan_amnt" / 1000000.0 / 0.9, 0)
+                    END
+                ) AS liquidation_price
+            FROM "LS_Opening" o
+            LEFT JOIN "pool_config" pc ON o."LS_loan_pool_id" = pc."pool_id"
+            {}
+            ORDER BY o."LS_timestamp" DESC
+            "#,
+            time_condition
+        );
+
+        let mut query_builder = sqlx::query_as::<_, HistoricallyOpened>(&query);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
+
+        Ok(data)
+    }
+
+    /// Get all historically opened positions without pagination - for streaming CSV export
+    pub async fn get_all_historically_opened(
+        &self,
+    ) -> Result<Vec<HistoricallyOpened>, crate::error::Error> {
+        let data = sqlx::query_as(
+            r#"
+            WITH Historically_Opened_Base AS (
+                SELECT DISTINCT ON (lso."LS_contract_id")
+                    lso."LS_contract_id" AS "Contract ID",
+                    lso."LS_address_id" AS "User",
+                    CASE
+                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
+                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
+                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
+                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
+                        ELSE "LS_asset_symbol"
+                    END AS "Leased Asset",
+                    "LS_timestamp" AS "Opening Date",
+                    CASE
+                        WHEN "LS_loan_pool_id" IN (
+                            'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
+                            'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
+                            'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
+                            'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
+                        ) THEN 'Short' ELSE 'Long'
+                    END AS "Type",
+                    CASE
+                        WHEN "LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN "LS_cltr_amnt_stable" / 100000000
+                        WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
+                        WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
+                        WHEN "LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
+                        ELSE "LS_cltr_amnt_stable" / 1000000
+                    END AS "Down Payment Amount",
+                    "LS_cltr_symbol" AS "Down Payment Asset",
+                    CASE
+                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
+                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
+                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
+                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN "LS_loan_amnt_stable" / 1000000
+                        ELSE "LS_loan_amnt_asset" / 1000000
+                    END AS "Loan",
+                    CASE
+                        WHEN "LS_loan_pool_id" IN (
+                            'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5',
+                            'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf',
+                            'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94',
+                            'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6'
+                        ) THEN
+                            CASE
+                                WHEN "LS_asset_symbol" IN ('ALL_BTC','WBTC','CRO') THEN "LS_lpn_loan_amnt" / 100000000
+                                WHEN "LS_asset_symbol" IN ('ALL_SOL') THEN "LS_lpn_loan_amnt" / 1000000000
+                                WHEN "LS_asset_symbol" IN ('PICA') THEN "LS_lpn_loan_amnt" / 1000000000000
+                                WHEN "LS_asset_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN "LS_lpn_loan_amnt" / 1000000000000000000
+                                ELSE "LS_lpn_loan_amnt" / 1000000
+                            END
+                        ELSE "LS_lpn_loan_amnt" / 1000000
+                    END AS "Total Position Amount (LPN)"
+                FROM "LS_Opening" lso
+            ),
+            Opened_With_Price AS (
+                SELECT
+                    hob.*,
+                    p.price AS "Price",
+                    EXISTS (
+                        SELECT 1
+                        FROM "LS_State" s
+                        WHERE s."LS_contract_id" = hob."Contract ID"
+                            AND s."LS_timestamp" >= NOW() - interval '1 hour'
+                    ) AS "Open"
+                FROM Historically_Opened_Base hob
+                LEFT JOIN LATERAL (
+                    SELECT a."MP_price_in_stable" AS price
+                    FROM "MP_Asset" a
+                    WHERE a."MP_asset_symbol" = hob."Leased Asset"
+                        AND a."MP_asset_timestamp" <= hob."Opening Date"
+                    ORDER BY a."MP_asset_timestamp" DESC
+                    LIMIT 1
+                ) p ON true
+            )
+            SELECT
+                "Contract ID" AS contract_id,
+                "User" AS user,
+                "Leased Asset" AS leased_asset,
+                "Opening Date" AS opening_date,
+                "Type" AS position_type,
+                "Down Payment Amount" AS down_payment_amount,
+                "Down Payment Asset" AS down_payment_asset,
+                "Loan" AS loan,
+                "Total Position Amount (LPN)" AS total_position_amount_lpn,
+                "Price" AS price,
+                "Open" AS open,
+                CASE
+                    WHEN "Type" = 'Long' THEN ("Loan" / 0.9) / ("Down Payment Amount" + "Loan") * "Price"
+                    WHEN "Type" = 'Short' THEN ("Down Payment Amount" + "Loan") / ("Total Position Amount (LPN)" / 0.9)
+                END AS liquidation_price
+            FROM Opened_With_Price
+            ORDER BY "Opening Date" DESC
+            "#,
+        )
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
+    }
+
     pub async fn get_realized_pnl_by_wallet(
         &self,
         skip: i64,
@@ -1817,6 +2155,252 @@ impl Table<LS_Opening> {
         .persistent(true)
         .fetch_all(&self.pool)
         .await?;
+
+        Ok(data)
+    }
+
+    /// Get realized PnL by wallet with time window filtering
+    pub async fn get_realized_pnl_by_wallet_with_window(
+        &self,
+        months: Option<i32>,
+        from: Option<DateTime<Utc>>,
+    ) -> Result<Vec<RealizedPnlWallet>, crate::error::Error> {
+        // Build time conditions dynamically
+        let mut conditions = Vec::new();
+
+        if let Some(m) = months {
+            conditions.push(format!(
+                "o.\"LS_timestamp\" >= NOW() - INTERVAL '{} months'",
+                m
+            ));
+        }
+
+        if from.is_some() {
+            conditions.push("o.\"LS_timestamp\" > $1".to_string());
+        }
+
+        let time_condition = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
+        };
+
+        let query = format!(
+            r#"
+            WITH openings_raw AS (
+                SELECT
+                    o."LS_contract_id" AS "Contract ID",
+                    o."LS_address_id" AS "User",
+                    o."LS_timestamp" AS "Opening Date",
+                    o."LS_asset_symbol" AS "Leased Asset",
+                    o."LS_cltr_symbol" AS "Down Payment Asset",
+                    o."LS_cltr_amnt_stable" / 1000000 AS "Down Payment (Stable)",
+                    CASE o."LS_loan_pool_id"
+                        WHEN 'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6' THEN 'USDC_NOBLE'
+                        WHEN 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5' THEN 'USDC'
+                        WHEN 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94' THEN 'USDC_AXELAR'
+                        WHEN 'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf' THEN 'USDC_NOBLE'
+                        WHEN 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
+                        WHEN 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
+                        WHEN 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
+                        WHEN 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
+                        WHEN 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM'
+                        WHEN 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMO'
+                        ELSE 'USDC_NOBLE'
+                    END AS "LPN_Symbol"
+                FROM "LS_Opening" o
+                {}
+            ),
+                    openings AS (
+                        SELECT
+                            r.*,
+                            CASE WHEN r."LPN_Symbol" IN ('USDC_NOBLE','USDC','USDC_AXELAR') THEN TRUE ELSE FALSE END AS "LPN_IsStable"
+                        FROM openings_raw r
+                    ),
+                    loan_close AS (
+                        SELECT
+                            lc."LS_contract_id" AS "Contract ID",
+                            MAX(lc."LS_timestamp") AS "Close Timestamp"
+                        FROM "LS_Loan_Closing" lc
+                        JOIN openings o ON o."Contract ID" = lc."LS_contract_id"
+                        GROUP BY lc."LS_contract_id"
+                    ),
+                    close_rows_lpn AS (
+                        SELECT
+                            c."LS_contract_id" AS "Contract ID",
+                            c."LS_timestamp" AS "Close Timestamp",
+                            c."LS_change" AS "LS_change_raw",
+                            o."LPN_Symbol",
+                            o."LPN_IsStable"
+                        FROM "LS_Close_Position" c
+                        JOIN openings o ON o."Contract ID" = c."LS_contract_id"
+                    ),
+                    norm_lpn AS (
+                        SELECT
+                            cr."Contract ID",
+                            cr."Close Timestamp",
+                            cr."LPN_Symbol",
+                            cr."LPN_IsStable",
+                            CASE
+                                WHEN cr."LPN_Symbol" IN ('ALL_BTC','WBTC','CRO') THEN cr."LS_change_raw" / 100000000
+                                WHEN cr."LPN_Symbol" IN ('ALL_SOL') THEN cr."LS_change_raw" / 1000000000
+                                WHEN cr."LPN_Symbol" IN ('PICA') THEN cr."LS_change_raw" / 1000000000000
+                                WHEN cr."LPN_Symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN cr."LS_change_raw" / 1000000000000000000
+                                ELSE cr."LS_change_raw" / 1000000
+                            END AS "Units"
+                        FROM close_rows_lpn cr
+                    ),
+                    priced_lpn AS (
+                        SELECT
+                            nl."Contract ID",
+                            nl."Close Timestamp",
+                            nl."LPN_Symbol",
+                            nl."Units" AS "Returned Amount (LPN Units)",
+                            CASE
+                                WHEN nl."LPN_Symbol" IN ('USDC_NOBLE','USDC','USDC_AXELAR') OR nl."LPN_IsStable"
+                                    THEN nl."Units"
+                                ELSE nl."Units" * p."MP_price_in_stable"
+                            END AS "Returned Amount (Stable)"
+                        FROM norm_lpn nl
+                        LEFT JOIN LATERAL (
+                            SELECT "MP_price_in_stable"
+                            FROM "MP_Asset" m
+                            WHERE NOT nl."LPN_IsStable"
+                                AND m."MP_asset_symbol" = nl."LPN_Symbol"
+                                AND m."MP_asset_timestamp" BETWEEN nl."Close Timestamp" - INTERVAL '30 minutes'
+                                                            AND nl."Close Timestamp" + INTERVAL '30 minutes'
+                            ORDER BY ABS(EXTRACT(EPOCH FROM (m."MP_asset_timestamp" - nl."Close Timestamp"))) ASC
+                            LIMIT 1
+                        ) p ON TRUE
+                    ),
+                    agg_lpn AS (
+                        SELECT
+                            "Contract ID",
+                            MAX("Close Timestamp") AS "Close Timestamp (LPN)",
+                            MIN("LPN_Symbol") AS "Returned LPN",
+                            SUM("Returned Amount (LPN Units)") AS "Returned Amount (LPN Units)",
+                            SUM("Returned Amount (Stable)") AS "Returned Amount (Stable)"
+                        FROM priced_lpn
+                        GROUP BY "Contract ID"
+                    ),
+                    leased_rows AS (
+                        SELECT
+                            lc."LS_contract_id" AS "Contract ID",
+                            lc."LS_timestamp" AS "Close Timestamp",
+                            lc."LS_amnt" AS "leased_raw",
+                            o."Leased Asset"
+                        FROM "LS_Loan_Closing" lc
+                        JOIN openings o ON o."Contract ID" = lc."LS_contract_id"
+                    ),
+                    norm_leased AS (
+                        SELECT
+                            lr."Contract ID",
+                            lr."Close Timestamp",
+                            lr."Leased Asset",
+                            CASE
+                                WHEN lr."Leased Asset" IN ('ALL_BTC','WBTC','CRO') THEN lr."leased_raw" / 100000000
+                                WHEN lr."Leased Asset" IN ('ALL_SOL') THEN lr."leased_raw" / 1000000000
+                                WHEN lr."Leased Asset" IN ('PICA') THEN lr."leased_raw" / 1000000000000
+                                WHEN lr."Leased Asset" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN lr."leased_raw" / 1000000000000000000
+                                ELSE lr."leased_raw" / 1000000
+                            END AS "Units"
+                        FROM leased_rows lr
+                    ),
+                    priced_leased AS (
+                        SELECT
+                            nl."Contract ID",
+                            nl."Close Timestamp",
+                            nl."Leased Asset",
+                            nl."Units",
+                            CASE
+                                WHEN nl."Leased Asset" IN ('USDC_NOBLE','USDC','USDC_AXELAR')
+                                    THEN nl."Units"
+                                ELSE nl."Units" * p."MP_price_in_stable"
+                            END AS "Returned Amount (Stable)"
+                        FROM norm_leased nl
+                        LEFT JOIN LATERAL (
+                            SELECT "MP_price_in_stable"
+                            FROM "MP_Asset" m
+                            WHERE m."MP_asset_symbol" = nl."Leased Asset"
+                                AND m."MP_asset_timestamp" BETWEEN nl."Close Timestamp" - INTERVAL '30 minutes'
+                                                            AND nl."Close Timestamp" + INTERVAL '30 minutes'
+                            ORDER BY ABS(EXTRACT(EPOCH FROM (m."MP_asset_timestamp" - nl."Close Timestamp"))) ASC
+                            LIMIT 1
+                        ) p ON TRUE
+                    ),
+                    agg_leased AS (
+                        SELECT
+                            "Contract ID",
+                            MAX("Close Timestamp") AS "Close Timestamp (Leased)",
+                            MIN("Leased Asset") AS "Returned LPN",
+                            SUM("Units") AS "Returned Amount (LPN Units)",
+                            SUM("Returned Amount (Stable)") AS "Returned Amount (Stable)"
+                        FROM priced_leased
+                        GROUP BY "Contract ID"
+                    ),
+                    inflow AS (
+                        SELECT
+                            lc."Contract ID",
+                            lc."Close Timestamp",
+                            COALESCE(al."Returned LPN", agl."Returned LPN") AS "Returned LPN",
+                            COALESCE(al."Returned Amount (LPN Units)", agl."Returned Amount (LPN Units)") AS "Returned Amount (LPN Units)",
+                            COALESCE(al."Returned Amount (Stable)", agl."Returned Amount (Stable)") AS "Returned Amount (Stable)"
+                        FROM loan_close lc
+                        LEFT JOIN agg_lpn al ON al."Contract ID" = lc."Contract ID"
+                        LEFT JOIN agg_leased agl ON agl."Contract ID" = lc."Contract ID"
+                    ),
+                    repays AS (
+                        SELECT 
+                            r."LS_contract_id" AS "Contract ID",
+                            SUM(r."LS_payment_amnt_stable") / 1000000 AS "Manual Repayments (Stable)"
+                        FROM "LS_Repayment" r 
+                        JOIN openings o ON o."Contract ID" = r."LS_contract_id"
+                        GROUP BY r."LS_contract_id"
+                    ),
+                    liqs AS (
+                        SELECT 
+                            l."LS_contract_id" AS "Contract ID",
+                            SUM(l."LS_payment_amnt_stable") / 1000000 AS "Liquidations (Stable)",
+                            COUNT(*) AS "Liquidation Events"
+                        FROM "LS_Liquidation" l 
+                        JOIN openings o ON o."Contract ID" = l."LS_contract_id"
+                        GROUP BY l."LS_contract_id"
+                    )
+                    SELECT
+                        o."Contract ID" AS contract_id,
+                        o."User" AS user,
+                        o."Leased Asset" AS leased_asset,
+                        o."Down Payment Asset" AS down_payment_asset,
+                        o."Opening Date" AS opening_date,
+                        i."Close Timestamp" AS close_timestamp,
+                        o."Down Payment (Stable)" AS down_payment_stable,
+                        COALESCE(r."Manual Repayments (Stable)", 0) AS manual_repayments_stable,
+                        (o."Down Payment (Stable)" + COALESCE(r."Manual Repayments (Stable)", 0)) AS total_outflow_stable,
+                        COALESCE(l."Liquidations (Stable)", 0) AS liquidations_stable,
+                        COALESCE(l."Liquidation Events", 0) AS liquidation_events,
+                        i."Returned LPN" AS returned_lpn,
+                        i."Returned Amount (LPN Units)" AS returned_amount_lpn_units,
+                        i."Returned Amount (Stable)" AS returned_amount_stable,
+                        CASE 
+                            WHEN i."Returned Amount (Stable)" IS NULL THEN NULL
+                            ELSE i."Returned Amount (Stable)" - (o."Down Payment (Stable)" + COALESCE(r."Manual Repayments (Stable)", 0))
+                        END AS realized_pnl_stable
+                FROM openings o
+                JOIN inflow i ON i."Contract ID" = o."Contract ID"
+                LEFT JOIN repays r ON r."Contract ID" = o."Contract ID"
+                LEFT JOIN liqs l ON l."Contract ID" = o."Contract ID"
+                ORDER BY i."Close Timestamp" DESC
+            "#,
+            time_condition
+        );
+
+        let mut query_builder = sqlx::query_as::<_, RealizedPnlWallet>(&query);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
 
         Ok(data)
     }

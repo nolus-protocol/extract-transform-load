@@ -13,6 +13,38 @@ use crate::{
     types::LS_Opening_Type,
 };
 
+/// Calculate liquidation price at open
+/// For Long: liquidation_price = (loan / 0.9) / (down_payment + loan) * price
+/// For Short: liquidation_price = (down_payment + loan) / (total_position_lpn / 0.9)
+fn calculate_liquidation_price(
+    position_type: &str,
+    down_payment_stable: &BigDecimal,
+    loan_stable: &BigDecimal,
+    opening_price: &BigDecimal,
+    total_position_lpn: &BigDecimal,
+) -> Option<BigDecimal> {
+    let ltv_factor = BigDecimal::from_str("0.9").ok()?;
+    let total_collateral = down_payment_stable + loan_stable;
+
+    if total_collateral == BigDecimal::from(0) || *total_position_lpn == BigDecimal::from(0) {
+        return None;
+    }
+
+    match position_type {
+        "Long" => {
+            // (loan / 0.9) / (down_payment + loan) * price
+            let debt_at_liquidation = loan_stable / &ltv_factor;
+            Some(&debt_at_liquidation / &total_collateral * opening_price)
+        }
+        "Short" => {
+            // (down_payment + loan) / (total_position_lpn / 0.9)
+            let position_at_liquidation = total_position_lpn / &ltv_factor;
+            Some(&total_collateral / &position_at_liquidation)
+        }
+        _ => None,
+    }
+}
+
 pub async fn parse_and_insert(
     app_state: &AppState<State>,
     item: LS_Opening_Type,
@@ -76,7 +108,44 @@ pub async fn parse_and_insert(
 
     let LS_loan_amnt_stable =
         app_state.in_stabe_calc(&l_price, &item.loan_amount)?;
-    let LS_lpn_loan_amnt = &LS_loan_amnt * lease_currency_price / lpn_price;
+    let LS_lpn_loan_amnt = &LS_loan_amnt * &lease_currency_price / &lpn_price;
+
+    // Fetch pool config for pre-computed columns
+    let pool_config = app_state
+        .database
+        .pool_config
+        .get_by_pool_id(&item.loan_pool_id)
+        .await
+        .ok()
+        .flatten();
+
+    // Extract pre-computed values from pool_config
+    let (position_type, lpn_symbol, lpn_decimals) = match &pool_config {
+        Some(pc) => (
+            Some(pc.position_type.clone()),
+            Some(pc.lpn_symbol.clone()),
+            Some(pc.lpn_decimals),
+        ),
+        None => (None, None, None),
+    };
+
+    // Calculate down payment in stable
+    let down_payment_stable = app_state
+        .in_stabe_calc(&d_price, &item.downpayment_amount)?;
+
+    // Opening price is the leased currency price
+    let opening_price = Some(lease_currency_price.clone());
+
+    // Calculate liquidation price at open
+    let liquidation_price_at_open = position_type.as_ref().and_then(|pt| {
+        calculate_liquidation_price(
+            pt,
+            &down_payment_stable,
+            &LS_loan_amnt_stable,
+            &lease_currency_price,
+            &LS_lpn_loan_amnt,
+        )
+    });
 
     let ls_opening = LS_Opening {
         Tx_Hash: tx_hash,
@@ -90,14 +159,19 @@ pub async fn parse_and_insert(
         LS_loan_amnt_stable,
         LS_loan_amnt_asset: BigDecimal::from_str(item.loan_amount.as_str())?,
         LS_cltr_symbol: item.downpayment_symbol.to_owned(),
-        LS_cltr_amnt_stable: app_state
-            .in_stabe_calc(&d_price, &item.downpayment_amount)?,
+        LS_cltr_amnt_stable: down_payment_stable,
         LS_cltr_amnt_asset: BigDecimal::from_str(
             item.downpayment_amount.as_str(),
         )?,
         LS_native_amnt_stable: BigDecimal::from(0),
         LS_native_amnt_nolus: BigDecimal::from(0),
         LS_lpn_loan_amnt,
+        // Pre-computed columns
+        LS_position_type: position_type,
+        LS_lpn_symbol: lpn_symbol,
+        LS_lpn_decimals: lpn_decimals,
+        LS_opening_price: opening_price,
+        LS_liquidation_price_at_open: liquidation_price_at_open,
     };
 
     app_state

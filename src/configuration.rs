@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use tokio::sync::Semaphore;
+use tokio::sync::{RwLock, Semaphore};
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
@@ -19,6 +19,7 @@ use crate::{
         postgre::{
             lp_deposit::HistoricalLender,
             lp_lender_state::CurrentLender,
+            lp_pool_state::PoolUtilizationLevel,
             ls_liquidation::{HistoricallyLiquidated, LiquidationData},
             ls_opening::{HistoricallyOpened, LoanGranted, RealizedPnlWallet},
             ls_repayment::{HistoricallyRepaid, InterestRepaymentData},
@@ -28,9 +29,9 @@ use crate::{
     error::Error,
     helpers::{formatter, parse_tuple_string, Formatter, Protocol_Types},
     model::{
-        DailyPositionsPoint, Leased_Asset, Leases_Monthly, LP_Pool,
-        MonthlyActiveWallet, Position, PositionBucket, RevenueSeriesPoint,
-        Supplied_Borrowed_Series, TokenLoan, TokenPosition,
+        Borrow_APR, Buyback, DailyPositionsPoint, Leased_Asset, Leases_Monthly,
+        LP_Pool, MonthlyActiveWallet, Position, PositionBucket, RevenueSeriesPoint,
+        Supplied_Borrowed_Series, TokenLoan, TokenPosition, Utilization_Level,
     },
     provider::{DatabasePool, Grpc, HTTP},
     types::{AdminProtocolExtendType, Currency},
@@ -99,6 +100,12 @@ pub struct ApiCache {
     pub loans_by_token: TimedCache<Vec<TokenLoan>>,
     pub open_positions_by_token: TimedCache<Vec<TokenPosition>>,
     pub unrealized_pnl: TimedCache<BigDecimal>,
+    pub utilization_levels: TimedCache<Vec<PoolUtilizationLevel>>,
+    // Period-based endpoints (new)
+    pub buyback: TimedCache<Vec<Buyback>>,
+    pub borrow_apr: TimedCache<Vec<Borrow_APR>>,
+    pub utilization_level: TimedCache<Vec<Utilization_Level>>,
+    pub borrowed: TimedCache<BigDecimal>,
 }
 
 impl ApiCache {
@@ -109,16 +116,20 @@ impl ApiCache {
             total_tx_value: TimedCache::new(CACHE_TTL_STANDARD),
             realized_pnl_stats: TimedCache::new(CACHE_TTL_STANDARD),
             revenue: TimedCache::new(CACHE_TTL_STANDARD),
-            current_lenders: TimedCache::new(CACHE_TTL_STANDARD),
-            lease_value_stats: TimedCache::new(CACHE_TTL_STANDARD),
-            daily_positions: TimedCache::new(CACHE_TTL_STANDARD),
-            position_buckets: TimedCache::new(CACHE_TTL_STANDARD),
-            loans_by_token: TimedCache::new(CACHE_TTL_STANDARD),
-            open_positions_by_token: TimedCache::new(CACHE_TTL_STANDARD),
-            loans_granted: TimedCache::new(CACHE_TTL_STANDARD),
-            historically_repaid: TimedCache::new(CACHE_TTL_STANDARD),
-            historically_liquidated: TimedCache::new(CACHE_TTL_STANDARD),
+            utilization_levels: TimedCache::new(CACHE_TTL_STANDARD),  // /api/utilization-levels - 30m
             // 1-hour TTL endpoints (auto-refreshed)
+            current_lenders: TimedCache::new(CACHE_TTL_LONG),         // /api/current-lenders - 1h
+            liquidations: TimedCache::new(CACHE_TTL_LONG),            // /api/liquidations - 1h
+            lease_value_stats: TimedCache::new(CACHE_TTL_LONG),       // /api/lease-value-stats - 1h
+            historical_lenders: TimedCache::new(CACHE_TTL_LONG),      // /api/historical-lenders - 1h
+            loans_granted: TimedCache::new(CACHE_TTL_LONG),           // /api/loans-granted - 1h
+            historically_repaid: TimedCache::new(CACHE_TTL_LONG),     // /api/historically-repaid - 1h
+            realized_pnl_wallet: TimedCache::new(CACHE_TTL_LONG),     // /api/realized-pnl-wallet - 1h
+            daily_positions: TimedCache::new(CACHE_TTL_LONG),
+            position_buckets: TimedCache::new(CACHE_TTL_LONG),
+            loans_by_token: TimedCache::new(CACHE_TTL_LONG),
+            open_positions_by_token: TimedCache::new(CACHE_TTL_LONG),
+            historically_liquidated: TimedCache::new(CACHE_TTL_LONG),
             interest_repayments: TimedCache::new(CACHE_TTL_LONG),
             buyback_total: TimedCache::new(CACHE_TTL_LONG),
             distributed: TimedCache::new(CACHE_TTL_LONG),
@@ -134,10 +145,12 @@ impl ApiCache {
             positions: TimedCache::new(CACHE_TTL_LONG),
             leased_assets: TimedCache::new(CACHE_TTL_LONG),
             supplied_borrowed_history: TimedCache::new(CACHE_TTL_LONG),
-            historical_lenders: TimedCache::new(CACHE_TTL_STANDARD),
-            historically_opened: TimedCache::new(CACHE_TTL_STANDARD),
-            liquidations: TimedCache::new(CACHE_TTL_STANDARD),
-            realized_pnl_wallet: TimedCache::new(CACHE_TTL_STANDARD),
+            historically_opened: TimedCache::new(CACHE_TTL_LONG),
+            // Period-based endpoints
+            buyback: TimedCache::new(CACHE_TTL_LONG),
+            borrow_apr: TimedCache::new(CACHE_TTL_LONG),
+            utilization_level: TimedCache::new(CACHE_TTL_STANDARD),
+            borrowed: TimedCache::new(CACHE_TTL_STANDARD),
         }
     }
 }
@@ -151,6 +164,13 @@ impl Default for ApiCache {
 /// Maximum number of concurrent push notification tasks
 const MAX_PUSH_TASKS: usize = 100;
 
+/// Key for the latest prices cache: (symbol, protocol)
+pub type PriceCacheKey = (String, String);
+
+/// In-memory cache for the latest asset prices
+/// Updated every time prices are fetched from the oracle
+pub type LatestPricesCache = Arc<RwLock<HashMap<PriceCacheKey, BigDecimal>>>;
+
 pub struct State {
     pub config: Config,
     pub database: DatabasePool,
@@ -160,6 +180,8 @@ pub struct State {
     pub http: HTTP,
     /// Semaphore to limit concurrent push notification tasks
     pub push_permits: Arc<Semaphore>,
+    /// In-memory cache for the latest asset prices (updated every price fetch cycle)
+    pub latest_prices: LatestPricesCache,
 }
 
 impl std::fmt::Debug for State {
@@ -172,6 +194,7 @@ impl std::fmt::Debug for State {
             .field("api_cache", &self.api_cache)
             .field("http", &self.http)
             .field("push_permits", &"<Semaphore>")
+            .field("latest_prices", &"<RwLock<HashMap>>")
             .finish()
     }
 }
@@ -194,6 +217,7 @@ impl State {
             protocols,
             api_cache: ApiCache::new(),
             push_permits: Arc::new(Semaphore::new(MAX_PUSH_TASKS)),
+            latest_prices: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 
@@ -226,6 +250,10 @@ impl State {
             "ls_slippage_anomaly.sql",
             "subscription.sql",
             "ls_loan_collect.sql",
+            // Performance optimization migrations
+            "indexes.sql",
+            "pool_config.sql",
+            "ls_opening_precompute.sql",
         ];
 
         let dir = env!("CARGO_MANIFEST_DIR");
@@ -284,6 +312,26 @@ impl State {
         Ok(protocolsMap)
     }
 
+    /// Get the latest price for a symbol, checking the in-memory cache first.
+    /// Falls back to database if not found in cache.
+    pub async fn get_cached_price(
+        &self,
+        symbol: &str,
+        protocol: Option<String>,
+    ) -> Result<BigDecimal, Error> {
+        // Try to get from in-memory cache first
+        if let Some(protocol_str) = &protocol {
+            let cache = self.latest_prices.read().await;
+            if let Some(price) = cache.get(&(symbol.to_owned(), protocol_str.clone())) {
+                return Ok(price.clone());
+            }
+        }
+
+        // Fall back to database
+        let (price,) = self.database.mp_asset.get_price(symbol, protocol).await?;
+        Ok(price)
+    }
+
     pub async fn in_stabe(
         &self,
         currency_symbol: &str,
@@ -292,8 +340,7 @@ impl State {
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
         let Currency(symbol, _, _) = currency;
-        let (stabe_price,) =
-            self.database.mp_asset.get_price(symbol, protocol).await?;
+        let stabe_price = self.get_cached_price(symbol, protocol).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
         Ok(val)
@@ -328,8 +375,7 @@ impl State {
         let Currency(symbol, _, _) = currency;
         let protocol = self.get_protocol_by_pool_id(pool_id);
 
-        let (stabe_price,) =
-            self.database.mp_asset.get_price(symbol, protocol).await?;
+        let stabe_price = self.get_cached_price(symbol, protocol).await?;
         let val = self.in_stabe_calc(&stabe_price, value)?;
 
         Ok(val)

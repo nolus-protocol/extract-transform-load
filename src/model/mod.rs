@@ -1,6 +1,7 @@
 mod action_history;
 mod cached_responses;
 mod block;
+mod pool_config;
 mod borrow_apr;
 mod buyback;
 mod leased_asset;
@@ -44,6 +45,7 @@ mod utilization_level;
 
 pub use action_history::{Action_History, Actions};
 pub use block::Block;
+pub use pool_config::Pool_Config;
 pub use borrow_apr::Borrow_APR;
 pub use buyback::Buyback;
 pub use leased_asset::Leased_Asset;
