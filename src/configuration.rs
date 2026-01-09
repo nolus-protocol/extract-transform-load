@@ -261,7 +261,10 @@ impl State {
 
         for file in files {
             let data = get_path(dir, file)?;
-            sqlx::query(data.as_str()).execute(&database.pool).await?;
+            sqlx::query(data.as_str())
+                .persistent(false)
+                .execute(&database.pool)
+                .await?;
         }
 
         Ok(())

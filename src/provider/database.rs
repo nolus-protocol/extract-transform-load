@@ -66,6 +66,7 @@ impl DatabasePool {
                         "SET statement_timeout = '{}'",
                         statement_timeout_ms
                     ))
+                    .persistent(false)
                     .execute(conn)
                     .await?;
                     Ok(())
