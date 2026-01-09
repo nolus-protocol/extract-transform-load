@@ -487,15 +487,15 @@
   },
   {
     "category": "Market Data",
-    "description": "Returns historical price data for assets with optional interval and protocol filtering.",
+    "description": "Returns historical price data for assets with interval and protocol filtering.",
     "url": "/api/prices",
     "type": "GET",
-    "response": "[{ date: DateTime, price: BigDecimal, symbol: String }]",
-    "example": "[{ \"date\": \"2025-01-15T12:00:00Z\", \"price\": \"9.45\", \"symbol\": \"ATOM\" }]",
+    "response": "[[timestamp: Number, price: Number]]",
+    "example": "[[1767978000000, 2.577725], [1767974400000, 2.553094]]",
     "params": [
-      { "name": "interval", "type": "Number" },
-      { "name": "key", "type": "String" },
-      { "name": "protocol", "type": "String" }
+      { "name": "interval", "type": "Number", "required": true, "description": "Time interval in seconds (e.g., 3600 for hourly)" },
+      { "name": "key", "type": "String", "required": true, "description": "Asset symbol (e.g., ATOM, OSMO)" },
+      { "name": "protocol", "type": "String", "required": true, "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC_NOBLE)" }
     ]
   },
   {
@@ -518,7 +518,7 @@
     "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"pnl\": \"234.56\" }]",
     "params": [
       { "name": "address", "type": "String", "required": true },
-      { "name": "interval", "type": "String" }
+      { "name": "interval", "type": "Number", "required": true, "description": "Number of days to look back (max 30)", "max": 30 }
     ]
   },
   {

@@ -90,7 +90,12 @@ impl Table<LS_State> {
                 "LS_native_amnt_nolus",
                 "Tx_Hash",
                 "LS_loan_amnt",
-                "LS_lpn_loan_amnt"
+                "LS_lpn_loan_amnt",
+                "LS_position_type",
+                "LS_lpn_symbol",
+                "LS_lpn_decimals",
+                "LS_opening_price",
+                "LS_liquidation_price_at_open"
               FROM "LS_Opening" WHERE "LS_contract_id" NOT IN
               (
                 SELECT "LS_contract_id" as "Total" FROM (

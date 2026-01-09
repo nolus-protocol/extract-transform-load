@@ -883,7 +883,12 @@ impl Table<LS_Opening> {
                     a."LS_native_amnt_nolus",
                     a."Tx_Hash",
                     a."LS_loan_amnt",
-                    a."LS_lpn_loan_amnt"
+                    a."LS_lpn_loan_amnt",
+                    a."LS_position_type",
+                    a."LS_lpn_symbol",
+                    a."LS_lpn_decimals",
+                    a."LS_opening_price",
+                    a."LS_liquidation_price_at_open"
                 FROM
                     "LS_Opening" as a
                 LEFT JOIN
