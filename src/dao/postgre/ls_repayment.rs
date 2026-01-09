@@ -49,7 +49,7 @@ impl Table<LS_Repayment> {
         .bind(ls_repayment.LS_repayment_height)
         .bind(&ls_repayment.LS_contract_id)
         .bind(ls_repayment.LS_timestamp)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -98,7 +98,7 @@ impl Table<LS_Repayment> {
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
         .bind(&data.Tx_Hash)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -147,7 +147,7 @@ impl Table<LS_Repayment> {
                 .push_bind(&ls.Tx_Hash);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -179,7 +179,7 @@ impl Table<LS_Repayment> {
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (
@@ -238,7 +238,7 @@ impl Table<LS_Repayment> {
             "#,
         )
         .bind(contract)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -318,7 +318,7 @@ impl Table<LS_Repayment> {
                 RepaidLeases rl
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
@@ -431,7 +431,7 @@ impl Table<LS_Repayment> {
             query_builder = query_builder.bind(from_ts);
         }
 
-        let data = query_builder.persistent(false).fetch_all(&self.pool).await?;
+        let data = query_builder.persistent(true).fetch_all(&self.pool).await?;
 
         Ok(data)
     }
@@ -523,7 +523,7 @@ impl Table<LS_Repayment> {
         .bind(skip)
         .bind(limit)
         .bind(from_timestamp)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
@@ -620,12 +620,12 @@ impl Table<LS_Repayment> {
         let data = if let Some(from_ts) = from {
             sqlx::query_as(&query)
                 .bind(from_ts)
-                .persistent(false)
+                .persistent(true)
                 .fetch_all(&self.pool)
                 .await?
         } else {
             sqlx::query_as(&query)
-                .persistent(false)
+                .persistent(true)
                 .fetch_all(&self.pool)
                 .await?
         };

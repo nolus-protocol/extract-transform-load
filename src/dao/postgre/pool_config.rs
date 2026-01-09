@@ -16,7 +16,7 @@ impl Table<Pool_Config> {
             "#,
         )
         .bind(pool_id)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await
     }
@@ -30,7 +30,7 @@ impl Table<Pool_Config> {
             ORDER BY "position_type", "label"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await
     }
@@ -45,7 +45,7 @@ impl Table<Pool_Config> {
             ORDER BY "label"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await
     }
@@ -60,7 +60,7 @@ impl Table<Pool_Config> {
             ORDER BY "label"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await
     }

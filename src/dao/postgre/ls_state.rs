@@ -66,7 +66,7 @@ impl Table<LS_State> {
         .bind(&data.LS_current_interest_stable)
         .bind(&data.LS_principal_stable)
         .bind(&data.LS_lpn_loan_amnt)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }
@@ -117,7 +117,7 @@ impl Table<LS_State> {
               )
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await
     }
@@ -166,7 +166,7 @@ impl Table<LS_State> {
                 .push_bind(&data.LS_principal_asset);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&self.pool).await?;
         Ok(())
     }
@@ -183,7 +183,7 @@ impl Table<LS_State> {
             "#,
         )
         .bind(timestamp)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         Ok(value)
@@ -245,7 +245,7 @@ impl Table<LS_State> {
                 value ASC
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
@@ -304,7 +304,7 @@ impl Table<LS_State> {
                 loan_category
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
@@ -372,7 +372,7 @@ impl Table<LS_State> {
                 market_value DESC
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
@@ -431,7 +431,7 @@ impl Table<LS_State> {
       SELECT SUM("Lease Value") FROM Lease_Value_Table
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -495,7 +495,7 @@ impl Table<LS_State> {
           SELECT SUM("Total Interest Due") FROM Lease_Value_Table
           "#,
       )
-      .persistent(false)
+      .persistent(true)
       .fetch_optional(&self.pool)
       .await?;
 
@@ -568,7 +568,7 @@ impl Table<LS_State> {
         FROM Joined_States
         "#,
     )
-    .persistent(false)
+    .persistent(true)
     .fetch_optional(&self.pool)
     .await?;
 
@@ -692,7 +692,7 @@ impl Table<LS_State> {
           AND lvt."Hour" = rs."Hour"
         ORDER BY lvt."Hour";
       "#, contract_id.to_owned(), contract_id.to_owned(), contract_id.to_owned(), contract_id.to_owned()))
-      .persistent(false)
+      .persistent(true)
     .fetch_all(&self.pool)
   .await?;
 
@@ -814,7 +814,7 @@ impl Table<LS_State> {
           "#,
       )
       .bind(address)
-      .persistent(false)
+      .persistent(true)
       .fetch_all(&self.pool)
       .await?;
         Ok(data)
@@ -929,7 +929,7 @@ impl Table<LS_State> {
         .bind(pools.osmosis_all_btc)
         .bind(pools.osmosis_all_sol)
         .bind(pools.osmosis_akt)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -976,7 +976,7 @@ impl Table<LS_State> {
             GROUP BY js."Symbol"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
@@ -1121,7 +1121,7 @@ impl Table<LS_State> {
         )
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
@@ -1262,7 +1262,7 @@ impl Table<LS_State> {
             LEFT JOIN Repayments rp ON js."Contract ID" = rp."LS_contract_id"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 

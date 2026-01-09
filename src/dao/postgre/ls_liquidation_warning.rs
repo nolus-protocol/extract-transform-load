@@ -23,7 +23,7 @@ impl Table<LS_Liquidation_Warning> {
         .bind(&ls_liquidatiion_warning.Tx_Hash)
         .bind(&ls_liquidatiion_warning.LS_contract_id)
         .bind(ls_liquidatiion_warning.LS_timestamp)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -60,7 +60,7 @@ impl Table<LS_Liquidation_Warning> {
         .bind(data.LS_level)
         .bind(data.LS_ltv)
         .bind(data.LS_timestamp)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -92,7 +92,7 @@ impl Table<LS_Liquidation_Warning> {
         .bind(data.LS_level)
         .bind(data.LS_ltv)
         .bind(data.LS_timestamp)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }

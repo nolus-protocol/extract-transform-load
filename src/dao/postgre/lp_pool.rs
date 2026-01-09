@@ -19,14 +19,14 @@ impl Table<LP_Pool> {
         .bind(&data.LP_symbol)
         .bind(data.LP_status)
         .bind(&data.LP_Pool_id)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }
 
     pub async fn get_all(&self) -> Result<Vec<LP_Pool>, Error> {
         sqlx::query_as(r#"SELECT * FROM "LP_Pool""#)
-            .persistent(false)
+            .persistent(true)
             .fetch_all(&self.pool)
             .await
     }

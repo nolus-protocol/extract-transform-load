@@ -21,7 +21,7 @@ impl Table<LS_Loan_Collect> {
         )
         .bind(contract)
         .bind(symbol)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -52,7 +52,7 @@ impl Table<LS_Loan_Collect> {
         .bind(&data.LS_symbol)
         .bind(&data.LS_amount)
         .bind(&data.LS_amount_stable)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -83,7 +83,7 @@ impl Table<LS_Loan_Collect> {
                 .push_bind(&data.LS_amount_stable);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -113,14 +113,14 @@ impl Table<LS_Loan_Collect> {
                 .push_bind(&data.LS_amount_stable);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&self.pool).await?;
         Ok(())
     }
 
     pub async fn get_all(&self) -> Result<Vec<LS_Loan_Collect>, Error> {
         sqlx::query_as(r#"SELECT * FROM "LS_Loan_Collect""#)
-            .persistent(false)
+            .persistent(true)
             .fetch_all(&self.pool)
             .await
     }
@@ -145,7 +145,7 @@ impl Table<LS_Loan_Collect> {
         .bind(&amount)
         .bind(&data.LS_contract_id)
         .bind(&data.LS_symbol)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }

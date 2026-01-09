@@ -35,7 +35,7 @@ impl Table<Raw_Message> {
         .bind(&data.rewards)
 		.bind(&data.rewards)
 		.bind(data.code)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -65,7 +65,7 @@ impl Table<Raw_Message> {
         .bind(data.timestamp)
         .bind(&data.rewards)
 		.bind(data.code)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -86,7 +86,7 @@ impl Table<Raw_Message> {
         )
         .bind(data.index)
         .bind(&data.tx_hash)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -168,7 +168,7 @@ impl Table<Raw_Message> {
             .push_bind(limit);
 
         let query = qb.build_query_as::<Raw_Message>();
-        let rows = query.persistent(false).fetch_all(&self.pool).await?;
+        let rows = query.persistent(true).fetch_all(&self.pool).await?;
 
         Ok(rows)
     }
@@ -250,7 +250,7 @@ impl Table<Raw_Message> {
                 ) x
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .bind(address)
         .fetch_one(&self.pool)
         .await?;
@@ -363,7 +363,7 @@ impl Table<Raw_Message> {
                 FROM finalized
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .bind(address)
         .fetch_one(&self.pool)
         .await?;
@@ -512,7 +512,7 @@ impl Table<Raw_Message> {
             "#,
         )
         .bind(&address)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -520,7 +520,7 @@ impl Table<Raw_Message> {
 
     pub async fn get_all(&self) -> Result<Vec<Raw_Message>, Error> {
         sqlx::query_as(r#"SELECT * FROM "raw_message" where code is null"#)
-            .persistent(false)
+            .persistent(true)
             .fetch_all(&self.pool)
             .await
     }
@@ -546,7 +546,7 @@ impl Table<Raw_Message> {
         .bind(data.code)
         .bind(data.index)
         .bind(&data.tx_hash)
-        .persistent(false)
+        .persistent(true)
         .execute(&self.pool)
         .await
     }

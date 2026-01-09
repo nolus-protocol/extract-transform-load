@@ -105,7 +105,7 @@ impl Table<Subscription> {
         )
         .bind(address)
         .bind(auth)
-        .persistent(false)
+        .persistent(true)
         .fetch_optional(&self.pool)
         .await
     }
@@ -128,7 +128,7 @@ impl Table<Subscription> {
         )
         .bind(address)
         .bind(auth)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 

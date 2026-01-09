@@ -21,7 +21,7 @@ impl Table<LS_Close_Position> {
         )
         .bind(ls_close_position.LS_position_height)
         .bind(&ls_close_position.LS_contract_id)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -78,7 +78,7 @@ impl Table<LS_Close_Position> {
         .bind(&data.LS_amnt_stable)
         .bind(&data.LS_payment_amnt)
         .bind(&data.LS_payment_symbol)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -135,7 +135,7 @@ impl Table<LS_Close_Position> {
                 .push_bind(&ls.LS_payment_symbol);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -150,7 +150,7 @@ impl Table<LS_Close_Position> {
             "#,
         )
         .bind(&contract)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -166,7 +166,7 @@ impl Table<LS_Close_Position> {
             "#,
         )
         .bind(&contract)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await
     }

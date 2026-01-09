@@ -24,7 +24,7 @@ impl Table<TR_Profit> {
         )
         .bind(tr_profit.TR_Profit_height)
         .bind(tr_profit.TR_Profit_timestamp)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -57,7 +57,7 @@ impl Table<TR_Profit> {
         .bind(&data.TR_Profit_amnt_stable)
         .bind(&data.TR_Profit_amnt_nls)
         .bind(&data.Tx_Hash)
-        .persistent(false)
+        .persistent(true)
         .execute(&mut **transaction)
         .await
     }
@@ -90,7 +90,7 @@ impl Table<TR_Profit> {
                 .push_bind(&tr.Tx_Hash);
         });
 
-        let query = query_builder.build().persistent(false);
+        let query = query_builder.build().persistent(true);
         query.execute(&mut **transaction).await?;
         Ok(())
     }
@@ -110,7 +110,7 @@ impl Table<TR_Profit> {
         )
         .bind(from)
         .bind(to)
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
         let (amnt, amnt_nolus) = value;
@@ -132,7 +132,7 @@ impl Table<TR_Profit> {
         )
         .bind(skip)
         .bind(limit)
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
         Ok(data)
@@ -175,12 +175,12 @@ impl Table<TR_Profit> {
         let data = if let Some(from_ts) = from {
             sqlx::query_as(&query)
                 .bind(from_ts)
-                .persistent(false)
+                .persistent(true)
                 .fetch_all(&self.pool)
                 .await?
         } else {
             sqlx::query_as(&query)
-                .persistent(false)
+                .persistent(true)
                 .fetch_all(&self.pool)
                 .await?
         };
@@ -196,7 +196,7 @@ impl Table<TR_Profit> {
                 SELECT SUM("TR_Profit_amnt_nls") / 1000000 AS "Distributed" FROM "TR_Profit"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -212,7 +212,7 @@ impl Table<TR_Profit> {
                 SELECT SUM("TR_Profit_amnt_stable") / 1000000 AS "Distributed" FROM "TR_Profit"
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_one(&self.pool)
         .await?;
 
@@ -238,7 +238,7 @@ impl Table<TR_Profit> {
             ORDER BY time ASC
             "#,
         )
-        .persistent(false)
+        .persistent(true)
         .fetch_all(&self.pool)
         .await?;
 
