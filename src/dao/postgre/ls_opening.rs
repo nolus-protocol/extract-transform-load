@@ -546,13 +546,16 @@ impl Table<LS_Opening> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let sql = format!(
             r#"
-                 WITH Last_Hour_States AS (
+                 WITH Latest_Aggregation AS (
+                SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+                ),
+                Last_Hour_States AS (
                 SELECT
                     *
                 FROM
                     "LS_State"
                 WHERE
-                    "LS_timestamp" >= NOW() - INTERVAL '2 hours'
+                    "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
                 ),
                 Last_Hour_Pool_State AS (
                 SELECT
@@ -607,13 +610,16 @@ impl Table<LS_Opening> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(BigDecimal,)> = sqlx::query_as(
             r#"
-                WITH Last_Hour_States AS (
+                WITH Latest_Aggregation AS (
+                SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+                ),
+                Last_Hour_States AS (
                 SELECT
                     *
                 FROM
                     "LS_State"
                 WHERE
-                    "LS_timestamp" >= NOW() - INTERVAL '2 hours'
+                    "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
                 ),
                 Last_Hour_Pool_State AS (
                 SELECT

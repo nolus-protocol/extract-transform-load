@@ -724,14 +724,17 @@ impl Table<LP_Pool_State> {
     ) -> Result<Vec<PoolUtilizationLevel>, Error> {
         let data = sqlx::query_as(
             r#"
-            WITH LatestStates AS (
+            WITH Latest_Pool_Aggregation AS (
+                SELECT MAX("LP_Pool_timestamp") AS max_ts FROM "LP_Pool_State"
+            ),
+            LatestStates AS (
                 SELECT DISTINCT ON ("LP_Pool_id")
                     "LP_Pool_id",
                     "LP_Pool_total_value_locked_stable",
                     "LP_Pool_total_borrowed_stable",
                     "LP_Pool_timestamp"
                 FROM "LP_Pool_State"
-                WHERE "LP_Pool_timestamp" > NOW() - INTERVAL '2 hours'
+                WHERE "LP_Pool_timestamp" = (SELECT max_ts FROM Latest_Pool_Aggregation)
                 ORDER BY "LP_Pool_id", "LP_Pool_timestamp" DESC
             )
             SELECT

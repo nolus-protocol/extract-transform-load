@@ -321,14 +321,17 @@ impl Table<LS_State> {
     ) -> Result<Vec<OpenPositionsByToken>, crate::error::Error> {
         let data = sqlx::query_as(
             r#"
-            WITH LatestTimestamps AS (
+            WITH LatestAggregation AS (
+                SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+            ),
+            LatestTimestamps AS (
                 SELECT
                     "LS_contract_id",
                     MAX("LS_timestamp") AS "MaxTimestamp"
                 FROM
                     "LS_State"
                 WHERE
-                    "LS_timestamp" > (now() - INTERVAL '2 hours')
+                    "LS_timestamp" = (SELECT max_ts FROM LatestAggregation)
                 GROUP BY
                     "LS_contract_id"
             ),
@@ -526,10 +529,13 @@ impl Table<LS_State> {
             UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'Short', 'ATOM', 1000000
             UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'Short', 'OSMO', 1000000
         ),
+        Latest_Aggregation AS (
+          SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+        ),
         Latest_States AS (
           SELECT DISTINCT ON ("LS_contract_id") *
           FROM "LS_State"
-          WHERE "LS_timestamp" > NOW() - INTERVAL '2 hours'
+          WHERE "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
           ORDER BY "LS_contract_id", "LS_timestamp" DESC
         ),
         Joined_States AS (
@@ -715,10 +721,13 @@ impl Table<LS_State> {
             FROM "LS_Opening"
             WHERE "LS_address_id" = $1
           ),
+          Latest_Aggregation AS (
+            SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+          ),
           Active_Positions AS (
             SELECT DISTINCT "LS_contract_id"
             FROM "LS_State"
-            WHERE "LS_timestamp" >= NOW() - INTERVAL '2 hours'
+            WHERE "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
           ),
           DP_Loan_Table AS (
             SELECT
@@ -831,7 +840,10 @@ impl Table<LS_State> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
-          WITH Lease_Value_Divisor AS (
+          WITH Latest_Aggregation AS (
+            SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+          ),
+          Lease_Value_Divisor AS (
             SELECT
               "LS_asset_symbol",
               CASE
@@ -852,7 +864,7 @@ impl Table<LS_State> {
               "LS_State" s
             LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
             LEFT JOIN Lease_Value_Divisor d ON o."LS_asset_symbol" = d."LS_asset_symbol"
-            WHERE s."LS_timestamp" > NOW() - INTERVAL '2 hours'
+            WHERE s."LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
           ),
           Available_Assets_Osmosis AS (
             SELECT
@@ -953,10 +965,13 @@ impl Table<LS_State> {
     ) -> Result<Vec<LeaseValueStats>, crate::error::Error> {
         let data = sqlx::query_as(
             r#"
-            WITH Latest_States AS (
+            WITH Latest_Aggregation AS (
+                SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+            ),
+            Latest_States AS (
                 SELECT DISTINCT ON ("LS_contract_id") *
                 FROM "LS_State"
-                WHERE "LS_timestamp" > NOW() - INTERVAL '2 hours'
+                WHERE "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
                 ORDER BY "LS_contract_id", "LS_timestamp" DESC
             ),
             Joined_States AS (
@@ -1004,10 +1019,13 @@ impl Table<LS_State> {
                 UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'Short', 'ATOM', 1000000
                 UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'Short', 'OSMO', 1000000
             ),
+            Latest_Aggregation AS (
+              SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+            ),
             Latest_States AS (
               SELECT DISTINCT ON ("LS_contract_id") *
               FROM "LS_State"
-              WHERE "LS_timestamp" > NOW() - INTERVAL '2 hours'
+              WHERE "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
               ORDER BY "LS_contract_id", "LS_timestamp" DESC
             ),
             Repayments AS (
@@ -1090,7 +1108,6 @@ impl Table<LS_State> {
                 INNER JOIN SymbolsInUse s ON a."MP_asset_symbol" = s."MP_asset_symbol"
               WHERE
                 a."Protocol" IN ('OSMOSIS-OSMOSIS-USDC_NOBLE', 'NEUTRON-ASTROPORT-USDC_NOBLE')
-                AND a."MP_asset_timestamp" > NOW() - INTERVAL '2 hours'
               ORDER BY
                 a."MP_asset_symbol", a."MP_asset_timestamp" DESC
             )
@@ -1148,10 +1165,13 @@ impl Table<LS_State> {
                 UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'Short', 'ATOM', 1000000
                 UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'Short', 'OSMO', 1000000
             ),
+            Latest_Aggregation AS (
+              SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+            ),
             Latest_States AS (
               SELECT DISTINCT ON ("LS_contract_id") *
               FROM "LS_State"
-              WHERE "LS_timestamp" > NOW() - INTERVAL '2 hours'
+              WHERE "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
               ORDER BY "LS_contract_id", "LS_timestamp" DESC
             ),
             Repayments AS (
@@ -1234,7 +1254,6 @@ impl Table<LS_State> {
                 INNER JOIN SymbolsInUse s ON a."MP_asset_symbol" = s."MP_asset_symbol"
               WHERE
                 a."Protocol" IN ('OSMOSIS-OSMOSIS-USDC_NOBLE', 'NEUTRON-ASTROPORT-USDC_NOBLE')
-                AND a."MP_asset_timestamp" > NOW() - INTERVAL '2 hours'
               ORDER BY
                 a."MP_asset_symbol", a."MP_asset_timestamp" DESC
             )
