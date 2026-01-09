@@ -1,6 +1,4 @@
-use std::{str::FromStr, time::Duration};
-
-use sqlx::postgres::PgConnectOptions;
+use std::time::Duration;
 
 use crate::{
     configuration::Config,
@@ -53,21 +51,16 @@ pub struct DatabasePool {
 impl DatabasePool {
     pub async fn new(config: &Config) -> Result<DatabasePool, Error> {
         let statement_timeout_ms = config.db_statement_timeout * 1000;
-        // Parse connection options and disable statement caching for PgBouncer compatibility
-        // PgBouncer in transaction mode doesn't maintain prepared statements across connections
-        let connect_options = PgConnectOptions::from_str(config.database_url.as_str())?
-            .statement_cache_capacity(0);
 
         let pool = PoolOption::new()
             .after_connect(move |conn, _meta| {
                 Box::pin(async move {
                     // Set statement timeout to prevent runaway queries
-                    // Use raw execute to avoid prepared statement issues with PgBouncer
-                    use sqlx::Executor;
-                    conn.execute(format!(
+                    sqlx::query(&format!(
                         "SET statement_timeout = '{}'",
                         statement_timeout_ms
-                    ).as_str())
+                    ))
+                    .execute(conn)
                     .await?;
                     Ok(())
                 })
@@ -76,7 +69,7 @@ impl DatabasePool {
             .min_connections(config.db_min_connections)
             .acquire_timeout(Duration::from_secs(config.db_acquire_timeout))
             .idle_timeout(Duration::from_secs(config.db_idle_timeout))
-            .connect_with(connect_options)
+            .connect(config.database_url.as_str())
             .await?;
 
         let lp_pool = Table::new(pool.clone());
