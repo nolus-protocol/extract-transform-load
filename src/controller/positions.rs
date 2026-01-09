@@ -4,16 +4,14 @@ use serde::Deserialize;
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    helpers::to_csv_response,
+    helpers::{to_csv_response, to_streaming_csv_response},
 };
 
-const DEFAULT_LIMIT: i64 = 100;
-const MAX_LIMIT: i64 = 1000;
+/// Single cache key for all positions - eliminates cache explosion from pagination
+const CACHE_KEY: &str = "positions_all";
 
 #[derive(Debug, Deserialize)]
 pub struct Query {
-    skip: Option<i64>,
-    limit: Option<i64>,
     format: Option<String>,
 }
 
@@ -22,26 +20,41 @@ async fn index(
     state: web::Data<AppState<State>>,
     query: web::Query<Query>,
 ) -> Result<HttpResponse, Error> {
-    let skip = query.skip.unwrap_or(0);
-    let limit = query.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
-    let cache_key = format!("positions_{}_{}", skip, limit);
-
-    // Try cache first
-    if let Some(cached) = state.api_cache.positions.get(&cache_key).await {
+    // Try cache first with single key
+    if let Some(cached) = state.api_cache.positions.get(CACHE_KEY).await {
         return match query.format.as_deref() {
             Some("csv") => to_csv_response(&cached, "positions.csv"),
             _ => Ok(HttpResponse::Ok().json(cached)),
         };
     }
 
-    // Cache miss - query DB
-    let data = state.database.ls_state.get_positions(skip, limit).await?;
+    // Cache miss - query DB for all positions
+    let data = state.database.ls_state.get_all_positions().await?;
 
-    // Store in cache
-    state.api_cache.positions.set(&cache_key, data.clone()).await;
+    // Store in cache with single key
+    state.api_cache.positions.set(CACHE_KEY, data.clone()).await;
 
     match query.format.as_deref() {
         Some("csv") => to_csv_response(&data, "positions.csv"),
         _ => Ok(HttpResponse::Ok().json(data)),
     }
+}
+
+/// Streaming CSV export endpoint for all positions.
+#[get("/positions/export")]
+pub async fn export(
+    state: web::Data<AppState<State>>,
+) -> Result<HttpResponse, Error> {
+    // Try cache first with single key
+    if let Some(cached) = state.api_cache.positions.get(CACHE_KEY).await {
+        return to_streaming_csv_response(cached, "positions.csv");
+    }
+
+    // Cache miss - query DB for all positions
+    let data = state.database.ls_state.get_all_positions().await?;
+
+    // Store in cache with single key
+    state.api_cache.positions.set(CACHE_KEY, data.clone()).await;
+
+    to_streaming_csv_response(data, "positions.csv")
 }

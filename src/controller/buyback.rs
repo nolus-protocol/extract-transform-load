@@ -1,29 +1,47 @@
-use actix_web::{get, web, Responder};
+use actix_web::{get, web, HttpResponse};
 use serde::Deserialize;
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    helpers::{parse_period_months, to_csv_response},
 };
+
+#[derive(Debug, Deserialize)]
+pub struct Query {
+    format: Option<String>,
+    period: Option<String>,
+}
 
 #[get("/buyback")]
 async fn index(
     state: web::Data<AppState<State>>,
-    data: web::Query<Query>,
-) -> Result<impl Responder, Error> {
-    let skip = data.skip.unwrap_or(0);
-    let mut limit = data.limit.unwrap_or(32);
+    query: web::Query<Query>,
+) -> Result<HttpResponse, Error> {
+    let months = parse_period_months(&query.period)?;
+    let period_str = query.period.as_deref().unwrap_or("12m");
+    let cache_key = format!("buyback_{}", period_str);
 
-    if limit > 100 {
-        limit = 100;
+    // Try cache first
+    if let Some(cached) = state.api_cache.buyback.get(&cache_key).await {
+        return match query.format.as_deref() {
+            Some("csv") => to_csv_response(&cached, "buyback.csv"),
+            _ => Ok(HttpResponse::Ok().json(cached)),
+        };
     }
 
-    let data = state.database.tr_profit.get_buyback(skip, limit).await?;
-    Ok(web::Json(data))
-}
+    // Cache miss - query DB
+    let data = state
+        .database
+        .tr_profit
+        .get_buyback_with_window(months)
+        .await?;
 
-#[derive(Debug, Deserialize)]
-pub struct Query {
-    skip: Option<i64>,
-    limit: Option<i64>,
+    // Store in cache
+    state.api_cache.buyback.set(&cache_key, data.clone()).await;
+
+    match query.format.as_deref() {
+        Some("csv") => to_csv_response(&data, "buyback.csv"),
+        _ => Ok(HttpResponse::Ok().json(data)),
+    }
 }

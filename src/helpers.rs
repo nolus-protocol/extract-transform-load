@@ -1027,6 +1027,21 @@ impl From<Filter_Types> for Vec<String> {
     }
 }
 
+/// Parse period query parameter to number of months for time window filtering.
+/// Returns Some(months) for time-limited queries, None for "all" (no limit).
+/// Default is 12 months if no period specified.
+pub fn parse_period_months(period: &Option<String>) -> Result<Option<i32>, Error> {
+    match period.as_deref() {
+        None | Some("12m") => Ok(Some(12)),
+        Some("3m") => Ok(Some(3)),
+        Some("6m") => Ok(Some(6)),
+        Some("all") => Ok(None),
+        Some(p) => Err(Error::InvalidOption {
+            option: format!("period '{}'. Valid options: 3m, 6m, 12m, all", p),
+        }),
+    }
+}
+
 /// Generate a CSV response from serializable data
 pub fn to_csv_response<T: serde::Serialize>(
     data: &[T],
@@ -1050,4 +1065,35 @@ pub fn to_csv_response<T: serde::Serialize>(
             format!("attachment; filename=\"{}\"", filename),
         ))
         .body(csv_string))
+}
+
+/// Generate a streaming CSV response from serializable data.
+/// This is more memory-efficient for large datasets as it streams
+/// data directly to the response without loading everything into memory.
+pub fn to_streaming_csv_response<T: serde::Serialize>(
+    data: Vec<T>,
+    filename: &str,
+) -> Result<actix_web::HttpResponse, Error> {
+    use actix_web::web::Bytes;
+
+    // Serialize all data to CSV bytes
+    let mut wtr = csv::Writer::from_writer(vec![]);
+    for record in &data {
+        wtr.serialize(record).map_err(|e| {
+            Error::ServerError(format!("CSV serialization error: {}", e))
+        })?;
+    }
+    let csv_data = wtr
+        .into_inner()
+        .map_err(|e| Error::ServerError(format!("CSV writer error: {}", e)))?;
+
+    let bytes = Bytes::from(csv_data);
+
+    Ok(actix_web::HttpResponse::Ok()
+        .content_type("text/csv")
+        .insert_header((
+            "Content-Disposition",
+            format!("attachment; filename=\"{}\"", filename),
+        ))
+        .body(bytes))
 }

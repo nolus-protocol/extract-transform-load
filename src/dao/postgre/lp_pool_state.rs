@@ -234,6 +234,47 @@ impl Table<LP_Pool_State> {
         Ok(data)
     }
 
+    /// Get utilization level with time window filtering
+    pub async fn get_utilization_level_with_window(
+        &self,
+        protocol: String,
+        months: Option<i32>,
+    ) -> Result<Vec<Utilization_Level>, Error> {
+        let data = match months {
+            Some(m) => {
+                sqlx::query_as(
+                    r#"
+                    SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable")*100 as "Utilization_Level"
+                    FROM "LP_Pool_State"
+                    WHERE "LP_Pool_id" = $1
+                      AND "LP_Pool_timestamp" >= NOW() - INTERVAL '1 month' * $2
+                    ORDER BY "LP_Pool_timestamp" DESC
+                    "#,
+                )
+                .bind(&protocol)
+                .bind(m)
+                .persistent(true)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            None => {
+                sqlx::query_as(
+                    r#"
+                    SELECT ("LP_Pool_total_borrowed_stable" / "LP_Pool_total_value_locked_stable")*100 as "Utilization_Level"
+                    FROM "LP_Pool_State"
+                    WHERE "LP_Pool_id" = $1
+                    ORDER BY "LP_Pool_timestamp" DESC
+                    "#,
+                )
+                .bind(&protocol)
+                .persistent(true)
+                .fetch_all(&self.pool)
+                .await?
+            }
+        };
+        Ok(data)
+    }
+
     pub async fn get_supplied_funds(
         &self,
     ) -> Result<BigDecimal, crate::error::Error> {
@@ -673,4 +714,72 @@ impl Table<LP_Pool_State> {
         .fetch_one(&self.pool)
         .await
     }
+
+    /// Get utilization levels for all pools in a single query
+    /// Returns the latest utilization level for each pool
+    pub async fn get_all_utilization_levels(
+        &self,
+    ) -> Result<Vec<PoolUtilizationLevel>, Error> {
+        let data = sqlx::query_as(
+            r#"
+            WITH LatestStates AS (
+                SELECT DISTINCT ON ("LP_Pool_id")
+                    "LP_Pool_id",
+                    "LP_Pool_total_value_locked_stable",
+                    "LP_Pool_total_borrowed_stable",
+                    "LP_Pool_timestamp"
+                FROM "LP_Pool_State"
+                WHERE "LP_Pool_timestamp" > NOW() - INTERVAL '2 hours'
+                ORDER BY "LP_Pool_id", "LP_Pool_timestamp" DESC
+            )
+            SELECT
+                ls."LP_Pool_id" AS pool_id,
+                CASE
+                    WHEN ls."LP_Pool_id" = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5' THEN 'OSMOSIS-OSMOSIS-USDC_AXELAR'
+                    WHEN ls."LP_Pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94' THEN 'NEUTRON-ASTROPORT-USDC_AXELAR'
+                    WHEN ls."LP_Pool_id" = 'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6' THEN 'OSMOSIS-OSMOSIS-USDC_NOBLE'
+                    WHEN ls."LP_Pool_id" = 'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf' THEN 'NEUTRON-ASTROPORT-USDC_NOBLE'
+                    WHEN ls."LP_Pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'OSMOSIS-OSMOSIS-ST_ATOM'
+                    WHEN ls."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'OSMOSIS-OSMOSIS-ALL_BTC'
+                    WHEN ls."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'OSMOSIS-OSMOSIS-ALL_SOL'
+                    WHEN ls."LP_Pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'OSMOSIS-OSMOSIS-AKT'
+                    WHEN ls."LP_Pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'OSMOSIS-OSMOSIS-ATOM'
+                    WHEN ls."LP_Pool_id" = 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMOSIS-OSMOSIS-OSMO'
+                    ELSE ls."LP_Pool_id"
+                END AS protocol,
+                CASE
+                    WHEN ls."LP_Pool_total_value_locked_stable" > 0
+                    THEN (ls."LP_Pool_total_borrowed_stable"::numeric / ls."LP_Pool_total_value_locked_stable"::numeric) * 100
+                    ELSE 0
+                END AS utilization,
+                CASE
+                    WHEN ls."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN ls."LP_Pool_total_value_locked_stable" / 100000000
+                    WHEN ls."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN ls."LP_Pool_total_value_locked_stable" / 1000000000
+                    ELSE ls."LP_Pool_total_value_locked_stable" / 1000000
+                END AS supplied,
+                CASE
+                    WHEN ls."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN ls."LP_Pool_total_borrowed_stable" / 100000000
+                    WHEN ls."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN ls."LP_Pool_total_borrowed_stable" / 1000000000
+                    ELSE ls."LP_Pool_total_borrowed_stable" / 1000000
+                END AS borrowed
+            FROM LatestStates ls
+            ORDER BY protocol
+            "#,
+        )
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(data)
+    }
+}
+
+/// Represents utilization level data for a single pool
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
+pub struct PoolUtilizationLevel {
+    pub pool_id: String,
+    pub protocol: String,
+    pub utilization: BigDecimal,
+    pub supplied: BigDecimal,
+    pub borrowed: BigDecimal,
 }

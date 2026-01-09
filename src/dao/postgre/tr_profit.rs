@@ -138,6 +138,44 @@ impl Table<TR_Profit> {
         Ok(data)
     }
 
+    /// Get buyback data with time window filtering
+    pub async fn get_buyback_with_window(
+        &self,
+        months: Option<i32>,
+    ) -> Result<Vec<Buyback>, Error> {
+        let data = match months {
+            Some(m) => {
+                sqlx::query_as(
+                    r#"
+                    SELECT "TR_Profit_timestamp" AS time,
+                           (SUM("TR_Profit_amnt_nls" / 1000000) OVER (ORDER BY "TR_Profit_timestamp")) AS "Bought-back"
+                    FROM "TR_Profit"
+                    WHERE "TR_Profit_timestamp" >= NOW() - INTERVAL '1 month' * $1
+                    ORDER BY "TR_Profit_timestamp" ASC
+                    "#,
+                )
+                .bind(m)
+                .persistent(true)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            None => {
+                sqlx::query_as(
+                    r#"
+                    SELECT "TR_Profit_timestamp" AS time,
+                           (SUM("TR_Profit_amnt_nls" / 1000000) OVER (ORDER BY "TR_Profit_timestamp")) AS "Bought-back"
+                    FROM "TR_Profit"
+                    ORDER BY "TR_Profit_timestamp" ASC
+                    "#,
+                )
+                .persistent(true)
+                .fetch_all(&self.pool)
+                .await?
+            }
+        };
+        Ok(data)
+    }
+
     pub async fn get_buyback_total(
         &self,
     ) -> Result<BigDecimal, crate::error::Error> {

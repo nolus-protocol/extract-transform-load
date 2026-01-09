@@ -105,6 +105,17 @@ pub async fn fetch_insert(
 
     app_state.database.mp_asset.insert_many(&mp_assets).await?;
 
+    // Update the in-memory price cache with the latest prices
+    {
+        let mut cache = app_state.latest_prices.write().await;
+        for mp in &mp_assets {
+            cache.insert(
+                (mp.MP_asset_symbol.clone(), mp.Protocol.clone()),
+                mp.MP_price_in_stable.clone(),
+            );
+        }
+    }
+
     let action_history = Action_History {
         action_type: Actions::MpAssetAction.to_string(),
         created_at: timestamp,
