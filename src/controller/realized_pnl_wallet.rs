@@ -1,8 +1,6 @@
 use actix_web::{get, web, HttpResponse};
-use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
+use serde::Deserialize;
 
 use crate::{
     configuration::{AppState, State},
@@ -10,38 +8,14 @@ use crate::{
     helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Response format
-    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
-    /// Time period filter: 3m (default), 6m, 12m, or all
-    #[param(inline, value_type = Option<String>)]
     period: Option<String>,
     /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct RealizedPnlWalletResponse {
-    /// Wallet address
-    pub wallet: String,
-    /// Total realized PnL in USD
-    #[schema(value_type = f64)]
-    pub realized_pnl: BigDecimal,
-    /// Number of trades
-    pub trade_count: i64,
-}
-
-#[utoipa::path(
-    get,
-    path = "/api/realized-pnl-wallet",
-    tag = "Lending Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Realized PnL aggregated per wallet address with trade counts", body = Vec<RealizedPnlWalletResponse>)
-    )
-)]
 #[get("/realized-pnl-wallet")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -75,14 +49,6 @@ async fn index(
     }
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/realized-pnl-wallet/export",
-    tag = "Lending Analytics",
-    responses(
-        (status = 200, description = "Streaming CSV export of realized PnL by wallet. Cache: 1 hour.", content_type = "text/csv")
-    )
-)]
 #[get("/realized-pnl-wallet/export")]
 pub async fn export(state: web::Data<AppState<State>>) -> Result<HttpResponse, Error> {
     const CACHE_KEY: &str = "realized_pnl_wallet_all";

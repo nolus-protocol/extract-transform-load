@@ -1,7 +1,6 @@
 use actix_web::{get, web, Responder};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::{
     configuration::{AppState, State},
@@ -10,14 +9,6 @@ use crate::{
 
 const CACHE_KEY: &str = "total_tx_value";
 
-#[utoipa::path(
-    get,
-    path = "/api/total-tx-value",
-    tag = "Protocol Analytics",
-    responses(
-        (status = 200, description = "Returns the cumulative value of all transactions processed by the protocol in USD. Cache: 30 min.", body = Response)
-    )
-)]
 #[get("/total-tx-value")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -40,9 +31,7 @@ async fn index(
     }))
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
-    /// Total transaction value in USD
-    #[schema(value_type = f64)]
     pub total_tx_value: BigDecimal,
 }

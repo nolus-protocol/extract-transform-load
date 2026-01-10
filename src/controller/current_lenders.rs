@@ -2,7 +2,6 @@ use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -12,22 +11,11 @@ use crate::{
 
 const CACHE_KEY: &str = "current_lenders";
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Response format
-    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/current-lenders",
-    tag = "Lending Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns a list of currently active lenders with their deposit amounts per pool. Cache: 1 hour.", body = Vec<CurrentLenderResponse>)
-    )
-)]
 #[get("/current-lenders")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -77,18 +65,5 @@ pub struct Lender {
     pub joined: Option<DateTime<Utc>>,
     pub pool: Option<String>,
     pub lender: String,
-    pub lent_stables: BigDecimal,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct CurrentLenderResponse {
-    /// Date when the lender joined
-    pub joined: Option<DateTime<Utc>>,
-    /// Pool name
-    pub pool: Option<String>,
-    /// Lender wallet address
-    pub lender: String,
-    /// Amount lent in stables
-    #[schema(value_type = f64)]
     pub lent_stables: BigDecimal,
 }

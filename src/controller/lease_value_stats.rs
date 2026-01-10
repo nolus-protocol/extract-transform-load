@@ -1,7 +1,6 @@
 use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -11,22 +10,11 @@ use crate::{
 
 const CACHE_KEY: &str = "lease_value_stats";
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Response format
-    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/lease-value-stats",
-    tag = "Lending Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns statistical aggregates (min, max, avg, sum) of lease values per protocol. Cache: 1 hour.", body = Vec<LeaseValueStatResponse>)
-    )
-)]
 #[get("/lease-value-stats")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -73,17 +61,5 @@ async fn index(
 pub struct LeaseValueStat {
     pub asset: String,
     pub avg_value: BigDecimal,
-    pub max_value: BigDecimal,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct LeaseValueStatResponse {
-    /// Asset symbol
-    pub asset: String,
-    /// Average lease value in USD
-    #[schema(value_type = f64)]
-    pub avg_value: BigDecimal,
-    /// Maximum lease value in USD
-    #[schema(value_type = f64)]
     pub max_value: BigDecimal,
 }

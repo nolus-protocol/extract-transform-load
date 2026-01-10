@@ -1,6 +1,4 @@
 use actix_web::{get, web, Responder};
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::{
     configuration::{AppState, State},
@@ -10,14 +8,6 @@ use crate::{
 
 const CACHE_KEY: &str = "monthly_active_wallets";
 
-#[utoipa::path(
-    get,
-    path = "/api/monthly-active-wallets",
-    tag = "Protocol Analytics",
-    responses(
-        (status = 200, description = "Returns the count of unique active wallet addresses per month. Cache: 1 hour.", body = Vec<MonthlyActiveWalletResponse>)
-    )
-)]
 #[get("/monthly-active-wallets")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -42,12 +32,4 @@ async fn index(
     state.api_cache.monthly_active_wallets.set(CACHE_KEY, wallets.clone()).await;
 
     Ok(web::Json(wallets))
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct MonthlyActiveWalletResponse {
-    /// Month in YYYY-MM format
-    pub month: String,
-    /// Number of unique active addresses
-    pub unique_addresses: i64,
 }

@@ -1,8 +1,6 @@
 use actix_web::{get, web, HttpResponse};
-use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
+use serde::Deserialize;
 
 use crate::{
     configuration::{AppState, State},
@@ -11,27 +9,14 @@ use crate::{
     model::DailyPositionsPoint,
 };
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Response format
-    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
-    /// Time period filter: 3m (default), 6m, 12m, or all
-    #[param(inline, value_type = Option<String>)]
     period: Option<String>,
     /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/daily-positions",
-    tag = "Position Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns daily counts of opened and closed positions for trend analysis. Cache: 1 hour.", body = Vec<DailyPositionsPointResponse>)
-    )
-)]
 #[get("/daily-positions")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -68,16 +53,4 @@ async fn index(
         Some("csv") => to_csv_response(&series, "daily-positions.csv"),
         _ => Ok(HttpResponse::Ok().json(series)),
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct DailyPositionsPointResponse {
-    /// Date of the data point
-    pub date: DateTime<Utc>,
-    /// Number of loans closed on this date
-    #[schema(value_type = f64)]
-    pub closed_loans: BigDecimal,
-    /// Number of loans opened on this date
-    #[schema(value_type = f64)]
-    pub opened_loans: BigDecimal,
 }

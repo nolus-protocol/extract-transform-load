@@ -7,17 +7,7 @@ use crate::{
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Result};
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
-#[utoipa::path(
-    post,
-    path = "/api/subscribe",
-    tag = "Push Notifications",
-    request_body = SubscribeRequest,
-    responses(
-        (status = 200, description = "Creates or toggles a push notification subscription for a wallet address. If subscription exists, toggles active status.", body = String)
-    )
-)]
 #[post("/subscribe")]
 pub async fn post_index(
     state: web::Data<AppState<State>>,
@@ -98,15 +88,6 @@ pub async fn post_index(
     Ok(HttpResponse::Ok().body(String::from(Status::Subscribed)))
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/subscribe",
-    tag = "Push Notifications",
-    params(Query),
-    responses(
-        (status = 200, description = "Check if a push notification subscription exists", body = SubscribeCheckResponse)
-    )
-)]
 #[get("/subscribe")]
 pub async fn get_index(
     state: web::Data<AppState<State>>,
@@ -118,47 +99,17 @@ pub async fn get_index(
         .isExists(data.address.to_owned(), data.auth.to_owned())
         .await?;
 
-    Ok(HttpResponse::Ok().json(SubscribeCheckResponse { result }))
+    Ok(HttpResponse::Ok().json(Response { result }))
 }
 
-#[derive(Debug, Serialize, Deserialize, IntoParams)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Query {
-    /// Wallet address
     address: String,
-    /// Subscription auth key
     auth: String,
-    /// Filter by active status
     active: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct SubscribeCheckResponse {
-    /// Whether subscription exists
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Response {
     pub result: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct SubscribeRequest {
-    /// Wallet address
-    pub address: String,
-    /// Subscription data
-    pub data: SubscriptionData,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct SubscriptionData {
-    /// Push notification endpoint URL
-    pub endpoint: String,
-    /// Expiration timestamp in milliseconds
-    pub expiration_time: Option<i64>,
-    /// Subscription keys
-    pub keys: SubscriptionKeys,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct SubscriptionKeys {
-    /// Auth key
-    pub auth: String,
-    /// P256DH key
-    pub p256dh: String,
 }

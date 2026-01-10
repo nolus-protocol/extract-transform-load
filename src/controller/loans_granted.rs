@@ -1,7 +1,6 @@
 use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -11,22 +10,11 @@ use crate::{
 
 const CACHE_KEY: &str = "loans_granted";
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Response format
-    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/loans-granted",
-    tag = "Lending Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns a summary of loans granted per protocol with count and total value. Cache: 1 hour.", body = Vec<LoanGrantedResponse>)
-    )
-)]
 #[get("/loans-granted")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -70,14 +58,5 @@ async fn index(
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoanGranted {
     pub asset: String,
-    pub loan: BigDecimal,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct LoanGrantedResponse {
-    /// Asset symbol
-    pub asset: String,
-    /// Total loan amount in USD
-    #[schema(value_type = f64)]
     pub loan: BigDecimal,
 }

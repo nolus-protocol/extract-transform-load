@@ -1,7 +1,6 @@
 use actix_web::{get, web, Responder};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::{
     configuration::{AppState, State},
@@ -10,14 +9,6 @@ use crate::{
 
 const CACHE_KEY: &str = "incentives_pool";
 
-#[utoipa::path(
-    get,
-    path = "/api/incentives-pool",
-    tag = "Protocol Analytics",
-    responses(
-        (status = 200, description = "Returns the current balance of the incentives pool in USD. Cache: 1 hour.", body = Response)
-    )
-)]
 #[get("/incentives-pool")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -36,9 +27,7 @@ async fn index(
     }))
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
-    /// Incentives pool balance in USD
-    #[schema(value_type = f64)]
     pub incentives_pool: BigDecimal,
 }

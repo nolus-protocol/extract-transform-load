@@ -1,17 +1,8 @@
 use actix_web::{get, web, Responder};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::error::Error;
 
-#[utoipa::path(
-    get,
-    path = "/api/optimal",
-    tag = "Protocol Analytics",
-    responses(
-        (status = 200, description = "Returns the optimal utilization rate threshold configured for the protocol.", body = Response)
-    )
-)]
 #[get("/optimal")]
 async fn index() -> Result<impl Responder, Error> {
     Ok(web::Json(Response {
@@ -19,8 +10,7 @@ async fn index() -> Result<impl Responder, Error> {
     }))
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
-    /// Optimal utilization rate percentage
     pub optimal: String,
 }

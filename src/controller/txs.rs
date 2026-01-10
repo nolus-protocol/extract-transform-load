@@ -2,10 +2,7 @@ use std::{collections::HashSet, str::FromStr};
 
 use actix_web::{get, web, HttpResponse};
 use anyhow::Context;
-use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
+use serde::Deserialize;
 
 use crate::{
     configuration::{AppState, State},
@@ -13,15 +10,6 @@ use crate::{
     helpers::Filter_Types,
 };
 
-#[utoipa::path(
-    get,
-    path = "/api/txs",
-    tag = "Wallet Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns a paginated transaction history for a specific wallet address.", body = Vec<TxResponse>)
-    )
-)]
 #[get("/txs")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -105,30 +93,11 @@ async fn index(
     Ok(HttpResponse::Ok().json(data))
 }
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Number of records to skip (default: 0)
     skip: Option<i64>,
-    /// Maximum number of records to return (default: 10, max: 100)
     limit: Option<i64>,
-    /// Comma-separated filter types
     filter: Option<String>,
-    /// Target contract addresses (comma-separated)
     to: Option<String>,
-    /// Wallet address
     address: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct TxResponse {
-    /// Transaction date
-    pub date: DateTime<Utc>,
-    /// Transaction hash
-    pub tx_hash: String,
-    /// Transaction type
-    #[serde(rename = "type")]
-    pub tx_type: String,
-    /// Transaction amount
-    #[schema(value_type = f64)]
-    pub amount: BigDecimal,
 }

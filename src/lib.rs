@@ -10,7 +10,6 @@ pub mod error;
 pub mod handler;
 pub mod helpers;
 pub mod model;
-pub mod openapi;
 pub mod provider;
 pub mod server;
 pub mod types;

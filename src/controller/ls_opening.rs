@@ -1,10 +1,8 @@
 use actix_web::{get, web, Responder};
 use anyhow::Context as _;
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
 use futures::TryFutureExt as _;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -13,15 +11,6 @@ use crate::{
     model::{LS_History, LS_Opening},
 };
 
-#[utoipa::path(
-    get,
-    path = "/api/ls-opening",
-    tag = "Record Lookup",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns the opening details for a specific lease by its contract ID.", body = Option<LsOpeningResponse>)
-    )
-)]
 #[get("/ls-opening")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -113,9 +102,8 @@ async fn index(
     Ok(web::Json(None))
 }
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Lease contract ID
     lease: String,
 }
 
@@ -127,28 +115,4 @@ pub struct ResponseData {
     pub fee: BigDecimal,
     pub repayment_value: BigDecimal,
     pub history: Vec<LS_History>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct LsOpeningResponse {
-    /// Lease contract ID
-    pub contract_id: String,
-    /// User wallet address
-    pub user: String,
-    /// Leased asset symbol
-    pub asset_symbol: String,
-    /// Opening timestamp
-    pub timestamp: DateTime<Utc>,
-    /// Down payment price at opening
-    #[schema(value_type = f64)]
-    pub downpayment_price: BigDecimal,
-    /// LPN price at opening
-    #[schema(value_type = f64)]
-    pub lpn_price: BigDecimal,
-    /// Total fees
-    #[schema(value_type = f64)]
-    pub fee: BigDecimal,
-    /// Total repayment value
-    #[schema(value_type = f64)]
-    pub repayment_value: BigDecimal,
 }

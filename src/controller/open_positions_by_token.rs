@@ -1,7 +1,4 @@
 use actix_web::{get, web, Responder};
-use bigdecimal::BigDecimal;
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::{
     configuration::{AppState, State},
@@ -11,14 +8,6 @@ use crate::{
 
 const CACHE_KEY: &str = "open_positions_by_token";
 
-#[utoipa::path(
-    get,
-    path = "/api/open-positions-by-token",
-    tag = "Position Analytics",
-    responses(
-        (status = 200, description = "Returns open positions grouped by token with their current market values. Cache: 1 hour.", body = Vec<TokenPositionResponse>)
-    )
-)]
 #[get("/open-positions-by-token")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -39,13 +28,4 @@ async fn index(
     state.api_cache.open_positions_by_token.set(CACHE_KEY, positions.clone()).await;
 
     Ok(web::Json(positions))
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct TokenPositionResponse {
-    /// Token symbol
-    pub token: String,
-    /// Market value in USD
-    #[schema(value_type = f64)]
-    pub market_value: BigDecimal,
 }

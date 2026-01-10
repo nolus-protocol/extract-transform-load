@@ -66,8 +66,6 @@ anyhow = "1.0"
 sha256 = "1.6.0"
 ibc-proto = "0.52.0"
 ece = "2.3.1"
-utoipa = { version = "5", features = ["actix_extras", "chrono", "decimal_float"] }
-utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
 
 [features]
 default = []

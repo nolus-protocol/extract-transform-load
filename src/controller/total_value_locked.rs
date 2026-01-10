@@ -1,7 +1,6 @@
 use actix_web::{get, web, Responder};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::{
     configuration::{AppState, State},
@@ -11,14 +10,6 @@ use crate::{
 
 const CACHE_KEY: &str = "tvl";
 
-#[utoipa::path(
-    get,
-    path = "/api/total-value-locked",
-    tag = "Protocol Analytics",
-    responses(
-        (status = 200, description = "Returns the total value locked (TVL) across all liquidity pools in USD. Cache: 30 min.", body = Response)
-    )
-)]
 #[get("/total-value-locked")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -63,9 +54,7 @@ async fn index(
     }))
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
-    /// Total value locked in USD
-    #[schema(value_type = f64)]
     pub total_value_locked: BigDecimal,
 }

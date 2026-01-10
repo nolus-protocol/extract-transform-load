@@ -7,26 +7,17 @@ use crate::{
 use actix_web::{get, web, Responder, Result};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 const CACHE_KEY: &str = "realized_pnl_stats";
 
-#[utoipa::path(
-    get,
-    path = "/api/realized-pnl-stats",
-    tag = "Position Analytics",
-    responses(
-        (status = 200, description = "Returns the aggregate realized profit and loss from all closed positions in USD. Cache: 1 hour.", body = Response)
-    )
-)]
 #[get("/realized-pnl-stats")]
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
     // Try cache first
     if let Some(cached) = state.api_cache.realized_pnl_stats.get(CACHE_KEY).await {
-        return Ok(web::Json(Response {
-            realized_pnl: cached,
+        return Ok(web::Json(ResponseData {
+            amount: cached,
         }));
     }
 
@@ -43,14 +34,12 @@ async fn index(
     // Store in cache
     state.api_cache.realized_pnl_stats.set(CACHE_KEY, result.clone()).await;
 
-    Ok(web::Json(Response {
-        realized_pnl: result,
+    Ok(web::Json(ResponseData {
+        amount: result,
     }))
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct Response {
-    /// Total realized PnL in USD
-    #[schema(value_type = f64)]
-    pub realized_pnl: BigDecimal,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResponseData {
+    pub amount: BigDecimal,
 }

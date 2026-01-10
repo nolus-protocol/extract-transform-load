@@ -2,7 +2,6 @@ use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -10,13 +9,9 @@ use crate::{
     helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Response format
-    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
-    /// Time period filter: 3m (default), 6m, 12m, or all
-    #[param(inline, value_type = Option<String>)]
     period: Option<String>,
     /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
@@ -43,30 +38,6 @@ impl From<crate::dao::postgre::lp_deposit::HistoricalLender> for HistoricalLende
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct HistoricalLenderResponse {
-    /// Transaction type (Deposit/Withdrawal)
-    pub transaction_type: String,
-    /// Timestamp of the transaction
-    pub timestamp: DateTime<Utc>,
-    /// User wallet address
-    pub user: String,
-    /// Transaction amount in USD
-    #[schema(value_type = f64)]
-    pub amount: BigDecimal,
-    /// Pool name
-    pub pool: String,
-}
-
-#[utoipa::path(
-    get,
-    path = "/api/historical-lenders",
-    tag = "Lending Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Lender deposit and withdrawal history with time window filtering", body = Vec<HistoricalLenderResponse>)
-    )
-)]
 #[get("/historical-lenders")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -100,14 +71,6 @@ async fn index(
     }
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/historical-lenders/export",
-    tag = "Lending Analytics",
-    responses(
-        (status = 200, description = "Streaming CSV export of all lender deposit/withdrawal history. Cache: 1 hour.", content_type = "text/csv")
-    )
-)]
 #[get("/historical-lenders/export")]
 pub async fn export(state: web::Data<AppState<State>>) -> Result<HttpResponse, Error> {
     const CACHE_KEY: &str = "historical_lenders_all";

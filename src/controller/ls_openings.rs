@@ -1,9 +1,7 @@
 use actix_web::{get, web, Responder};
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -11,15 +9,6 @@ use crate::{
     model::LS_Opening,
 };
 
-#[utoipa::path(
-    get,
-    path = "/api/ls-openings",
-    tag = "Record Lookup",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns opening details for multiple leases by their contract IDs.", body = Vec<LsOpeningsResponse>)
-    )
-)]
 #[get("/ls-openings")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -30,7 +19,7 @@ async fn index(
     let mut joins = Vec::new();
 
     for item in data {
-        joins.push(get_data(state.clone(), item))
+        joins.push(getData(state.clone(), item))
     }
 
     let result = join_all(joins).await;
@@ -43,7 +32,7 @@ async fn index(
     Ok(web::Json(items))
 }
 
-async fn get_data(
+async fn getData(
     state: web::Data<AppState<State>>,
     lease: LS_Opening,
 ) -> Result<Option<ResponseData>, Error> {
@@ -71,29 +60,13 @@ async fn get_data(
     Ok(None)
 }
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Comma-separated list of lease contract IDs
     pub leases: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResponseData {
     pub lease: LS_Opening,
-    pub downpayment_price: BigDecimal,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct LsOpeningsResponse {
-    /// Lease contract ID
-    pub contract_id: String,
-    /// User wallet address
-    pub user: String,
-    /// Asset symbol
-    pub asset_symbol: String,
-    /// Opening timestamp
-    pub timestamp: DateTime<Utc>,
-    /// Down payment price at opening
-    #[schema(value_type = f64)]
     pub downpayment_price: BigDecimal,
 }

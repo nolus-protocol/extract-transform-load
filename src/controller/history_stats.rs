@@ -5,17 +5,7 @@ use crate::{
 };
 use actix_web::{get, web, Responder, Result};
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
-#[utoipa::path(
-    get,
-    path = "/api/history-stats",
-    tag = "Wallet Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns trading statistics including total trades, win rate, and average PnL for a wallet.", body = Response)
-    )
-)]
 #[get("/history-stats")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -32,7 +22,7 @@ async fn index(
         state.database.raw_message.get_buckets(address.to_owned())
     )?;
 
-    Ok(web::Json(Response {
+    Ok(web::Json(ResponseData {
         pnl,
         tx_volume,
         win_rate,
@@ -40,20 +30,15 @@ async fn index(
     }))
 }
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Wallet address
     address: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct Response {
-    /// Total realized PnL
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ResponseData {
     pub pnl: f64,
-    /// Total transaction volume
     pub tx_volume: f64,
-    /// Win rate percentage
     pub win_rate: f64,
-    /// Distribution buckets
     pub bucket: Vec<Bucket_Type>,
 }

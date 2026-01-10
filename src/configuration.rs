@@ -457,7 +457,7 @@ pub struct Config {
     pub server_host: String,
     pub port: u16,
     pub allowed_origins: Vec<String>,
-
+    pub static_dir: String,
     pub max_tasks: usize,
     pub admin_contract: String,
     pub ignore_protocols: Vec<String>,
@@ -535,7 +535,11 @@ pub fn get_configuration() -> Result<Config, Error> {
         .split(',')
         .map(|item| item.to_owned())
         .collect::<Vec<String>>();
-
+    let static_dir = format!(
+        "{}/{}",
+        env!("CARGO_MANIFEST_DIR"),
+        env::var("STATIC_DIRECTORY")?
+    );
     let enable_sync = env::var("ENABLE_SYNC")?.parse()?;
     let tasks_interval: u64 = env::var("TASKS_INTERVAL")?.parse()?;
     let grpc_connections = env::var("GRPC_CONNECTIONS")?.parse()?;
@@ -613,6 +617,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         server_host,
         port,
         allowed_origins,
+        static_dir,
         max_tasks,
         admin_contract,
         ignore_protocols,

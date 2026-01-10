@@ -2,7 +2,6 @@ use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -10,43 +9,25 @@ use crate::{
     helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Response format
-    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
-    /// Time period filter: 3m (default), 6m, 12m, or all
-    #[param(inline, value_type = Option<String>)]
     period: Option<String>,
     /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Liquidation {
-    /// Timestamp of the liquidation
     pub timestamp: DateTime<Utc>,
-    /// Token ticker
     pub ticker: String,
-    /// Contract ID
     pub contract_id: String,
-    /// User wallet address
     pub user: Option<String>,
-    /// Type of transaction (partial/full)
     pub transaction_type: Option<String>,
-    /// Amount liquidated in USD
-    #[schema(value_type = f64)]
     pub liquidation_amount: BigDecimal,
-    /// Whether the loan was fully closed
     pub closed_loan: bool,
-    /// Original down payment in USD
-    #[schema(value_type = f64)]
     pub down_payment: BigDecimal,
-    /// Original loan amount in USD
-    #[schema(value_type = f64)]
     pub loan: BigDecimal,
-    /// Price at liquidation
-    #[schema(value_type = f64)]
     pub liquidation_price: Option<BigDecimal>,
 }
 
@@ -67,15 +48,6 @@ impl From<crate::dao::postgre::ls_liquidation::LiquidationData> for Liquidation 
     }
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/liquidations",
-    tag = "Lending Analytics",
-    params(Query),
-    responses(
-        (status = 200, description = "Liquidation events with time window filtering", body = Vec<Liquidation>)
-    )
-)]
 #[get("/liquidations")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -109,14 +81,6 @@ async fn index(
     }
 }
 
-#[utoipa::path(
-    get,
-    path = "/api/liquidations/export",
-    tag = "Lending Analytics",
-    responses(
-        (status = 200, description = "Streaming CSV export of all liquidation events. Cache: 1 hour.", content_type = "text/csv")
-    )
-)]
 #[get("/liquidations/export")]
 pub async fn export(state: web::Data<AppState<State>>) -> Result<HttpResponse, Error> {
     const CACHE_KEY: &str = "liquidations_all";

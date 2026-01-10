@@ -1,23 +1,11 @@
 use actix_web::{get, web, HttpResponse};
-use bigdecimal::BigDecimal;
-use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
+use serde::Deserialize;
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
 
-#[utoipa::path(
-    get,
-    path = "/api/lp-withdraw",
-    tag = "Record Lookup",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns LP withdrawal details for a specific transaction hash. Returns 404 if transaction not found.", body = LpWithdrawResponse),
-        (status = 404, description = "Transaction not found")
-    )
-)]
 #[get("/lp-withdraw")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -32,19 +20,7 @@ async fn index(
     }
 }
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Transaction hash
     tx: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct LpWithdrawResponse {
-    /// Transaction hash
-    pub tx: String,
-    /// Withdrawal amount
-    #[schema(value_type = f64)]
-    pub amount: BigDecimal,
-    /// Pool name
-    pub pool: String,
 }

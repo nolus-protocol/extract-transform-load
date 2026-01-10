@@ -3,23 +3,13 @@ use std::str::FromStr as _;
 use actix_web::{get, web, Responder};
 use anyhow::Context as _;
 use chrono::{Duration, Utc};
-use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
+use serde::Deserialize;
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
 
-#[utoipa::path(
-    get,
-    path = "/api/prices",
-    tag = "Market Data",
-    params(Query),
-    responses(
-        (status = 200, description = "Returns historical price data for assets with interval and protocol filtering.", body = Vec<PricePoint>)
-    )
-)]
 #[get("/prices")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -31,7 +21,7 @@ async fn index(
         interval = 100;
     }
 
-    let group = get_interval_group(interval);
+    let group = getIntervalGroup(interval);
     let date = Utc::now() - Duration::days(interval);
 
     let data = state
@@ -52,17 +42,14 @@ async fn index(
     Ok(web::Json(prices))
 }
 
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize)]
 pub struct Query {
-    /// Time interval in days (max 100)
     interval: i64,
-    /// Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC_NOBLE)
     protocol: String,
-    /// Asset symbol (e.g., ATOM, OSMO)
     key: String,
 }
 
-pub fn get_interval_group(interval: i64) -> i32 {
+pub fn getIntervalGroup(interval: i64) -> i32 {
     if interval <= 7 {
         return 1;
     } else if interval > 7 && interval < 30 {
@@ -71,11 +58,3 @@ pub fn get_interval_group(interval: i64) -> i32 {
 
     60
 }
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct PricePoint(
-    /// Timestamp in milliseconds
-    pub i64,
-    /// Price value
-    pub f64,
-);
