@@ -3,12 +3,22 @@ use std::str::FromStr as _;
 use actix_web::{get, web, Responder};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/earn-apr",
+    tag = "Protocol Analytics",
+    params(Query),
+    responses(
+        (status = 200, description = "Returns the current earn APR for liquidity providers, optionally filtered by protocol.", body = Response)
+    )
+)]
 #[get("/earn-apr")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -62,12 +72,15 @@ async fn index(
     }))
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Response {
+    /// Earn APR percentage
+    #[schema(value_type = f64)]
     pub earn_apr: BigDecimal,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct Query {
+    /// Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC)
     protocol: Option<String>,
 }

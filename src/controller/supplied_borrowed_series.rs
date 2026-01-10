@@ -1,6 +1,8 @@
 use actix_web::{get, web, HttpResponse};
+use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -8,6 +10,15 @@ use crate::{
     helpers::{build_cache_key, parse_period_months, to_csv_response},
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/supplied-borrowed-history",
+    tag = "Protocol Analytics",
+    params(Query),
+    responses(
+        (status = 200, description = "Returns a time series of supplied vs borrowed amounts for tracking pool utilization trends. Cache: 1 hour.", body = Vec<SuppliedBorrowedPoint>)
+    )
+)]
 #[get("/supplied-borrowed-history")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -74,10 +85,31 @@ async fn index(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct Query {
+    /// Filter by protocol (e.g., OSMOSIS-OSMOSIS-USDC)
     protocol: Option<String>,
+    /// Response format
+    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
+    /// Time period filter: 3m (default), 6m, 12m, or all
+    #[param(inline, value_type = Option<String>)]
     period: Option<String>,
+    /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SuppliedBorrowedPoint {
+    /// Timestamp of the data point
+    #[serde(rename = "LP_Pool_timestamp")]
+    pub timestamp: DateTime<Utc>,
+    /// Total supplied amount in USD
+    #[serde(rename = "Supplied")]
+    #[schema(value_type = f64)]
+    pub supplied: BigDecimal,
+    /// Total borrowed amount in USD
+    #[serde(rename = "Borrowed")]
+    #[schema(value_type = f64)]
+    pub borrowed: BigDecimal,
 }

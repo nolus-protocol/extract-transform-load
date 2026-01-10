@@ -1,11 +1,21 @@
 use actix_web::{get, web, Responder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/leases-search",
+    tag = "Wallet Analytics",
+    params(Query),
+    responses(
+        (status = 200, description = "Searches and returns leases associated with a specific wallet address.", body = Vec<String>)
+    )
+)]
 #[get("/leases-search")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -31,10 +41,20 @@ async fn index(
     Ok(web::Json(data))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct Query {
+    /// Number of records to skip (default: 0)
     skip: Option<i64>,
+    /// Maximum number of records to return (default: 10, max: 100)
     limit: Option<i64>,
+    /// Wallet address
     address: String,
+    /// Search term
     search: Option<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct LeaseSearchResponse(
+    /// Lease contract ID
+    pub String,
+);

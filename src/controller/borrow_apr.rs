@@ -1,7 +1,8 @@
 use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -9,15 +10,29 @@ use crate::{
     helpers::{build_cache_key_with_protocol, parse_period_months, to_csv_response},
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct Query {
+    /// Response format (csv includes timestamps)
+    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
+    /// Time period filter: 3m (default), 6m, 12m, or all
+    #[param(inline, value_type = Option<String>)]
     period: Option<String>,
+    /// Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC) - required
     protocol: Option<String>,
     /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/borrow-apr",
+    tag = "Protocol Analytics",
+    params(Query),
+    responses(
+        (status = 200, description = "Returns historical borrow APR values for a specific protocol. Returns array of APR values (BigDecimal). CSV format includes full data with timestamps. Cache: 1 hour.", body = Vec<String>)
+    )
+)]
 #[get("/borrow-apr")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -65,4 +80,14 @@ async fn index(
 
     let items: Vec<BigDecimal> = vec![];
     Ok(HttpResponse::Ok().json(items))
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct BorrowAprPoint {
+    /// Timestamp of the APR reading
+    pub timestamp: DateTime<Utc>,
+    /// Annual Percentage Rate
+    #[serde(rename = "APR")]
+    #[schema(value_type = String)]
+    pub apr: BigDecimal,
 }

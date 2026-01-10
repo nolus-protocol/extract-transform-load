@@ -2,6 +2,7 @@ use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -9,22 +10,35 @@ use crate::{
     helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct Query {
+    /// Response format
+    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
+    /// Time period filter: 3m (default), 6m, 12m, or all
+    #[param(inline, value_type = Option<String>)]
     period: Option<String>,
     /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct InterestRepayment {
+    /// Timestamp of the repayment
     pub timestamp: DateTime<Utc>,
+    /// Contract ID
     pub contract_id: String,
+    /// Position owner wallet address
     pub position_owner: String,
+    /// Position type (Long/Short)
     pub position_type: String,
+    /// Event type (repayment/close/liquidation)
     pub event_type: String,
+    /// Loan interest repaid in USD
+    #[schema(value_type = f64)]
     pub loan_interest_repaid: BigDecimal,
+    /// Margin interest repaid in USD
+    #[schema(value_type = f64)]
     pub margin_interest_repaid: BigDecimal,
 }
 
@@ -42,6 +56,15 @@ impl From<crate::dao::postgre::ls_repayment::InterestRepaymentData> for Interest
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/interest-repayments",
+    tag = "Lending Analytics",
+    params(Query),
+    responses(
+        (status = 200, description = "Interest repayment data aggregated from repayments, position closes, and liquidations", body = Vec<InterestRepayment>)
+    )
+)]
 #[get("/interest-repayments")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -78,6 +101,14 @@ async fn index(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/interest-repayments/export",
+    tag = "Lending Analytics",
+    responses(
+        (status = 200, description = "Streaming CSV export of all interest repayment events. Cache: 1 hour.", content_type = "text/csv")
+    )
+)]
 #[get("/interest-repayments/export")]
 pub async fn export(state: web::Data<AppState<State>>) -> Result<HttpResponse, Error> {
     const CACHE_KEY: &str = "interest_repayments_all";

@@ -2,6 +2,7 @@ use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
@@ -9,9 +10,13 @@ use crate::{
     helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct Query {
+    /// Response format
+    #[param(inline, value_type = Option<String>)]
     format: Option<String>,
+    /// Time period filter: 3m (default), 6m, 12m, or all
+    #[param(inline, value_type = Option<String>)]
     period: Option<String>,
     /// Only return records after this timestamp (exclusive), for incremental syncing
     from: Option<DateTime<Utc>>,
@@ -40,6 +45,33 @@ impl From<crate::dao::postgre::ls_repayment::HistoricallyRepaid> for Historicall
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct HistoricallyRepaidResponse {
+    /// Contract ID
+    pub contract_id: String,
+    /// Asset symbol
+    pub symbol: String,
+    /// Original loan amount in USD
+    #[schema(value_type = f64)]
+    pub loan: BigDecimal,
+    /// Total amount repaid in USD
+    #[schema(value_type = f64)]
+    pub total_repaid: BigDecimal,
+    /// Timestamp when the loan was closed
+    pub close_timestamp: Option<DateTime<Utc>>,
+    /// Whether the loan was fully closed
+    pub loan_closed: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/historically-repaid",
+    tag = "Lending Analytics",
+    params(Query),
+    responses(
+        (status = 200, description = "Historically repaid positions with time window filtering", body = Vec<HistoricallyRepaidResponse>)
+    )
+)]
 #[get("/historically-repaid")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -73,6 +105,14 @@ async fn index(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/historically-repaid/export",
+    tag = "Lending Analytics",
+    responses(
+        (status = 200, description = "Streaming CSV export of all historically repaid positions. Cache: 1 hour.", content_type = "text/csv")
+    )
+)]
 #[get("/historically-repaid/export")]
 pub async fn export(state: web::Data<AppState<State>>) -> Result<HttpResponse, Error> {
     const CACHE_KEY: &str = "historically_repaid_all";

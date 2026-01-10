@@ -1,11 +1,22 @@
 use actix_web::{get, web, Responder};
-use serde::Deserialize;
+use bigdecimal::BigDecimal;
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     configuration::{AppState, State},
     error::Error,
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/leased-assets",
+    tag = "Position Analytics",
+    params(Query),
+    responses(
+        (status = 200, description = "Returns the total value of leased assets grouped by token symbol. Cache: 1 hour.", body = Vec<LeasedAssetResponse>)
+    )
+)]
 #[get("/leased-assets")]
 async fn index(
     state: web::Data<AppState<State>>,
@@ -44,7 +55,17 @@ async fn index(
     Ok(web::Json(data))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct Query {
+    /// Filter by protocol (e.g., OSMOSIS-OSMOSIS-USDC)
     protocol: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct LeasedAssetResponse {
+    /// Token symbol
+    pub symbol: String,
+    /// Total leased value in USD
+    #[schema(value_type = f64)]
+    pub value: BigDecimal,
 }

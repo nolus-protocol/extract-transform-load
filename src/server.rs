@@ -1,9 +1,11 @@
 use actix_cors::Cors;
-use actix_files::Files;
 use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
     configuration::{AppState, State},
+    openapi::ApiDoc,
     controller::{
         backfill_ls_opening, blocks, borrow_apr, borrowed, buyback, buyback_total,
         current_lenders, daily_positions, deposit_suspension, distributed, earn_apr,
@@ -38,7 +40,6 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
 
     let server = HttpServer::new(move || {
         let app = app_state.clone();
-        let static_dir = app_state.config.static_dir.to_owned();
         let allowed_cors = String::from("*");
         let cors_access_all =
             app.config.allowed_origins.contains(&allowed_cors);
@@ -135,7 +136,10 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(historical_lenders::export)
                     .service(backfill_ls_opening::index),
             )
-            .service(Files::new("/", static_dir).index_file("index.html"))
+            .service(
+                SwaggerUi::new("/{_:.*}")
+                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
+            )
     })
     .bind((host, port))?
     .disable_signals()
