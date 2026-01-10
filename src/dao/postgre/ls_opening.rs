@@ -477,16 +477,8 @@ impl Table<LS_Opening> {
     ) -> Result<Vec<Leased_Asset>, Error> {
         let data = sqlx::query_as(
             r#"
-            WITH LatestTimestamps AS (
-            SELECT
-                "LS_contract_id",
-                MAX("LS_timestamp") AS "MaxTimestamp"
-            FROM
-                "LS_State"
-            WHERE
-                "LS_timestamp" > (now() - INTERVAL '2 hours')
-            GROUP BY
-                "LS_contract_id"
+            WITH LatestAggregation AS (
+                SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
             ),
             Opened AS (
                 SELECT
@@ -502,12 +494,13 @@ impl Table<LS_Opening> {
                     END AS "Asset Type"
                 FROM
                     "LS_State" s
-                INNER JOIN
-                    LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
+                CROSS JOIN
+                    LatestAggregation la
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
                 WHERE
-                    s."LS_amnt_stable" > 0
+                    s."LS_timestamp" = la.max_ts
+                    AND s."LS_amnt_stable" > 0
             ),
             Lease_Value_Table AS (
                 SELECT
@@ -1456,42 +1449,78 @@ impl Table<LS_Opening> {
     pub async fn get_daily_opened_closed(
         &self,
     ) -> Result<Vec<(DateTime<Utc>, BigDecimal, BigDecimal)>, Error> {
-        let data = sqlx::query_as(
+        self.get_daily_opened_closed_with_window(None, None).await
+    }
+
+    /// Get daily opened/closed loans with time window filtering
+    pub async fn get_daily_opened_closed_with_window(
+        &self,
+        months: Option<i32>,
+        from: Option<DateTime<Utc>>,
+    ) -> Result<Vec<(DateTime<Utc>, BigDecimal, BigDecimal)>, Error> {
+        // Build time filter clause
+        let time_filter = if let Some(m) = months {
+            format!("WHERE \"LS_timestamp\" >= NOW() - INTERVAL '{} months'", m)
+        } else {
+            String::new()
+        };
+
+        let from_filter = if from.is_some() {
+            if time_filter.is_empty() {
+                "WHERE \"LS_timestamp\" > $1".to_string()
+            } else {
+                " AND \"LS_timestamp\" > $1".to_string()
+            }
+        } else {
+            String::new()
+        };
+
+        let combined_filter = format!("{}{}", time_filter, from_filter);
+
+        let query = format!(
             r#"
-            WITH DateSeries AS (
+            WITH FilteredClosePosition AS (
+                SELECT "LS_contract_id", "LS_timestamp", "LS_principal_stable"
+                FROM "LS_Close_Position"
+                {}
+            ),
+            FilteredRepayment AS (
+                SELECT "LS_contract_id", "LS_timestamp", "LS_principal_stable"
+                FROM "LS_Repayment"
+                {}
+            ),
+            FilteredOpening AS (
+                SELECT *
+                FROM "LS_Opening"
+                {}
+            ),
+            FilteredLiquidation AS (
+                SELECT "LS_contract_id", "LS_timestamp", "LS_principal_stable"
+                FROM "LS_Liquidation"
+                {}
+            ),
+            DateSeries AS (
                 SELECT generate_series(
                     DATE(MIN(earliest_date)),
                     DATE(MAX(latest_date)),
                     '1 day'::interval
                 ) AS "Date"
                 FROM (
-                    SELECT MIN("LS_timestamp") AS earliest_date, MAX("LS_timestamp") AS latest_date FROM "LS_Close_Position"
+                    SELECT MIN("LS_timestamp") AS earliest_date, MAX("LS_timestamp") AS latest_date FROM FilteredClosePosition
                     UNION ALL
-                    SELECT MIN("LS_timestamp") AS earliest_date, MAX("LS_timestamp") AS latest_date FROM "LS_Repayment"
+                    SELECT MIN("LS_timestamp") AS earliest_date, MAX("LS_timestamp") AS latest_date FROM FilteredRepayment
                     UNION ALL
-                    SELECT MIN("LS_timestamp") AS earliest_date, MAX("LS_timestamp") AS latest_date FROM "LS_Opening"
+                    SELECT MIN("LS_timestamp") AS earliest_date, MAX("LS_timestamp") AS latest_date FROM FilteredOpening
                     UNION ALL
-                    SELECT MIN("LS_timestamp") AS earliest_date, MAX("LS_timestamp") AS latest_date FROM "LS_Liquidation"
+                    SELECT MIN("LS_timestamp") AS earliest_date, MAX("LS_timestamp") AS latest_date FROM FilteredLiquidation
                 ) AS combined_dates
             ),
             Close_Loans AS (
-                SELECT
-                    "LS_contract_id",
-                    "LS_timestamp",
-                    "LS_principal_stable"
-                FROM "LS_Close_Position"
+                SELECT "LS_contract_id", "LS_timestamp", "LS_principal_stable" FROM FilteredClosePosition
                 UNION ALL
-                SELECT
-                    "LS_contract_id",
-                    "LS_timestamp",
-                    "LS_principal_stable"
-                FROM "LS_Repayment"
+                SELECT "LS_contract_id", "LS_timestamp", "LS_principal_stable" FROM FilteredRepayment
                 UNION ALL
-                SELECT
-                    "LS_contract_id",
-                    "LS_timestamp",
-                    "LS_principal_stable"
-                FROM "LS_Liquidation"
+                SELECT "LS_contract_id", "LS_timestamp", "LS_principal_stable" FROM FilteredLiquidation
             ),
             DailyClosedLoans AS (
                 SELECT
@@ -1519,7 +1548,7 @@ impl Table<LS_Opening> {
                 FROM
                     DateSeries ds
                 LEFT JOIN
-                    "LS_Opening" lo ON DATE(lo."LS_timestamp") = ds."Date"
+                    FilteredOpening lo ON DATE(lo."LS_timestamp") = ds."Date"
                 GROUP BY
                     ds."Date"
             )
@@ -1534,10 +1563,16 @@ impl Table<LS_Opening> {
             ORDER BY
                 "Date" ASC
             "#,
-        )
-        .persistent(true)
-        .fetch_all(&self.pool)
-        .await?;
+            combined_filter, combined_filter, combined_filter, combined_filter
+        );
+
+        let mut query_builder = sqlx::query_as::<_, (DateTime<Utc>, BigDecimal, BigDecimal)>(&query);
+
+        if let Some(from_ts) = from {
+            query_builder = query_builder.bind(from_ts);
+        }
+
+        let data = query_builder.persistent(true).fetch_all(&self.pool).await?;
         Ok(data)
     }
 

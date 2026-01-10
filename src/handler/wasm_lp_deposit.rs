@@ -29,7 +29,7 @@ pub async fn parse_and_insert(
         LP_timestamp: at,
         LP_Pool_id: item.to.to_owned(),
         LP_amnt_stable: app_state
-            .in_stabe_by_date(
+            .in_stable_by_date(
                 &item.deposit_symbol,
                 &item.deposit_amount,
                 protocol,

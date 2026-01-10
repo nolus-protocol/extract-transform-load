@@ -28,7 +28,7 @@ pub async fn parse_and_insert(
         LP_timestamp: at,
         LP_Pool_id: item.from,
         LP_amnt_stable: app_state
-            .in_stabe_by_date(
+            .in_stable_by_date(
                 &item.withdraw_symbol,
                 &item.withdraw_amount,
                 protocol,

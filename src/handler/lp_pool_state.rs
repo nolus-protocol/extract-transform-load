@@ -84,7 +84,7 @@ async fn proceed(
         LP_Pool_id: pool_id.to_owned(),
         LP_Pool_timestamp: timestsamp,
         LP_Pool_total_value_locked_stable: state
-            .in_stabe_by_pool_id(&pool_id, &total_value_locked_asset)
+            .in_stable_by_pool_id(&pool_id, &total_value_locked_asset)
             .await?,
         LP_Pool_total_value_locked_asset: BigDecimal::from_str(
             &total_value_locked_asset,
@@ -93,7 +93,7 @@ async fn proceed(
             &lp_pool_state.balance_nlpn.amount,
         )?,
         LP_Pool_total_borrowed_stable: state
-            .in_stabe_by_pool_id(
+            .in_stable_by_pool_id(
                 &pool_id,
                 &lp_pool_state.total_principal_due.amount,
             )

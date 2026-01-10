@@ -57,7 +57,7 @@ async fn proceed_loan_collect(
         .get(ls_loan_closing.LS_contract_id.to_owned())
         .await?;
     match Loan_Closing_Status::from_str(&ls_loan_closing.Type)? {
-        Loan_Closing_Status::Reypay => {
+        Loan_Closing_Status::Repay => {
             proceed_repayment(
                 state,
                 ls_loan_closing,
@@ -112,7 +112,7 @@ async fn proceed_repayment(
                 LS_symbol: lease.amount.ticker.to_owned(),
                 LS_amount: BigDecimal::from_str(&lease.amount.amount)?,
                 LS_amount_stable: state
-                    .in_stabe_by_date(
+                    .in_stable_by_date(
                         &lease.amount.ticker,
                         &lease.amount.amount,
                         Some(protocol.to_owned()),
@@ -136,7 +136,7 @@ async fn proceed_repayment(
                     LS_symbol: c.0.to_owned(),
                     LS_amount: BigDecimal::from_str(&b.amount)?,
                     LS_amount_stable: state
-                        .in_stabe_by_date(
+                        .in_stable_by_date(
                             &c.0,
                             &b.amount,
                             Some(protocol.to_owned()),
@@ -187,7 +187,7 @@ async fn proceed_market_close(
             LS_symbol: change_amount.ticker.to_owned(),
             LS_amount: BigDecimal::from_str(&change_amount.amount)?,
             LS_amount_stable: state
-                .in_stabe_by_date(
+                .in_stable_by_date(
                     &change_amount.ticker,
                     &change_amount.amount,
                     Some(protocol.to_owned()),
@@ -223,7 +223,7 @@ async fn proceed_market_close(
                     LS_symbol: paid.amount.ticker.to_owned(),
                     LS_amount: BigDecimal::from_str(&paid.amount.amount)?,
                     LS_amount_stable: state
-                        .in_stabe_by_date(
+                        .in_stable_by_date(
                             &paid.amount.ticker,
                             &paid.amount.amount,
                             Some(protocol.to_owned()),
@@ -242,7 +242,7 @@ async fn proceed_market_close(
                     LS_symbol: paid.amount.ticker.to_owned(),
                     LS_amount: BigDecimal::from_str(&paid.amount.amount)?,
                     LS_amount_stable: state
-                        .in_stabe_by_date(
+                        .in_stable_by_date(
                             &paid.amount.ticker,
                             &paid.amount.amount,
                             Some(protocol.to_owned()),
@@ -268,7 +268,7 @@ async fn proceed_market_close(
                         LS_symbol: c.0.to_owned(),
                         LS_amount: BigDecimal::from_str(&b.amount)?,
                         LS_amount_stable: state
-                            .in_stabe_by_date(
+                            .in_stable_by_date(
                                 &c.0,
                                 &b.amount,
                                 Some(protocol.to_owned()),
@@ -526,7 +526,7 @@ pub async fn get_pnl_long(
         .context(format!("protocol not found {}", &lease.LS_loan_pool_id))?;
 
     let amnt_str = lease_amount.to_string();
-    let amount_fn = app_state.in_stabe_by_date(
+    let amount_fn = app_state.in_stable_by_date(
         &lease_status.amount.ticker,
         &amnt_str,
         Some(protocol.to_owned()),
@@ -647,7 +647,7 @@ pub async fn get_pnl_short(
         .context(format!("protocol not found {}", &lease.LS_loan_pool_id))?;
 
     let amnt_str = lease_amount.to_string();
-    let amount_fn = app_state.in_stabe_by_date(
+    let amount_fn = app_state.in_stable_by_date(
         &lease_status.amount.ticker,
         &amnt_str,
         Some(protocol.to_owned()),
@@ -719,14 +719,14 @@ pub async fn get_change_long(
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
 ) -> Result<BigDecimal, Error> {
-    let f1 = app_state.in_stabe_by_date(
+    let f1 = app_state.in_stable_by_date(
         &symbol,
         &amnt,
         Some(protocol.to_owned()),
         &start_date,
     );
 
-    let f2 = app_state.in_stabe_by_date(
+    let f2 = app_state.in_stable_by_date(
         &symbol,
         &amnt,
         Some(protocol.to_owned()),
@@ -769,7 +769,7 @@ pub async fn get_fees(
         (&lease.LS_loan_amnt / &loan_amount_symbol_decimals).to_string();
 
     let loan_amount_fn = app_state
-        .in_stabe_by_date(
+        .in_stable_by_date(
             symbol,
             &loan_amnt,
             Some(protocol),

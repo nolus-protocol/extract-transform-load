@@ -199,16 +199,8 @@ impl Table<LS_State> {
     ) -> Result<Vec<LoansByToken>, crate::error::Error> {
         let data = sqlx::query_as(
             r#"
-            WITH MaxTimestamps AS (
-                SELECT
-                    "LS_contract_id",
-                    MAX("LS_timestamp") AS "MaxTimestamp"
-                FROM
-                    "LS_State"
-                WHERE
-                    "LS_timestamp" > (now() - INTERVAL '2 hours')
-                GROUP BY
-                    "LS_contract_id"
+            WITH LatestAggregation AS (
+                SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
             ),
             Opened AS (
                 SELECT
@@ -232,10 +224,12 @@ impl Table<LS_State> {
                     END AS "Asset Type"
                 FROM
                     "LS_State" s1
-                INNER JOIN
-                    MaxTimestamps mt ON s1."LS_contract_id" = mt."LS_contract_id" AND s1."LS_timestamp" = mt."MaxTimestamp"
+                CROSS JOIN
+                    LatestAggregation la
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s1."LS_contract_id"
+                WHERE
+                    s1."LS_timestamp" = la.max_ts
             )
             SELECT
                 o."Asset Type" AS symbol,
@@ -262,16 +256,8 @@ impl Table<LS_State> {
     ) -> Result<Vec<PositionBucket>, crate::error::Error> {
         let data = sqlx::query_as(
             r#"
-            WITH LatestStates AS (
-                SELECT
-                    "LS_contract_id",
-                    MAX("LS_timestamp") AS "MaxTimestamp"
-                FROM
-                    "LS_State"
-                WHERE
-                    "LS_timestamp" > (now() - INTERVAL '2 hours')
-                GROUP BY
-                    "LS_contract_id"
+            WITH LatestAggregation AS (
+                SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
             ),
             OpenedLoans AS (
                 SELECT
@@ -284,13 +270,14 @@ impl Table<LS_State> {
                         ELSE s."LS_principal_stable" / 1000000
                     END AS "Loan in Stables"
                 FROM
-                    LatestStates ls
-                INNER JOIN
-                    "LS_State" s ON ls."LS_contract_id" = s."LS_contract_id" AND ls."MaxTimestamp" = s."LS_timestamp"
+                    "LS_State" s
+                CROSS JOIN
+                    LatestAggregation la
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
                 WHERE
-                    s."LS_principal_stable" > 0
+                    s."LS_timestamp" = la.max_ts
+                    AND s."LS_principal_stable" > 0
             )
             SELECT
                 CASE
@@ -324,17 +311,6 @@ impl Table<LS_State> {
             WITH LatestAggregation AS (
                 SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
             ),
-            LatestTimestamps AS (
-                SELECT
-                    "LS_contract_id",
-                    MAX("LS_timestamp") AS "MaxTimestamp"
-                FROM
-                    "LS_State"
-                WHERE
-                    "LS_timestamp" = (SELECT max_ts FROM LatestAggregation)
-                GROUP BY
-                    "LS_contract_id"
-            ),
             Opened AS (
                 SELECT
                     s."LS_contract_id",
@@ -349,12 +325,13 @@ impl Table<LS_State> {
                     END AS "Asset Type"
                 FROM
                     "LS_State" s
-                INNER JOIN
-                    LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
+                CROSS JOIN
+                    LatestAggregation la
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
                 WHERE
-                    s."LS_amnt_stable" > 0
+                    s."LS_timestamp" = la.max_ts
+                    AND s."LS_amnt_stable" > 0
             ),
             Lease_Value_Table AS (
                 SELECT
@@ -392,37 +369,30 @@ impl Table<LS_State> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
         r#"
-          WITH LatestTimestamps AS (
-          SELECT
-              "LS_contract_id",
-              MAX("LS_timestamp") AS "MaxTimestamp"
-          FROM
-              "LS_State"
-          WHERE
-              "LS_timestamp" > (now() - INTERVAL '2 hours')
-          GROUP BY
-              "LS_contract_id"
-      ),
-      Opened AS (
-          SELECT
-              s."LS_contract_id",
-              s."LS_amnt_stable",
-              CASE
-                  WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
-                  WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                  WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                  WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
-                  ELSE lo."LS_asset_symbol"
-              END AS "Asset Type"
-          FROM
-              "LS_State" s
-          INNER JOIN
-              LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
-          INNER JOIN
-              "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
-          WHERE
-              s."LS_amnt_stable" > 0
-      ),
+          WITH LatestAggregation AS (
+              SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+          ),
+          Opened AS (
+              SELECT
+                  s."LS_contract_id",
+                  s."LS_amnt_stable",
+                  CASE
+                      WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
+                      WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
+                      WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
+                      WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                      ELSE lo."LS_asset_symbol"
+                  END AS "Asset Type"
+              FROM
+                  "LS_State" s
+              CROSS JOIN
+                  LatestAggregation la
+              INNER JOIN
+                  "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+              WHERE
+                  s."LS_timestamp" = la.max_ts
+                  AND s."LS_amnt_stable" > 0
+          ),
       Lease_Value_Table AS (
           SELECT
               op."Asset Type" AS "Token",
@@ -458,16 +428,8 @@ impl Table<LS_State> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
       r#"
-          WITH LatestTimestamps AS (
-              SELECT
-                  "LS_contract_id",
-                  MAX("LS_timestamp") AS "MaxTimestamp"
-              FROM
-                  "LS_State"
-              WHERE
-                  "LS_timestamp" > (now() - INTERVAL '2 hours')
-              GROUP BY
-                  "LS_contract_id"
+          WITH LatestAggregation AS (
+              SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
           ),
           Opened AS (
               SELECT
@@ -482,10 +444,12 @@ impl Table<LS_State> {
                   END AS "Asset Type"
               FROM
                   "LS_State" s
-              INNER JOIN
-                  LatestTimestamps lt ON s."LS_contract_id" = lt."LS_contract_id" AND s."LS_timestamp" = lt."MaxTimestamp"
+              CROSS JOIN
+                  LatestAggregation la
               INNER JOIN
                   "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+              WHERE
+                  s."LS_timestamp" = la.max_ts
           ),
           Lease_Value_Table AS (
               SELECT

@@ -37,14 +37,14 @@ pub async fn parse_and_insert(
         None => None,
     };
 
-    let f1 = app_state.in_stabe_by_date(
+    let f1 = app_state.in_stable_by_date(
         &item.payment_symbol,
         &item.payment_amount,
         protocol.to_owned(),
         &at,
     );
 
-    let f2 = app_state.in_stabe_by_date(
+    let f2 = app_state.in_stable_by_date(
         &item.amount_symbol,
         &item.amount_amount,
         protocol.to_owned(),

@@ -333,7 +333,7 @@ impl State {
         Ok(price)
     }
 
-    pub async fn in_stabe(
+    pub async fn in_stable(
         &self,
         currency_symbol: &str,
         protocol: Option<String>,
@@ -342,12 +342,12 @@ impl State {
         let currency = self.get_currency(currency_symbol)?;
         let Currency(symbol, _, _) = currency;
         let stabe_price = self.get_cached_price(symbol, protocol).await?;
-        let val = self.in_stabe_calc(&stabe_price, value)?;
+        let val = self.in_stable_calc(&stabe_price, value)?;
 
         Ok(val)
     }
 
-    pub async fn in_stabe_by_date(
+    pub async fn in_stable_by_date(
         &self,
         currency_symbol: &str,
         value: &str,
@@ -362,12 +362,12 @@ impl State {
             .mp_asset
             .get_price_by_date(symbol, protocol, date_time)
             .await?;
-        let val = self.in_stabe_calc(&stabe_price, value)?;
+        let val = self.in_stable_calc(&stabe_price, value)?;
 
         Ok(val)
     }
 
-    pub async fn in_stabe_by_pool_id(
+    pub async fn in_stable_by_pool_id(
         &self,
         pool_id: &str,
         value: &str,
@@ -377,7 +377,7 @@ impl State {
         let protocol = self.get_protocol_by_pool_id(pool_id);
 
         let stabe_price = self.get_cached_price(symbol, protocol).await?;
-        let val = self.in_stabe_calc(&stabe_price, value)?;
+        let val = self.in_stable_calc(&stabe_price, value)?;
 
         Ok(val)
     }
@@ -390,7 +390,7 @@ impl State {
         protocol.map(|(protocol, _)| protocol.to_owned())
     }
 
-    pub fn in_stabe_calc(
+    pub fn in_stable_calc(
         &self,
         stable_price: &BigDecimal,
         value: &str,

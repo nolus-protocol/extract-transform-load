@@ -97,7 +97,7 @@ fn extract_field(
 pub fn parse_wasm_ls_open(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Opening_Type, Error> {
-    let ls_open = pasrse_data(attributes)?;
+    let ls_open = parse_data(attributes)?;
     let c = LS_Opening_Type {
         id: extract_field(&ls_open, "id")?,
         customer: extract_field(&ls_open, "customer")?,
@@ -117,7 +117,7 @@ pub fn parse_wasm_ls_open(
 pub fn parse_wasm_ls_close(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Closing_Type, Error> {
-    let ls_close = pasrse_data(attributes)?;
+    let ls_close = parse_data(attributes)?;
     let c = LS_Closing_Type {
         id: extract_field(&ls_close, "id")?,
         at: extract_field(&ls_close, "at")?,
@@ -129,8 +129,8 @@ pub fn parse_wasm_ls_close(
 pub fn parse_wasm_ls_repayment(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Repayment_Type, Error> {
-    let ls_repayment = pasrse_data(attributes)?;
-    let items = parseInterestValues(&ls_repayment)?;
+    let ls_repayment = parse_data(attributes)?;
+    let items = parse_interest_values(&ls_repayment)?;
     let c = LS_Repayment_Type {
         height: extract_field(&ls_repayment, "height")?,
         to: extract_field(&ls_repayment, "to")?,
@@ -151,10 +151,10 @@ pub fn parse_wasm_ls_repayment(
 pub fn parse_wasm_ls_close_position(
     attributes: &Vec<EventAttribute>,
 ) -> Result<Option<LS_Close_Position_Type>, Error> {
-    let ls_close_position = pasrse_data(attributes)?;
+    let ls_close_position = parse_data(attributes)?;
 
     if ls_close_position.contains_key("height") {
-        let items = parseInterestValues(&ls_close_position)?;
+        let items = parse_interest_values(&ls_close_position)?;
         let c = LS_Close_Position_Type {
             height: extract_field(&ls_close_position, "height")?,
             to: extract_field(&ls_close_position, "to")?,
@@ -186,8 +186,8 @@ pub fn parse_wasm_ls_close_position(
 pub fn parse_wasm_ls_liquidation(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Liquidation_Type, Error> {
-    let ls_liquidation = pasrse_data(attributes)?;
-    let items = parseInterestValues(&ls_liquidation)?;
+    let ls_liquidation = parse_data(attributes)?;
+    let items = parse_interest_values(&ls_liquidation)?;
 
     let c = LS_Liquidation_Type {
         height: extract_field(&ls_liquidation, "height")?,
@@ -212,7 +212,7 @@ pub fn parse_wasm_ls_liquidation(
 pub fn parse_wasm_ls_liquidation_warning(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Liquidation_Warning_Type, Error> {
-    let ls_liquidation_warning = pasrse_data(attributes)?;
+    let ls_liquidation_warning = parse_data(attributes)?;
     let c = LS_Liquidation_Warning_Type {
         customer: extract_field(&ls_liquidation_warning, "customer")?,
         lease: extract_field(&ls_liquidation_warning, "lease")?,
@@ -227,7 +227,7 @@ pub fn parse_wasm_ls_liquidation_warning(
 pub fn parse_wasm_ls_slippage_anomaly(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Slippage_Anomaly_Type, Error> {
-    let ls_slippage_anomaly = pasrse_data(attributes)?;
+    let ls_slippage_anomaly = parse_data(attributes)?;
     let c = LS_Slippage_Anomaly_Type {
         customer: extract_field(&ls_slippage_anomaly, "customer")?,
         lease: extract_field(&ls_slippage_anomaly, "lease")?,
@@ -241,7 +241,7 @@ pub fn parse_wasm_ls_slippage_anomaly(
 pub fn parse_wasm_ls_auto_close_position(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LS_Auto_Close_Position_Type, Error> {
-    let ls_auto_close_position = pasrse_data(attributes)?;
+    let ls_auto_close_position = parse_data(attributes)?;
     let c = LS_Auto_Close_Position_Type {
         to: extract_field(&ls_auto_close_position, "to")?,
         take_profit_ltv: ls_auto_close_position.get("take-profit-ltv").cloned(),
@@ -254,7 +254,7 @@ pub fn parse_wasm_ls_auto_close_position(
 pub fn parse_wasm_reserve_cover_loss(
     attributes: &Vec<EventAttribute>,
 ) -> Result<Reserve_Cover_Loss_Type, Error> {
-    let reserve_cover_loss = pasrse_data(attributes)?;
+    let reserve_cover_loss = parse_data(attributes)?;
     let c = Reserve_Cover_Loss_Type {
         to: extract_field(&reserve_cover_loss, "to")?,
         payment_symbol: extract_field(&reserve_cover_loss, "payment-symbol")?,
@@ -264,7 +264,7 @@ pub fn parse_wasm_reserve_cover_loss(
     Ok(c)
 }
 
-pub fn parseInterestValues(
+pub fn parse_interest_values(
     value: &HashMap<String, String>,
 ) -> Result<Interest_values, Error> {
     let prev_margin_interest =
@@ -311,7 +311,7 @@ pub fn parseInterestValues(
 pub fn parse_wasm_lp_deposit(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LP_Deposit_Type, Error> {
-    let deposit = pasrse_data(attributes)?;
+    let deposit = parse_data(attributes)?;
 
     let c = LP_Deposit_Type {
         height: extract_field(&deposit, "height")?,
@@ -329,7 +329,7 @@ pub fn parse_wasm_lp_deposit(
 pub fn parse_wasm_lp_withdraw(
     attributes: &Vec<EventAttribute>,
 ) -> Result<LP_Withdraw_Type, Error> {
-    let lp_withdraw = pasrse_data(attributes)?;
+    let lp_withdraw = parse_data(attributes)?;
 
     let c = LP_Withdraw_Type {
         height: extract_field(&lp_withdraw, "height")?,
@@ -348,7 +348,7 @@ pub fn parse_wasm_lp_withdraw(
 pub fn parse_wasm_tr_profit(
     attributes: &Vec<EventAttribute>,
 ) -> Result<TR_Profit_Type, Error> {
-    let tr_profit = pasrse_data(attributes)?;
+    let tr_profit = parse_data(attributes)?;
 
     let c = TR_Profit_Type {
         height: extract_field(&tr_profit, "height")?,
@@ -363,7 +363,7 @@ pub fn parse_wasm_tr_profit(
 pub fn parse_wasm_tr_rewards_distribution(
     attributes: &Vec<EventAttribute>,
 ) -> Result<TR_Rewards_Distribution_Type, Error> {
-    let tr_rewards_distribution = pasrse_data(attributes)?;
+    let tr_rewards_distribution = parse_data(attributes)?;
 
     let c = TR_Rewards_Distribution_Type {
         height: extract_field(&tr_rewards_distribution, "height")?,
@@ -382,7 +382,7 @@ pub fn parse_wasm_tr_rewards_distribution(
     Ok(c)
 }
 
-fn pasrse_data(
+fn parse_data(
     attributes: &Vec<EventAttribute>,
 ) -> Result<HashMap<String, String>, Error> {
     let mut data: HashMap<String, String> = HashMap::new();
@@ -798,7 +798,7 @@ impl FromStr for EventsType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Loan_Closing_Status {
-    Reypay,
+    Repay,
     Liquidation,
     MarketClose,
     None,
@@ -807,7 +807,7 @@ pub enum Loan_Closing_Status {
 impl fmt::Display for Loan_Closing_Status {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Loan_Closing_Status::Reypay => write!(f, "repay"),
+            Loan_Closing_Status::Repay => write!(f, "repay"),
             Loan_Closing_Status::Liquidation => write!(f, "liquidation"),
             Loan_Closing_Status::MarketClose => {
                 write!(f, "market-close")
@@ -822,7 +822,7 @@ impl fmt::Display for Loan_Closing_Status {
 impl From<Loan_Closing_Status> for String {
     fn from(value: Loan_Closing_Status) -> Self {
         match value {
-            Loan_Closing_Status::Reypay => String::from("repay"),
+            Loan_Closing_Status::Repay => String::from("repay"),
             Loan_Closing_Status::Liquidation => String::from("liquidation"),
             Loan_Closing_Status::MarketClose => String::from("market-close"),
             Loan_Closing_Status::None => String::from("none"),
@@ -835,7 +835,7 @@ impl FromStr for Loan_Closing_Status {
 
     fn from_str(value: &str) -> Result<Loan_Closing_Status, Self::Err> {
         match value {
-            "repay" => Ok(Loan_Closing_Status::Reypay),
+            "repay" => Ok(Loan_Closing_Status::Repay),
             "liquidation" => Ok(Loan_Closing_Status::Liquidation),
             "market-close" => Ok(Loan_Closing_Status::MarketClose),
             "none" => Ok(Loan_Closing_Status::None),
@@ -1075,12 +1075,12 @@ pub fn build_cache_key_with_protocol(
 
 /// Parse period query parameter to number of months for time window filtering.
 /// Returns Some(months) for time-limited queries, None for "all" (no limit).
-/// Default is 12 months if no period specified.
+/// Default is 3 months if no period specified.
 pub fn parse_period_months(period: &Option<String>) -> Result<Option<i32>, Error> {
     match period.as_deref() {
-        None | Some("12m") => Ok(Some(12)),
-        Some("3m") => Ok(Some(3)),
+        None | Some("3m") => Ok(Some(3)),
         Some("6m") => Ok(Some(6)),
+        Some("12m") => Ok(Some(12)),
         Some("all") => Ok(None),
         Some(p) => Err(Error::InvalidOption {
             option: format!("period '{}'. Valid options: 3m, 6m, 12m, all", p),

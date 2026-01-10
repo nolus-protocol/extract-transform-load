@@ -43,7 +43,7 @@ impl Table<LS_Loan_Collect> {
                 "LS_contract_id",
                 "LS_symbol",
                 "LS_amount",
-                "LS_amount_stable
+                "LS_amount_stable"
             )
             VALUES($1, $2, $3, $4)
         "#,
@@ -72,7 +72,7 @@ impl Table<LS_Loan_Collect> {
                 "LS_contract_id",
                 "LS_symbol",
                 "LS_amount",
-                "LS_amount_stable
+                "LS_amount_stable"
             )"#,
         );
 

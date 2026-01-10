@@ -42,7 +42,7 @@ const CACHE_KEY_UNREALIZED_PNL: &str = "unrealized_pnl";
 const CACHE_KEY_LEASES_MONTHLY: &str = "leases_monthly";
 const CACHE_KEY_MONTHLY_ACTIVE_WALLETS: &str = "monthly_active_wallets";
 const CACHE_KEY_REVENUE_SERIES: &str = "revenue_series";
-const CACHE_KEY_DAILY_POSITIONS: &str = "daily_positions";
+const CACHE_KEY_DAILY_POSITIONS: &str = "daily_positions_3m_none";
 const CACHE_KEY_POSITION_BUCKETS: &str = "position_buckets";
 const CACHE_KEY_LOANS_BY_TOKEN: &str = "loans_by_token";
 const CACHE_KEY_OPEN_POSITIONS_BY_TOKEN: &str = "open_positions_by_token";
@@ -336,7 +336,12 @@ async fn refresh_revenue_series(app_state: &AppState<State>) -> Result<(), Error
 }
 
 async fn refresh_daily_positions(app_state: &AppState<State>) -> Result<(), Error> {
-    let data = app_state.database.ls_opening.get_daily_opened_closed().await?;
+    // Refresh with default 3m period
+    let data = app_state
+        .database
+        .ls_opening
+        .get_daily_opened_closed_with_window(Some(3), None)
+        .await?;
     let series: Vec<DailyPositionsPoint> = data
         .into_iter()
         .map(|(date, closed, opened)| DailyPositionsPoint {

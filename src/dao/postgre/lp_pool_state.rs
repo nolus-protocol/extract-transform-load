@@ -196,6 +196,119 @@ impl Table<LP_Pool_State> {
         Ok(data)
     }
 
+    pub async fn get_supplied_borrowed_series_with_window(
+        &self,
+        protocol: String,
+        months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
+        let time_filter = match (months, from) {
+            (_, Some(from_ts)) => format!(
+                r#"AND "LP_Pool_State"."LP_Pool_timestamp" > '{}'"#,
+                from_ts.format("%Y-%m-%d %H:%M:%S")
+            ),
+            (Some(m), None) => format!(
+                r#"AND "LP_Pool_State"."LP_Pool_timestamp" > NOW() - INTERVAL '{} months'"#,
+                m
+            ),
+            (None, None) => String::new(),
+        };
+
+        let query_str = format!(
+            r#"
+            SELECT
+                "LP_Pool_State"."LP_Pool_timestamp",
+                SUM(CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
+                END) AS "Supplied",
+                SUM(CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
+                END) AS "Borrowed"
+            FROM
+                "LP_Pool_State"
+            WHERE "LP_Pool_State"."LP_Pool_id" = $1
+            {}
+            GROUP BY
+                "LP_Pool_State"."LP_Pool_timestamp"
+            ORDER BY
+                "LP_Pool_State"."LP_Pool_timestamp" DESC
+            "#,
+            time_filter
+        );
+
+        let data = sqlx::query_as(&query_str)
+            .bind(protocol)
+            .persistent(true)
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(data)
+    }
+
+    pub async fn get_supplied_borrowed_series_total_with_window(
+        &self,
+        protocols: Vec<String>,
+        months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
+        let mut params = String::from("$1");
+
+        for i in 1..protocols.len() {
+            params += &format!(", ${}", i + 1);
+        }
+
+        let time_filter = match (months, from) {
+            (_, Some(from_ts)) => format!(
+                r#"AND "LP_Pool_State"."LP_Pool_timestamp" > '{}'"#,
+                from_ts.format("%Y-%m-%d %H:%M:%S")
+            ),
+            (Some(m), None) => format!(
+                r#"AND "LP_Pool_State"."LP_Pool_timestamp" > NOW() - INTERVAL '{} months'"#,
+                m
+            ),
+            (None, None) => String::new(),
+        };
+
+        let query_str = format!(
+            r#"
+            SELECT
+                "LP_Pool_State"."LP_Pool_timestamp",
+                SUM(CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
+                END) AS "Supplied",
+                SUM(CASE
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
+                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
+                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
+                END) AS "Borrowed"
+            FROM
+                "LP_Pool_State"
+            WHERE "LP_Pool_State"."LP_Pool_id" IN ({})
+            {}
+            GROUP BY
+                "LP_Pool_State"."LP_Pool_timestamp"
+            ORDER BY
+                "LP_Pool_State"."LP_Pool_timestamp" DESC
+            "#,
+            params, time_filter
+        );
+
+        let mut query: sqlx::query::QueryAs<'_, _, _, _> =
+            sqlx::query_as(&query_str).persistent(true);
+
+        for i in protocols {
+            query = query.bind(i);
+        }
+
+        let data = query.persistent(true).fetch_all(&self.pool).await?;
+        Ok(data)
+    }
+
     pub async fn get_utilization_level(
         &self,
         protocol: String,

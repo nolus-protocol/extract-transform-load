@@ -27,7 +27,7 @@ pub async fn parse_and_insert(
         TR_Profit_idx: None,
         TR_Profit_timestamp: at,
         TR_Profit_amnt_stable: app_state
-            .in_stabe_by_date(
+            .in_stable_by_date(
                 &item.profit_symbol,
                 &item.profit_amount,
                 Some(protocol.to_owned()),

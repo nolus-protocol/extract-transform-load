@@ -46,7 +46,7 @@ pub async fn parse_and_insert(
         LS_payment_symbol: item.payment_symbol.to_owned(),
         LS_payment_amnt: BigDecimal::from_str(&item.payment_amount)?,
         LS_payment_amnt_stable: app_state
-            .in_stabe_by_date(
+            .in_stable_by_date(
                 &item.payment_symbol,
                 &item.payment_amount,
                 protocol.to_owned(),
@@ -84,7 +84,7 @@ pub async fn parse_and_insert(
         ls_loan_closing_handler::parse_and_insert(
             app_state,
             item.to.to_owned(),
-            Loan_Closing_Status::Reypay,
+            Loan_Closing_Status::Repay,
             at.to_owned(),
             block,
             None,

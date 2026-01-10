@@ -29,7 +29,7 @@ pub async fn parse_and_insert(
         TR_Rewards_Pool_id: item.to.to_owned(),
         TR_Rewards_timestamp: at,
         TR_Rewards_amnt_stable: app_state
-            .in_stabe_by_date(
+            .in_stable_by_date(
                 &item.rewards_symbol,
                 &item.rewards_amount,
                 protocol,

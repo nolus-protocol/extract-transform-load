@@ -54,7 +54,7 @@ async fn index(
     query: web::Query<Query>,
 ) -> Result<HttpResponse, Error> {
     let months = parse_period_months(&query.period)?;
-    let period_str = query.period.as_deref().unwrap_or("12m");
+    let period_str = query.period.as_deref().unwrap_or("3m");
     let cache_key = build_cache_key("liquidations", period_str, query.from);
 
     if let Some(cached) = state.api_cache.liquidations.get(&cache_key).await {

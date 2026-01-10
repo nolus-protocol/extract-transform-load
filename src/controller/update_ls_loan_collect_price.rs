@@ -92,7 +92,7 @@ async fn proceed(
     };
 
     let amount = state
-        .in_stabe_by_date(
+        .in_stable_by_date(
             &ls_loan_collect.LS_symbol,
             &ls_loan_collect.LS_amount.to_string(),
             protocol,

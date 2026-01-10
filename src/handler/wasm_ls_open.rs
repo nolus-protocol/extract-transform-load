@@ -107,7 +107,7 @@ pub async fn parse_and_insert(
     let (lease_currency_price,) = lease_currency_price;
 
     let LS_loan_amnt_stable =
-        app_state.in_stabe_calc(&l_price, &item.loan_amount)?;
+        app_state.in_stable_calc(&l_price, &item.loan_amount)?;
     let LS_lpn_loan_amnt = &LS_loan_amnt * &lease_currency_price / &lpn_price;
 
     // Fetch pool config for pre-computed columns
@@ -131,7 +131,7 @@ pub async fn parse_and_insert(
 
     // Calculate down payment in stable
     let down_payment_stable = app_state
-        .in_stabe_calc(&d_price, &item.downpayment_amount)?;
+        .in_stable_calc(&d_price, &item.downpayment_amount)?;
 
     // Opening price is the leased currency price
     let opening_price = Some(lease_currency_price.clone());

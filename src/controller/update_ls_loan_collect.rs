@@ -75,7 +75,7 @@ async fn proceed(
         return Ok(());
     }
     match Loan_Closing_Status::from_str(&ls_loan_closing.Type)? {
-        Loan_Closing_Status::Reypay => {
+        Loan_Closing_Status::Repay => {
             proceed_repayment(state, ls_loan_closing).await?;
         },
         Loan_Closing_Status::MarketClose => {
@@ -348,7 +348,7 @@ async fn get_stable_amount(
     };
 
     let amount_stable = state
-        .in_stabe_by_date(&ticker, &amount, protocol, &date)
+        .in_stable_by_date(&ticker, &amount, protocol, &date)
         .await?;
 
     Ok(amount_stable)

@@ -161,6 +161,9 @@ impl Table<LP_Lender_State> {
     ) -> Result<Vec<CurrentLender>, crate::error::Error> {
         let data = sqlx::query_as(
             r#"
+            WITH LatestAggregation AS (
+                SELECT MAX("LP_timestamp") AS max_ts FROM "LP_Lender_State"
+            )
             SELECT
                 unique_lpd."Joined" AS joined,
                 CASE
@@ -181,6 +184,8 @@ impl Table<LP_Lender_State> {
                 END AS lent_stables
             FROM
                 "LP_Lender_State" lps
+            CROSS JOIN
+                LatestAggregation la
             LEFT JOIN (
                 SELECT DISTINCT ON (lpd_inner."LP_address_id")
                     lpd_inner."LP_address_id",
@@ -189,7 +194,7 @@ impl Table<LP_Lender_State> {
                 ORDER BY lpd_inner."LP_address_id", lpd_inner."LP_timestamp" DESC
             ) AS unique_lpd ON lps."LP_Lender_id" = unique_lpd."LP_address_id"
             WHERE
-                lps."LP_timestamp" > now() - INTERVAL '2 hours'
+                lps."LP_timestamp" = la.max_ts
             "#,
         )
         .persistent(true)

@@ -24,7 +24,7 @@ async fn index(
     query: web::Query<Query>,
 ) -> Result<HttpResponse, Error> {
     let months = parse_period_months(&query.period)?;
-    let period_str = query.period.as_deref().unwrap_or("12m");
+    let period_str = query.period.as_deref().unwrap_or("3m");
 
     if let Some(protocol_key) = &query.protocol {
         let protocol_key = protocol_key.to_uppercase();

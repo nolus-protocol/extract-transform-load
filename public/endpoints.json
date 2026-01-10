@@ -67,7 +67,13 @@
     "type": "GET",
     "response": "[{ date: DateTime, supplied: BigDecimal, borrowed: BigDecimal }]",
     "cache": "1 hour",
-    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"supplied\": \"18234567.90\", \"borrowed\": \"5432109.87\" }]"
+    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"supplied\": \"18234567.90\", \"borrowed\": \"5432109.87\" }]",
+    "params": [
+      { "name": "protocol", "type": "String", "description": "Filter by protocol (e.g., OSMOSIS-OSMOSIS-USDC)" },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+    ]
   },
   {
     "category": "Protocol Analytics",
@@ -85,21 +91,26 @@
     "type": "GET",
     "response": "[{ time: DateTime, daily: BigDecimal, cumulative: BigDecimal }]",
     "cache": "1 hour",
-    "example": "[{ \"time\": \"2025-01-15T00:00:00Z\", \"daily\": \"12345.67\", \"cumulative\": \"1823456.78\" }]"
+    "example": "[{ \"time\": \"2025-01-15T00:00:00Z\", \"daily\": \"12345.67\", \"cumulative\": \"1823456.78\" }]",
+    "params": [
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+    ]
   },
   {
     "category": "Protocol Analytics",
-    "description": "Returns historical borrow APR rates across protocols with time window filtering.",
+    "description": "Returns historical borrow APR values for a specific protocol. Returns array of APR values (BigDecimal). CSV format includes full data with timestamps.",
     "url": "/api/borrow-apr",
     "type": "GET",
-    "response": "[{ date: DateTime, apr: BigDecimal, protocol: String }]",
+    "response": "[BigDecimal]",
     "cache": "1 hour",
-    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"apr\": \"12.5\", \"protocol\": \"OSMOSIS-OSMOSIS-USDC\" }]",
+    "example": "[\"12.5\", \"12.3\", \"11.9\"]",
     "params": [
-      { "name": "protocol", "type": "String" },
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "protocol", "type": "String", "required": true, "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC)" },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"], "description": "CSV format includes timestamps and full APR data" }
     ]
   },
   {
@@ -115,17 +126,17 @@
   },
   {
     "category": "Protocol Analytics",
-    "description": "Returns historical pool utilization levels with time window filtering.",
+    "description": "Returns historical pool utilization values for a specific protocol. Returns array of utilization percentages (BigDecimal). CSV format includes full data with timestamps.",
     "url": "/api/utilization-level",
     "type": "GET",
-    "response": "[{ date: DateTime, utilization: BigDecimal, protocol: String }]",
+    "response": "[BigDecimal]",
     "cache": "30 min",
-    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"utilization\": \"68.5\", \"protocol\": \"OSMOSIS-OSMOSIS-USDC\" }]",
+    "example": "[\"68.5\", \"67.2\", \"69.1\"]",
     "params": [
-      { "name": "protocol", "type": "String" },
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "protocol", "type": "String", "required": true, "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC)" },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"], "description": "CSV format includes timestamps and full utilization data" }
     ]
   },
   {
@@ -162,7 +173,7 @@
     "cache": "1 hour",
     "example": "[{ \"time\": \"2025-01-15T12:30:00Z\", \"Bought-back\": \"50000.00\" }]",
     "params": [
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
@@ -302,16 +313,24 @@
     "type": "GET",
     "response": "[{ date: DateTime, closed_loans: BigDecimal, opened_loans: BigDecimal }]",
     "cache": "1 hour",
-    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"closed_loans\": \"12\", \"opened_loans\": \"18\" }]"
+    "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"closed_loans\": \"12\", \"opened_loans\": \"18\" }]",
+    "params": [
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+    ]
   },
   {
     "category": "Lending Analytics",
     "description": "Returns a list of currently active lenders with their deposit amounts per pool.",
     "url": "/api/current-lenders",
     "type": "GET",
-    "response": "[{ lender: String, pool: String, deposit: BigDecimal, deposit_usd: BigDecimal }]",
+    "response": "[{ joined: DateTime, pool: String, lender: String, lent_stables: BigDecimal }]",
     "cache": "1 hour",
-    "example": "[{ \"lender\": \"nolus1abc...\", \"pool\": \"USDC_NOBLE\", \"deposit\": \"10000.00\", \"deposit_usd\": \"10000.00\" }]"
+    "example": "[{ \"joined\": \"2025-01-15T10:00:00Z\", \"pool\": \"Osmosis USDC\", \"lender\": \"nolus1abc...\", \"lent_stables\": \"10000.00\" }]",
+    "params": [
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+    ]
   },
   {
     "category": "Lending Analytics",
@@ -322,7 +341,7 @@
     "cache": "1 hour",
     "example": "[{ \"timestamp\": \"2025-01-15T14:30:00Z\", \"ticker\": \"ATOM\", \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"transaction_type\": \"partial\", \"liquidation_amount\": \"2500.00\", \"closed_loan\": false, \"down_payment\": \"1000.00\", \"loan\": \"5000.00\", \"liquidation_price\": \"7.20\" }]",
     "params": [
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
@@ -353,7 +372,7 @@
     "cache": "1 hour",
     "example": "[{ \"transaction_type\": \"Deposit\", \"timestamp\": \"2025-01-15T10:00:00Z\", \"user\": \"nolus1abc...\", \"amount\": \"5000.00\", \"pool\": \"Osmosis USDC\" }]",
     "params": [
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
@@ -384,7 +403,7 @@
     "cache": "1 hour",
     "example": "[{ \"contract_id\": \"nolus1abc...\", \"asset\": \"ATOM\", \"loan\": \"5000.00\", \"total_liquidated\": \"5234.56\" }]",
     "params": [
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
@@ -406,7 +425,7 @@
     "cache": "1 hour",
     "example": "[{ \"contract_id\": \"nolus1abc...\", \"symbol\": \"ATOM\", \"loan\": \"5000.00\", \"total_repaid\": \"5234.56\", \"close_timestamp\": \"2025-01-15T14:30:00Z\", \"loan_closed\": \"true\" }]",
     "params": [
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
@@ -428,7 +447,7 @@
     "cache": "1 hour",
     "example": "[{ \"timestamp\": \"2025-01-15T14:30:00Z\", \"contract_id\": \"nolus1abc...\", \"position_owner\": \"nolus1xyz...\", \"position_type\": \"Long\", \"event_type\": \"repayment\", \"loan_interest_repaid\": \"45.67\", \"margin_interest_repaid\": \"12.34\" }]",
     "params": [
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
@@ -450,7 +469,7 @@
     "cache": "1 hour",
     "example": "[{ \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"leased_asset\": \"ATOM\", \"opening_date\": \"2025-01-15T10:00:00Z\", \"position_type\": \"Long\", \"down_payment_amount\": \"1000.00\", \"down_payment_asset\": \"USDC\", \"loan\": \"5000.00\", \"total_position_amount_lpn\": \"6000.00\", \"price\": \"9.50\", \"open\": true, \"liquidation_price\": \"7.20\" }]",
     "params": [
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
@@ -472,7 +491,7 @@
     "cache": "1 hour",
     "example": "[{ \"wallet\": \"nolus1abc...\", \"realized_pnl\": \"1234.56\", \"trade_count\": 15 }]",
     "params": [
-      { "name": "period", "type": "String", "default": "12m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
@@ -655,7 +674,7 @@
   },
   {
     "category": "Record Lookup",
-    "description": "Returns LP withdrawal details for a specific transaction hash.",
+    "description": "Returns LP withdrawal details for a specific transaction hash. Returns 404 if transaction not found.",
     "url": "/api/lp-withdraw",
     "type": "GET",
     "response": "{ tx: String, amount: BigDecimal, pool: String }",
@@ -663,5 +682,37 @@
     "params": [
       { "name": "tx", "type": "String", "required": true }
     ]
+  },
+  {
+    "category": "Push Notifications",
+    "description": "Checks if a push notification subscription exists for a wallet address.",
+    "url": "/api/subscribe",
+    "type": "GET",
+    "response": "{ result: Boolean }",
+    "example": "{ \"result\": true }",
+    "params": [
+      { "name": "address", "type": "String", "required": true, "description": "Wallet address to check subscription for" },
+      { "name": "auth", "type": "String", "required": true, "description": "Subscription auth key" },
+      { "name": "active", "type": "Boolean", "required": true, "description": "Filter by active status" }
+    ]
+  },
+  {
+    "category": "Push Notifications",
+    "description": "Creates or toggles a push notification subscription for a wallet address. If subscription exists, toggles active status.",
+    "url": "/api/subscribe",
+    "type": "POST",
+    "response": "String (\"Subscribed\" or \"Unsubscribed\")",
+    "example": "\"Subscribed\"",
+    "body": {
+      "address": "String - Wallet address",
+      "data": {
+        "endpoint": "String - Push notification endpoint URL",
+        "expiration_time": "Number (optional) - Expiration timestamp in milliseconds",
+        "keys": {
+          "auth": "String - Auth key",
+          "p256dh": "String - P256DH key"
+        }
+      }
+    }
   }
 ]

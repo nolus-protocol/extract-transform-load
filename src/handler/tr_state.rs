@@ -39,7 +39,7 @@ pub async fn parse_and_insert(
         let item = TR_State {
             TR_timestamp: timestsamp,
             TR_amnt_stable: app_state
-                .in_stabe_calc(&stable_price, &coin.amount)?,
+                .in_stable_calc(&stable_price, &coin.amount)?,
             TR_amnt_nls: BigDecimal::from_str(&coin.amount)?,
         };
 

@@ -244,4 +244,44 @@ impl Table<TR_Profit> {
 
         Ok(data)
     }
+
+    pub async fn get_revenue_series_with_window(
+        &self,
+        months: Option<i32>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<Vec<(DateTime<Utc>, BigDecimal, BigDecimal)>, crate::error::Error> {
+        let time_filter = match (months, from) {
+            (_, Some(from_ts)) => format!(
+                r#"AND "TR_Profit_timestamp" > '{}'"#,
+                from_ts.format("%Y-%m-%d %H:%M:%S")
+            ),
+            (Some(m), None) => format!(
+                r#"AND "TR_Profit_timestamp" > NOW() - INTERVAL '{} months'"#,
+                m
+            ),
+            (None, None) => String::new(),
+        };
+
+        let query_str = format!(
+            r#"
+            SELECT
+                DATE_TRUNC('day', "TR_Profit_timestamp") AS time,
+                SUM("TR_Profit_amnt_stable") / 1000000 AS daily,
+                SUM(SUM("TR_Profit_amnt_stable")) OVER (ORDER BY DATE_TRUNC('day', "TR_Profit_timestamp")) / 1000000 AS cumulative
+            FROM "TR_Profit"
+            WHERE "TR_Profit_amnt_stable" < 10000000000
+            {}
+            GROUP BY DATE_TRUNC('day', "TR_Profit_timestamp")
+            ORDER BY time ASC
+            "#,
+            time_filter
+        );
+
+        let data: Vec<(DateTime<Utc>, BigDecimal, BigDecimal)> = sqlx::query_as(&query_str)
+            .persistent(true)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(data)
+    }
 }

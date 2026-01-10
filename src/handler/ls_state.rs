@@ -120,28 +120,28 @@ async fn proceed(
         });
 
         let previous_margin_due_stable = state
-            .in_stabe_calc(&pool_currency_price, &previous_margin_due.amount)?;
+            .in_stable_calc(&pool_currency_price, &previous_margin_due.amount)?;
         let overdue_margin_stable = state
-            .in_stabe_calc(&pool_currency_price, &overdue_margin.amount)?;
+            .in_stable_calc(&pool_currency_price, &overdue_margin.amount)?;
 
-        let previous_interest_due_stable = state.in_stabe_calc(
+        let previous_interest_due_stable = state.in_stable_calc(
             &pool_currency_price,
             &previous_interest_due.amount,
         )?;
         let overdue_interest_stable = state
-            .in_stabe_calc(&pool_currency_price, &overdue_interest.amount)?;
+            .in_stable_calc(&pool_currency_price, &overdue_interest.amount)?;
 
         let current_margin_due_stable = state
-            .in_stabe_calc(&pool_currency_price, &current_margin_due.amount)?;
+            .in_stable_calc(&pool_currency_price, &current_margin_due.amount)?;
         let due_margin_stable =
-            state.in_stabe_calc(&pool_currency_price, &due_margin.amount)?;
+            state.in_stable_calc(&pool_currency_price, &due_margin.amount)?;
 
-        let current_interest_due_stable = state.in_stabe_calc(
+        let current_interest_due_stable = state.in_stable_calc(
             &pool_currency_price,
             &current_interest_due.amount,
         )?;
         let due_interest_stable =
-            state.in_stabe_calc(&pool_currency_price, &due_interest.amount)?;
+            state.in_stable_calc(&pool_currency_price, &due_interest.amount)?;
 
         let (
             LS_prev_margin_asset,
@@ -165,7 +165,7 @@ async fn proceed(
             LS_contract_id: item.LS_contract_id,
             LS_timestamp: timestsamp,
             LS_amnt_stable: state
-                .in_stabe_calc(&price, &status.amount.amount)?,
+                .in_stable_calc(&price, &status.amount.amount)?,
             LS_amnt: BigDecimal::from_str(&status.amount.amount.to_string())?,
             LS_prev_margin_stable: previous_margin_due_stable
                 + overdue_margin_stable,
@@ -175,7 +175,7 @@ async fn proceed(
                 + due_margin_stable,
             LS_current_interest_stable: current_interest_due_stable
                 + due_interest_stable,
-            LS_principal_stable: state.in_stabe_calc(
+            LS_principal_stable: state.in_stable_calc(
                 &pool_currency_price,
                 &status.principal_due.amount,
             )?,

@@ -33,8 +33,7 @@ impl Table<Raw_Message> {
         .bind(&data.memo)
         .bind(data.timestamp)
         .bind(&data.rewards)
-		.bind(&data.rewards)
-		.bind(data.code)
+        .bind(data.code)
         .persistent(true)
         .execute(&mut **transaction)
         .await
