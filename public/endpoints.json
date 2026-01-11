@@ -82,7 +82,12 @@
     "type": "GET",
     "response": "[{ month: String, unique_addresses: Number }]",
     "cache": "1 hour",
-    "example": "[{ \"month\": \"2025-01\", \"unique_addresses\": 1523 }]"
+    "example": "[{ \"month\": \"2025-01\", \"unique_addresses\": 1523 }]",
+    "params": [
+      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
+      { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+    ]
   },
   {
     "category": "Protocol Analytics",

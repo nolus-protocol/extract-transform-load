@@ -1395,7 +1395,31 @@ impl Table<LS_Opening> {
     pub async fn get_monthly_active_wallets(
         &self,
     ) -> Result<Vec<MonthlyActiveWallets>, Error> {
-        let data = sqlx::query_as(
+        self.get_monthly_active_wallets_with_window(None, None).await
+    }
+
+    pub async fn get_monthly_active_wallets_with_window(
+        &self,
+        months: Option<i32>,
+        from: Option<DateTime<Utc>>,
+    ) -> Result<Vec<MonthlyActiveWallets>, Error> {
+        let time_filter = if let Some(m) = months {
+            format!("WHERE combined_timestamp >= NOW() - INTERVAL '{} months'", m)
+        } else {
+            String::new()
+        };
+
+        let from_filter = if from.is_some() {
+            if time_filter.is_empty() {
+                "WHERE combined_timestamp > $1".to_string()
+            } else {
+                " AND combined_timestamp > $1".to_string()
+            }
+        } else {
+            String::new()
+        };
+
+        let query = format!(
             r#"
             WITH Market_Close_With_Owners AS (
                 SELECT
@@ -1420,11 +1444,8 @@ impl Table<LS_Opening> {
                     "LS_Opening" lo
                 ON
                     lr."LS_contract_id" = lo."LS_contract_id"
-            )
-            SELECT
-                TO_CHAR(combined_timestamp, 'YYYY-MM') AS month,
-                COUNT(DISTINCT address) AS unique_addresses
-            FROM (
+            ),
+            combined_data AS (
                 SELECT "LS_timestamp" AS combined_timestamp, "LS_address_id" AS address FROM "LS_Opening"
                 UNION ALL
                 SELECT "LP_timestamp" AS combined_timestamp, "LP_address_id" AS address FROM "LP_Deposit"
@@ -1434,14 +1455,28 @@ impl Table<LS_Opening> {
                 SELECT "LS_timestamp" AS combined_timestamp, "LS_address_id" AS address FROM Market_Close_With_Owners
                 UNION ALL
                 SELECT "LS_timestamp" AS combined_timestamp, "LS_address_id" AS address FROM Repayment_With_Owners
-            ) AS combined_data
+            )
+            SELECT
+                TO_CHAR(combined_timestamp, 'YYYY-MM') AS month,
+                COUNT(DISTINCT address) AS unique_addresses
+            FROM combined_data
+            {} {}
             GROUP BY month
             ORDER BY month ASC
             "#,
-        )
-        .persistent(true)
-        .fetch_all(&self.pool)
-        .await?;
+            time_filter, from_filter
+        );
+
+        let data = if let Some(from_ts) = from {
+            sqlx::query_as(&query)
+                .bind(from_ts)
+                .fetch_all(&self.pool)
+                .await?
+        } else {
+            sqlx::query_as(&query)
+                .fetch_all(&self.pool)
+                .await?
+        };
 
         Ok(data)
     }
