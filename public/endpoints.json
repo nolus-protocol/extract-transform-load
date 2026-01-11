@@ -69,7 +69,7 @@
     "cache": "1 hour",
     "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"supplied\": \"18234567.90\", \"borrowed\": \"5432109.87\" }]",
     "params": [
-      { "name": "protocol", "type": "String", "description": "Filter by protocol (e.g., OSMOSIS-OSMOSIS-USDC)" },
+      { "name": "protocol", "type": "String", "default": "total", "description": "Filter by protocol (e.g., OSMOSIS-OSMOSIS-USDC). Defaults to 'total' for aggregated data." },
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
@@ -107,7 +107,7 @@
     "cache": "1 hour",
     "example": "[\"12.5\", \"12.3\", \"11.9\"]",
     "params": [
-      { "name": "protocol", "type": "String", "required": true, "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC)" },
+      { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns empty array if not specified." },
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"], "description": "CSV format includes timestamps and full APR data" }
@@ -115,13 +115,13 @@
   },
   {
     "category": "Protocol Analytics",
-    "description": "Returns the current earn APR for liquidity providers, optionally filtered by protocol.",
+    "description": "Returns the current earn APR for liquidity providers, optionally filtered by protocol. Returns 0 if no protocol specified.",
     "url": "/api/earn-apr",
     "type": "GET",
     "response": "{ earn_apr: BigDecimal }",
     "example": "{ \"earn_apr\": \"8.75\" }",
     "params": [
-      { "name": "protocol", "type": "String" }
+      { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns 0 if not specified." }
     ]
   },
   {
@@ -133,7 +133,7 @@
     "cache": "30 min",
     "example": "[\"68.5\", \"67.2\", \"69.1\"]",
     "params": [
-      { "name": "protocol", "type": "String", "required": true, "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC)" },
+      { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns empty array if not specified." },
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"], "description": "CSV format includes timestamps and full utilization data" }
@@ -512,7 +512,7 @@
     "response": "[[timestamp: Number, price: Number]]",
     "example": "[[1767978000000, 2.577725], [1767974400000, 2.553094]]",
     "params": [
-      { "name": "interval", "type": "Number", "required": true, "description": "Time interval in seconds (e.g., 3600 for hourly)" },
+      { "name": "interval", "type": "Number", "required": true, "description": "Number of days to look back (max 100)", "max": 100 },
       { "name": "key", "type": "String", "required": true, "description": "Asset symbol (e.g., ATOM, OSMO)" },
       { "name": "protocol", "type": "String", "required": true, "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC_NOBLE)" }
     ]
@@ -549,8 +549,8 @@
     "example": "[{ \"date\": \"2025-01-15T14:30:00Z\", \"tx_hash\": \"ABC123...\", \"type\": \"open_lease\", \"amount\": \"5000.00\" }]",
     "params": [
       { "name": "address", "type": "String", "required": true },
-      { "name": "filter", "type": "String" },
-      { "name": "to", "type": "String" },
+      { "name": "filter", "type": "String", "description": "Comma-separated transaction type filters (max 10 filters)", "options": ["transfers", "earn", "staking", "positions", "positions_ids"] },
+      { "name": "to", "type": "String", "description": "Comma-separated contract IDs to filter by (used with positions_ids filter)" },
       { "name": "skip", "type": "Number", "default": 0 },
       { "name": "limit", "type": "Number", "default": 10, "max": 100 }
     ]
@@ -634,7 +634,7 @@
     "example": "[\"nolus1abc...\", \"nolus1def...\"]",
     "params": [
       { "name": "address", "type": "String", "required": true },
-      { "name": "search", "type": "String" },
+      { "name": "search", "type": "String", "description": "Search term to filter lease contract IDs" },
       { "name": "skip", "type": "Number", "default": 0 },
       { "name": "limit", "type": "Number", "default": 10, "max": 100 }
     ]
@@ -669,7 +669,7 @@
     "response": "[{ lease: String, user: String, amount: BigDecimal, symbol: String }]",
     "example": "[{ \"lease\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"amount\": \"5000.00\", \"symbol\": \"ATOM\" }]",
     "params": [
-      { "name": "leases", "type": "Array<String>", "required": true }
+      { "name": "leases", "type": "String", "required": true, "description": "Comma-separated list of lease contract IDs" }
     ]
   },
   {
