@@ -60,6 +60,32 @@ cargo build --release
 ./target/release/etl
 ```
 
+## CLI Commands
+
+The ETL binary supports multiple modes:
+
+```bash
+# Run the server (default)
+./etl
+./etl serve
+
+# Run database migrations only
+./etl migrate
+./etl migrate --status
+
+# Run data backfills
+./etl backfill ls-opening --all --batch-size=1000
+./etl backfill raw-txs --concurrency=20
+
+# Preview without changes
+./etl backfill ls-opening --dry-run
+./etl backfill raw-txs --dry-run
+
+# Help
+./etl --help
+./etl backfill --help
+```
+
 ## Project Structure
 
 ```
@@ -109,13 +135,12 @@ src/
 - `GET /api/current-lenders` - Active lenders
 - `GET /api/historical-lenders` - Lender history
 
-### Export Endpoints
+### Export & Filtering
 Most list endpoints support:
 - `?format=csv` - CSV format response
 - `?period=3m|6m|12m|all` - Time window filter
 - `?from=<timestamp>` - Incremental sync filter
-
-Streaming exports available at `/api/{endpoint}/export`.
+- `?export=true` - Streaming CSV export (full data)
 
 ## Deployment
 
@@ -153,8 +178,17 @@ journalctl -u etl -f  # View logs
 | Archive | archive-rpc.nolus.network | archive-grpc.nolus.network | - |
 | Testnet | rila-cl.nolus.network:26657 | rila-cl.nolus.network:9090 | - |
 
+## Database Migrations
+
+Migrations use [refinery](https://github.com/rust-db/refinery) and run automatically on startup.
+
+- Versioned SQL files in `migrations/` directory
+- Migration state tracked in `refinery_schema_history` table
+- Run `./etl migrate --status` to check applied migrations
+
 ## Documentation
 
+- `API_MIGRATION_GUIDE.md` - Frontend migration guide for API changes
 - `entities.md` - Database schema documentation
 
 ## License
