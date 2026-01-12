@@ -63,7 +63,7 @@ impl Table<TR_Profit> {
     }
 
     /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
-    /// More efficient than calling isExists() followed by insert().
+    /// Uses Tx_Hash for deduplication since multiple profit events can occur in same block.
     pub async fn insert_if_not_exists(
         &self,
         data: TR_Profit,
@@ -78,8 +78,14 @@ impl Table<TR_Profit> {
                 "TR_Profit_amnt_nls",
                 "Tx_Hash"
             )
-            VALUES($1, $2, $3, $4, $5)
-            ON CONFLICT ("TR_Profit_height", "TR_Profit_timestamp") DO NOTHING
+            SELECT $1, $2, $3, $4, $5
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "TR_Profit"
+                WHERE "TR_Profit_height" = $1
+                AND "TR_Profit_amnt_stable" = $3
+                AND "TR_Profit_amnt_nls" = $4
+                AND "Tx_Hash" = $5
+            )
         "#,
         )
         .bind(data.TR_Profit_height)

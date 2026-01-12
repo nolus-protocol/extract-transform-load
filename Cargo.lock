@@ -1084,6 +1084,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha256",
+ "siphasher",
  "sqlx",
  "tendermint-rpc",
  "thiserror 2.0.12",

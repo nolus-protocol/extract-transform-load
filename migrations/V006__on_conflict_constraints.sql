@@ -13,9 +13,8 @@ ON "LP_Deposit" ("LP_deposit_height", "LP_address_id", "LP_timestamp", "LP_Pool_
 CREATE UNIQUE INDEX IF NOT EXISTS "LP_Withdraw_height_address_timestamp_pool_unique"
 ON "LP_Withdraw" ("LP_withdraw_height", "LP_address_id", "LP_timestamp", "LP_Pool_id");
 
--- TR_Profit: ON CONFLICT ("TR_Profit_height", "TR_Profit_timestamp")
-CREATE UNIQUE INDEX IF NOT EXISTS "TR_Profit_height_timestamp_unique"
-ON "TR_Profit" ("TR_Profit_height", "TR_Profit_timestamp");
+-- TR_Profit: Uses primary key ("TR_Profit_height", "TR_Profit_idx") - no additional index needed
+-- Note: The ON CONFLICT in tr_profit.rs should be updated to use the primary key
 
 -- LS_Repayment: ON CONFLICT ("LS_repayment_height", "LS_contract_id", "LS_timestamp")
 CREATE UNIQUE INDEX IF NOT EXISTS "LS_Repayment_height_contract_timestamp_unique"
