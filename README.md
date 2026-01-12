@@ -1,174 +1,130 @@
-# Extract Transform Load
+# Nolus ETL Service
 
-Define Nolus data necessary for further analysis and implement an agent extracting it, transforming and loading into a relational SQL database.
+Rust-based ETL (Extract-Transform-Load) service for the Nolus blockchain. Extracts blockchain data (transactions, events, smart contract states), transforms it, and loads it into PostgreSQL. Provides a REST API for querying the data.
 
-## HOW TO
+## Features
 
-### PostgreSQL
+- Real-time blockchain data synchronization via WebSocket
+- Historical block backfilling
+- Market price aggregation from oracles
+- Push notifications for position alerts
+- REST API with 70+ endpoints
+- CSV export support
+- Response caching with configurable TTLs
 
-### Linux
+## Requirements
 
-sudo -i -u postgres
+- Rust 1.80.0+ (Edition 2021)
+- PostgreSQL 14+
 
-### OSX
+## Quick Start
 
-psql -U <CURRENTLY_LOGGED_IN_MAC_USERNAME> postgres
+### 1. Database Setup
 
-psql
+```bash
+# macOS
+psql -U $USER postgres
 
-1. CREATE DATABASE database_name;
-2. GRANT ALL PRIVILEGES ON DATABASE database_name to user_name;
-3. GRANT ALL ON SCHEMA public TO user_name;
-4. Copy .env.example to .env and set necessary settings
+# Linux
+sudo -i -u postgres && psql
+```
 
-### DEV
+```sql
+CREATE DATABASE etl_nolus;
+GRANT ALL PRIVILEGES ON DATABASE etl_nolus TO your_user;
+GRANT ALL ON SCHEMA public TO your_user;
+```
 
+### 2. Configuration
+
+```bash
+cp .env.example .env
+# Edit .env with your settings
+```
+
+Key configuration options:
+- `DATABASE_URL` - PostgreSQL connection string
+- `HOST` - RPC endpoint (e.g., `rpc.nolus.network`)
+- `GRPC_HOST` - gRPC endpoint (e.g., `https://grpc.nolus.network`)
+- `SERVER_HOST` / `PORT` - API server bind address
+
+### 3. Build & Run
+
+```bash
+# Development (with hot reload)
 cargo install cargo-watch
 cargo watch -c -w src -x run
 
-
-### Test config:
-
-```
-HOST=rpc.nolus.network
-GRPC_HOST=https://grpc.nolus.network
-DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
-SYNC_THREADS=32
-SUPPORTED_CURRENCIES=(NLS,6,unls),(USDC,6,ibc/7FBDBEEEBA9C50C4BCDF7BF438EAB99E64360833D240B32655C96E319559E911),(OSMO,6,ibc/ED07A3391A112B175915CD8FAF43A2DA8E4790EDE12566649D0C2F97716B8518),(ST_OSMO,6,ibc/AF5559D128329B6C753F15481BEC26E533B847A471074703FA4903E7E6F61BA1),(ATOM,6,ibc/6CDD4663F2F09CD62285E2D45891FC149A3568E316CE3EBBE201A71A78A69388),(ST_ATOM,6,ibc/FCFF8B19C61677F3B78E2A5AE3B4A34A8D23858D16905F253B8438B3AFD07FF8),(WETH,18,ibc/A7C4A3FB19E88ABE60416125F9189DA680800F4CDD14E3C10C874E022BEFF04C),(WBTC,8,ibc/84E70F4A34FB2DE135FD3A04FDDF53B7DA4206080AA785C8BAB7F8B26299A221),(AKT,6,ibc/ADC63C00000CA75F909D2BE3ACB5A9980BED3A73B92746E0FCE6C67414055459),(JUNO,6,ibc/4F3E83AB35529435E4BFEA001F5D935E7250133347C4E1010A9C77149EF0394C),(EVMOS,18,ibc/A59A9C955F1AB8B76671B00C1A0482C64A6590352944BB5880E5122358F7E1CE),(STK_ATOM,6,ibc/DAAD372DB7DD45BBCFA4DDD40CA9793E9D265D1530083AB41A8A0C53C3EBE865),(SCRT,6,ibc/EA00FFF0335B07B5CD1530B7EB3D2C710620AE5B168C71AFF7B50532D690E107),(CRO,8,ibc/E1BCC0F7B932E654B1A930F72B76C0678D55095387E2A4D8F00E941A8F82EE48),(TIA,6,ibc/6C349F0EB135C5FA99301758F35B87DB88403D690E5E314AB080401FEE4066E5),(STARS,6,ibc/11E3CF372E065ACB1A39C531A3C7E7E03F60B5D0653AD2139D31128ACD2772B5),(Q_ATOM,6,ibc/317FCA2D7554F55BBCD0019AB36F7FEA18B6D161F462AF5E565068C719A29F20),(NTRN,6,ibc/3D6BC6E049CAEB905AC97031A42800588C58FB471EBDC7A3530FFCD0C3DC9E09),(USDC_AXELAR,6,ibc/076CF690A9912E0B7A2CCA75B719D68AF7C20E4B0B6460569B333DDEB19BBBA1),(DYDX,18,ibc/6DF8CF5C976851D152E2C7270B0AB25C4F9D64C0A46513A68D6CBB2662A98DF4),(STRD,6,ibc/04CA9067228BB51F1C39A506DA00DF07E1496D8308DD21E8EF66AD6169FA722B),(INJ,18,ibc/4DE84C92C714009D07AFEA7350AB3EC383536BB0FAAD7AF9C0F1A0BEA169304E),(AXL,6,ibc/1B03A71B8E6F6EF424411DC9326A8E0D25D096E4D2616425CFAF2AF06F0FE717),(ST_TIA,6,ibc/8d4fc51f696e03711b9b37a5787fb89bd2ddbaf788813478b002d552a12f9157),(JKL,6,ibc/28f026607184b151f1f7d7f5d8ae644528550eb05203a28b6233dfa923669876),(MILK_TIA,6,ibc/16065ee5282c5217685c8f084fc44864c25c706ac37356b0d62811d50b96920f),(LVN,6,ibc/4786bebbfdd989c467c4552ad73065d8b2578230b8428b3b9275d540eb04c851),(QSR,6,ibc/ff456fd21aa44251d2122bf19b20c5fe717a1ebd054a59fa1ca4b21742048ca0),(PICA,12,ibc/7f2dc2a595edcaec1c03d607c6dc3c79eddc029a53d16c0788835c1a9aa06306),(DYM,18,ibc/9c7f70e92ccba0f2dc94796b0682955e090676ea7a2f8e0a4611956b79cb4406),(USDC_NOBLE,6,ibc/F5FABF52B54E65064B57BF6DBD8E5FAD22CEE9F4B8A57ADBB20CCD0173AA72A4),(CUDOS,18,ibc/bb9810e7fe8836311126f15be0b20e7463189751840f8c3fef3ac8f87d8ab7c8),(D_ATOM,6,ibc/EB08474FFC49B6BB2F03F7D9B08697138F4DA53347CA1AB718C8BCFBB58C1B2B),(ALL_SOL,9,/762E1E45658845A12E214A91C3C05FDFC5951D60404FAADA225A369A96DCD9A9),(ALL_BTC,8,ibc/E45CFCB959F4F6D1065B7033EE49A88E606E6AD82E75725219B3D68B0FA89987),(OM,6,ibc/b92b80e837e4b1665024b7674d382af07fe5d8d89797a0feaf5356c8f173425c),(XION,6,ibc/B8E95841C22213AC4E3EF000CB9D1D3B06FFAA1784FCE1169C6E92982BCC89B4),(NIL,6,ibc/56AD715B6EBE187ACE16DA331CCFFE41655B42373FBE4A43748DEE16A95EE895),(ALL_ETH,18,ibc/7879B1CBBD2E07347002334792368E65C11A7D1629297D04B6A2155F557E02D4),(BABY,6,ibc/BE816110CD184D1DEE3BB03B1D5C509512A4C0A14445DC4A3D22A67E68ECE212),(D_NTRN,6,ibc/2DA920A297BE3FD54A8793F69CC9CBC6B331FFD0FAB500A96637218BA7D5C64E)
-MP_ASSET_INTERVAL_IN_SEC=20
-CACHE_INTERVAL_IN_MINUTES=60
-LP_POOLS=(nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6,USDC_NOBLE,long,true),(nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5,USDC,long,true),(nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94,USDC_AXELAR,long,false),(nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf,USDC_NOBLE,long,true),(nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990,ST_ATOM,short,false),(nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3,ALL_BTC,short,true),(nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm,ALL_SOL,short,true),(nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z,AKT,short,true),(nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6,ATOM,short,true),(nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t,OSMO,short,true)
-NATIVE_CURRENCY=NLS
-TREASURY_CONTRACT=nolus14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s0k0puz
-SERVER_HOST=127.0.0.1
-PORT=8080
-ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,https://app-dev.nolus.io,https://app.nolus.io
-TIMEOUT=300
-MAX_TASKS=128
-ADMIN_CONTRACT=nolus1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jsqxf8nd
-IGNORE_PROTOCOLS=OSMOSIS-OSMOSIS-INJ
-INITIAL_PROTOCOL=OSMOSIS-OSMOSIS-USDC_AXELAR
-SOCKET_RECONNECT_INTERVAL=5
-EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
-ENABLE_SYNC=true
-TASKS_INTERVAL=3000
-GRPC_CONNECTIONS=32
-GRPC_PERMITS=12
-AUTH=
-```
-
-HOST=pirin-cl.nolus.network:26657
-GRPC_HOST=https://pirin-cl.nolus.network:9090
-
-### Testnet config:
-
-```
-HOST=rila-cl.nolus.network:26657
-GRPC_HOST=https://rila-cl.nolus.network:9090
-DATABASE_URL=postgres://user_name:password@localhost:5432/database_name
-SYNC_THREADS=32
-SUPPORTED_CURRENCIES=(NLS,6,unls),(USDC,6,ibc/),(USDC_AXELAR,6,ibc/),(OSMO,6,ibc/),(ATOM,6,ibc/),(AKT,6,ibc/),(JUNO,6,ibc/),(NTRN,6,ibc/),(USDC_NOBLE,6,ibc/)
-AGGREGATION_INTTERVAL=1
-MP_ASSET_INTERVAL_IN_SEC=20
-CACHE_INTERVAL_IN_MINUTES=60
-LP_POOLS=(nolus184vpz5tng9gy236uu4hf8gqq5rk0ylk27uds72cczz05q0vrwvvsy9mfkp,USDC_AXELAR,long),(nolus1urdpfxrj7m9r70mv5tdrlnmn02eta6ksaxak8ejsc7pshu83qlzsyqf004,USDC_AXELAR,long),(nolus1vmmhpakm6c93f80m3c2kpy220pvxp3ltw4s4p5m6kpha4cg86s2sehz7g2,OSMO,short)
-NATIVE_CURRENCY=NLS
-TREASURY_CONTRACT=nolus1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqrr2r7y
-SERVER_HOST=127.0.0.1
-PORT=8080
-ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,https://app-dev.nolus.io
-TIMEOUT=300
-MAX_TASKS=64
-ADMIN_CONTRACT=nolus17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsmc5xhq
-IGNORE_PROTOCOLS=
-INITIAL_PROTOCOL=OSMOSIS-OSMOSIS-USDC_AXELAR
-SOCKET_RECONNECT_INTERVAL=5
-EVENTS_SUBSCRIBE=deposit,burn,open_lease,repay,claim_rewards,close_position
-ENABLE_SYNC=true
-TASKS_INTERVAL=3000
-GRPC_CONNECTIONS=32
-GRPC_PERMITS=12
-AUTH=
-```
-
-TESTNET CURRENCIES WHEN FEEDERS NOT RETURN CORRECT DATA
-
-INSERT INTO "MP_Asset"
-("MP_asset_symbol", "MP_asset_timestamp", "MP_price_in_stable", "Protocol")
-VALUES
-('OSMO', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
-('USDC', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
-('ATOM', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
-('NLS', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
-('AKT', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
-('JUNO', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
-('USDC_AXELAR', NOW(), 0, 'OSMOSIS-OSMOSIS-OSMO'),
-
-('OSMO', NOW(), 0, 'OSMOSIS-OSMOSIS-USDC_AXELAR'),
-('USDC_AXELAR', NOW(), 0, 'OSMOSIS-OSMOSIS-USDC_AXELAR'),
-('ATOM', NOW(), 0, 'OSMOSIS-OSMOSIS-USDC_AXELAR'),
-('NLS', NOW(), 0, 'OSMOSIS-OSMOSIS-USDC_AXELAR'),
-('AKT', NOW(), 0, 'OSMOSIS-OSMOSIS-USDC_AXELAR'),
-('JUNO', NOW(), 0, 'OSMOSIS-OSMOSIS-USDC_AXELAR'),
-
-('NTRN', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
-('NLS', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
-('USDC_AXELAR', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
-('DYDX', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
-('ST_TIA', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
-('STK_ATOM', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL'),
-('ATOM', NOW(), 0, 'NEUTRON-ASTROPORT-USDC_AXL');
-
-DO $FN$
-BEGIN
-FOR counter IN 1..16394393 LOOP
-EXECUTE $$ INSERT INTO block(id) VALUES ($1) RETURNING id $$
-USING counter;
-END LOOP;
-END;
-$FN$;
-
-DO $FN$
-BEGIN
-FOR counter IN 6871801..6871800 LOOP
-EXECUTE $$ 
-
-INSERT INTO block(id)
-SELECT $1
-WHERE
-NOT EXISTS (
-SELECT id FROM block WHERE id = $1
-);
-
-$$
-USING counter;
-END LOOP;
-END;
-$FN$;
-
-GRANT ALL ON block TO nolus;
-GRANT ALL ON "MP_Asset" TO nolus;
-
-PATH: /lib/systemd/system/etl.service
-sudo systemctl enable etl
-
-### BUILD
-
-```
-cargo 1.80.0 or higher
-
+# Production build
 cargo build --release
-
-### TESTNET
-
-cargo build --features testnet --no-default-features --release
+./target/release/etl
 ```
 
-### DAEMON
+## Project Structure
 
 ```
+src/
+├── controller/     # REST API endpoints (consolidated by domain)
+│   ├── treasury.rs     # Revenue, buyback, distributed, incentives
+│   ├── metrics.rs      # TVL, borrowed, supplied, open interest
+│   ├── pnl.rs          # Realized/unrealized PnL
+│   ├── leases.rs       # Leases, loans, liquidations
+│   ├── positions.rs    # Positions, buckets, daily stats
+│   ├── liquidity.rs    # Pools, lenders, utilization
+│   ├── misc.rs         # Prices, blocks, subscriptions
+│   └── admin.rs        # Protected admin operations
+├── handler/        # Business logic & event handlers
+├── provider/       # External integrations (gRPC, WebSocket, DB)
+├── dao/            # Database access objects
+├── model/          # Data structures
+└── types/          # Event types & API structures
+```
+
+## API Endpoints
+
+### Treasury
+- `GET /api/revenue` - Total protocol revenue
+- `GET /api/distributed` - Total distributed rewards
+- `GET /api/buyback` - Buyback history (supports `?period=3m|6m|12m|all`)
+- `GET /api/buyback-total` - Total buyback amount
+- `GET /api/incentives-pool` - Incentives pool balance
+- `GET /api/earnings?address=` - Earnings by address
+
+### Metrics
+- `GET /api/total-value-locked` - Platform TVL
+- `GET /api/supplied-funds` - Total supplied funds
+- `GET /api/borrowed` - Total borrowed (optional `?protocol=`)
+- `GET /api/open-interest` - Open interest value
+- `GET /api/supplied-borrowed-history` - Historical series
+
+### Positions & Leases
+- `GET /api/positions` - All open positions
+- `GET /api/leases?address=` - Leases by address
+- `GET /api/liquidations` - Liquidation history
+- `GET /api/historically-opened` - Historical openings
+
+### Liquidity Pools
+- `GET /api/pools` - All pools with utilization & APR
+- `GET /api/utilization-level?protocol=` - Pool utilization history
+- `GET /api/current-lenders` - Active lenders
+- `GET /api/historical-lenders` - Lender history
+
+### Export Endpoints
+Most list endpoints support:
+- `?format=csv` - CSV format response
+- `?period=3m|6m|12m|all` - Time window filter
+- `?from=<timestamp>` - Incremental sync filter
+
+Streaming exports available at `/api/{endpoint}/export`.
+
+## Deployment
+
+### Systemd Service
+
+```ini
+# /lib/systemd/system/etl.service
 [Unit]
-Description=ETL
+Description=Nolus ETL Service
 After=network.target
 
 [Service]
@@ -176,31 +132,31 @@ Type=simple
 Restart=always
 User=root
 RestartSec=10
-ExecStart=/etl/target/release/etl
+ExecStart=/path/to/etl
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-```
-sudo -S systemctl daemon-reload
-sudo -S systemctl enable etl
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable etl
 sudo systemctl start etl
+journalctl -u etl -f  # View logs
 ```
 
-CREATE INDEX raw_message_from ON raw_message("from", "timestamp");
-CREATE INDEX raw_message_to ON raw_message("to", "timestamp");
+## Network Endpoints
 
-### ENDPOINTS
+| Network | RPC | gRPC | ETL |
+|---------|-----|------|-----|
+| Mainnet | rpc.nolus.network | grpc.nolus.network | etl.nolus.network |
+| Archive | archive-rpc.nolus.network | archive-grpc.nolus.network | - |
+| Testnet | rila-cl.nolus.network:26657 | rila-cl.nolus.network:9090 | - |
 
-https://rpc.nolus.network
-https://grpc.nolus.network
-https://lcd.nolus.network
-https://etl.nolus.network
-https://archive-rpc.nolus.network
-https://archive-grpc.nolus.network
-https://archive-lcd.nolus.network
+## Documentation
 
-20.02.2025
+- `entities.md` - Database schema documentation
 
-bock: 10961047 - add { state: {due_projection_secs: due_projection_secs} } in lease query
+## License
+
+Apache License 2.0 - See [LICENSE](LICENSE) for details.

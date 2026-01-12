@@ -1,4 +1,13 @@
+//! Push notification types
+//!
+//! Types for push notification handling, subscription, and message formatting.
+
+use serde::{Deserialize, Serialize};
 use std::{fmt, io, str::FromStr};
+
+// =============================================================================
+// Push Message Types
+// =============================================================================
 
 #[derive(Debug, Clone)]
 pub struct PushHeader {
@@ -17,6 +26,10 @@ impl fmt::Display for PushData {
         write!(f, r#"{{"type": "{}", "data": {}}}"#, self.r#type, self.body)
     }
 }
+
+// =============================================================================
+// Urgency Enum
+// =============================================================================
 
 #[derive(Debug, Clone)]
 pub enum Urgency {
@@ -57,12 +70,14 @@ impl FromStr for Urgency {
             "low" => Ok(Urgency::Low),
             "normal" => Ok(Urgency::Normal),
             "high" => Ok(Urgency::High),
-            _ => Err(io::Error::other(
-                "Message Type not supported",
-            )),
+            _ => Err(io::Error::other("Message Type not supported")),
         }
     }
 }
+
+// =============================================================================
+// Push Types Enum
+// =============================================================================
 
 #[derive(Debug, Clone)]
 pub enum PUSH_TYPES {
@@ -91,13 +106,9 @@ impl From<PUSH_TYPES> for String {
     fn from(value: PUSH_TYPES) -> Self {
         match value {
             PUSH_TYPES::Funding => String::from("Funding"),
-            PUSH_TYPES::FundingRecommended => {
-                String::from("FundingRecommended")
-            },
+            PUSH_TYPES::FundingRecommended => String::from("FundingRecommended"),
             PUSH_TYPES::FundNow => String::from("FundNow"),
-            PUSH_TYPES::PartiallyLiquidated => {
-                String::from("PartiallyLiquidated")
-            },
+            PUSH_TYPES::PartiallyLiquidated => String::from("PartiallyLiquidated"),
             PUSH_TYPES::FullyLiquidated => String::from("FullyLiquidated"),
             PUSH_TYPES::Unsupported => String::from("Unsupported"),
         }
@@ -115,9 +126,7 @@ impl FromStr for PUSH_TYPES {
             "PartiallyLiquidated" => Ok(PUSH_TYPES::PartiallyLiquidated),
             "FullyLiquidated" => Ok(PUSH_TYPES::FullyLiquidated),
             "Unsupported" => Ok(PUSH_TYPES::Unsupported),
-            _ => Err(io::Error::other(
-                "PUSH_TYPES not supported",
-            )),
+            _ => Err(io::Error::other("PUSH_TYPES not supported")),
         }
     }
 }
@@ -131,4 +140,39 @@ impl std::convert::From<i16> for PUSH_TYPES {
             _ => PUSH_TYPES::Unsupported,
         }
     }
+}
+
+// =============================================================================
+// Subscription Types
+// =============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct Subscription {
+    pub address: String,
+    pub data: SubscriptionData,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SubscriptionData {
+    pub endpoint: String,
+    #[serde(alias = "expirationTime")]
+    pub expiration_time: Option<i64>,
+    pub keys: SubscriptionKeys,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SubscriptionKeys {
+    pub p256dh: String,
+    pub auth: String,
+}
+
+// =============================================================================
+// JWT Claims
+// =============================================================================
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct Claims {
+    pub aud: String,
+    pub sub: String,
+    pub exp: i64,
 }

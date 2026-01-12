@@ -1158,6 +1158,7 @@ pub fn parse_period_months(period: &Option<String>) -> Result<Option<i32>, Error
 /// Parse period and from parameters into TimeWindowParams.
 /// - period: time window (3m/6m/12m/all), default 12m
 /// - from: optional timestamp to filter records after (exclusive)
+///
 /// Both filters are applied together (AND logic).
 pub fn parse_time_window(
     period: &Option<String>,

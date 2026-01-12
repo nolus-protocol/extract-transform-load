@@ -4,21 +4,7 @@ use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
 
 use crate::{
     configuration::{AppState, State},
-    controller::{
-        backfill_ls_opening, blocks, borrowed, buyback, buyback_total,
-        current_lenders, daily_positions, deposit_suspension, distributed, earn_apr,
-        earnings, get_position_debt_value, historical_lenders, historically_liquidated,
-        historically_opened, historically_repaid, history_stats, incentives_pool,
-        interest_repayments, leased_assets, lease_value_stats, leases, leases_monthly,
-        leases_search, liquidations, loans_by_token, loans_granted, lp_withdraw,
-        ls_loan_closing, ls_opening, ls_openings, monthly_active_wallets, open_interest,
-        open_position_value, open_positions_by_token, optimal, pnl_over_time, pools,
-        position_buckets, positions, prices, realized_pnl, realized_pnl_data,
-        realized_pnl_stats, realized_pnl_wallet, revenue, revenue_series, subscribe,
-        supplied_borrowed_series, supplied_funds, test_push, total_tx_value,
-        total_value_locked, txs, unrealized_pnl, unrealized_pnl_by_address,
-        update_raw_txs, utilization_level, version,
-    },
+    controller::{admin, leases, liquidity, metrics, misc, pnl, positions, treasury},
     error::Error,
 };
 
@@ -64,75 +50,82 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
             .app_data(web::JsonConfig::default().limit(4096))
             .service(
                 web::scope("/api")
-                    .service(total_value_locked::index)
-                    .service(supplied_borrowed_series::index)
-                    .service(utilization_level::index)
-                    .service(pools::index)
-                    .service(optimal::index)
-                    .service(deposit_suspension::index)
-                    .service(buyback::index)
-                    .service(distributed::index)
-                    .service(leased_assets::index)
-                    .service(borrowed::index)
-                    .service(revenue::index)
-                    .service(revenue_series::index)
-                    .service(daily_positions::index)
-                    .service(incentives_pool::index)
-                    .service(buyback_total::index)
-                    .service(ls_opening::index)
-                    .service(earn_apr::index)
-                    .service(blocks::index)
-                    .service(ls_openings::index)
-                    .service(total_tx_value::index)
-                    .service(version::index)
-
-                    .service(txs::index)
-                    .service(leases::index)
-                    .service(prices::index)
-                    .service(ls_loan_closing::index)
-                    .service(realized_pnl::index)
-                    .service(leases_monthly::index)
-                    .service(monthly_active_wallets::index)
-                    .service(open_position_value::index)
-                    .service(open_positions_by_token::index)
-                    .service(open_interest::index)
-                    .service(unrealized_pnl::index)
-                    .service(unrealized_pnl_by_address::index)
-                    .service(pnl_over_time::index)
-                    .service(position_buckets::index)
-                    .service(realized_pnl_stats::index)
-                    .service(supplied_funds::index)
-                    .service(get_position_debt_value::index)
-                    .service(subscribe::get_index)
-                    .service(subscribe::post_index)
-                    .service(test_push::index)
-                    .service(realized_pnl_data::index)
-                    .service(history_stats::index)
-                    .service(leases_search::index)
-                    .service(loans_by_token::index)
-                    .service(earnings::index)
-                    .service(lp_withdraw::index)
-                    .service(update_raw_txs::index)
-                    .service(current_lenders::index)
-                    .service(liquidations::index)
-                    .service(lease_value_stats::index)
-                    .service(historical_lenders::index)
-                    .service(loans_granted::index)
-                    .service(historically_liquidated::index)
-                    .service(historically_liquidated::export)
-                    .service(historically_repaid::index)
-                    .service(historically_repaid::export)
-                    .service(historically_opened::index)
-                    .service(historically_opened::export)
-                    .service(interest_repayments::index)
-                    .service(interest_repayments::export)
-                    .service(realized_pnl_wallet::index)
-                    .service(realized_pnl_wallet::export)
-                    .service(positions::index)
-                    .service(positions::export)
-                    .service(liquidations::export)
-                    .service(historical_lenders::export)
-                    .service(backfill_ls_opening::index),
+                    // Treasury endpoints
+                    .service(treasury::revenue)
+                    .service(treasury::revenue_series)
+                    .service(treasury::distributed)
+                    .service(treasury::buyback)
+                    .service(treasury::buyback_total)
+                    .service(treasury::incentives_pool)
+                    .service(treasury::earnings)
+                    // Metrics endpoints
+                    .service(metrics::total_value_locked)
+                    .service(metrics::total_tx_value)
+                    .service(metrics::supplied_funds)
+                    .service(metrics::open_interest)
+                    .service(metrics::open_position_value)
+                    .service(metrics::borrowed)
+                    .service(metrics::supplied_borrowed_history)
+                    .service(metrics::monthly_active_wallets)
+                    // PnL endpoints
+                    .service(pnl::realized_pnl)
+                    .service(pnl::realized_pnl_data)
+                    .service(pnl::realized_pnl_stats)
+                    .service(pnl::realized_pnl_wallet)
+                    .service(pnl::realized_pnl_wallet_export)
+                    .service(pnl::unrealized_pnl)
+                    .service(pnl::unrealized_pnl_by_address)
+                    .service(pnl::pnl_over_time)
+                    // Lease endpoints
+                    .service(leases::leases)
+                    .service(leases::leases_search)
+                    .service(leases::leases_monthly)
+                    .service(leases::leased_assets)
+                    .service(leases::lease_value_stats)
+                    .service(leases::loans_by_token)
+                    .service(leases::loans_granted)
+                    .service(leases::ls_opening)
+                    .service(leases::ls_openings)
+                    .service(leases::ls_loan_closing)
+                    .service(leases::liquidations)
+                    .service(leases::liquidations_export)
+                    .service(leases::interest_repayments)
+                    .service(leases::interest_repayments_export)
+                    .service(leases::historically_opened)
+                    .service(leases::historically_opened_export)
+                    .service(leases::historically_repaid)
+                    .service(leases::historically_repaid_export)
+                    .service(leases::historically_liquidated)
+                    .service(leases::historically_liquidated_export)
+                    // Position endpoints
+                    .service(positions::positions)
+                    .service(positions::positions_export)
+                    .service(positions::position_buckets)
+                    .service(positions::daily_positions)
+                    .service(positions::open_positions_by_token)
+                    .service(positions::position_debt_value)
+                    // Liquidity endpoints
+                    .service(liquidity::pools)
+                    .service(liquidity::lp_withdraw)
+                    .service(liquidity::current_lenders)
+                    .service(liquidity::historical_lenders)
+                    .service(liquidity::historical_lenders_export)
+                    .service(liquidity::utilization_level)
+                    .service(liquidity::deposit_suspension)
+                    .service(liquidity::earn_apr)
+                    // Misc endpoints
+                    .service(misc::prices)
+                    .service(misc::blocks)
+                    .service(misc::txs)
+                    .service(misc::history_stats)
+                    .service(misc::optimal)
+                    .service(misc::version)
+                    .service(misc::subscribe_get)
+                    .service(misc::subscribe_post)
+                    .service(misc::test_push)
+                    // Admin endpoints
+                    .service(admin::update_raw_txs)
+                    .service(admin::backfill_ls_opening),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

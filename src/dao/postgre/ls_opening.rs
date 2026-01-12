@@ -137,7 +137,7 @@ impl Table<LS_Opening> {
         .bind(&data.LS_lpn_loan_amnt)
         .bind(&data.LS_position_type)
         .bind(&data.LS_lpn_symbol)
-        .bind(&data.LS_lpn_decimals)
+        .bind(data.LS_lpn_decimals)
         .bind(&data.LS_opening_price)
         .bind(&data.LS_liquidation_price_at_open)
         .persistent(true)
@@ -199,7 +199,7 @@ impl Table<LS_Opening> {
         .bind(&data.LS_lpn_loan_amnt)
         .bind(&data.LS_position_type)
         .bind(&data.LS_lpn_symbol)
-        .bind(&data.LS_lpn_decimals)
+        .bind(data.LS_lpn_decimals)
         .bind(&data.LS_opening_price)
         .bind(&data.LS_liquidation_price_at_open)
         .persistent(true)
@@ -262,7 +262,7 @@ impl Table<LS_Opening> {
                 .push_bind(&ls.LS_lpn_loan_amnt)
                 .push_bind(&ls.LS_position_type)
                 .push_bind(&ls.LS_lpn_symbol)
-                .push_bind(&ls.LS_lpn_decimals)
+                .push_bind(ls.LS_lpn_decimals)
                 .push_bind(&ls.LS_opening_price)
                 .push_bind(&ls.LS_liquidation_price_at_open);
         });
