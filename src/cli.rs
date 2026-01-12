@@ -32,6 +32,10 @@ pub enum Commands {
         /// Show migration status without running migrations
         #[arg(long)]
         status: bool,
+
+        /// Mark all migrations as applied without running them (for existing databases)
+        #[arg(long)]
+        fake: bool,
     },
 
     /// Run data backfill operations
@@ -77,12 +81,15 @@ pub fn init_config() -> Result<Config, Error> {
 }
 
 /// Run migrations and show status
-pub async fn run_migrate(status_only: bool) -> Result<(), Error> {
+pub async fn run_migrate(status_only: bool, fake: bool) -> Result<(), Error> {
     let config = init_config()?;
 
-    if status_only {
+    if fake {
+        tracing::info!("Marking all migrations as applied without running them...");
+        migration::run_migrations_fake(&config.database_url).await?;
+        tracing::info!("All migrations marked as applied");
+    } else if status_only {
         tracing::info!("Checking migration status...");
-        // For status, we still run the migration runner - it will report what's applied
         migration::run_migrations(&config.database_url).await?;
         tracing::info!("Migration status check complete");
     } else {

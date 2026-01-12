@@ -3,7 +3,7 @@
 //! Provides atomic, versioned database migrations that run on startup.
 //! Migrations are tracked in a `refinery_schema_history` table.
 
-use refinery::embed_migrations;
+use refinery::{embed_migrations, Target};
 use tokio_postgres::NoTls;
 
 use crate::error::Error;
@@ -61,6 +61,54 @@ pub async fn run_migrations(database_url: &str) -> Result<(), Error> {
             );
         }
         tracing::info!("Successfully applied {} migration(s)", applied.len());
+    }
+
+    Ok(())
+}
+
+/// Mark all migrations as applied without running them.
+///
+/// Uses refinery's Target::Fake to update the schema history table
+/// without executing the actual migration SQL. Useful for databases
+/// where the schema already exists from manual migration.
+pub async fn run_migrations_fake(database_url: &str) -> Result<(), Error> {
+    tracing::info!("Faking database migrations (marking as applied without running)...");
+
+    let config: tokio_postgres::Config = database_url
+        .parse()
+        .map_err(|e| Error::ConfigurationError(format!("Invalid database URL: {}", e)))?;
+
+    let (mut client, connection) = config
+        .connect(NoTls)
+        .await
+        .map_err(|e| Error::ConfigurationError(format!("Failed to connect for migrations: {}", e)))?;
+
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            tracing::error!("Migration connection error: {}", e);
+        }
+    });
+
+    // Use Target::Fake to mark migrations as applied without running them
+    let report = migrations::runner()
+        .set_target(Target::Fake)
+        .run_async(&mut client)
+        .await
+        .map_err(|e| Error::ConfigurationError(format!("Migration failed: {}", e)))?;
+
+    let applied = report.applied_migrations();
+    if applied.is_empty() {
+        tracing::info!("No migrations to mark as applied");
+    } else {
+        for migration in applied {
+            tracing::info!(
+                "Marked as applied: V{:03}__{} (checksum: {})",
+                migration.version(),
+                migration.name(),
+                migration.checksum()
+            );
+        }
+        tracing::info!("Marked {} migration(s) as applied", applied.len());
     }
 
     Ok(())
