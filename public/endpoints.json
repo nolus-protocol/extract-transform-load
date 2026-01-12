@@ -28,21 +28,24 @@
   },
   {
     "category": "Protocol Analytics",
-    "description": "Returns the total amount currently borrowed across all lending pools in USD.",
+    "description": "Returns the total amount currently borrowed across all lending pools in USD. Can be filtered by protocol.",
     "url": "/api/borrowed",
     "type": "GET",
     "response": "{ borrowed: BigDecimal }",
     "cache": "30 min",
-    "example": "{ \"borrowed\": \"5432109.87\" }"
+    "example": "{ \"borrowed\": \"5432109.87\" }",
+    "params": [
+      { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns total if not specified." }
+    ]
   },
   {
     "category": "Protocol Analytics",
     "description": "Returns the total funds supplied by lenders across all pools in USD.",
     "url": "/api/supplied-funds",
     "type": "GET",
-    "response": "{ supplied_funds: BigDecimal }",
-    "cache": "30 min",
-    "example": "{ \"supplied_funds\": \"18234567.90\" }"
+    "response": "{ amount: BigDecimal }",
+    "cache": "1 hour",
+    "example": "{ \"amount\": \"18234567.90\" }"
   },
   {
     "category": "Protocol Analytics",
@@ -159,7 +162,7 @@
     "url": "/api/optimal",
     "type": "GET",
     "response": "{ optimal: String }",
-    "example": "{ \"optimal\": \"80\" }"
+    "example": "{ \"optimal\": \"70.00\" }"
   },
   {
     "category": "Protocol Analytics",
@@ -167,7 +170,7 @@
     "url": "/api/deposit-suspension",
     "type": "GET",
     "response": "{ deposit_suspension: String }",
-    "example": "{ \"deposit_suspension\": \"95\" }"
+    "example": "{ \"deposit_suspension\": \"65.00\" }"
   },
   {
     "category": "Protocol Analytics",
@@ -242,18 +245,21 @@
     "description": "Returns the aggregate realized profit and loss from all closed positions in USD.",
     "url": "/api/realized-pnl-stats",
     "type": "GET",
-    "response": "{ realized_pnl: BigDecimal }",
+    "response": "{ amount: BigDecimal }",
     "cache": "1 hour",
-    "example": "{ \"realized_pnl\": \"567890.12\" }"
+    "example": "{ \"amount\": \"567890.12\" }"
   },
   {
     "category": "Position Analytics",
-    "description": "Returns the total value of leased assets grouped by token symbol.",
+    "description": "Returns the total value of leased assets grouped by token symbol. Can be filtered by protocol.",
     "url": "/api/leased-assets",
     "type": "GET",
     "response": "[{ symbol: String, value: BigDecimal }]",
     "cache": "1 hour",
-    "example": "[{ \"symbol\": \"ATOM\", \"value\": \"1234567.89\" }, { \"symbol\": \"OSMO\", \"value\": \"987654.32\" }]"
+    "example": "[{ \"symbol\": \"ATOM\", \"value\": \"1234567.89\" }, { \"symbol\": \"OSMO\", \"value\": \"987654.32\" }]",
+    "params": [
+      { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns total if not specified." }
+    ]
   },
   {
     "category": "Position Analytics",
@@ -361,12 +367,15 @@
   },
   {
     "category": "Lending Analytics",
-    "description": "Returns statistical aggregates (min, max, avg, sum) of lease values per protocol.",
+    "description": "Returns statistical aggregates (avg, max) of lease values per asset.",
     "url": "/api/lease-value-stats",
     "type": "GET",
-    "response": "[{ protocol: String, min_value: BigDecimal, max_value: BigDecimal, avg_value: BigDecimal, total_value: BigDecimal }]",
+    "response": "[{ asset: String, avg_value: BigDecimal, max_value: BigDecimal }]",
     "cache": "1 hour",
-    "example": "[{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC\", \"min_value\": \"100.00\", \"max_value\": \"50000.00\", \"avg_value\": \"5432.10\", \"total_value\": \"2345678.90\" }]"
+    "example": "[{ \"asset\": \"ATOM\", \"avg_value\": \"5432.10\", \"max_value\": \"50000.00\" }]",
+    "params": [
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+    ]
   },
   {
     "category": "Lending Analytics",
@@ -392,12 +401,15 @@
   },
   {
     "category": "Lending Analytics",
-    "description": "Returns a summary of loans granted per protocol with count and total value.",
+    "description": "Returns a summary of loans granted per asset.",
     "url": "/api/loans-granted",
     "type": "GET",
-    "response": "[{ protocol: String, count: Number, total_value: BigDecimal }]",
+    "response": "[{ asset: String, loan: BigDecimal }]",
     "cache": "1 hour",
-    "example": "[{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC\", \"count\": 1234, \"total_value\": \"12345678.90\" }]"
+    "example": "[{ \"asset\": \"ATOM\", \"loan\": \"12345678.90\" }]",
+    "params": [
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+    ]
   },
   {
     "category": "Lending Analytics",
@@ -591,19 +603,19 @@
     "description": "Returns the total realized profit and loss for a specific wallet address.",
     "url": "/api/realized-pnl",
     "type": "GET",
-    "response": "{ realized_pnl: BigDecimal }",
-    "example": "{ \"realized_pnl\": \"1234.56\" }",
+    "response": "{ realized_pnl: Number }",
+    "example": "{ \"realized_pnl\": 1234.56 }",
     "params": [
       { "name": "address", "type": "String", "required": true }
     ]
   },
   {
     "category": "Wallet Analytics",
-    "description": "Returns the current position value and outstanding debt for a specific wallet.",
+    "description": "Returns the current position values and outstanding debts for a specific wallet as arrays of amounts per asset.",
     "url": "/api/position-debt-value",
     "type": "GET",
-    "response": "{ position_value: BigDecimal, debt_value: BigDecimal }",
-    "example": "{ \"position_value\": \"6500.00\", \"debt_value\": \"5000.00\" }",
+    "response": "{ position: [{ LS_symbol: String, LS_amnt: BigDecimal, LS_amnt_stable: BigDecimal }], debt: [{ LS_symbol: String, LS_amnt: BigDecimal, LS_amnt_stable: BigDecimal }] }",
+    "example": "{ \"position\": [{ \"LS_symbol\": \"ATOM\", \"LS_amnt\": \"100.00\", \"LS_amnt_stable\": \"950.00\" }], \"debt\": [{ \"LS_symbol\": \"USDC\", \"LS_amnt\": \"500.00\", \"LS_amnt_stable\": \"500.00\" }] }",
     "params": [
       { "name": "address", "type": "String", "required": true }
     ]
@@ -621,11 +633,11 @@
   },
   {
     "category": "Wallet Analytics",
-    "description": "Returns trading statistics including total trades, win rate, and average PnL for a wallet.",
+    "description": "Returns trading statistics including PnL, transaction volume, win rate, and bucket distribution for a wallet.",
     "url": "/api/history-stats",
     "type": "GET",
-    "response": "{ total_trades: Number, win_rate: BigDecimal, avg_pnl: BigDecimal }",
-    "example": "{ \"total_trades\": 25, \"win_rate\": \"68.00\", \"avg_pnl\": \"123.45\" }",
+    "response": "{ pnl: Number, tx_volume: Number, win_rate: Number, bucket: [{ name: String, value: Number }] }",
+    "example": "{ \"pnl\": 1234.56, \"tx_volume\": 50000.00, \"win_rate\": 68.00, \"bucket\": [{ \"name\": \"$1k-$5k\", \"value\": 10 }] }",
     "params": [
       { "name": "address", "type": "String", "required": true }
     ]
@@ -657,11 +669,11 @@
   },
   {
     "category": "Record Lookup",
-    "description": "Returns the opening details for a specific lease by its contract ID.",
+    "description": "Returns detailed opening information for a specific lease by its contract ID, including prices, fees, and history.",
     "url": "/api/ls-opening",
     "type": "GET",
-    "response": "{ lease: String, user: String, amount: BigDecimal, symbol: String, opened_at: DateTime }",
-    "example": "{ \"lease\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"amount\": \"5000.00\", \"symbol\": \"ATOM\", \"opened_at\": \"2025-01-15T10:00:00Z\" }",
+    "response": "{ lease: LS_Opening, downpayment_price: BigDecimal, lpn_price: BigDecimal, fee: BigDecimal, repayment_value: BigDecimal, history: [LS_History] }",
+    "example": "{ \"lease\": { \"LS_contract_id\": \"nolus1abc...\", \"LS_asset_symbol\": \"ATOM\" }, \"downpayment_price\": \"9.50\", \"lpn_price\": \"1.00\", \"fee\": \"25.00\", \"repayment_value\": \"100.00\", \"history\": [] }",
     "params": [
       { "name": "lease", "type": "String", "required": true }
     ]
@@ -671,8 +683,8 @@
     "description": "Returns opening details for multiple leases by their contract IDs.",
     "url": "/api/ls-openings",
     "type": "GET",
-    "response": "[{ lease: String, user: String, amount: BigDecimal, symbol: String }]",
-    "example": "[{ \"lease\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"amount\": \"5000.00\", \"symbol\": \"ATOM\" }]",
+    "response": "[{ lease: LS_Opening, downpayment_price: BigDecimal }]",
+    "example": "[{ \"lease\": { \"LS_contract_id\": \"nolus1abc...\" }, \"downpayment_price\": \"9.50\" }]",
     "params": [
       { "name": "leases", "type": "String", "required": true, "description": "Comma-separated list of lease contract IDs" }
     ]
