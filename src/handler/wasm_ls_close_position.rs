@@ -83,19 +83,11 @@ pub async fn parse_and_insert(
         LS_payment_symbol: item.payment_symbol.to_owned(),
     };
 
-    let isExists = app_state
+    app_state
         .database
         .ls_close_position
-        .isExists(&ls_close_position)
+        .insert_if_not_exists(&ls_close_position, transaction)
         .await?;
-
-    if !isExists {
-        app_state
-            .database
-            .ls_close_position
-            .insert(&ls_close_position, transaction)
-            .await?;
-    }
 
     if loan_close {
         ls_loan_closing_handler::parse_and_insert(

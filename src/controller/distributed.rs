@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    helpers::cached_fetch,
 };
 
 const CACHE_KEY: &str = "distributed";
@@ -13,16 +14,10 @@ const CACHE_KEY: &str = "distributed";
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    if let Some(cached) = state.api_cache.distributed.get(CACHE_KEY).await {
-        return Ok(web::Json(Response { distributed: cached }));
-    }
-
-    let data = state
-        .database
-        .tr_rewards_distribution
-        .get_distributed()
-        .await?;
-    state.api_cache.distributed.set(CACHE_KEY, data.clone()).await;
+    let data = cached_fetch(&state.api_cache.distributed, CACHE_KEY, || async {
+        state.database.tr_rewards_distribution.get_distributed().await
+    })
+    .await?;
 
     Ok(web::Json(Response { distributed: data }))
 }

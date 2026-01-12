@@ -85,19 +85,11 @@ pub async fn parse_and_insert(
     };
 
     let status = ls_liquidation.LS_transaction_type.to_owned();
-    let isExists = app_state
+    app_state
         .database
         .ls_liquidation
-        .isExists(&ls_liquidation)
+        .insert_if_not_exists(&ls_liquidation, transaction)
         .await?;
-
-    if !isExists {
-        app_state
-            .database
-            .ls_liquidation
-            .insert(&ls_liquidation, transaction)
-            .await?;
-    }
 
     if loan_close {
         ls_loan_closing_handler::parse_and_insert(

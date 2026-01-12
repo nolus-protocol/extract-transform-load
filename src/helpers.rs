@@ -1028,6 +1028,53 @@ impl From<Filter_Types> for Vec<String> {
 }
 
 use chrono::{DateTime, Utc};
+use std::future::Future;
+
+use crate::cache::TimedCache;
+
+// ============================================================================
+// Generic Cache Helpers
+// ============================================================================
+
+/// Fetches a cached value or computes it using the provided async function.
+/// Handles the common pattern of: check cache -> fetch from DB -> store in cache.
+///
+/// # Arguments
+/// * `cache` - The TimedCache instance to use
+/// * `key` - Cache key string
+/// * `fetch_fn` - Async function that fetches the value if not cached
+///
+/// # Example
+/// ```ignore
+/// let data = cached_fetch(
+///     &state.api_cache.revenue,
+///     "revenue",
+///     || async { state.database.tr_profit.get_revenue().await }
+/// ).await?;
+/// ```
+pub async fn cached_fetch<T, F, Fut>(
+    cache: &TimedCache<T>,
+    key: &str,
+    fetch_fn: F,
+) -> Result<T, crate::error::Error>
+where
+    T: Clone + Send + Sync,
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = Result<T, crate::error::Error>>,
+{
+    // Try cache first
+    if let Some(cached) = cache.get(key).await {
+        return Ok(cached);
+    }
+
+    // Cache miss - fetch data
+    let data = fetch_fn().await?;
+
+    // Store in cache
+    cache.set(key, data.clone()).await;
+
+    Ok(data)
+}
 
 /// Time window filter parameters for historical endpoints.
 /// Supports both period-based filtering (3m/6m/12m/all) and

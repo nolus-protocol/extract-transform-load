@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    helpers::cached_fetch,
 };
 
 const CACHE_KEY: &str = "buyback_total";
@@ -13,18 +14,12 @@ const CACHE_KEY: &str = "buyback_total";
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    if let Some(cached) = state.api_cache.buyback_total.get(CACHE_KEY).await {
-        return Ok(web::Json(Response {
-            buyback_total: cached,
-        }));
-    }
+    let data = cached_fetch(&state.api_cache.buyback_total, CACHE_KEY, || async {
+        state.database.tr_profit.get_buyback_total().await
+    })
+    .await?;
 
-    let data = state.database.tr_profit.get_buyback_total().await?;
-    state.api_cache.buyback_total.set(CACHE_KEY, data.clone()).await;
-
-    Ok(web::Json(Response {
-        buyback_total: data,
-    }))
+    Ok(web::Json(Response { buyback_total: data }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]

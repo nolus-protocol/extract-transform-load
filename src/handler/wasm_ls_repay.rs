@@ -70,15 +70,11 @@ pub async fn parse_and_insert(
         LS_principal_stable: BigDecimal::from_str(&item.principal)?,
     };
 
-    let isExists = app_state.database.ls_repayment.isExists(&ls_repay).await?;
-
-    if !isExists {
-        app_state
-            .database
-            .ls_repayment
-            .insert(ls_repay, transaction)
-            .await?;
-    }
+    app_state
+        .database
+        .ls_repayment
+        .insert_if_not_exists(ls_repay, transaction)
+        .await?;
 
     if loan_close {
         ls_loan_closing_handler::parse_and_insert(

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    helpers::cached_fetch,
 };
 
 const CACHE_KEY: &str = "revenue";
@@ -13,16 +14,10 @@ const CACHE_KEY: &str = "revenue";
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    // Try cache first
-    if let Some(cached) = state.api_cache.revenue.get(CACHE_KEY).await {
-        return Ok(web::Json(Response { revenue: cached }));
-    }
-
-    // Cache miss - query DB
-    let data = state.database.tr_profit.get_revenue().await?;
-
-    // Store in cache
-    state.api_cache.revenue.set(CACHE_KEY, data.clone()).await;
+    let data = cached_fetch(&state.api_cache.revenue, CACHE_KEY, || async {
+        state.database.tr_profit.get_revenue().await
+    })
+    .await?;
 
     Ok(web::Json(Response { revenue: data }))
 }

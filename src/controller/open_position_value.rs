@@ -1,6 +1,7 @@
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    helpers::cached_fetch,
 };
 use actix_web::{get, web, Responder, Result};
 use bigdecimal::BigDecimal;
@@ -12,22 +13,12 @@ const CACHE_KEY: &str = "open_position_value";
 async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    // Try cache first
-    if let Some(cached) = state.api_cache.open_position_value.get(CACHE_KEY).await {
-        return Ok(web::Json(ResponseData {
-            open_position_value: cached,
-        }));
-    }
+    let data = cached_fetch(&state.api_cache.open_position_value, CACHE_KEY, || async {
+        state.database.ls_state.get_open_position_value().await
+    })
+    .await?;
 
-    // Cache miss - query DB
-    let data = state.database.ls_state.get_open_position_value().await?;
-
-    // Store in cache
-    state.api_cache.open_position_value.set(CACHE_KEY, data.clone()).await;
-
-    Ok(web::Json(ResponseData {
-        open_position_value: data,
-    }))
+    Ok(web::Json(ResponseData { open_position_value: data }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]

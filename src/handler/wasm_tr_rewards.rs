@@ -40,19 +40,11 @@ pub async fn parse_and_insert(
         Event_Block_Index: index.try_into()?,
     };
 
-    let isExists = app_state
+    app_state
         .database
         .tr_rewards_distribution
-        .isExists(&tr_rewards_distribution)
+        .insert_if_not_exists(tr_rewards_distribution, transaction)
         .await?;
-
-    if !isExists {
-        app_state
-            .database
-            .tr_rewards_distribution
-            .insert(tr_rewards_distribution, transaction)
-            .await?;
-    }
 
     Ok(())
 }

@@ -106,6 +106,58 @@ impl Table<LS_Liquidation> {
         .await
     }
 
+    pub async fn insert_if_not_exists(
+        &self,
+        data: &LS_Liquidation,
+        transaction: &mut Transaction<'_, DataBase>,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO "LS_Liquidation" (
+                "LS_liquidation_height",
+                "LS_contract_id",
+                "LS_amnt_symbol",
+                "LS_timestamp",
+                "LS_amnt_stable",
+                "LS_transaction_type",
+                "LS_prev_margin_stable",
+                "LS_prev_interest_stable",
+                "LS_current_margin_stable",
+                "LS_current_interest_stable",
+                "LS_principal_stable",
+                "Tx_Hash",
+                "LS_amnt",
+                "LS_payment_symbol",
+                "LS_payment_amnt",
+                "LS_payment_amnt_stable",
+                "LS_loan_close"
+            )
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            ON CONFLICT ("LS_liquidation_height", "LS_contract_id") DO NOTHING
+        "#,
+        )
+        .bind(data.LS_liquidation_height)
+        .bind(&data.LS_contract_id)
+        .bind(&data.LS_amnt_symbol)
+        .bind(data.LS_timestamp)
+        .bind(&data.LS_amnt_stable)
+        .bind(&data.LS_transaction_type)
+        .bind(&data.LS_prev_margin_stable)
+        .bind(&data.LS_prev_interest_stable)
+        .bind(&data.LS_current_margin_stable)
+        .bind(&data.LS_current_interest_stable)
+        .bind(&data.LS_principal_stable)
+        .bind(&data.Tx_Hash)
+        .bind(&data.LS_amnt)
+        .bind(&data.LS_payment_symbol)
+        .bind(&data.LS_payment_amnt)
+        .bind(&data.LS_payment_amnt_stable)
+        .bind(data.LS_loan_close)
+        .persistent(true)
+        .execute(&mut **transaction)
+        .await
+    }
+
     pub async fn insert_many(
         &self,
         data: &Vec<LS_Liquidation>,

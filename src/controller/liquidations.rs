@@ -57,12 +57,14 @@ async fn index(
     let period_str = query.period.as_deref().unwrap_or("3m");
     let cache_key = build_cache_key("liquidations", period_str, query.from);
 
-    if let Some(cached) = state.api_cache.liquidations.get(&cache_key).await {
-        let data: Vec<Liquidation> = cached.into_iter().map(Into::into).collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&data, "liquidations.csv"),
-            _ => Ok(HttpResponse::Ok().json(data)),
-        };
+    if query.from.is_none() {
+        if let Some(cached) = state.api_cache.liquidations.get(&cache_key).await {
+            let data: Vec<Liquidation> = cached.into_iter().map(Into::into).collect();
+            return match query.format.as_deref() {
+                Some("csv") => to_csv_response(&data, "liquidations.csv"),
+                _ => Ok(HttpResponse::Ok().json(data)),
+            };
+        }
     }
 
     let data = state
@@ -71,7 +73,9 @@ async fn index(
         .get_liquidations_with_window(months, query.from)
         .await?;
 
-    state.api_cache.liquidations.set(&cache_key, data.clone()).await;
+    if query.from.is_none() {
+        state.api_cache.liquidations.set(&cache_key, data.clone()).await;
+    }
 
     let response: Vec<Liquidation> = data.into_iter().map(Into::into).collect();
 

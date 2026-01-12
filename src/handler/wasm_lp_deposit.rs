@@ -39,15 +39,11 @@ pub async fn parse_and_insert(
         LP_amnt_asset: BigDecimal::from_str(&item.deposit_amount)?,
         LP_amnt_receipts: BigDecimal::from_str(&item.receipts)?,
     };
-    let isExists = app_state.database.lp_deposit.isExists(&lp_deposit).await?;
-
-    if !isExists {
-        app_state
-            .database
-            .lp_deposit
-            .insert(lp_deposit, transaction)
-            .await?;
-    }
+    app_state
+        .database
+        .lp_deposit
+        .insert_if_not_exists(lp_deposit, transaction)
+        .await?;
 
     Ok(())
 }

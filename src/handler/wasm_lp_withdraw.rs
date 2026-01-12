@@ -39,19 +39,11 @@ pub async fn parse_and_insert(
         LP_amnt_receipts: BigDecimal::from_str(&item.receipts)?,
         LP_deposit_close: item.close.parse()?,
     };
-    let isExists = app_state
+    app_state
         .database
         .lp_withdraw
-        .isExists(&lp_withdraw)
+        .insert_if_not_exists(lp_withdraw, transaction)
         .await?;
-
-    if !isExists {
-        app_state
-            .database
-            .lp_withdraw
-            .insert(lp_withdraw, transaction)
-            .await?;
-    }
 
     Ok(())
 }

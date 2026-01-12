@@ -62,6 +62,36 @@ impl Table<TR_Profit> {
         .await
     }
 
+    /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
+    /// More efficient than calling isExists() followed by insert().
+    pub async fn insert_if_not_exists(
+        &self,
+        data: TR_Profit,
+        transaction: &mut Transaction<'_, DataBase>,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO "TR_Profit" (
+                "TR_Profit_height",
+                "TR_Profit_timestamp",
+                "TR_Profit_amnt_stable",
+                "TR_Profit_amnt_nls",
+                "Tx_Hash"
+            )
+            VALUES($1, $2, $3, $4, $5)
+            ON CONFLICT ("TR_Profit_height", "TR_Profit_timestamp") DO NOTHING
+        "#,
+        )
+        .bind(data.TR_Profit_height)
+        .bind(data.TR_Profit_timestamp)
+        .bind(&data.TR_Profit_amnt_stable)
+        .bind(&data.TR_Profit_amnt_nls)
+        .bind(&data.Tx_Hash)
+        .persistent(true)
+        .execute(&mut **transaction)
+        .await
+    }
+
     pub async fn insert_many(
         &self,
         data: &Vec<TR_Profit>,

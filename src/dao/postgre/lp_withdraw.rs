@@ -74,6 +74,44 @@ impl Table<LP_Withdraw> {
         .await
     }
 
+    /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
+    /// More efficient than calling isExists() followed by insert().
+    pub async fn insert_if_not_exists(
+        &self,
+        data: LP_Withdraw,
+        transaction: &mut Transaction<'_, DataBase>,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO "LP_Withdraw" (
+                "LP_withdraw_height",
+                "LP_address_id",
+                "LP_timestamp",
+                "LP_Pool_id",
+                "LP_amnt_stable",
+                "LP_amnt_asset",
+                "LP_amnt_receipts",
+                "LP_deposit_close",
+                "Tx_Hash"
+            )
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT ("LP_withdraw_height", "LP_address_id", "LP_timestamp", "LP_Pool_id") DO NOTHING
+        "#,
+        )
+        .bind(data.LP_withdraw_height)
+        .bind(&data.LP_address_id)
+        .bind(data.LP_timestamp)
+        .bind(&data.LP_Pool_id)
+        .bind(&data.LP_amnt_stable)
+        .bind(&data.LP_amnt_asset)
+        .bind(&data.LP_amnt_receipts)
+        .bind(data.LP_deposit_close)
+        .bind(data.Tx_Hash)
+        .persistent(true)
+        .execute(&mut **transaction)
+        .await
+    }
+
     pub async fn insert_many(
         &self,
         data: &Vec<LP_Withdraw>,

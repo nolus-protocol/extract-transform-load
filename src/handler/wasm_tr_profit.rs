@@ -37,15 +37,11 @@ pub async fn parse_and_insert(
         TR_Profit_amnt_nls: BigDecimal::from_str(&item.profit_amount)?,
     };
 
-    let isExists = app_state.database.tr_profit.isExists(&tr_profit).await?;
-
-    if !isExists {
-        app_state
-            .database
-            .tr_profit
-            .insert(tr_profit, transaction)
-            .await?;
-    }
+    app_state
+        .database
+        .tr_profit
+        .insert_if_not_exists(tr_profit, transaction)
+        .await?;
 
     Ok(())
 }

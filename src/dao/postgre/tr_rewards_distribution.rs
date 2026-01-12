@@ -68,6 +68,40 @@ impl Table<TR_Rewards_Distribution> {
         .await
     }
 
+    /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
+    /// More efficient than calling isExists() followed by insert().
+    pub async fn insert_if_not_exists(
+        &self,
+        data: TR_Rewards_Distribution,
+        transaction: &mut Transaction<'_, DataBase>,
+    ) -> Result<QueryResult, Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO "TR_Rewards_Distribution" (
+                "TR_Rewards_height",
+                "TR_Rewards_Pool_id",
+                "TR_Rewards_timestamp",
+                "TR_Rewards_amnt_stable",
+                "TR_Rewards_amnt_nls",
+                "Event_Block_Index",
+                "Tx_Hash"
+            )
+            VALUES($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT ("TR_Rewards_height", "TR_Rewards_Pool_id", "Event_Block_Index") DO NOTHING
+        "#,
+        )
+        .bind(data.TR_Rewards_height)
+        .bind(&data.TR_Rewards_Pool_id)
+        .bind(data.TR_Rewards_timestamp)
+        .bind(&data.TR_Rewards_amnt_stable)
+        .bind(&data.TR_Rewards_amnt_nls)
+        .bind(data.Event_Block_Index)
+        .bind(data.Tx_Hash)
+        .persistent(true)
+        .execute(&mut **transaction)
+        .await
+    }
+
     pub async fn insert_many(
         &self,
         data: &Vec<TR_Rewards_Distribution>,
