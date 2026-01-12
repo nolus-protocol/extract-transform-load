@@ -1,9 +1,7 @@
-pub use self::{
-    path::get_path,
-    types::{
-        DBRow, DataBase, PoolOption, PoolType, QueryResult, DUPLICATE_ERROR,
-    },
+pub use self::types::{
+    DBRow, DataBase, PoolOption, PoolType, QueryResult, DUPLICATE_ERROR,
 };
+
 mod action_history;
 mod block;
 mod pool_config;
@@ -25,7 +23,6 @@ mod ls_slippage_anomaly;
 pub mod ls_state;
 mod mp_asset;
 mod mp_yield;
-mod path;
 mod pl_state;
 mod raw_message;
 mod reserve_cover_loss;

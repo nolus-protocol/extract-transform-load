@@ -1,4 +1,6 @@
+-- V002: Pool configuration seed data
 -- Insert pool configurations (upsert to handle re-runs)
+
 INSERT INTO "pool_config" ("pool_id", "position_type", "lpn_symbol", "lpn_decimals", "label", "protocol") VALUES
     ('nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6', 'Long', 'USDC_NOBLE', 1000000, 'USDC_NOBLE', 'OSMOSIS-OSMOSIS-USDC_NOBLE'),
     ('nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5', 'Long', 'USDC', 1000000, 'USDC', 'OSMOSIS-OSMOSIS-USDC_AXELAR'),
@@ -15,4 +17,4 @@ ON CONFLICT ("pool_id") DO UPDATE SET
     "lpn_symbol" = EXCLUDED."lpn_symbol",
     "lpn_decimals" = EXCLUDED."lpn_decimals",
     "label" = EXCLUDED."label",
-    "protocol" = EXCLUDED."protocol"
+    "protocol" = EXCLUDED."protocol";

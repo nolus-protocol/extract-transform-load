@@ -106,21 +106,6 @@
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
   },
-
-  {
-    "category": "Protocol Analytics",
-    "description": "DEPRECATED: Use /api/pools instead. Returns the current earn APR for liquidity providers, optionally filtered by protocol. Returns 0 if no protocol specified.",
-    "url": "/api/earn-apr",
-    "type": "GET",
-    "response": "{ earn_apr: BigDecimal }",
-    "deprecated": true,
-    "sunset": "2025-06-01",
-    "successor": "/api/pools",
-    "example": "{ \"earn_apr\": \"8.75\" }",
-    "params": [
-      { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns 0 if not specified." }
-    ]
-  },
   {
     "category": "Protocol Analytics",
     "description": "Returns historical pool utilization values for a specific protocol. Returns array of utilization percentages (BigDecimal). CSV format includes full data with timestamps.",
@@ -138,28 +123,12 @@
   },
   {
     "category": "Protocol Analytics",
-    "description": "Returns current pool data for all pools in a single request, including utilization levels, borrow APR, earn APR, supplied and borrowed amounts. Eliminates N+1 queries when displaying multiple pools.",
+    "description": "Returns current pool data for all pools in a single request, including utilization levels, borrow APR, earn APR, supplied and borrowed amounts, plus global protocol thresholds (optimal, deposit_suspension). Eliminates N+1 queries when displaying multiple pools.",
     "url": "/api/pools",
     "type": "GET",
-    "response": "{ protocols: [{ protocol: String, utilization: BigDecimal, supplied: BigDecimal, borrowed: BigDecimal, borrow_apr: BigDecimal, earn_apr: BigDecimal }] }",
+    "response": "{ protocols: [{ protocol: String, utilization: BigDecimal, supplied: BigDecimal, borrowed: BigDecimal, borrow_apr: BigDecimal, earn_apr: BigDecimal }], optimal: String, deposit_suspension: String }",
     "cache": "30 min",
-    "example": "{ \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"utilization\": \"68.5\", \"supplied\": \"5432109.87\", \"borrowed\": \"3721543.21\", \"borrow_apr\": \"12.5\", \"earn_apr\": \"8.75\" }] }"
-  },
-  {
-    "category": "Protocol Analytics",
-    "description": "Returns the optimal utilization rate threshold configured for the protocol.",
-    "url": "/api/optimal",
-    "type": "GET",
-    "response": "{ optimal: String }",
-    "example": "{ \"optimal\": \"70.00\" }"
-  },
-  {
-    "category": "Protocol Analytics",
-    "description": "Returns the deposit suspension threshold percentage.",
-    "url": "/api/deposit-suspension",
-    "type": "GET",
-    "response": "{ deposit_suspension: String }",
-    "example": "{ \"deposit_suspension\": \"65.00\" }"
+    "example": "{ \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"utilization\": \"68.5\", \"supplied\": \"5432109.87\", \"borrowed\": \"3721543.21\", \"borrow_apr\": \"12.5\", \"earn_apr\": \"8.75\" }], \"optimal\": \"70.00\", \"deposit_suspension\": \"65.00\" }"
   },
   {
     "category": "Protocol Analytics",
@@ -279,23 +248,16 @@
   },
   {
     "category": "Position Analytics",
-    "description": "Returns detailed information for all open positions including PnL, prices, and liquidation levels.",
+    "description": "Returns detailed information for all open positions including PnL, prices, and liquidation levels. Use export=true for streaming CSV export of all data.",
     "url": "/api/positions",
     "type": "GET",
     "response": "[{ date: String, type: String, symbol: String, contract_id: String, user: String, loan: BigDecimal, down_payment: BigDecimal, lease_value: BigDecimal, pnl: BigDecimal, pnl_percent: BigDecimal, current_price: BigDecimal, liquidation_price: BigDecimal }]",
     "cache": "1 hour",
     "example": "[{ \"date\": \"2025-01-15\", \"type\": \"Long\", \"symbol\": \"ATOM\", \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"loan\": \"5000.00\", \"down_payment\": \"1000.00\", \"lease_value\": \"6500.00\", \"pnl\": \"500.00\", \"pnl_percent\": \"8.33\", \"current_price\": \"9.50\", \"liquidation_price\": \"7.20\" }]",
     "params": [
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
+      { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
     ]
-  },
-  {
-    "category": "Position Analytics",
-    "description": "Streaming CSV export of all open positions.",
-    "url": "/api/positions/export",
-    "type": "GET",
-    "response": "CSV file stream",
-    "cache": "1 hour"
   },
   {
     "category": "Position Analytics",
@@ -334,7 +296,7 @@
   },
   {
     "category": "Lending Analytics",
-    "description": "Returns liquidation events with time window filtering.",
+    "description": "Returns liquidation events with time window filtering. Use export=true for streaming CSV export of all data.",
     "url": "/api/liquidations",
     "type": "GET",
     "response": "[{ timestamp: DateTime, ticker: String, contract_id: String, user: String, transaction_type: String, liquidation_amount: BigDecimal, closed_loan: Boolean, down_payment: BigDecimal, loan: BigDecimal, liquidation_price: BigDecimal }]",
@@ -343,16 +305,9 @@
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
+      { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
     ]
-  },
-  {
-    "category": "Lending Analytics",
-    "description": "Streaming CSV export of all liquidation events.",
-    "url": "/api/liquidations/export",
-    "type": "GET",
-    "response": "CSV file stream",
-    "cache": "1 hour"
   },
   {
     "category": "Lending Analytics",
@@ -368,7 +323,7 @@
   },
   {
     "category": "Lending Analytics",
-    "description": "Returns lender deposit and withdrawal history with time window filtering.",
+    "description": "Returns lender deposit and withdrawal history with time window filtering. Use export=true for streaming CSV export of all data.",
     "url": "/api/historical-lenders",
     "type": "GET",
     "response": "[{ transaction_type: String, timestamp: DateTime, user: String, amount: BigDecimal, pool: String }]",
@@ -377,16 +332,9 @@
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
+      { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
     ]
-  },
-  {
-    "category": "Lending Analytics",
-    "description": "Streaming CSV export of all lender deposit/withdrawal history.",
-    "url": "/api/historical-lenders/export",
-    "type": "GET",
-    "response": "CSV file stream",
-    "cache": "1 hour"
   },
   {
     "category": "Lending Analytics",
@@ -402,7 +350,7 @@
   },
   {
     "category": "Lending Analytics",
-    "description": "Returns historically liquidated positions with time window filtering.",
+    "description": "Returns historically liquidated positions with time window filtering. Use export=true for streaming CSV export of all data.",
     "url": "/api/historically-liquidated",
     "type": "GET",
     "response": "[{ contract_id: String, asset: String, loan: BigDecimal, total_liquidated: BigDecimal }]",
@@ -411,20 +359,13 @@
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
+      { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
     ]
   },
   {
     "category": "Lending Analytics",
-    "description": "Streaming CSV export of all historically liquidated positions.",
-    "url": "/api/historically-liquidated/export",
-    "type": "GET",
-    "response": "CSV file stream",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Lending Analytics",
-    "description": "Returns historically repaid positions with time window filtering.",
+    "description": "Returns historically repaid positions with time window filtering. Use export=true for streaming CSV export of all data.",
     "url": "/api/historically-repaid",
     "type": "GET",
     "response": "[{ contract_id: String, symbol: String, loan: BigDecimal, total_repaid: BigDecimal, close_timestamp: DateTime, loan_closed: String }]",
@@ -433,20 +374,13 @@
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
+      { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
     ]
   },
   {
     "category": "Lending Analytics",
-    "description": "Streaming CSV export of all historically repaid positions.",
-    "url": "/api/historically-repaid/export",
-    "type": "GET",
-    "response": "CSV file stream",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Lending Analytics",
-    "description": "Returns interest repayment data aggregated from repayments, position closes, and liquidations.",
+    "description": "Returns interest repayment data aggregated from repayments, position closes, and liquidations. Use export=true for streaming CSV export of all data.",
     "url": "/api/interest-repayments",
     "type": "GET",
     "response": "[{ timestamp: DateTime, contract_id: String, position_owner: String, position_type: String, event_type: String, loan_interest_repaid: BigDecimal, margin_interest_repaid: BigDecimal }]",
@@ -455,20 +389,13 @@
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
+      { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
     ]
   },
   {
     "category": "Lending Analytics",
-    "description": "Streaming CSV export of all interest repayment events.",
-    "url": "/api/interest-repayments/export",
-    "type": "GET",
-    "response": "CSV file stream",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Lending Analytics",
-    "description": "Returns historically opened positions with position type, opening price, and liquidation price. Supports time window filtering.",
+    "description": "Returns historically opened positions with position type, opening price, and liquidation price. Supports time window filtering. Use export=true for streaming CSV export of all data.",
     "url": "/api/historically-opened",
     "type": "GET",
     "response": "[{ contract_id: String, user: String, leased_asset: String, opening_date: DateTime, position_type: String, down_payment_amount: BigDecimal, down_payment_asset: String, loan: BigDecimal, total_position_amount_lpn: BigDecimal, price: BigDecimal, open: Boolean, liquidation_price: BigDecimal }]",
@@ -477,20 +404,13 @@
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
+      { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
     ]
   },
   {
     "category": "Lending Analytics",
-    "description": "Streaming CSV export of all historically opened positions.",
-    "url": "/api/historically-opened/export",
-    "type": "GET",
-    "response": "CSV file stream",
-    "cache": "1 hour"
-  },
-  {
-    "category": "Lending Analytics",
-    "description": "Returns realized PnL aggregated per wallet address with trade counts.",
+    "description": "Returns realized PnL aggregated per wallet address with trade counts. Use export=true for streaming CSV export of all data.",
     "url": "/api/realized-pnl-wallet",
     "type": "GET",
     "response": "[{ wallet: String, realized_pnl: BigDecimal, trade_count: Number }]",
@@ -499,16 +419,9 @@
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
+      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
+      { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
     ]
-  },
-  {
-    "category": "Lending Analytics",
-    "description": "Streaming CSV export of realized PnL by wallet.",
-    "url": "/api/realized-pnl-wallet/export",
-    "type": "GET",
-    "response": "CSV file stream",
-    "cache": "1 hour"
   },
   {
     "category": "Market Data",
@@ -658,24 +571,14 @@
   },
   {
     "category": "Record Lookup",
-    "description": "Returns detailed opening information for a specific lease by its contract ID, including prices, fees, and history.",
+    "description": "Returns opening information for lease(s). Use 'lease' param for single detailed lookup (with fees, history), or 'leases' param for batch lookup (basic info only).",
     "url": "/api/ls-opening",
     "type": "GET",
-    "response": "{ lease: LS_Opening, downpayment_price: BigDecimal, lpn_price: BigDecimal, fee: BigDecimal, repayment_value: BigDecimal, history: [LS_History] }",
-    "example": "{ \"lease\": { \"LS_contract_id\": \"nolus1abc...\", \"LS_asset_symbol\": \"ATOM\" }, \"downpayment_price\": \"9.50\", \"lpn_price\": \"1.00\", \"fee\": \"25.00\", \"repayment_value\": \"100.00\", \"history\": [] }",
+    "response": "Single: { lease: LS_Opening, downpayment_price: BigDecimal, lpn_price: BigDecimal, fee: BigDecimal, repayment_value: BigDecimal, history: [LS_History] } | Batch: [{ lease: LS_Opening, downpayment_price: BigDecimal }]",
+    "example": "Single: { \"lease\": { \"LS_contract_id\": \"nolus1abc...\" }, \"downpayment_price\": \"9.50\", \"lpn_price\": \"1.00\", \"fee\": \"25.00\", \"repayment_value\": \"100.00\", \"history\": [] } | Batch: [{ \"lease\": { \"LS_contract_id\": \"nolus1abc...\" }, \"downpayment_price\": \"9.50\" }]",
     "params": [
-      { "name": "lease", "type": "String", "required": true }
-    ]
-  },
-  {
-    "category": "Record Lookup",
-    "description": "Returns opening details for multiple leases by their contract IDs.",
-    "url": "/api/ls-openings",
-    "type": "GET",
-    "response": "[{ lease: LS_Opening, downpayment_price: BigDecimal }]",
-    "example": "[{ \"lease\": { \"LS_contract_id\": \"nolus1abc...\" }, \"downpayment_price\": \"9.50\" }]",
-    "params": [
-      { "name": "leases", "type": "String", "required": true, "description": "Comma-separated list of lease contract IDs" }
+      { "name": "lease", "type": "String", "description": "Single lease contract ID for detailed response (mutually exclusive with 'leases')" },
+      { "name": "leases", "type": "String", "description": "Comma-separated list of lease contract IDs for batch response (mutually exclusive with 'lease')" }
     ]
   },
   {

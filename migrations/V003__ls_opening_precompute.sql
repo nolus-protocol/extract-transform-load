@@ -1,4 +1,5 @@
--- Pre-computed columns for LS_Opening to eliminate runtime CTEs and LATERAL JOINs
+-- V003: Pre-computed columns for LS_Opening
+-- Eliminates runtime CTEs and LATERAL JOINs
 -- These columns are populated at write time for new records and backfilled for existing ones
 
 ALTER TABLE "LS_Opening" ADD COLUMN IF NOT EXISTS "LS_position_type" VARCHAR(10);

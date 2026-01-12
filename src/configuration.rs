@@ -14,17 +14,14 @@ use futures::future::join_all;
 
 use crate::{
     cache::TimedCache,
-    dao::{
-        get_path,
-        postgre::{
-            lp_deposit::HistoricalLender,
-            lp_lender_state::CurrentLender,
-            lp_pool_state::PoolUtilizationLevel,
-            ls_liquidation::{HistoricallyLiquidated, LiquidationData},
-            ls_opening::{HistoricallyOpened, LoanGranted, RealizedPnlWallet},
-            ls_repayment::{HistoricallyRepaid, InterestRepaymentData},
-            ls_state::LeaseValueStats,
-        },
+    dao::postgre::{
+        lp_deposit::HistoricalLender,
+        lp_lender_state::CurrentLender,
+        lp_pool_state::PoolUtilizationLevel,
+        ls_liquidation::{HistoricallyLiquidated, LiquidationData},
+        ls_opening::{HistoricallyOpened, LoanGranted, RealizedPnlWallet},
+        ls_repayment::{HistoricallyRepaid, InterestRepaymentData},
+        ls_state::LeaseValueStats,
     },
     error::Error,
     helpers::{formatter, parse_tuple_string, Formatter, Protocol_Types},
@@ -205,7 +202,6 @@ impl State {
         grpc: Grpc,
         http: HTTP,
     ) -> Result<State, Error> {
-        Self::init_migrations(&database).await?;
         Self::init_pools(&config.lp_pools, &database).await?;
         let protocols = Self::init_admin_protocols(&grpc, &config).await?;
         Ok(Self {
@@ -218,52 +214,6 @@ impl State {
             push_permits: Arc::new(Semaphore::new(MAX_PUSH_TASKS)),
             latest_prices: Arc::new(RwLock::new(HashMap::new())),
         })
-    }
-
-    async fn init_migrations(database: &DatabasePool) -> Result<(), Error> {
-        let files = vec![
-            "lp_pool.sql",
-            "action_history.sql",
-            "block.sql",
-            "lp_deposit.sql",
-            "lp_lender_state.sql",
-            "lp_pool_state.sql",
-            "lp_withdraw.sql",
-            "ls_closing.sql",
-            "ls_liquidation.sql",
-            "ls_opening.sql",
-            "ls_repayment.sql",
-            "ls_state.sql",
-            "mp_asset.sql",
-            "mp_yield.sql",
-            "pl_state.sql",
-            "tr_profit.sql",
-            "tr_rewards_distribution.sql",
-            "tr_state.sql",
-            "ls_close_position.sql",
-            "raw_message.sql",
-            "ls_liquidation_warning.sql",
-            "reserve_cover_loss.sql",
-            "ls_loan_closing.sql",
-            "ls_auto_close_position.sql",
-            "ls_slippage_anomaly.sql",
-            "subscription.sql",
-            "ls_loan_collect.sql",
-            // Performance optimization migrations (run manually - multi-statement files)
-            // "indexes.sql",  // Contains multiple CREATE INDEX statements
-            "pool_config.sql",
-            "pool_config_data.sql",
-            // "ls_opening_precompute.sql",  // Contains multiple ALTER TABLE statements
-        ];
-
-        let dir = env!("CARGO_MANIFEST_DIR");
-
-        for file in files {
-            let data = get_path(dir, file)?;
-            sqlx::query(data.as_str()).execute(&database.pool).await?;
-        }
-
-        Ok(())
     }
 
     async fn init_pools(

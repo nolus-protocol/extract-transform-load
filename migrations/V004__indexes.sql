@@ -1,5 +1,4 @@
--- Performance indexes for common query patterns
--- Added as part of ETL performance optimization
+-- V004: Performance indexes for common query patterns
 
 -- LS_Opening indexes
 CREATE INDEX IF NOT EXISTS idx_ls_opening_timestamp ON "LS_Opening" ("LS_timestamp" DESC);
@@ -14,7 +13,6 @@ CREATE INDEX IF NOT EXISTS idx_mp_asset_protocol_time ON "MP_Asset" ("Protocol",
 -- LS_State indexes
 CREATE INDEX IF NOT EXISTS idx_ls_state_timestamp ON "LS_State" ("LS_timestamp" DESC);
 CREATE INDEX IF NOT EXISTS idx_ls_state_contract ON "LS_State" ("LS_contract_id");
--- Composite index for DISTINCT ON queries (e.g., get_all_positions)
 CREATE INDEX IF NOT EXISTS idx_ls_state_contract_timestamp ON "LS_State" ("LS_contract_id", "LS_timestamp" DESC);
 
 -- LP_Deposit indexes
@@ -45,5 +43,9 @@ CREATE INDEX IF NOT EXISTS idx_lp_lender_state_timestamp ON "LP_Lender_State" ("
 -- LP_Pool_State indexes
 CREATE INDEX IF NOT EXISTS idx_lp_pool_state_timestamp ON "LP_Pool_State" ("LP_Pool_timestamp" DESC);
 
--- Action_History index for aggregation lookups
-CREATE INDEX IF NOT EXISTS idx_action_history_timestamp ON "Action_History" ("Action_type", "Action_timestamp" DESC);
+-- raw_message indexes
+CREATE INDEX IF NOT EXISTS idx_from ON raw_message("from");
+CREATE INDEX IF NOT EXISTS idx_to ON raw_message("to");
+
+-- subscription index
+CREATE INDEX IF NOT EXISTS idx_auth ON subscription("auth");

@@ -1,15 +1,18 @@
 use std::time::Duration;
 
 use chrono::Utc;
+use clap::Parser;
 use tokio::time;
 use tracing::{error, Level};
 
 use etl::{
+    cli::{self, BackfillCommands, Cli, Commands},
     configuration::{
         get_configuration, set_configuration, AppState, Config, State,
     },
     error::Error,
     handler::{aggregation_task, cache_refresher, mp_assets},
+    migration,
     model::Actions,
     provider::{DatabasePool, Event, Grpc, HTTP},
     server,
@@ -47,6 +50,34 @@ async fn app_main() -> Result<(), Error> {
 
     tracing::subscriber::set_global_default(subscriber)?;
 
+    // Parse CLI arguments
+    let cli = Cli::parse();
+
+    match cli.command {
+        // Default: run server
+        None | Some(Commands::Serve) => run_server().await,
+
+        // Run migrations only
+        Some(Commands::Migrate { status }) => cli::run_migrate(status).await,
+
+        // Run backfill operations
+        Some(Commands::Backfill { command }) => match command {
+            BackfillCommands::LsOpening {
+                batch_size,
+                dry_run,
+                all,
+            } => cli::run_backfill_ls_opening(batch_size, dry_run, all).await,
+
+            BackfillCommands::RawTxs {
+                concurrency,
+                dry_run,
+            } => cli::run_backfill_raw_txs(concurrency, dry_run).await,
+        },
+    }
+}
+
+/// Run the ETL server (default mode)
+async fn run_server() -> Result<(), Error> {
     let (config, database) = match init().await {
         Ok((config, database)) => (config, database),
         Err(e) => return Err(Error::ConfigurationError(e.to_string())),
@@ -76,6 +107,10 @@ async fn app_main() -> Result<(), Error> {
 async fn init() -> Result<(Config, DatabasePool), Error> {
     set_configuration()?;
     let config = get_configuration()?;
+
+    // Run migrations before creating the connection pool
+    migration::run_migrations(&config.database_url).await?;
+
     let database = DatabasePool::new(&config).await?;
     Ok((config, database))
 }

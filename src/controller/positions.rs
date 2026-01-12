@@ -20,6 +20,7 @@ use crate::{
 #[derive(Debug, Deserialize)]
 pub struct PositionsQuery {
     format: Option<String>,
+    export: Option<bool>,
 }
 
 #[get("/positions")]
@@ -28,6 +29,18 @@ pub async fn positions(
     query: web::Query<PositionsQuery>,
 ) -> Result<HttpResponse, Error> {
     const CACHE_KEY: &str = "positions_all";
+
+    // Handle export=true: return all data as streaming CSV
+    if query.export.unwrap_or(false) {
+        if let Some(cached) = state.api_cache.positions.get(CACHE_KEY).await {
+            return to_streaming_csv_response(cached, "positions.csv");
+        }
+
+        let data = state.database.ls_state.get_all_positions().await?;
+        state.api_cache.positions.set(CACHE_KEY, data.clone()).await;
+
+        return to_streaming_csv_response(data, "positions.csv");
+    }
 
     if let Some(cached) = state.api_cache.positions.get(CACHE_KEY).await {
         return match query.format.as_deref() {
@@ -44,23 +57,6 @@ pub async fn positions(
         Some("csv") => to_csv_response(&data, "positions.csv"),
         _ => Ok(HttpResponse::Ok().json(data)),
     }
-}
-
-#[get("/positions/export")]
-pub async fn positions_export(
-    state: web::Data<AppState<State>>,
-) -> Result<HttpResponse, Error> {
-    const CACHE_KEY: &str = "positions_all";
-
-    if let Some(cached) = state.api_cache.positions.get(CACHE_KEY).await {
-        return to_streaming_csv_response(cached, "positions.csv");
-    }
-
-    let data = state.database.ls_state.get_all_positions().await?;
-
-    state.api_cache.positions.set(CACHE_KEY, data.clone()).await;
-
-    to_streaming_csv_response(data, "positions.csv")
 }
 
 // =============================================================================

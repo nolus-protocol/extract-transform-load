@@ -221,22 +221,6 @@ pub async fn history_stats(
 }
 
 // =============================================================================
-// Optimal
-// =============================================================================
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct OptimalResponse {
-    pub optimal: String,
-}
-
-#[get("/optimal")]
-pub async fn optimal() -> Result<impl Responder, Error> {
-    Ok(web::Json(OptimalResponse {
-        optimal: String::from("70.00"),
-    }))
-}
-
-// =============================================================================
 // Version
 // =============================================================================
 

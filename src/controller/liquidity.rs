@@ -2,9 +2,7 @@
 //!
 //! Endpoints for pools, lenders, utilization, and LP operations.
 
-use std::str::FromStr as _;
-
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -23,6 +21,10 @@ use crate::{
 #[derive(Debug, Serialize)]
 pub struct PoolsResponse {
     pub protocols: Vec<PoolUtilizationLevel>,
+    /// Optimal utilization rate threshold (percentage)
+    pub optimal: String,
+    /// Deposit suspension threshold (percentage)
+    pub deposit_suspension: String,
 }
 
 /// Batch endpoint to get pool data for all pools in a single request.
@@ -36,6 +38,8 @@ pub async fn pools(
     if let Some(cached) = state.api_cache.pools.get(CACHE_KEY).await {
         return Ok(HttpResponse::Ok().json(PoolsResponse {
             protocols: cached,
+            optimal: String::from("70.00"),
+            deposit_suspension: String::from("65.00"),
         }));
     }
 
@@ -47,7 +51,11 @@ pub async fn pools(
 
     state.api_cache.pools.set(CACHE_KEY, data.clone()).await;
 
-    Ok(HttpResponse::Ok().json(PoolsResponse { protocols: data }))
+    Ok(HttpResponse::Ok().json(PoolsResponse {
+        protocols: data,
+        optimal: String::from("70.00"),
+        deposit_suspension: String::from("65.00"),
+    }))
 }
 
 // =============================================================================
@@ -142,6 +150,7 @@ pub struct HistoricalLendersQuery {
     format: Option<String>,
     period: Option<String>,
     from: Option<DateTime<Utc>>,
+    export: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -170,6 +179,22 @@ pub async fn historical_lenders(
     state: web::Data<AppState<State>>,
     query: web::Query<HistoricalLendersQuery>,
 ) -> Result<HttpResponse, Error> {
+    // Handle export=true: return all data as streaming CSV
+    if query.export.unwrap_or(false) {
+        const CACHE_KEY: &str = "historical_lenders_all";
+
+        if let Some(cached) = state.api_cache.historical_lenders.get(CACHE_KEY).await {
+            let data: Vec<HistoricalLender> = cached.into_iter().map(Into::into).collect();
+            return to_streaming_csv_response(data, "historical-lenders.csv");
+        }
+
+        let data = state.database.lp_deposit.get_all_historical_lenders().await?;
+        state.api_cache.historical_lenders.set(CACHE_KEY, data.clone()).await;
+
+        let response: Vec<HistoricalLender> = data.into_iter().map(Into::into).collect();
+        return to_streaming_csv_response(response, "historical-lenders.csv");
+    }
+
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("3m");
     let cache_key = build_cache_key("historical_lenders", period_str, query.from);
@@ -196,24 +221,6 @@ pub async fn historical_lenders(
         Some("csv") => to_csv_response(&response, "historical-lenders.csv"),
         _ => Ok(HttpResponse::Ok().json(response)),
     }
-}
-
-#[get("/historical-lenders/export")]
-pub async fn historical_lenders_export(
-    state: web::Data<AppState<State>>,
-) -> Result<HttpResponse, Error> {
-    const CACHE_KEY: &str = "historical_lenders_all";
-
-    if let Some(cached) = state.api_cache.historical_lenders.get(CACHE_KEY).await {
-        let data: Vec<HistoricalLender> = cached.into_iter().map(Into::into).collect();
-        return to_streaming_csv_response(data, "historical-lenders.csv");
-    }
-
-    let data = state.database.lp_deposit.get_all_historical_lenders().await?;
-    state.api_cache.historical_lenders.set(CACHE_KEY, data.clone()).await;
-
-    let response: Vec<HistoricalLender> = data.into_iter().map(Into::into).collect();
-    to_streaming_csv_response(response, "historical-lenders.csv")
 }
 
 // =============================================================================
@@ -276,93 +283,4 @@ pub async fn utilization_level(
 
     let items: Vec<BigDecimal> = vec![];
     Ok(HttpResponse::Ok().json(items))
-}
-
-// =============================================================================
-// Deposit Suspension
-// =============================================================================
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DepositSuspensionResponse {
-    pub deposit_suspension: String,
-}
-
-#[get("/deposit-suspension")]
-pub async fn deposit_suspension() -> Result<impl Responder, Error> {
-    Ok(web::Json(DepositSuspensionResponse {
-        deposit_suspension: String::from("65.00"),
-    }))
-}
-
-// =============================================================================
-// Earn APR (deprecated)
-// =============================================================================
-
-#[derive(Debug, Deserialize)]
-pub struct EarnAprQuery {
-    protocol: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EarnAprResponse {
-    pub earn_apr: BigDecimal,
-}
-
-/// DEPRECATED: Use /api/pools endpoint instead, which includes earn_apr for all pools.
-#[get("/earn-apr")]
-pub async fn earn_apr(
-    state: web::Data<AppState<State>>,
-    query: web::Query<EarnAprQuery>,
-) -> Result<HttpResponse, Error> {
-    let earn_apr = if let Some(protocol_key) = &query.protocol {
-        let protocol_key = protocol_key.to_uppercase();
-        let admin = state.protocols.get(&protocol_key);
-        if let Some(protocol) = admin {
-            match protocol_key.as_str() {
-                "OSMOSIS-OSMOSIS-ALL_BTC" | "OSMOSIS-OSMOSIS-ATOM" => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr_interest(
-                        protocol.contracts.lpp.to_owned(),
-                        2.5,
-                    )
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-                "OSMOSIS-OSMOSIS-ALL_SOL" => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr_interest(
-                        protocol.contracts.lpp.to_owned(),
-                        4.0,
-                    )
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-                "OSMOSIS-OSMOSIS-ST_ATOM" | "OSMOSIS-OSMOSIS-AKT" => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr_interest(
-                        protocol.contracts.lpp.to_owned(),
-                        2.0,
-                    )
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-                _ => state
-                    .database
-                    .ls_opening
-                    .get_earn_apr(protocol.contracts.lpp.to_owned())
-                    .await
-                    .unwrap_or(BigDecimal::from(0)),
-            }
-        } else {
-            BigDecimal::from_str("0")?
-        }
-    } else {
-        BigDecimal::from_str("0")?
-    };
-
-    Ok(HttpResponse::Ok()
-        .insert_header(("Deprecation", "true"))
-        .insert_header(("Sunset", "2025-06-01"))
-        .insert_header(("Link", "</api/pools>; rel=\"successor-version\""))
-        .json(EarnAprResponse { earn_apr }))
 }
