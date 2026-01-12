@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_mp_asset_symbol_time_range
 CREATE INDEX IF NOT EXISTS idx_ls_liquidation_timestamp_contract
     ON "LS_Liquidation" ("LS_timestamp" DESC, "LS_contract_id")
     INCLUDE ("LS_amnt_symbol", "LS_transaction_type", "LS_payment_amnt_stable",
-             "LS_loan_close", "LS_loan_amnt_asset");
+             "LS_loan_close");
 
 -- LS_Repayment - Repayment aggregation optimization
 CREATE INDEX IF NOT EXISTS idx_ls_repayment_contract_covering

@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_ls_close_position_contract ON "LS_Close_Position"
 CREATE INDEX IF NOT EXISTS idx_ls_close_position_timestamp ON "LS_Close_Position" ("LS_timestamp" DESC);
 
 -- LP_Lender_State indexes
-CREATE INDEX IF NOT EXISTS idx_lp_lender_state_address ON "LP_Lender_State" ("LP_address_id");
+CREATE INDEX IF NOT EXISTS idx_lp_lender_state_lender ON "LP_Lender_State" ("LP_Lender_id");
 CREATE INDEX IF NOT EXISTS idx_lp_lender_state_timestamp ON "LP_Lender_State" ("LP_timestamp" DESC);
 
 -- LP_Pool_State indexes
