@@ -1,7 +1,6 @@
 pub mod blocks;
 pub mod current_lenders;
 pub mod daily_positions;
-pub mod borrow_apr;
 pub mod borrowed;
 pub mod buyback;
 pub mod buyback_total;
@@ -60,6 +59,6 @@ pub mod update_raw_txs;
 pub mod backfill_ls_opening;
 
 pub mod lp_withdraw;
+pub mod pools;
 pub mod utilization_level;
-pub mod utilization_levels;
 pub mod version;

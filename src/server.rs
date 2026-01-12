@@ -5,19 +5,19 @@ use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
 use crate::{
     configuration::{AppState, State},
     controller::{
-        backfill_ls_opening, blocks, borrow_apr, borrowed, buyback, buyback_total,
+        backfill_ls_opening, blocks, borrowed, buyback, buyback_total,
         current_lenders, daily_positions, deposit_suspension, distributed, earn_apr,
         earnings, get_position_debt_value, historical_lenders, historically_liquidated,
         historically_opened, historically_repaid, history_stats, incentives_pool,
         interest_repayments, leased_assets, lease_value_stats, leases, leases_monthly,
         leases_search, liquidations, loans_by_token, loans_granted, lp_withdraw,
         ls_loan_closing, ls_opening, ls_openings, monthly_active_wallets, open_interest,
-        open_position_value, open_positions_by_token, optimal, pnl_over_time,
+        open_position_value, open_positions_by_token, optimal, pnl_over_time, pools,
         position_buckets, positions, prices, realized_pnl, realized_pnl_data,
         realized_pnl_stats, realized_pnl_wallet, revenue, revenue_series, subscribe,
         supplied_borrowed_series, supplied_funds, test_push, total_tx_value,
         total_value_locked, txs, unrealized_pnl, unrealized_pnl_by_address,
-        update_raw_txs, utilization_level, utilization_levels, version,
+        update_raw_txs, utilization_level, version,
     },
     error::Error,
 };
@@ -65,10 +65,9 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
             .service(
                 web::scope("/api")
                     .service(total_value_locked::index)
-                    .service(borrow_apr::index)
                     .service(supplied_borrowed_series::index)
                     .service(utilization_level::index)
-                    .service(utilization_levels::index)
+                    .service(pools::index)
                     .service(optimal::index)
                     .service(deposit_suspension::index)
                     .service(buyback::index)

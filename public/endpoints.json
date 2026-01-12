@@ -106,21 +106,7 @@
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
     ]
   },
-  {
-    "category": "Protocol Analytics",
-    "description": "Returns historical borrow APR values for a specific protocol. Returns array of APR values (BigDecimal). CSV format includes full data with timestamps.",
-    "url": "/api/borrow-apr",
-    "type": "GET",
-    "response": "[BigDecimal]",
-    "cache": "1 hour",
-    "example": "[\"12.5\", \"12.3\", \"11.9\"]",
-    "params": [
-      { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns empty array if not specified." },
-      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
-      { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"], "description": "CSV format includes timestamps and full APR data" }
-    ]
-  },
+
   {
     "category": "Protocol Analytics",
     "description": "Returns the current earn APR for liquidity providers, optionally filtered by protocol. Returns 0 if no protocol specified.",
@@ -149,12 +135,12 @@
   },
   {
     "category": "Protocol Analytics",
-    "description": "Returns current utilization levels for all pools in a single request. Eliminates N+1 queries when displaying multiple pools.",
-    "url": "/api/utilization-levels",
+    "description": "Returns current pool data for all pools in a single request, including utilization levels, borrow APR, supplied and borrowed amounts. Eliminates N+1 queries when displaying multiple pools.",
+    "url": "/api/pools",
     "type": "GET",
-    "response": "{ protocols: [{ protocol: String, utilization: BigDecimal, total_value_locked_in_stable: BigDecimal, date: DateTime }] }",
+    "response": "{ protocols: [{ protocol: String, utilization: BigDecimal, supplied: BigDecimal, borrowed: BigDecimal, borrow_apr: BigDecimal }] }",
     "cache": "30 min",
-    "example": "{ \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC\", \"utilization\": \"68.5\", \"total_value_locked_in_stable\": \"5432109.87\", \"date\": \"2025-01-15T00:00:00Z\" }] }"
+    "example": "{ \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"utilization\": \"68.5\", \"supplied\": \"5432109.87\", \"borrowed\": \"3721543.21\", \"borrow_apr\": \"12.5\" }] }"
   },
   {
     "category": "Protocol Analytics",

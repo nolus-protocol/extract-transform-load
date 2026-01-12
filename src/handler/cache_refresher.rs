@@ -58,7 +58,7 @@ const CACHE_KEY_LIQUIDATIONS: &str = "liquidations_all";
 const CACHE_KEY_HISTORICAL_LENDERS: &str = "historical_lenders_all";
 const CACHE_KEY_INTEREST_REPAYMENTS: &str = "interest_repayments_all";
 const CACHE_KEY_HISTORICALLY_OPENED: &str = "historically_opened_all";
-const CACHE_KEY_UTILIZATION_LEVELS: &str = "utilization_levels_all";
+const CACHE_KEY_POOLS: &str = "pools_all";
 const CACHE_KEY_REALIZED_PNL_WALLET: &str = "realized_pnl_wallet_all";
 const CACHE_KEY_BORROWED_TOTAL: &str = "borrowed_total";
 const CACHE_KEY_UTILIZATION_LEVEL_PROTOCOL: &str = "utilization_level_protocol";
@@ -124,7 +124,7 @@ async fn check_and_refresh_caches(app_state: &AppState<State>) -> Result<(), Err
         (CACHE_KEY_HISTORICAL_LENDERS, cache.historical_lenders.needs_refresh(CACHE_KEY_HISTORICAL_LENDERS).await),
         (CACHE_KEY_INTEREST_REPAYMENTS, cache.interest_repayments.needs_refresh(CACHE_KEY_INTEREST_REPAYMENTS).await),
         (CACHE_KEY_HISTORICALLY_OPENED, cache.historically_opened.needs_refresh(CACHE_KEY_HISTORICALLY_OPENED).await),
-        (CACHE_KEY_UTILIZATION_LEVELS, cache.utilization_levels.needs_refresh(CACHE_KEY_UTILIZATION_LEVELS).await),
+        (CACHE_KEY_POOLS, cache.pools.needs_refresh(CACHE_KEY_POOLS).await),
         (CACHE_KEY_REALIZED_PNL_WALLET, cache.realized_pnl_wallet.needs_refresh(CACHE_KEY_REALIZED_PNL_WALLET).await),
         // Protocol-specific caches (total only - per-protocol refreshed separately)
         (CACHE_KEY_BORROWED_TOTAL, cache.borrowed.needs_refresh(CACHE_KEY_BORROWED_TOTAL).await),
@@ -179,7 +179,7 @@ async fn refresh_all_caches(app_state: &AppState<State>) -> Result<(), Error> {
         CACHE_KEY_HISTORICAL_LENDERS,
         CACHE_KEY_INTEREST_REPAYMENTS,
         CACHE_KEY_HISTORICALLY_OPENED,
-        CACHE_KEY_UTILIZATION_LEVELS,
+        CACHE_KEY_POOLS,
         CACHE_KEY_REALIZED_PNL_WALLET,
         CACHE_KEY_BORROWED_TOTAL,
         CACHE_KEY_UTILIZATION_LEVEL_PROTOCOL,
@@ -228,7 +228,7 @@ async fn refresh_single_cache(app_state: &AppState<State>, cache_name: &str) -> 
         CACHE_KEY_HISTORICAL_LENDERS => refresh_historical_lenders(app_state).await,
         CACHE_KEY_INTEREST_REPAYMENTS => refresh_interest_repayments(app_state).await,
         CACHE_KEY_HISTORICALLY_OPENED => refresh_historically_opened(app_state).await,
-        CACHE_KEY_UTILIZATION_LEVELS => refresh_utilization_levels(app_state).await,
+        CACHE_KEY_POOLS => refresh_pools(app_state).await,
         CACHE_KEY_REALIZED_PNL_WALLET => refresh_realized_pnl_wallet(app_state).await,
         CACHE_KEY_BORROWED_TOTAL => refresh_borrowed(app_state).await,
         CACHE_KEY_UTILIZATION_LEVEL_PROTOCOL => refresh_utilization_level_protocols(app_state).await,
@@ -498,13 +498,13 @@ async fn refresh_historically_opened(app_state: &AppState<State>) -> Result<(), 
     Ok(())
 }
 
-async fn refresh_utilization_levels(app_state: &AppState<State>) -> Result<(), Error> {
+async fn refresh_pools(app_state: &AppState<State>) -> Result<(), Error> {
     let data: Vec<PoolUtilizationLevel> = app_state
         .database
         .lp_pool_state
         .get_all_utilization_levels()
         .await?;
-    app_state.api_cache.utilization_levels.set(CACHE_KEY_UTILIZATION_LEVELS, data).await;
+    app_state.api_cache.pools.set(CACHE_KEY_POOLS, data).await;
     Ok(())
 }
 

@@ -7,30 +7,31 @@ use crate::{
     error::Error,
 };
 
-/// Single cache key for all utilization levels
-const CACHE_KEY: &str = "utilization_levels_all";
+/// Single cache key for all pools data
+const CACHE_KEY: &str = "pools_all";
 
-/// Response wrapper for batch utilization levels
+/// Response wrapper for pools data
 #[derive(Debug, Serialize)]
-pub struct UtilizationLevelsResponse {
+pub struct PoolsResponse {
     pub protocols: Vec<PoolUtilizationLevel>,
 }
 
-/// Batch endpoint to get utilization levels for all pools in a single request.
+/// Batch endpoint to get pool data for all pools in a single request.
+/// Returns utilization levels, supplied/borrowed amounts, and borrow APR.
 /// This eliminates the N+1 problem where the webapp calls /utilization-level
-/// 6-7 times per page load (once for each protocol).
-#[get("/utilization-levels")]
+/// multiple times per page load (once for each protocol).
+#[get("/pools")]
 pub async fn index(
     state: web::Data<AppState<State>>,
 ) -> Result<HttpResponse, Error> {
     // Try cache first
-    if let Some(cached) = state.api_cache.utilization_levels.get(CACHE_KEY).await {
-        return Ok(HttpResponse::Ok().json(UtilizationLevelsResponse {
+    if let Some(cached) = state.api_cache.pools.get(CACHE_KEY).await {
+        return Ok(HttpResponse::Ok().json(PoolsResponse {
             protocols: cached,
         }));
     }
 
-    // Cache miss - query DB for all utilization levels
+    // Cache miss - query DB for all pools data
     let data = state
         .database
         .lp_pool_state
@@ -40,9 +41,9 @@ pub async fn index(
     // Store in cache
     state
         .api_cache
-        .utilization_levels
+        .pools
         .set(CACHE_KEY, data.clone())
         .await;
 
-    Ok(HttpResponse::Ok().json(UtilizationLevelsResponse { protocols: data }))
+    Ok(HttpResponse::Ok().json(PoolsResponse { protocols: data }))
 }

@@ -29,7 +29,7 @@ use crate::{
     error::Error,
     helpers::{formatter, parse_tuple_string, Formatter, Protocol_Types},
     model::{
-        Borrow_APR, Buyback, DailyPositionsPoint, Leased_Asset, Leases_Monthly,
+        Buyback, DailyPositionsPoint, Leased_Asset, Leases_Monthly,
         LP_Pool, MonthlyActiveWallet, Position, PositionBucket, RevenueSeriesPoint,
         Supplied_Borrowed_Series, TokenLoan, TokenPosition, Utilization_Level,
     },
@@ -100,10 +100,9 @@ pub struct ApiCache {
     pub loans_by_token: TimedCache<Vec<TokenLoan>>,
     pub open_positions_by_token: TimedCache<Vec<TokenPosition>>,
     pub unrealized_pnl: TimedCache<BigDecimal>,
-    pub utilization_levels: TimedCache<Vec<PoolUtilizationLevel>>,
+    pub pools: TimedCache<Vec<PoolUtilizationLevel>>,
     // Period-based endpoints (new)
     pub buyback: TimedCache<Vec<Buyback>>,
-    pub borrow_apr: TimedCache<Vec<Borrow_APR>>,
     pub utilization_level: TimedCache<Vec<Utilization_Level>>,
     pub borrowed: TimedCache<BigDecimal>,
 }
@@ -116,7 +115,7 @@ impl ApiCache {
             total_tx_value: TimedCache::new(CACHE_TTL_STANDARD),
             realized_pnl_stats: TimedCache::new(CACHE_TTL_STANDARD),
             revenue: TimedCache::new(CACHE_TTL_STANDARD),
-            utilization_levels: TimedCache::new(CACHE_TTL_STANDARD),  // /api/utilization-levels - 30m
+
             // 1-hour TTL endpoints (auto-refreshed)
             current_lenders: TimedCache::new(CACHE_TTL_LONG),         // /api/current-lenders - 1h
             liquidations: TimedCache::new(CACHE_TTL_LONG),            // /api/liquidations - 1h
@@ -141,6 +140,7 @@ impl ApiCache {
             leases_monthly: TimedCache::new(CACHE_TTL_LONG),
             monthly_active_wallets: TimedCache::new(CACHE_TTL_LONG),
             revenue_series: TimedCache::new(CACHE_TTL_LONG),
+            pools: TimedCache::new(CACHE_TTL_STANDARD),  // /api/pools - 30m
             // Paginated/parameterized endpoints (lazy cache only)
             positions: TimedCache::new(CACHE_TTL_LONG),
             leased_assets: TimedCache::new(CACHE_TTL_LONG),
@@ -148,7 +148,6 @@ impl ApiCache {
             historically_opened: TimedCache::new(CACHE_TTL_LONG),
             // Period-based endpoints
             buyback: TimedCache::new(CACHE_TTL_LONG),
-            borrow_apr: TimedCache::new(CACHE_TTL_LONG),
             utilization_level: TimedCache::new(CACHE_TTL_STANDARD),
             borrowed: TimedCache::new(CACHE_TTL_STANDARD),
         }

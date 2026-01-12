@@ -786,7 +786,7 @@ impl Table<LP_Pool_State> {
     }
 
     /// Get utilization levels for all pools in a single query
-    /// Returns the latest utilization level for each pool
+    /// Returns the latest utilization level for each pool including borrow APR
     pub async fn get_all_utilization_levels(
         &self,
     ) -> Result<Vec<PoolUtilizationLevel>, Error> {
@@ -802,24 +802,33 @@ impl Table<LP_Pool_State> {
                     lps."LP_Pool_total_borrowed_stable",
                     lps."LP_Pool_timestamp",
                     pc.lpn_decimals,
-                    pc.label
+                    pc.protocol
                 FROM "LP_Pool_State" lps
                 LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
                 WHERE lps."LP_Pool_timestamp" = (SELECT max_ts FROM Latest_Pool_Aggregation)
                 ORDER BY lps."LP_Pool_id", lps."LP_Pool_timestamp" DESC
+            ),
+            LatestBorrowAPR AS (
+                SELECT DISTINCT ON ("LS_loan_pool_id")
+                    "LS_loan_pool_id",
+                    "LS_interest" / 10.0 AS borrow_apr
+                FROM "LS_Opening"
+                ORDER BY "LS_loan_pool_id", "LS_timestamp" DESC
             )
             SELECT
-                ls."LP_Pool_id" AS pool_id,
-                COALESCE(ls.label, ls."LP_Pool_id") AS protocol,
+                COALESCE(ls.protocol, ls."LP_Pool_id") AS protocol,
                 CASE
                     WHEN ls."LP_Pool_total_value_locked_stable" > 0
                     THEN (ls."LP_Pool_total_borrowed_stable"::numeric / ls."LP_Pool_total_value_locked_stable"::numeric) * 100
                     ELSE 0
                 END AS utilization,
                 ls."LP_Pool_total_value_locked_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS supplied,
-                ls."LP_Pool_total_borrowed_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS borrowed
+                ls."LP_Pool_total_borrowed_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS borrowed,
+                COALESCE(apr.borrow_apr, 0) AS borrow_apr
             FROM LatestStates ls
-            ORDER BY protocol
+            LEFT JOIN LatestBorrowAPR apr ON ls."LP_Pool_id" = apr."LS_loan_pool_id"
+            WHERE ls.protocol IS NOT NULL
+            ORDER BY ls.protocol
             "#,
         )
         .persistent(true)
@@ -833,9 +842,9 @@ impl Table<LP_Pool_State> {
 /// Represents utilization level data for a single pool
 #[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
 pub struct PoolUtilizationLevel {
-    pub pool_id: String,
     pub protocol: String,
     pub utilization: BigDecimal,
     pub supplied: BigDecimal,
     pub borrowed: BigDecimal,
+    pub borrow_apr: BigDecimal,
 }
