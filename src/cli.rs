@@ -33,9 +33,11 @@ pub enum Commands {
         #[arg(long)]
         status: bool,
 
-        /// Mark all migrations as applied without running them (for existing databases)
+        /// Mark migrations as applied without running them (for existing databases).
+        /// Use alone to fake all migrations, or with a version number to fake up to that version.
+        /// Example: --fake 4 marks V001-V004 as applied, then runs V005+ normally.
         #[arg(long)]
-        fake: bool,
+        fake: Option<Option<u32>>,
     },
 
     /// Run data backfill operations
@@ -81,21 +83,36 @@ pub fn init_config() -> Result<Config, Error> {
 }
 
 /// Run migrations and show status
-pub async fn run_migrate(status_only: bool, fake: bool) -> Result<(), Error> {
+pub async fn run_migrate(status_only: bool, fake: Option<Option<u32>>) -> Result<(), Error> {
     let config = init_config()?;
 
-    if fake {
-        tracing::info!("Marking all migrations as applied without running them...");
-        migration::run_migrations_fake(&config.database_url).await?;
-        tracing::info!("All migrations marked as applied");
-    } else if status_only {
-        tracing::info!("Checking migration status...");
-        migration::run_migrations(&config.database_url).await?;
-        tracing::info!("Migration status check complete");
-    } else {
-        tracing::info!("Running database migrations...");
-        migration::run_migrations(&config.database_url).await?;
-        tracing::info!("Migrations complete");
+    match fake {
+        // --fake (no version) - fake all migrations
+        Some(None) => {
+            tracing::info!("Marking all migrations as applied without running them...");
+            migration::run_migrations_fake(&config.database_url, None).await?;
+            tracing::info!("All migrations marked as applied");
+        }
+        // --fake <version> - fake up to version, then run remaining
+        Some(Some(version)) => {
+            tracing::info!("Marking migrations up to V{:03} as applied...", version);
+            migration::run_migrations_fake(&config.database_url, Some(version)).await?;
+            tracing::info!("Running remaining migrations...");
+            migration::run_migrations(&config.database_url).await?;
+            tracing::info!("Migrations complete");
+        }
+        // No --fake flag
+        None => {
+            if status_only {
+                tracing::info!("Checking migration status...");
+                migration::run_migrations(&config.database_url).await?;
+                tracing::info!("Migration status check complete");
+            } else {
+                tracing::info!("Running database migrations...");
+                migration::run_migrations(&config.database_url).await?;
+                tracing::info!("Migrations complete");
+            }
+        }
     }
 
     Ok(())

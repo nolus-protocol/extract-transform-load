@@ -66,14 +66,15 @@ pub async fn run_migrations(database_url: &str) -> Result<(), Error> {
     Ok(())
 }
 
-/// Mark all migrations as applied without running them.
+/// Mark migrations as applied without running them.
 ///
-/// Uses refinery's Target::Fake to update the schema history table
+/// Uses refinery's Target::Fake/FakeVersion to update the schema history table
 /// without executing the actual migration SQL. Useful for databases
 /// where the schema already exists from manual migration.
-pub async fn run_migrations_fake(database_url: &str) -> Result<(), Error> {
-    tracing::info!("Faking database migrations (marking as applied without running)...");
-
+///
+/// - `up_to_version: None` - fake all migrations
+/// - `up_to_version: Some(N)` - fake only up to version N
+pub async fn run_migrations_fake(database_url: &str, up_to_version: Option<u32>) -> Result<(), Error> {
     let config: tokio_postgres::Config = database_url
         .parse()
         .map_err(|e| Error::ConfigurationError(format!("Invalid database URL: {}", e)))?;
@@ -89,9 +90,14 @@ pub async fn run_migrations_fake(database_url: &str) -> Result<(), Error> {
         }
     });
 
-    // Use Target::Fake to mark migrations as applied without running them
+    // Use Target::Fake or Target::FakeVersion depending on whether a version was specified
+    let target = match up_to_version {
+        None => Target::Fake,
+        Some(v) => Target::FakeVersion(v),
+    };
+
     let report = migrations::runner()
-        .set_target(Target::Fake)
+        .set_target(target)
         .run_async(&mut client)
         .await
         .map_err(|e| Error::ConfigurationError(format!("Migration failed: {}", e)))?;
