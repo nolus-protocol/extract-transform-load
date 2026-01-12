@@ -13,6 +13,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::{
     configuration::{AppState, State},
+    dao::postgre::{lp_pool_state::PoolUtilizationLevel, ls_opening::RealizedPnlWallet},
     error::Error,
     model::{
         DailyPositionsPoint, MonthlyActiveWallet, PositionBucket,
@@ -51,6 +52,13 @@ const CACHE_KEY_LEASE_VALUE_STATS: &str = "lease_value_stats";
 const CACHE_KEY_LOANS_GRANTED: &str = "loans_granted";
 const CACHE_KEY_HISTORICALLY_REPAID: &str = "historically_repaid";
 const CACHE_KEY_HISTORICALLY_LIQUIDATED: &str = "historically_liquidated";
+const CACHE_KEY_POSITIONS: &str = "positions_all";
+const CACHE_KEY_LIQUIDATIONS: &str = "liquidations_all";
+const CACHE_KEY_HISTORICAL_LENDERS: &str = "historical_lenders_all";
+const CACHE_KEY_INTEREST_REPAYMENTS: &str = "interest_repayments_all";
+const CACHE_KEY_HISTORICALLY_OPENED: &str = "historically_opened_all";
+const CACHE_KEY_UTILIZATION_LEVELS: &str = "utilization_levels_all";
+const CACHE_KEY_REALIZED_PNL_WALLET: &str = "realized_pnl_wallet_all";
 
 /// Main background task for cache refresh
 /// Runs indefinitely, checking and refreshing caches that are about to expire
@@ -107,6 +115,14 @@ async fn check_and_refresh_caches(app_state: &AppState<State>) -> Result<(), Err
         (CACHE_KEY_LEASES_MONTHLY, cache.leases_monthly.needs_refresh(CACHE_KEY_LEASES_MONTHLY).await),
         (CACHE_KEY_MONTHLY_ACTIVE_WALLETS, cache.monthly_active_wallets.needs_refresh(CACHE_KEY_MONTHLY_ACTIVE_WALLETS).await),
         (CACHE_KEY_REVENUE_SERIES, cache.revenue_series.needs_refresh(CACHE_KEY_REVENUE_SERIES).await),
+        // Previously lazy-only caches now proactively refreshed
+        (CACHE_KEY_POSITIONS, cache.positions.needs_refresh(CACHE_KEY_POSITIONS).await),
+        (CACHE_KEY_LIQUIDATIONS, cache.liquidations.needs_refresh(CACHE_KEY_LIQUIDATIONS).await),
+        (CACHE_KEY_HISTORICAL_LENDERS, cache.historical_lenders.needs_refresh(CACHE_KEY_HISTORICAL_LENDERS).await),
+        (CACHE_KEY_INTEREST_REPAYMENTS, cache.interest_repayments.needs_refresh(CACHE_KEY_INTEREST_REPAYMENTS).await),
+        (CACHE_KEY_HISTORICALLY_OPENED, cache.historically_opened.needs_refresh(CACHE_KEY_HISTORICALLY_OPENED).await),
+        (CACHE_KEY_UTILIZATION_LEVELS, cache.utilization_levels.needs_refresh(CACHE_KEY_UTILIZATION_LEVELS).await),
+        (CACHE_KEY_REALIZED_PNL_WALLET, cache.realized_pnl_wallet.needs_refresh(CACHE_KEY_REALIZED_PNL_WALLET).await),
     ];
 
     // Refresh caches that need it, one at a time with delay
@@ -152,6 +168,13 @@ async fn refresh_all_caches(app_state: &AppState<State>) -> Result<(), Error> {
         CACHE_KEY_LEASES_MONTHLY,
         CACHE_KEY_MONTHLY_ACTIVE_WALLETS,
         CACHE_KEY_REVENUE_SERIES,
+        CACHE_KEY_POSITIONS,
+        CACHE_KEY_LIQUIDATIONS,
+        CACHE_KEY_HISTORICAL_LENDERS,
+        CACHE_KEY_INTEREST_REPAYMENTS,
+        CACHE_KEY_HISTORICALLY_OPENED,
+        CACHE_KEY_UTILIZATION_LEVELS,
+        CACHE_KEY_REALIZED_PNL_WALLET,
     ];
 
     for cache_name in all_caches {
@@ -192,6 +215,13 @@ async fn refresh_single_cache(app_state: &AppState<State>, cache_name: &str) -> 
         CACHE_KEY_LOANS_GRANTED => refresh_loans_granted(app_state).await,
         CACHE_KEY_HISTORICALLY_REPAID => refresh_historically_repaid(app_state).await,
         CACHE_KEY_HISTORICALLY_LIQUIDATED => refresh_historically_liquidated(app_state).await,
+        CACHE_KEY_POSITIONS => refresh_positions(app_state).await,
+        CACHE_KEY_LIQUIDATIONS => refresh_liquidations(app_state).await,
+        CACHE_KEY_HISTORICAL_LENDERS => refresh_historical_lenders(app_state).await,
+        CACHE_KEY_INTEREST_REPAYMENTS => refresh_interest_repayments(app_state).await,
+        CACHE_KEY_HISTORICALLY_OPENED => refresh_historically_opened(app_state).await,
+        CACHE_KEY_UTILIZATION_LEVELS => refresh_utilization_levels(app_state).await,
+        CACHE_KEY_REALIZED_PNL_WALLET => refresh_realized_pnl_wallet(app_state).await,
         _ => {
             warn!("Unknown cache name: {}", cache_name);
             Ok(())
@@ -421,5 +451,59 @@ async fn refresh_historically_repaid(app_state: &AppState<State>) -> Result<(), 
 async fn refresh_historically_liquidated(app_state: &AppState<State>) -> Result<(), Error> {
     let data = app_state.database.ls_liquidation.get_historically_liquidated().await?;
     app_state.api_cache.historically_liquidated.set(CACHE_KEY_HISTORICALLY_LIQUIDATED, data).await;
+    Ok(())
+}
+
+async fn refresh_positions(app_state: &AppState<State>) -> Result<(), Error> {
+    let data = app_state.database.ls_state.get_all_positions().await?;
+    app_state.api_cache.positions.set(CACHE_KEY_POSITIONS, data).await;
+    Ok(())
+}
+
+async fn refresh_liquidations(app_state: &AppState<State>) -> Result<(), Error> {
+    let data = app_state.database.ls_liquidation.get_all_liquidations().await?;
+    app_state.api_cache.liquidations.set(CACHE_KEY_LIQUIDATIONS, data).await;
+    Ok(())
+}
+
+async fn refresh_historical_lenders(app_state: &AppState<State>) -> Result<(), Error> {
+    let data = app_state.database.lp_deposit.get_all_historical_lenders().await?;
+    app_state.api_cache.historical_lenders.set(CACHE_KEY_HISTORICAL_LENDERS, data).await;
+    Ok(())
+}
+
+async fn refresh_interest_repayments(app_state: &AppState<State>) -> Result<(), Error> {
+    let data = app_state
+        .database
+        .ls_repayment
+        .get_interest_repayments_with_window(None, None)
+        .await?;
+    app_state.api_cache.interest_repayments.set(CACHE_KEY_INTEREST_REPAYMENTS, data).await;
+    Ok(())
+}
+
+async fn refresh_historically_opened(app_state: &AppState<State>) -> Result<(), Error> {
+    let data = app_state.database.ls_opening.get_all_historically_opened().await?;
+    app_state.api_cache.historically_opened.set(CACHE_KEY_HISTORICALLY_OPENED, data).await;
+    Ok(())
+}
+
+async fn refresh_utilization_levels(app_state: &AppState<State>) -> Result<(), Error> {
+    let data: Vec<PoolUtilizationLevel> = app_state
+        .database
+        .lp_pool_state
+        .get_all_utilization_levels()
+        .await?;
+    app_state.api_cache.utilization_levels.set(CACHE_KEY_UTILIZATION_LEVELS, data).await;
+    Ok(())
+}
+
+async fn refresh_realized_pnl_wallet(app_state: &AppState<State>) -> Result<(), Error> {
+    let data: Vec<RealizedPnlWallet> = app_state
+        .database
+        .ls_opening
+        .get_realized_pnl_by_wallet_with_window(None, None)
+        .await?;
+    app_state.api_cache.realized_pnl_wallet.set(CACHE_KEY_REALIZED_PNL_WALLET, data).await;
     Ok(())
 }
