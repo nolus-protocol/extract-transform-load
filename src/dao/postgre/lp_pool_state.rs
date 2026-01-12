@@ -786,7 +786,7 @@ impl Table<LP_Pool_State> {
     }
 
     /// Get utilization levels for all pools in a single query
-    /// Returns the latest utilization level for each pool including borrow APR
+    /// Returns the latest utilization level for each pool including borrow APR and earn APR
     pub async fn get_all_utilization_levels(
         &self,
     ) -> Result<Vec<PoolUtilizationLevel>, Error> {
@@ -794,6 +794,9 @@ impl Table<LP_Pool_State> {
             r#"
             WITH Latest_Pool_Aggregation AS (
                 SELECT MAX("LP_Pool_timestamp") AS max_ts FROM "LP_Pool_State"
+            ),
+            Latest_LS_Aggregation AS (
+                SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
             ),
             LatestStates AS (
                 SELECT DISTINCT ON (lps."LP_Pool_id")
@@ -814,6 +817,44 @@ impl Table<LP_Pool_State> {
                     "LS_interest" / 10.0 AS borrow_apr
                 FROM "LS_Opening"
                 ORDER BY "LS_loan_pool_id", "LS_timestamp" DESC
+            ),
+            PoolUtilization AS (
+                SELECT
+                    lps."LP_Pool_id",
+                    CASE
+                        WHEN lps."LP_Pool_total_value_locked_stable" > 0
+                        THEN lps."LP_Pool_total_borrowed_stable"::numeric / lps."LP_Pool_total_value_locked_stable"::numeric
+                        ELSE 0
+                    END AS utilization_rate
+                FROM "LP_Pool_State" lps
+                WHERE lps."LP_Pool_timestamp" = (SELECT max_ts FROM Latest_Pool_Aggregation)
+            ),
+            AvgInterestPerPool AS (
+                SELECT
+                    o."LS_loan_pool_id",
+                    AVG(o."LS_interest") / 10.0 AS avg_interest
+                FROM "LS_State" s
+                CROSS JOIN Latest_LS_Aggregation la
+                INNER JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
+                WHERE s."LS_timestamp" = la.max_ts
+                GROUP BY o."LS_loan_pool_id"
+            ),
+            EarnAPRCalc AS (
+                SELECT
+                    pc.pool_id,
+                    CASE
+                        WHEN pc.protocol IN ('OSMOSIS-OSMOSIS-ALL_BTC', 'OSMOSIS-OSMOSIS-ATOM') THEN
+                            (COALESCE(ai.avg_interest, 0) - 2.5) * COALESCE(pu.utilization_rate, 0)
+                        WHEN pc.protocol = 'OSMOSIS-OSMOSIS-ALL_SOL' THEN
+                            (COALESCE(ai.avg_interest, 0) - 4.0) * COALESCE(pu.utilization_rate, 0)
+                        WHEN pc.protocol IN ('OSMOSIS-OSMOSIS-ST_ATOM', 'OSMOSIS-OSMOSIS-AKT') THEN
+                            (COALESCE(ai.avg_interest, 0) - 2.0) * COALESCE(pu.utilization_rate, 0)
+                        ELSE
+                            (COALESCE(ai.avg_interest, 0) - 4.0) * COALESCE(pu.utilization_rate, 0)
+                    END AS apr_simple
+                FROM pool_config pc
+                LEFT JOIN AvgInterestPerPool ai ON pc.pool_id = ai."LS_loan_pool_id"
+                LEFT JOIN PoolUtilization pu ON pc.pool_id = pu."LP_Pool_id"
             )
             SELECT
                 COALESCE(ls.protocol, ls."LP_Pool_id") AS protocol,
@@ -824,9 +865,15 @@ impl Table<LP_Pool_State> {
                 END AS utilization,
                 ls."LP_Pool_total_value_locked_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS supplied,
                 ls."LP_Pool_total_borrowed_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS borrowed,
-                COALESCE(apr.borrow_apr, 0) AS borrow_apr
+                COALESCE(apr.borrow_apr, 0) AS borrow_apr,
+                CASE
+                    WHEN ea.apr_simple IS NOT NULL AND ea.apr_simple > 0
+                    THEN (POWER((1 + (ea.apr_simple / 100 / 365)), 365) - 1) * 100
+                    ELSE 0
+                END AS earn_apr
             FROM LatestStates ls
             LEFT JOIN LatestBorrowAPR apr ON ls."LP_Pool_id" = apr."LS_loan_pool_id"
+            LEFT JOIN EarnAPRCalc ea ON ls."LP_Pool_id" = ea.pool_id
             WHERE ls.protocol IS NOT NULL
             ORDER BY ls.protocol
             "#,
@@ -847,4 +894,5 @@ pub struct PoolUtilizationLevel {
     pub supplied: BigDecimal,
     pub borrowed: BigDecimal,
     pub borrow_apr: BigDecimal,
+    pub earn_apr: BigDecimal,
 }

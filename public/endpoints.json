@@ -109,10 +109,13 @@
 
   {
     "category": "Protocol Analytics",
-    "description": "Returns the current earn APR for liquidity providers, optionally filtered by protocol. Returns 0 if no protocol specified.",
+    "description": "DEPRECATED: Use /api/pools instead. Returns the current earn APR for liquidity providers, optionally filtered by protocol. Returns 0 if no protocol specified.",
     "url": "/api/earn-apr",
     "type": "GET",
     "response": "{ earn_apr: BigDecimal }",
+    "deprecated": true,
+    "sunset": "2025-06-01",
+    "successor": "/api/pools",
     "example": "{ \"earn_apr\": \"8.75\" }",
     "params": [
       { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns 0 if not specified." }
@@ -135,12 +138,12 @@
   },
   {
     "category": "Protocol Analytics",
-    "description": "Returns current pool data for all pools in a single request, including utilization levels, borrow APR, supplied and borrowed amounts. Eliminates N+1 queries when displaying multiple pools.",
+    "description": "Returns current pool data for all pools in a single request, including utilization levels, borrow APR, earn APR, supplied and borrowed amounts. Eliminates N+1 queries when displaying multiple pools.",
     "url": "/api/pools",
     "type": "GET",
-    "response": "{ protocols: [{ protocol: String, utilization: BigDecimal, supplied: BigDecimal, borrowed: BigDecimal, borrow_apr: BigDecimal }] }",
+    "response": "{ protocols: [{ protocol: String, utilization: BigDecimal, supplied: BigDecimal, borrowed: BigDecimal, borrow_apr: BigDecimal, earn_apr: BigDecimal }] }",
     "cache": "30 min",
-    "example": "{ \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"utilization\": \"68.5\", \"supplied\": \"5432109.87\", \"borrowed\": \"3721543.21\", \"borrow_apr\": \"12.5\" }] }"
+    "example": "{ \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"utilization\": \"68.5\", \"supplied\": \"5432109.87\", \"borrowed\": \"3721543.21\", \"borrow_apr\": \"12.5\", \"earn_apr\": \"8.75\" }] }"
   },
   {
     "category": "Protocol Analytics",

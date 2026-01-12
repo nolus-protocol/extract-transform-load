@@ -1,6 +1,6 @@
 use std::str::FromStr as _;
 
-use actix_web::{get, web, Responder};
+use actix_web::{get, web, HttpResponse};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 
@@ -9,16 +9,18 @@ use crate::{
     error::Error,
 };
 
+/// DEPRECATED: Use /api/pools endpoint instead, which includes earn_apr for all pools.
+/// This endpoint will be removed in a future version.
 #[get("/earn-apr")]
 async fn index(
     state: web::Data<AppState<State>>,
     data: web::Query<Query>,
-) -> Result<impl Responder, Error> {
-    if let Some(protocolKey) = &data.protocol {
-        let protocolKey = protocolKey.to_uppercase();
-        let admin = state.protocols.get(&protocolKey);
+) -> Result<HttpResponse, Error> {
+    let earn_apr = if let Some(protocol_key) = &data.protocol {
+        let protocol_key = protocol_key.to_uppercase();
+        let admin = state.protocols.get(&protocol_key);
         if let Some(protocol) = admin {
-            let data = match protocolKey.as_str() {
+            match protocol_key.as_str() {
                 "OSMOSIS-OSMOSIS-ALL_BTC" | "OSMOSIS-OSMOSIS-ATOM" => state
                     .database
                     .ls_opening
@@ -52,14 +54,19 @@ async fn index(
                     .get_earn_apr(protocol.contracts.lpp.to_owned())
                     .await
                     .unwrap_or(BigDecimal::from(0)),
-            };
-            return Ok(web::Json(Response { earn_apr: data }));
+            }
+        } else {
+            BigDecimal::from_str("0")?
         }
-    }
+    } else {
+        BigDecimal::from_str("0")?
+    };
 
-    Ok(web::Json(Response {
-        earn_apr: BigDecimal::from_str("0")?,
-    }))
+    Ok(HttpResponse::Ok()
+        .insert_header(("Deprecation", "true"))
+        .insert_header(("Sunset", "2025-06-01"))
+        .insert_header(("Link", "</api/pools>; rel=\"successor-version\""))
+        .json(Response { earn_apr }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
