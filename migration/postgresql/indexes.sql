@@ -14,6 +14,8 @@ CREATE INDEX IF NOT EXISTS idx_mp_asset_protocol_time ON "MP_Asset" ("Protocol",
 -- LS_State indexes
 CREATE INDEX IF NOT EXISTS idx_ls_state_timestamp ON "LS_State" ("LS_timestamp" DESC);
 CREATE INDEX IF NOT EXISTS idx_ls_state_contract ON "LS_State" ("LS_contract_id");
+-- Composite index for DISTINCT ON queries (e.g., get_all_positions)
+CREATE INDEX IF NOT EXISTS idx_ls_state_contract_timestamp ON "LS_State" ("LS_contract_id", "LS_timestamp" DESC);
 
 -- LP_Deposit indexes
 CREATE INDEX IF NOT EXISTS idx_lp_deposit_address ON "LP_Deposit" ("LP_address_id");

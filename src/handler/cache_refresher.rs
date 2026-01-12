@@ -15,6 +15,7 @@ use crate::{
     configuration::{AppState, State},
     dao::postgre::{lp_pool_state::PoolUtilizationLevel, ls_opening::RealizedPnlWallet},
     error::Error,
+    helpers::{build_cache_key_with_protocol, build_protocol_cache_key},
     model::{
         DailyPositionsPoint, MonthlyActiveWallet, PositionBucket,
         RevenueSeriesPoint, TokenLoan, TokenPosition, TvlPoolParams,
@@ -59,6 +60,8 @@ const CACHE_KEY_INTEREST_REPAYMENTS: &str = "interest_repayments_all";
 const CACHE_KEY_HISTORICALLY_OPENED: &str = "historically_opened_all";
 const CACHE_KEY_UTILIZATION_LEVELS: &str = "utilization_levels_all";
 const CACHE_KEY_REALIZED_PNL_WALLET: &str = "realized_pnl_wallet_all";
+const CACHE_KEY_BORROWED_TOTAL: &str = "borrowed_total";
+const CACHE_KEY_UTILIZATION_LEVEL_PROTOCOL: &str = "utilization_level_protocol";
 
 /// Main background task for cache refresh
 /// Runs indefinitely, checking and refreshing caches that are about to expire
@@ -123,6 +126,9 @@ async fn check_and_refresh_caches(app_state: &AppState<State>) -> Result<(), Err
         (CACHE_KEY_HISTORICALLY_OPENED, cache.historically_opened.needs_refresh(CACHE_KEY_HISTORICALLY_OPENED).await),
         (CACHE_KEY_UTILIZATION_LEVELS, cache.utilization_levels.needs_refresh(CACHE_KEY_UTILIZATION_LEVELS).await),
         (CACHE_KEY_REALIZED_PNL_WALLET, cache.realized_pnl_wallet.needs_refresh(CACHE_KEY_REALIZED_PNL_WALLET).await),
+        // Protocol-specific caches (total only - per-protocol refreshed separately)
+        (CACHE_KEY_BORROWED_TOTAL, cache.borrowed.needs_refresh(CACHE_KEY_BORROWED_TOTAL).await),
+        (CACHE_KEY_UTILIZATION_LEVEL_PROTOCOL, cache.utilization_level.needs_refresh("utilization_level_OSMOSIS_3m_none").await),
     ];
 
     // Refresh caches that need it, one at a time with delay
@@ -175,6 +181,8 @@ async fn refresh_all_caches(app_state: &AppState<State>) -> Result<(), Error> {
         CACHE_KEY_HISTORICALLY_OPENED,
         CACHE_KEY_UTILIZATION_LEVELS,
         CACHE_KEY_REALIZED_PNL_WALLET,
+        CACHE_KEY_BORROWED_TOTAL,
+        CACHE_KEY_UTILIZATION_LEVEL_PROTOCOL,
     ];
 
     for cache_name in all_caches {
@@ -222,6 +230,8 @@ async fn refresh_single_cache(app_state: &AppState<State>, cache_name: &str) -> 
         CACHE_KEY_HISTORICALLY_OPENED => refresh_historically_opened(app_state).await,
         CACHE_KEY_UTILIZATION_LEVELS => refresh_utilization_levels(app_state).await,
         CACHE_KEY_REALIZED_PNL_WALLET => refresh_realized_pnl_wallet(app_state).await,
+        CACHE_KEY_BORROWED_TOTAL => refresh_borrowed(app_state).await,
+        CACHE_KEY_UTILIZATION_LEVEL_PROTOCOL => refresh_utilization_level_protocols(app_state).await,
         _ => {
             warn!("Unknown cache name: {}", cache_name);
             Ok(())
@@ -505,5 +515,40 @@ async fn refresh_realized_pnl_wallet(app_state: &AppState<State>) -> Result<(), 
         .get_realized_pnl_by_wallet_with_window(None, None)
         .await?;
     app_state.api_cache.realized_pnl_wallet.set(CACHE_KEY_REALIZED_PNL_WALLET, data).await;
+    Ok(())
+}
+
+async fn refresh_borrowed(app_state: &AppState<State>) -> Result<(), Error> {
+    // Refresh total borrowed
+    let total = app_state.database.ls_opening.get_borrowed_total().await?;
+    let total_key = build_protocol_cache_key("borrowed", None);
+    app_state.api_cache.borrowed.set(&total_key, total).await;
+
+    // Refresh per-protocol borrowed
+    for (protocol_key, protocol) in app_state.protocols.iter() {
+        let cache_key = build_protocol_cache_key("borrowed", Some(protocol_key));
+        let data = app_state
+            .database
+            .ls_opening
+            .get_borrowed(protocol.contracts.lpp.clone())
+            .await?;
+        app_state.api_cache.borrowed.set(&cache_key, data).await;
+    }
+
+    Ok(())
+}
+
+async fn refresh_utilization_level_protocols(app_state: &AppState<State>) -> Result<(), Error> {
+    // Refresh per-protocol utilization levels with default 3m period
+    for (protocol_key, protocol) in app_state.protocols.iter() {
+        let cache_key = build_cache_key_with_protocol("utilization_level", protocol_key, "3m", None);
+        let data = app_state
+            .database
+            .lp_pool_state
+            .get_utilization_level_with_window(protocol.contracts.lpp.clone(), Some(3), None)
+            .await?;
+        app_state.api_cache.utilization_level.set(&cache_key, data).await;
+    }
+
     Ok(())
 }

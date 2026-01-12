@@ -206,20 +206,9 @@ impl Table<LS_State> {
                 SELECT
                     lo."LS_asset_symbol" as "Symbol",
                     s1."LS_contract_id" as "Contract ID",
+                    s1."LS_principal_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan in Stables",
                     CASE
-                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN s1."LS_principal_stable" / 1000000
-                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN s1."LS_principal_stable" / 100000000
-                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN s1."LS_principal_stable" / 1000000000
-                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN s1."LS_principal_stable" / 1000000
-                        ELSE s1."LS_principal_stable" / 1000000
-                    END AS "Loan in Stables",
-                    CASE
-                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMO (Short)'
+                        WHEN pc.position_type = 'Short' THEN pc.lpn_symbol || ' (Short)'
                         ELSE lo."LS_asset_symbol"
                     END AS "Asset Type"
                 FROM
@@ -228,6 +217,8 @@ impl Table<LS_State> {
                     LatestAggregation la
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s1."LS_contract_id"
+                LEFT JOIN
+                    pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
                 WHERE
                     s1."LS_timestamp" = la.max_ts
             )
@@ -262,19 +253,15 @@ impl Table<LS_State> {
             OpenedLoans AS (
                 SELECT
                     s."LS_contract_id",
-                    CASE
-                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN s."LS_principal_stable" / 1000000
-                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN s."LS_principal_stable" / 100000000
-                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN s."LS_principal_stable" / 1000000000
-                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN s."LS_principal_stable" / 1000000
-                        ELSE s."LS_principal_stable" / 1000000
-                    END AS "Loan in Stables"
+                    s."LS_principal_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan in Stables"
                 FROM
                     "LS_State" s
                 CROSS JOIN
                     LatestAggregation la
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+                LEFT JOIN
+                    pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
                 WHERE
                     s."LS_timestamp" = la.max_ts
                     AND s."LS_principal_stable" > 0
@@ -315,12 +302,9 @@ impl Table<LS_State> {
                 SELECT
                     s."LS_contract_id",
                     s."LS_amnt_stable",
+                    lo."LS_asset_symbol",
                     CASE
-                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMO (Short)'
+                        WHEN pc.position_type = 'Short' THEN pc.lpn_symbol || ' (Short)'
                         ELSE lo."LS_asset_symbol"
                     END AS "Asset Type"
                 FROM
@@ -329,6 +313,8 @@ impl Table<LS_State> {
                     LatestAggregation la
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+                LEFT JOIN
+                    pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
                 WHERE
                     s."LS_timestamp" = la.max_ts
                     AND s."LS_amnt_stable" > 0
@@ -337,11 +323,11 @@ impl Table<LS_State> {
                 SELECT
                     op."Asset Type" AS "Token",
                     CASE
-                        WHEN "Asset Type" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_amnt_stable" / 100000000
-                        WHEN "Asset Type" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
-                        WHEN "Asset Type" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000
-                        WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_amnt_stable" / 1000000000000000000
-                    ELSE "LS_amnt_stable" / 1000000
+                        WHEN op."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN op."LS_amnt_stable" / 100000000
+                        WHEN op."LS_asset_symbol" IN ('ALL_SOL') THEN op."LS_amnt_stable" / 1000000000
+                        WHEN op."LS_asset_symbol" IN ('PICA') THEN op."LS_amnt_stable" / 1000000000000
+                        WHEN op."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN op."LS_amnt_stable" / 1000000000000000000
+                    ELSE op."LS_amnt_stable" / 1000000
                 END AS "Lease Value"
                 FROM
                     Opened op
@@ -376,11 +362,9 @@ impl Table<LS_State> {
               SELECT
                   s."LS_contract_id",
                   s."LS_amnt_stable",
+                  lo."LS_asset_symbol",
                   CASE
-                      WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
-                      WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                      WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                      WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                      WHEN pc.position_type = 'Short' THEN pc.lpn_symbol || ' (Short)'
                       ELSE lo."LS_asset_symbol"
                   END AS "Asset Type"
               FROM
@@ -389,6 +373,8 @@ impl Table<LS_State> {
                   LatestAggregation la
               INNER JOIN
                   "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+              LEFT JOIN
+                  pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
               WHERE
                   s."LS_timestamp" = la.max_ts
                   AND s."LS_amnt_stable" > 0
@@ -397,11 +383,11 @@ impl Table<LS_State> {
           SELECT
               op."Asset Type" AS "Token",
               CASE
-                  WHEN "Asset Type" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_amnt_stable" / 100000000
-                  WHEN "Asset Type" IN ('ALL_SOL') THEN "LS_amnt_stable" / 1000000000
-                  WHEN "Asset Type" IN ('PICA') THEN "LS_amnt_stable" / 1000000000000
-                  WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_amnt_stable" / 1000000000000000000
-              ELSE "LS_amnt_stable" / 1000000
+                  WHEN op."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN op."LS_amnt_stable" / 100000000
+                  WHEN op."LS_asset_symbol" IN ('ALL_SOL') THEN op."LS_amnt_stable" / 1000000000
+                  WHEN op."LS_asset_symbol" IN ('PICA') THEN op."LS_amnt_stable" / 1000000000000
+                  WHEN op."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN op."LS_amnt_stable" / 1000000000000000000
+              ELSE op."LS_amnt_stable" / 1000000
           END AS "Lease Value"
           FROM
               Opened op
@@ -435,11 +421,9 @@ impl Table<LS_State> {
               SELECT
                   s."LS_contract_id",
                   (s."LS_prev_margin_stable" + s."LS_prev_interest_stable" + s."LS_current_margin_stable" + s."LS_current_interest_stable") AS "Interest",
+                  lo."LS_asset_symbol",
                   CASE
-                      WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
-                      WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                      WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                      WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                      WHEN pc.position_type = 'Short' THEN pc.lpn_symbol || ' (Short)'
                       ELSE lo."LS_asset_symbol"
                   END AS "Asset Type"
               FROM
@@ -448,6 +432,8 @@ impl Table<LS_State> {
                   LatestAggregation la
               INNER JOIN
                   "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+              LEFT JOIN
+                  pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
               WHERE
                   s."LS_timestamp" = la.max_ts
           ),
@@ -455,11 +441,11 @@ impl Table<LS_State> {
               SELECT
                   op."Asset Type" AS "Token",
                   CASE
-                      WHEN "Asset Type" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "Interest" / 100000000
-                      WHEN "Asset Type" IN ('ALL_SOL') THEN "Interest" / 1000000000
-                      WHEN "Asset Type" IN ('PICA') THEN "Interest" / 1000000000000
-                      WHEN "Asset Type" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "Interest" / 1000000000000000000
-                  ELSE "Interest" / 1000000
+                      WHEN op."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN op."Interest" / 100000000
+                      WHEN op."LS_asset_symbol" IN ('ALL_SOL') THEN op."Interest" / 1000000000
+                      WHEN op."LS_asset_symbol" IN ('PICA') THEN op."Interest" / 1000000000000
+                      WHEN op."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN op."Interest" / 1000000000000000000
+                  ELSE op."Interest" / 1000000
                   END AS "Total Interest Due"
               FROM
                   Opened op
@@ -486,14 +472,7 @@ impl Table<LS_State> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
     r#"
-        WITH Loan_Type_Map AS (
-          SELECT 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' AS id, 'Short' AS type, 'ALL_BTC' AS symbol, 100000000 AS denom
-            UNION ALL SELECT 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', 'Short', 'ALL_SOL', 1000000000
-            UNION ALL SELECT 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z', 'Short', 'AKT', 1000000
-            UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'Short', 'ATOM', 1000000
-            UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'Short', 'OSMO', 1000000
-        ),
-        Latest_Aggregation AS (
+        WITH Latest_Aggregation AS (
           SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
         ),
         Latest_States AS (
@@ -514,10 +493,10 @@ impl Table<LS_State> {
               ELSE s."LS_amnt_stable" / 1000000.0
             END AS "Lease Value",
 
-            -- Loan
+            -- Loan (use pool_config decimals)
             CASE
-              WHEN m.symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
-              WHEN m.symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
+              WHEN pc.lpn_symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
+              WHEN pc.lpn_symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
               ELSE s."LS_principal_stable" / 1000000.0
             END AS "Loan",
 
@@ -530,12 +509,12 @@ impl Table<LS_State> {
               ELSE o."LS_cltr_amnt_stable" / 1000000.0
             END AS "Down Payment",
 
-            -- Margin & Loan Interest
-            (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(m.denom, 1000000.0) AS "Margin Interest",
-            (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(m.denom, 1000000.0) AS "Loan Interest"
+            -- Margin & Loan Interest (use pool_config decimals)
+            (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Margin Interest",
+            (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Interest"
           FROM Latest_States s
           JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
-          LEFT JOIN Loan_Type_Map m ON o."LS_loan_pool_id" = m.id
+          LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
           WHERE s."LS_amnt_stable" > 0
         )
         SELECT
@@ -567,13 +546,7 @@ impl Table<LS_State> {
           SELECT
             o."LS_contract_id" AS "Contract ID",
             DATE_TRUNC('hour', s."LS_timestamp") AS "Hour",
-            CASE
-              WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                THEN s."LS_principal_stable" / 100000000
-              WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                THEN s."LS_principal_stable" / 1000000000
-              ELSE s."LS_principal_stable" / 1000000
-            END AS "Loan",
+            s."LS_principal_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
             CASE
               WHEN o."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN o."LS_cltr_amnt_stable" / 100000000
               WHEN o."LS_cltr_symbol" IN ('ALL_SOL') THEN o."LS_cltr_amnt_stable" / 1000000000
@@ -583,6 +556,7 @@ impl Table<LS_State> {
             END AS "Down Payment"
           FROM "LS_State" s
           INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
+          LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
           WHERE s."LS_contract_id" = '{}'
             AND s."LS_timestamp" >= NOW() - INTERVAL '24 HOURS'
         ),
@@ -597,22 +571,11 @@ impl Table<LS_State> {
               WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN s."LS_amnt_stable" / 1000000000000000000
               ELSE s."LS_amnt_stable" / 1000000
             END AS "Lease Value",
-            CASE
-              WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                THEN (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / 100000000
-              WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                THEN (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / 1000000000
-              ELSE (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / 1000000
-            END AS "Margin Interest",
-            CASE
-              WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                THEN (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / 100000000
-              WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                THEN (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / 1000000000
-              ELSE (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / 1000000
-            END AS "Loan Interest"
+            (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Margin Interest",
+            (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Interest"
           FROM "LS_State" s
           INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
+          LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
           WHERE s."LS_contract_id" = '{}'
             AND s."LS_timestamp" >= NOW() - INTERVAL '24 HOURS'
         ),
@@ -626,15 +589,10 @@ impl Table<LS_State> {
           SELECT
             r."LS_contract_id" AS "Contract ID",
             DATE_TRUNC('hour', r."LS_timestamp") AS "Repayment Hour",
-            CASE
-              WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                THEN (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 100000000
-              WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                THEN (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 1000000000
-              ELSE (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 1000000
-            END AS "Repayment Value"
+            (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Repayment Value"
           FROM "LS_Repayment" r
           INNER JOIN "LS_Opening" o ON o."LS_contract_id" = r."LS_contract_id"
+          LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
           WHERE r."LS_contract_id" = '{}'
         ),
         Repayment_Summary AS (
@@ -681,9 +639,10 @@ impl Table<LS_State> {
         let data = sqlx::query_as(
           r#"
           WITH Filtered_Opening AS (
-            SELECT *
-            FROM "LS_Opening"
-            WHERE "LS_address_id" = $1
+            SELECT fo.*, pc.lpn_decimals
+            FROM "LS_Opening" fo
+            LEFT JOIN pool_config pc ON fo."LS_loan_pool_id" = pc.pool_id
+            WHERE fo."LS_address_id" = $1
           ),
           Latest_Aggregation AS (
             SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
@@ -698,15 +657,7 @@ impl Table<LS_State> {
               fo."LS_address_id" AS "Address ID",
               fo."LS_contract_id" AS "Contract ID",
               DATE_TRUNC('hour', fs."LS_timestamp") AS "Hour",
-              SUM(
-                CASE
-                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                  THEN fs."LS_principal_stable" / 100000000
-                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                  THEN fs."LS_principal_stable" / 1000000000
-                  ELSE fs."LS_principal_stable" / 1000000
-                END
-              ) AS "Loan",
+              SUM(fs."LS_principal_stable" / COALESCE(fo.lpn_decimals, 1000000)::numeric) AS "Loan",
               SUM(
                 CASE
                   WHEN fo."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN fo."LS_cltr_amnt_stable" / 100000000
@@ -733,24 +684,8 @@ impl Table<LS_State> {
                   ELSE fs."LS_amnt_stable" / 1000000
                 END
               ) AS "Lease Value",
-              SUM(
-                CASE
-                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                  THEN (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 100000000
-                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                  THEN (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 1000000000
-                  ELSE (fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / 1000000
-                END
-              ) AS "Margin Interest",
-              SUM(
-                CASE
-                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                  THEN (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 100000000
-                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                  THEN (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 1000000000
-                  ELSE (fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / 1000000
-                END
-              ) AS "Loan Interest"
+              SUM((fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / COALESCE(fo.lpn_decimals, 1000000)::numeric) AS "Margin Interest",
+              SUM((fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / COALESCE(fo.lpn_decimals, 1000000)::numeric) AS "Loan Interest"
             FROM "LS_State" fs
             INNER JOIN Filtered_Opening fo ON fo."LS_contract_id" = fs."LS_contract_id"
             WHERE fs."LS_timestamp" >= NOW() - INTERVAL '20 days'
@@ -763,13 +698,7 @@ impl Table<LS_State> {
               r."LS_contract_id" AS "Contract ID",
               DATE_TRUNC('hour', r."LS_timestamp") AS "Hour",
               SUM(
-                CASE
-                  WHEN fo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                  THEN (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 100000000
-                  WHEN fo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                  THEN (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 1000000000
-                  ELSE (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / 1000000
-                END
+                (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / COALESCE(fo.lpn_decimals, 1000000)::numeric
               ) OVER (PARTITION BY fo."LS_address_id", r."LS_contract_id" ORDER BY DATE_TRUNC('hour', r."LS_timestamp") ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
               AS "Cumulative Repayment"
             FROM "LS_Repayment" r
@@ -974,16 +903,7 @@ impl Table<LS_State> {
     ) -> Result<Vec<crate::model::Position>, Error> {
         let data = sqlx::query_as(
             r#"
-            WITH Loan_Type_Map AS (
-              SELECT
-                'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' AS id, 'Short' AS type, 'ST_ATOM' AS symbol, 1000000 AS denom
-                UNION ALL SELECT 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3', 'Short', 'ALL_BTC', 100000000
-                UNION ALL SELECT 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', 'Short', 'ALL_SOL', 1000000000
-                UNION ALL SELECT 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z', 'Short', 'AKT', 1000000
-                UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'Short', 'ATOM', 1000000
-                UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'Short', 'OSMO', 1000000
-            ),
-            Latest_Aggregation AS (
+            WITH Latest_Aggregation AS (
               SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
             ),
             Latest_States AS (
@@ -1013,14 +933,14 @@ impl Table<LS_State> {
                 o."LS_timestamp" AS "Time",
                 o."LS_address_id" AS "User",
                 o."LS_contract_id" AS "Contract ID",
-                COALESCE(m.type, 'Long') AS "Type",
-                COALESCE(m.symbol, o."LS_asset_symbol") AS "Symbol",
-                COALESCE(m.denom, 1000000.0) AS denom,
+                COALESCE(pc.position_type, 'Long') AS "Type",
+                COALESCE(pc.lpn_symbol, o."LS_asset_symbol") AS "Symbol",
+                COALESCE(pc.lpn_decimals, 1000000)::numeric AS denom,
 
-                -- Loan from LS_State
+                -- Loan from LS_State (use pool_config decimals)
                 CASE
-                  WHEN m.symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
-                  WHEN m.symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
+                  WHEN pc.lpn_symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
+                  WHEN pc.lpn_symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
                   ELSE s."LS_principal_stable" / 1000000.0
                 END AS "Loan",
 
@@ -1042,21 +962,16 @@ impl Table<LS_State> {
                   ELSE s."LS_amnt_stable" / 1000000.0
                 END AS "Lease Value",
 
-                -- Margin & Interest from LS_State
-                (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(m.denom, 1000000.0) AS "Margin Interest",
-                (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(m.denom, 1000000.0) AS "Loan Interest",
+                -- Margin & Interest from LS_State (use pool_config decimals)
+                (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Margin Interest",
+                (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Interest",
 
-                CASE
-                  WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                    THEN (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 100000000
-                  WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                    THEN (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 1000000000
-                  ELSE (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 1000000
-                END AS "Loan Token Amount"
+                -- Loan Token Amount (use pool_config decimals)
+                (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Token Amount"
 
               FROM Latest_States s
               JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
-              LEFT JOIN Loan_Type_Map m ON o."LS_loan_pool_id" = m.id
+              LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
               WHERE s."LS_amnt_stable" > 0
             ),
             SymbolsInUse AS (
@@ -1115,21 +1030,22 @@ impl Table<LS_State> {
     }
 
     /// Get all positions without pagination - uses single cache key pattern
+    /// Uses pool_config table instead of hardcoded CTE and extended timeout
+    /// for background cache refresh
     pub async fn get_all_positions(
         &self,
     ) -> Result<Vec<crate::model::Position>, Error> {
+        // Use a transaction with extended timeout for this expensive query
+        let mut tx = self.pool.begin().await?;
+        
+        // Set statement timeout to 5 minutes (300000 ms) for this transaction only
+        sqlx::query("SET LOCAL statement_timeout = '300000'")
+            .execute(&mut *tx)
+            .await?;
+        
         let data = sqlx::query_as(
             r#"
-            WITH Loan_Type_Map AS (
-              SELECT
-                'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' AS id, 'Short' AS type, 'ST_ATOM' AS symbol, 1000000 AS denom
-                UNION ALL SELECT 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3', 'Short', 'ALL_BTC', 100000000
-                UNION ALL SELECT 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', 'Short', 'ALL_SOL', 1000000000
-                UNION ALL SELECT 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z', 'Short', 'AKT', 1000000
-                UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'Short', 'ATOM', 1000000
-                UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'Short', 'OSMO', 1000000
-            ),
-            Latest_Aggregation AS (
+            WITH Latest_Aggregation AS (
               SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
             ),
             Latest_States AS (
@@ -1159,14 +1075,14 @@ impl Table<LS_State> {
                 o."LS_timestamp" AS "Time",
                 o."LS_address_id" AS "User",
                 o."LS_contract_id" AS "Contract ID",
-                COALESCE(m.type, 'Long') AS "Type",
-                COALESCE(m.symbol, o."LS_asset_symbol") AS "Symbol",
-                COALESCE(m.denom, 1000000.0) AS denom,
+                COALESCE(pc.position_type, 'Long') AS "Type",
+                COALESCE(pc.lpn_symbol, o."LS_asset_symbol") AS "Symbol",
+                COALESCE(pc.lpn_decimals, 1000000)::numeric AS denom,
 
-                -- Loan from LS_State
+                -- Loan from LS_State (use pool_config decimals)
                 CASE
-                  WHEN m.symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
-                  WHEN m.symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
+                  WHEN pc.lpn_symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
+                  WHEN pc.lpn_symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
                   ELSE s."LS_principal_stable" / 1000000.0
                 END AS "Loan",
 
@@ -1188,21 +1104,16 @@ impl Table<LS_State> {
                   ELSE s."LS_amnt_stable" / 1000000.0
                 END AS "Lease Value",
 
-                -- Margin & Interest from LS_State
-                (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(m.denom, 1000000.0) AS "Margin Interest",
-                (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(m.denom, 1000000.0) AS "Loan Interest",
+                -- Margin & Interest from LS_State (use pool_config decimals)
+                (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Margin Interest",
+                (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Interest",
 
-                CASE
-                  WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                    THEN (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 100000000
-                  WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                    THEN (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 1000000000
-                  ELSE (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / 1000000
-                END AS "Loan Token Amount"
+                -- Loan Token Amount (use pool_config decimals)
+                (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Token Amount"
 
               FROM Latest_States s
               JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
-              LEFT JOIN Loan_Type_Map m ON o."LS_loan_pool_id" = m.id
+              LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
               WHERE s."LS_amnt_stable" > 0
             ),
             SymbolsInUse AS (
@@ -1251,8 +1162,10 @@ impl Table<LS_State> {
             "#,
         )
         .persistent(true)
-        .fetch_all(&self.pool)
+        .fetch_all(&mut *tx)
         .await?;
+
+        tx.commit().await?;
 
         Ok(data)
     }

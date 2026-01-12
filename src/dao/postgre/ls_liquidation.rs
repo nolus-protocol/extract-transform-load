@@ -286,10 +286,7 @@ impl Table<LS_Liquidation> {
                 SELECT
                     lso."LS_contract_id",
                     CASE
-                        WHEN lso."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
-                        WHEN lso."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                        WHEN lso."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                        WHEN lso."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                        WHEN pc.position_type = 'Short' THEN CONCAT(pc.label, ' (Short)')
                         ELSE lso."LS_asset_symbol"
                     END AS "Asset",
                     lso."LS_loan_amnt_asset" / 1000000 AS "Loan",
@@ -303,6 +300,7 @@ impl Table<LS_Liquidation> {
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"
+                    LEFT JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
             )
             SELECT
                 "LS_contract_id" AS contract_id,
@@ -356,10 +354,7 @@ impl Table<LS_Liquidation> {
                 SELECT
                     lso."LS_contract_id",
                     CASE
-                        WHEN lso."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
-                        WHEN lso."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                        WHEN lso."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                        WHEN lso."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
+                        WHEN pc.position_type = 'Short' THEN CONCAT(pc.label, ' (Short)')
                         ELSE lso."LS_asset_symbol"
                     END AS "Asset",
                     lso."LS_loan_amnt_asset" / 1000000 AS "Loan",
@@ -373,6 +368,7 @@ impl Table<LS_Liquidation> {
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"
+                    LEFT JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
                 {}
             )
             SELECT

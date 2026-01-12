@@ -485,11 +485,7 @@ impl Table<LS_Opening> {
                     s."LS_contract_id",
                     s."LS_amnt_stable",
                     CASE
-                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
-                        WHEN lo."LS_loan_pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM (Short)'
+                        WHEN pc.position_type = 'Short' THEN CONCAT(pc.label, ' (Short)')
                         ELSE lo."LS_asset_symbol"
                     END AS "Asset Type"
                 FROM
@@ -498,6 +494,8 @@ impl Table<LS_Opening> {
                     LatestAggregation la
                 INNER JOIN
                     "LS_Opening" lo ON lo."LS_contract_id" = s."LS_contract_id"
+                LEFT JOIN
+                    pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
                 WHERE
                     s."LS_timestamp" = la.max_ts
                     AND s."LS_amnt_stable" > 0
@@ -746,33 +744,22 @@ impl Table<LS_Opening> {
                         WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
                         ELSE "LS_cltr_amnt_stable" / 1000000
                     END AS "Down Payment Amount",
-                    CASE
-                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
-                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
-                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
-                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN "LS_loan_amnt_stable" / 1000000
-                        ELSE "LS_loan_amnt_asset" / 1000000
-                        END AS "Loan"
-                    FROM "LS_Opening"
+                    lo."LS_loan_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan"
+                    FROM "LS_Opening" lo
+                    LEFT JOIN pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
                     ),
                     LP_Deposits AS (
                     SELECT
-                        CASE
-                        WHEN "LP_address_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_amnt_stable" / 100000000    -- Example for ALL_BTC or similar
-                        WHEN "LP_address_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_amnt_stable" / 1000000000   -- Example for ALL_SOL
-                        ELSE "LP_amnt_stable" / 1000000    -- Default divisor
-                        END AS "Volume"
-                    FROM "LP_Deposit"
+                        d."LP_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Volume"
+                    FROM "LP_Deposit" d
+                    LEFT JOIN pool_config pc ON d."LP_address_id" = pc.pool_id
                     ),
 
                     LP_Withdrawals AS (
                     SELECT
-                        CASE
-                        WHEN "LP_address_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_amnt_stable" / 100000000    -- Example for ALL_BTC or similar
-                        WHEN "LP_address_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_amnt_stable" / 1000000000   -- Example for ALL_SOL
-                        ELSE "LP_amnt_stable" / 1000000    -- Default divisor
-                        END AS "Volume"
-                    FROM "LP_Withdraw"
+                        w."LP_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Volume"
+                    FROM "LP_Withdraw" w
+                    LEFT JOIN pool_config pc ON w."LP_address_id" = pc.pool_id
                     ),
                     LS_Close AS (
                     SELECT
@@ -1050,30 +1037,22 @@ impl Table<LS_Opening> {
                 DISTINCT ON (lso."LS_contract_id") lso."LS_contract_id" AS "Contract ID",
                 lso."LS_address_id" AS "User",
                 CASE
-                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
-                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
-                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
-                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
-                        ELSE "LS_asset_symbol"
-                    END AS "Leased Asset",
-                DATE_TRUNC('month', "LS_timestamp") AS "Date",
+                    WHEN pc.position_type = 'Short' THEN pc.label
+                    ELSE lso."LS_asset_symbol"
+                END AS "Leased Asset",
+                DATE_TRUNC('month', lso."LS_timestamp") AS "Date",
                 CASE
-                WHEN "LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
-                WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
-                WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
-                WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
-                ELSE "LS_cltr_amnt_stable" / 1000000
+                WHEN lso."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN lso."LS_cltr_amnt_stable" / 100000000
+                WHEN lso."LS_cltr_symbol" IN ('ALL_SOL') THEN lso."LS_cltr_amnt_stable" / 1000000000
+                WHEN lso."LS_cltr_symbol" IN ('PICA') THEN lso."LS_cltr_amnt_stable" / 1000000000000
+                WHEN lso."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN lso."LS_cltr_amnt_stable" / 1000000000000000000
+                ELSE lso."LS_cltr_amnt_stable" / 1000000
                 END AS "Down Payment Amount",
-                CASE
-                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
-                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
-                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
-                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN "LS_loan_amnt_stable" / 1000000
-                        ELSE "LS_loan_amnt_asset" / 1000000
-                    END
-            AS "Loan Amount"
+                lso."LS_loan_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Amount"
             FROM
                 "LS_Opening" lso
+            LEFT JOIN
+                pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
             )
             SELECT
             "Date",
@@ -1172,18 +1151,6 @@ impl Table<LS_Opening> {
         let data = sqlx::query_as(
             r#"
                 WITH
-                -- Map loan pools -> shorted asset
-                pool_map AS (
-                SELECT * FROM (
-                    SELECT 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990'::text AS id, 'ST_ATOM'::text AS symbol
-                    UNION ALL SELECT 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3', 'ALL_BTC'
-                    UNION ALL SELECT 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', 'ALL_SOL'
-                    UNION ALL SELECT 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z', 'AKT'
-                    UNION ALL SELECT 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6', 'ATOM'
-                    UNION ALL SELECT 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t', 'OSMO'
-                ) p
-                ),
-
                 -- Openings for the wallet + derived position type and shorted asset (if any)
                 openings AS (
                 SELECT
@@ -1195,11 +1162,11 @@ impl Table<LS_Opening> {
                     o."LS_cltr_amnt_stable",
                     o."LS_loan_pool_id",
                     o."Tx_Hash" AS open_tx_hash,
-                    CASE WHEN o."LS_asset_symbol" IN ('USDC','USDC_NOBLE') THEN 'Short' ELSE 'Long' END AS pos_type,
-                    pm.symbol AS short_symbol
+                    COALESCE(pc.position_type, CASE WHEN o."LS_asset_symbol" IN ('USDC','USDC_NOBLE') THEN 'Short' ELSE 'Long' END) AS pos_type,
+                    pc.label AS short_symbol
                 FROM "LS_Opening" o
-                LEFT JOIN pool_map pm
-                    ON pm.id = o."LS_loan_pool_id"
+                LEFT JOIN pool_config pc
+                    ON pc.pool_id = o."LS_loan_pool_id"
                 WHERE o."LS_address_id" = $1
                 ),
 
@@ -1572,18 +1539,13 @@ impl Table<LS_Opening> {
             DailyOpenedLoans AS (
                 SELECT
                     ds."Date" AS "LocalDate",
-                    COALESCE(SUM(CASE
-                        WHEN lo."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN lo."LS_loan_amnt_stable" / 1000000.0
-                        WHEN lo."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN lo."LS_loan_amnt_stable" / 100000000.0
-                        WHEN lo."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN lo."LS_loan_amnt_stable" / 1000000000.0
-                        WHEN lo."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN lo."LS_loan_amnt_stable" / 1000000.0
-                        WHEN lo."LS_loan_pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN lo."LS_loan_amnt_stable" / 1000000.0
-                        ELSE lo."LS_loan_amnt_asset" / 1000000.0
-                    END), 0) AS "OpenedLoans"
+                    COALESCE(SUM(lo."LS_loan_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric), 0) AS "OpenedLoans"
                 FROM
                     DateSeries ds
                 LEFT JOIN
                     FilteredOpening lo ON DATE(lo."LS_timestamp") = ds."Date"
+                LEFT JOIN
+                    pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
                 GROUP BY
                     ds."Date"
             )
@@ -1618,24 +1580,12 @@ impl Table<LS_Opening> {
             r#"
             SELECT
                 CASE
-                    WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM (Short)'
-                    WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC (Short)'
-                    WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL (Short)'
-                    WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT (Short)'
-                    WHEN "LS_loan_pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM (Short)'
-                    ELSE "LS_asset_symbol"
+                    WHEN pc.position_type = 'Short' THEN CONCAT(pc.label, ' (Short)')
+                    ELSE lo."LS_asset_symbol"
                 END AS asset,
-                SUM(
-                    CASE 
-                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
-                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
-                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
-                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN "LS_loan_amnt_stable" / 1000000
-                        WHEN "LS_loan_pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN "LS_loan_amnt_stable" / 1000000
-                        ELSE "LS_loan_amnt_asset" / 1000000
-                    END
-                ) AS loan
-            FROM "LS_Opening"
+                SUM(lo."LS_loan_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS loan
+            FROM "LS_Opening" lo
+            LEFT JOIN pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
             GROUP BY asset
             ORDER BY loan ASC
             "#,
@@ -1659,53 +1609,23 @@ impl Table<LS_Opening> {
                     lso."LS_contract_id" AS "Contract ID",
                     lso."LS_address_id" AS "User",
                     CASE
-                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
-                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
-                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
-                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
-                        ELSE "LS_asset_symbol"
+                        WHEN pc.position_type = 'Short' THEN pc.label
+                        ELSE lso."LS_asset_symbol"
                     END AS "Leased Asset",
-                    "LS_timestamp" AS "Opening Date",
+                    lso."LS_timestamp" AS "Opening Date",
+                    COALESCE(pc.position_type, 'Long') AS "Type",
                     CASE
-                        WHEN "LS_loan_pool_id" IN (
-                            'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
-                            'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
-                            'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
-                            'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
-                        ) THEN 'Short' ELSE 'Long'
-                    END AS "Type",
-                    CASE
-                        WHEN "LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN "LS_cltr_amnt_stable" / 100000000
-                        WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
-                        WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
-                        WHEN "LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
-                        ELSE "LS_cltr_amnt_stable" / 1000000
+                        WHEN lso."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN lso."LS_cltr_amnt_stable" / 100000000
+                        WHEN lso."LS_cltr_symbol" IN ('ALL_SOL') THEN lso."LS_cltr_amnt_stable" / 1000000000
+                        WHEN lso."LS_cltr_symbol" IN ('PICA') THEN lso."LS_cltr_amnt_stable" / 1000000000000
+                        WHEN lso."LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN lso."LS_cltr_amnt_stable" / 1000000000000000000
+                        ELSE lso."LS_cltr_amnt_stable" / 1000000
                     END AS "Down Payment Amount",
-                    "LS_cltr_symbol" AS "Down Payment Asset",
-                    CASE
-                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
-                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
-                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
-                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN "LS_loan_amnt_stable" / 1000000
-                        ELSE "LS_loan_amnt_asset" / 1000000
-                    END AS "Loan",
-                    CASE
-                        WHEN "LS_loan_pool_id" IN (
-                            'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5',
-                            'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf',
-                            'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94',
-                            'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6'
-                        ) THEN
-                            CASE
-                                WHEN "LS_asset_symbol" IN ('ALL_BTC','WBTC','CRO') THEN "LS_lpn_loan_amnt" / 100000000
-                                WHEN "LS_asset_symbol" IN ('ALL_SOL') THEN "LS_lpn_loan_amnt" / 1000000000
-                                WHEN "LS_asset_symbol" IN ('PICA') THEN "LS_lpn_loan_amnt" / 1000000000000
-                                WHEN "LS_asset_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN "LS_lpn_loan_amnt" / 1000000000000000000
-                                ELSE "LS_lpn_loan_amnt" / 1000000
-                            END
-                        ELSE "LS_lpn_loan_amnt" / 1000000
-                    END AS "Total Position Amount (LPN)"
+                    lso."LS_cltr_symbol" AS "Down Payment Asset",
+                    lso."LS_loan_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
+                    lso."LS_lpn_loan_amnt" / COALESCE(lso."LS_lpn_decimals", 1000000)::numeric AS "Total Position Amount (LPN)"
                 FROM "LS_Opening" lso
+                LEFT JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
             ),
             Opened_With_Price AS (
                 SELECT
@@ -1795,32 +1715,13 @@ impl Table<LS_Opening> {
                 o."LS_contract_id" AS contract_id,
                 o."LS_address_id" AS "user",
                 -- Use pool_config label for short positions, otherwise asset symbol
-                COALESCE(
-                    CASE 
-                        WHEN o."LS_position_type" = 'Short' THEN pc."label"
-                        ELSE NULL
-                    END,
-                    CASE
-                        WHEN o."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
-                        WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
-                        WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
-                        WHEN o."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
-                        ELSE o."LS_asset_symbol"
-                    END
-                ) AS leased_asset,
+                CASE 
+                    WHEN COALESCE(o."LS_position_type", pc.position_type) = 'Short' THEN COALESCE(pc."label", o."LS_asset_symbol")
+                    ELSE o."LS_asset_symbol"
+                END AS leased_asset,
                 o."LS_timestamp" AS opening_date,
-                -- Use pre-computed position_type or fallback to computed
-                COALESCE(
-                    o."LS_position_type",
-                    CASE
-                        WHEN o."LS_loan_pool_id" IN (
-                            'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
-                            'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
-                            'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
-                            'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
-                        ) THEN 'Short' ELSE 'Long'
-                    END
-                ) AS position_type,
+                -- Use pre-computed position_type or fallback to pool_config
+                COALESCE(o."LS_position_type", pc.position_type, 'Long') AS position_type,
                 -- Normalized down payment amount
                 CASE
                     WHEN o."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_cltr_amnt_stable" / 100000000
@@ -1830,14 +1731,8 @@ impl Table<LS_Opening> {
                     ELSE o."LS_cltr_amnt_stable" / 1000000
                 END AS down_payment_amount,
                 o."LS_cltr_symbol" AS down_payment_asset,
-                -- Normalized loan amount
-                CASE
-                    WHEN o."LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN o."LS_loan_amnt_stable" / 1000000
-                    WHEN o."LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN o."LS_loan_amnt_stable" / 100000000
-                    WHEN o."LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN o."LS_loan_amnt_stable" / 1000000000
-                    WHEN o."LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN o."LS_loan_amnt_stable" / 1000000
-                    ELSE o."LS_loan_amnt_asset" / 1000000
-                END AS loan,
+                -- Normalized loan amount using pool_config
+                o."LS_loan_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS loan,
                 -- Total position amount in LPN
                 COALESCE(o."LS_lpn_loan_amnt" / COALESCE(o."LS_lpn_decimals", 1000000)::numeric, 0) AS total_position_amount_lpn,
                 -- Use pre-computed opening_price or fallback to LATERAL join
@@ -1863,16 +1758,9 @@ impl Table<LS_Opening> {
                 COALESCE(
                     o."LS_liquidation_price_at_open",
                     CASE
-                        WHEN COALESCE(o."LS_position_type", 
-                            CASE WHEN o."LS_loan_pool_id" IN (
-                                'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
-                                'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
-                                'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
-                                'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
-                            ) THEN 'Short' ELSE 'Long' END
-                        ) = 'Long' THEN
-                            (o."LS_loan_amnt_stable" / 1000000.0 / 0.9) / 
-                            NULLIF((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / 1000000.0, 0) *
+                        WHEN COALESCE(o."LS_position_type", pc.position_type, 'Long') = 'Long' THEN
+                            (o."LS_loan_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric / 0.9) / 
+                            NULLIF((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric, 0) *
                             COALESCE(o."LS_opening_price", (
                                 SELECT m."MP_price_in_stable"
                                 FROM "MP_Asset" m
@@ -1881,16 +1769,9 @@ impl Table<LS_Opening> {
                                 ORDER BY m."MP_asset_timestamp" DESC
                                 LIMIT 1
                             ))
-                        WHEN COALESCE(o."LS_position_type",
-                            CASE WHEN o."LS_loan_pool_id" IN (
-                                'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
-                                'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
-                                'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
-                                'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
-                            ) THEN 'Short' ELSE 'Long' END
-                        ) = 'Short' THEN
-                            ((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / 1000000.0) /
-                            NULLIF(o."LS_lpn_loan_amnt" / 1000000.0 / 0.9, 0)
+                        WHEN COALESCE(o."LS_position_type", pc.position_type, 'Long') = 'Short' THEN
+                            ((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric) /
+                            NULLIF(o."LS_lpn_loan_amnt" / COALESCE(o."LS_lpn_decimals", 1000000)::numeric / 0.9, 0)
                     END
                 ) AS liquidation_price
             FROM "LS_Opening" o
@@ -1923,53 +1804,23 @@ impl Table<LS_Opening> {
                     lso."LS_contract_id" AS "Contract ID",
                     lso."LS_address_id" AS "User",
                     CASE
-                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
-                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
-                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
-                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
-                        ELSE "LS_asset_symbol"
+                        WHEN pc.position_type = 'Short' THEN pc.label
+                        ELSE lso."LS_asset_symbol"
                     END AS "Leased Asset",
-                    "LS_timestamp" AS "Opening Date",
+                    lso."LS_timestamp" AS "Opening Date",
+                    COALESCE(pc.position_type, 'Long') AS "Type",
                     CASE
-                        WHEN "LS_loan_pool_id" IN (
-                            'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990',
-                            'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3',
-                            'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm',
-                            'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z'
-                        ) THEN 'Short' ELSE 'Long'
-                    END AS "Type",
-                    CASE
-                        WHEN "LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN "LS_cltr_amnt_stable" / 100000000
-                        WHEN "LS_cltr_symbol" IN ('ALL_SOL') THEN "LS_cltr_amnt_stable" / 1000000000
-                        WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
-                        WHEN "LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
-                        ELSE "LS_cltr_amnt_stable" / 1000000
+                        WHEN lso."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN lso."LS_cltr_amnt_stable" / 100000000
+                        WHEN lso."LS_cltr_symbol" IN ('ALL_SOL') THEN lso."LS_cltr_amnt_stable" / 1000000000
+                        WHEN lso."LS_cltr_symbol" IN ('PICA') THEN lso."LS_cltr_amnt_stable" / 1000000000000
+                        WHEN lso."LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN lso."LS_cltr_amnt_stable" / 1000000000000000000
+                        ELSE lso."LS_cltr_amnt_stable" / 1000000
                     END AS "Down Payment Amount",
-                    "LS_cltr_symbol" AS "Down Payment Asset",
-                    CASE
-                        WHEN "LS_loan_pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN "LS_loan_amnt_stable" / 1000000
-                        WHEN "LS_loan_pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LS_loan_amnt_stable" / 100000000
-                        WHEN "LS_loan_pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LS_loan_amnt_stable" / 1000000000
-                        WHEN "LS_loan_pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN "LS_loan_amnt_stable" / 1000000
-                        ELSE "LS_loan_amnt_asset" / 1000000
-                    END AS "Loan",
-                    CASE
-                        WHEN "LS_loan_pool_id" IN (
-                            'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5',
-                            'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf',
-                            'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94',
-                            'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6'
-                        ) THEN
-                            CASE
-                                WHEN "LS_asset_symbol" IN ('ALL_BTC','WBTC','CRO') THEN "LS_lpn_loan_amnt" / 100000000
-                                WHEN "LS_asset_symbol" IN ('ALL_SOL') THEN "LS_lpn_loan_amnt" / 1000000000
-                                WHEN "LS_asset_symbol" IN ('PICA') THEN "LS_lpn_loan_amnt" / 1000000000000
-                                WHEN "LS_asset_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH') THEN "LS_lpn_loan_amnt" / 1000000000000000000
-                                ELSE "LS_lpn_loan_amnt" / 1000000
-                            END
-                        ELSE "LS_lpn_loan_amnt" / 1000000
-                    END AS "Total Position Amount (LPN)"
+                    lso."LS_cltr_symbol" AS "Down Payment Asset",
+                    lso."LS_loan_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
+                    lso."LS_lpn_loan_amnt" / COALESCE(lso."LS_lpn_decimals", 1000000)::numeric AS "Total Position Amount (LPN)"
                 FROM "LS_Opening" lso
+                LEFT JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
             ),
             Opened_With_Price AS (
                 SELECT
@@ -2033,20 +1884,9 @@ impl Table<LS_Opening> {
                     o."LS_asset_symbol" AS "Leased Asset",
                     o."LS_cltr_symbol" AS "Down Payment Asset",
                     o."LS_cltr_amnt_stable" / 1000000 AS "Down Payment (Stable)",
-                    CASE o."LS_loan_pool_id"
-                        WHEN 'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6' THEN 'USDC_NOBLE'
-                        WHEN 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5' THEN 'USDC'
-                        WHEN 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94' THEN 'USDC_AXELAR'
-                        WHEN 'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf' THEN 'USDC_NOBLE'
-                        WHEN 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
-                        WHEN 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
-                        WHEN 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
-                        WHEN 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
-                        WHEN 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM'
-                        WHEN 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMO'
-                        ELSE 'USDC_NOBLE'
-                    END AS "LPN_Symbol"
+                    COALESCE(pc.lpn_symbol, 'USDC_NOBLE') AS "LPN_Symbol"
                 FROM "LS_Opening" o
+                LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
                 WHERE o."LS_timestamp" >= NOW() - INTERVAL '1 year'
             ),
             openings AS (
@@ -2276,20 +2116,9 @@ impl Table<LS_Opening> {
                     o."LS_asset_symbol" AS "Leased Asset",
                     o."LS_cltr_symbol" AS "Down Payment Asset",
                     o."LS_cltr_amnt_stable" / 1000000 AS "Down Payment (Stable)",
-                    CASE o."LS_loan_pool_id"
-                        WHEN 'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6' THEN 'USDC_NOBLE'
-                        WHEN 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5' THEN 'USDC'
-                        WHEN 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94' THEN 'USDC_AXELAR'
-                        WHEN 'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf' THEN 'USDC_NOBLE'
-                        WHEN 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'ST_ATOM'
-                        WHEN 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'ALL_BTC'
-                        WHEN 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'ALL_SOL'
-                        WHEN 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'AKT'
-                        WHEN 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'ATOM'
-                        WHEN 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMO'
-                        ELSE 'USDC_NOBLE'
-                    END AS "LPN_Symbol"
+                    COALESCE(pc.lpn_symbol, 'USDC_NOBLE') AS "LPN_Symbol"
                 FROM "LS_Opening" o
+                LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
                 {}
             ),
                     openings AS (

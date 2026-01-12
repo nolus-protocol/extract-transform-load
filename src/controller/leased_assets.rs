@@ -4,6 +4,7 @@ use serde::Deserialize;
 use crate::{
     configuration::{AppState, State},
     error::Error,
+    helpers::build_protocol_cache_key,
 };
 
 #[get("/leased-assets")]
@@ -11,11 +12,7 @@ async fn index(
     state: web::Data<AppState<State>>,
     query: web::Query<Query>,
 ) -> Result<impl Responder, Error> {
-    let cache_key = query
-        .protocol
-        .as_ref()
-        .map(|p| format!("leased_assets_{}", p.to_uppercase()))
-        .unwrap_or_else(|| "leased_assets_total".to_string());
+    let cache_key = build_protocol_cache_key("leased_assets", query.protocol.as_deref());
 
     // Try cache first
     if let Some(cached) = state.api_cache.leased_assets.get(&cache_key).await {

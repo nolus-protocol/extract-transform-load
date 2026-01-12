@@ -1061,6 +1061,11 @@ pub fn build_cache_key(
 
 /// Build a cache key for protocol-specific period-based endpoints.
 /// Includes endpoint name, protocol, period, and optional from timestamp.
+///
+/// # Examples
+/// ```ignore
+/// build_cache_key_with_protocol("borrow_apr", "OSMOSIS", "3m", None) // "borrow_apr_OSMOSIS_3m_none"
+/// ```
 pub fn build_cache_key_with_protocol(
     endpoint: &str,
     protocol: &str,
@@ -1071,6 +1076,21 @@ pub fn build_cache_key_with_protocol(
         .map(|ts| ts.timestamp().to_string())
         .unwrap_or_else(|| "none".to_string());
     format!("{}_{}_{}_{}",endpoint, protocol, period, from_key)
+}
+
+/// Build a cache key for protocol-specific endpoints (no period).
+/// Returns "endpoint_PROTOCOL" or "endpoint_total" if protocol is None.
+///
+/// # Examples
+/// ```ignore
+/// build_protocol_cache_key("borrowed", Some("OSMOSIS")) // "borrowed_OSMOSIS"
+/// build_protocol_cache_key("borrowed", None) // "borrowed_total"
+/// ```
+pub fn build_protocol_cache_key(endpoint: &str, protocol: Option<&str>) -> String {
+    match protocol {
+        Some(p) => format!("{}_{}", endpoint, p.to_uppercase()),
+        None => format!("{}_total", endpoint),
+    }
 }
 
 /// Parse period query parameter to number of months for time window filtering.

@@ -123,24 +123,17 @@ impl Table<LP_Pool_State> {
         let data = sqlx::query_as(
             r#"
             SELECT
-                "LP_Pool_State"."LP_Pool_timestamp",
-                SUM(CASE
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
-                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
-                END) AS "Supplied",
-                SUM(CASE
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
-                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
-                END) AS "Borrowed"
+                lps."LP_Pool_timestamp",
+                SUM(lps."LP_Pool_total_value_locked_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Supplied",
+                SUM(lps."LP_Pool_total_borrowed_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Borrowed"
             FROM
-                "LP_Pool_State"
-            WHERE "LP_Pool_State"."LP_Pool_id" = $1
+                "LP_Pool_State" lps
+            LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+            WHERE lps."LP_Pool_id" = $1
             GROUP BY
-                "LP_Pool_State"."LP_Pool_timestamp"
+                lps."LP_Pool_timestamp"
             ORDER BY
-                "LP_Pool_State"."LP_Pool_timestamp" DESC
+                lps."LP_Pool_timestamp" DESC
             "#,
         )
         .bind(protocol)
@@ -163,24 +156,17 @@ impl Table<LP_Pool_State> {
         let query_str = format!(
             r#"
             SELECT
-                "LP_Pool_State"."LP_Pool_timestamp",
-                SUM(CASE
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
-                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
-                END) AS "Supplied",
-                SUM(CASE
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
-                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
-                END) AS "Borrowed"
+                lps."LP_Pool_timestamp",
+                SUM(lps."LP_Pool_total_value_locked_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Supplied",
+                SUM(lps."LP_Pool_total_borrowed_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Borrowed"
             FROM
-                "LP_Pool_State"
-            WHERE "LP_Pool_State"."LP_Pool_id" IN ({})
+                "LP_Pool_State" lps
+            LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+            WHERE lps."LP_Pool_id" IN ({})
             GROUP BY
-                "LP_Pool_State"."LP_Pool_timestamp"
+                lps."LP_Pool_timestamp"
             ORDER BY
-                "LP_Pool_State"."LP_Pool_timestamp" DESC
+                lps."LP_Pool_timestamp" DESC
             "#,
             params
         );
@@ -204,11 +190,11 @@ impl Table<LP_Pool_State> {
     ) -> Result<Vec<Supplied_Borrowed_Series>, Error> {
         let time_filter = match (months, from) {
             (_, Some(from_ts)) => format!(
-                r#"AND "LP_Pool_State"."LP_Pool_timestamp" > '{}'"#,
+                r#"AND lps."LP_Pool_timestamp" > '{}'"#,
                 from_ts.format("%Y-%m-%d %H:%M:%S")
             ),
             (Some(m), None) => format!(
-                r#"AND "LP_Pool_State"."LP_Pool_timestamp" > NOW() - INTERVAL '{} months'"#,
+                r#"AND lps."LP_Pool_timestamp" > NOW() - INTERVAL '{} months'"#,
                 m
             ),
             (None, None) => String::new(),
@@ -217,25 +203,18 @@ impl Table<LP_Pool_State> {
         let query_str = format!(
             r#"
             SELECT
-                "LP_Pool_State"."LP_Pool_timestamp",
-                SUM(CASE
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
-                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
-                END) AS "Supplied",
-                SUM(CASE
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
-                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
-                END) AS "Borrowed"
+                lps."LP_Pool_timestamp",
+                SUM(lps."LP_Pool_total_value_locked_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Supplied",
+                SUM(lps."LP_Pool_total_borrowed_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Borrowed"
             FROM
-                "LP_Pool_State"
-            WHERE "LP_Pool_State"."LP_Pool_id" = $1
+                "LP_Pool_State" lps
+            LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+            WHERE lps."LP_Pool_id" = $1
             {}
             GROUP BY
-                "LP_Pool_State"."LP_Pool_timestamp"
+                lps."LP_Pool_timestamp"
             ORDER BY
-                "LP_Pool_State"."LP_Pool_timestamp" DESC
+                lps."LP_Pool_timestamp" DESC
             "#,
             time_filter
         );
@@ -262,11 +241,11 @@ impl Table<LP_Pool_State> {
 
         let time_filter = match (months, from) {
             (_, Some(from_ts)) => format!(
-                r#"AND "LP_Pool_State"."LP_Pool_timestamp" > '{}'"#,
+                r#"AND lps."LP_Pool_timestamp" > '{}'"#,
                 from_ts.format("%Y-%m-%d %H:%M:%S")
             ),
             (Some(m), None) => format!(
-                r#"AND "LP_Pool_State"."LP_Pool_timestamp" > NOW() - INTERVAL '{} months'"#,
+                r#"AND lps."LP_Pool_timestamp" > NOW() - INTERVAL '{} months'"#,
                 m
             ),
             (None, None) => String::new(),
@@ -275,25 +254,18 @@ impl Table<LP_Pool_State> {
         let query_str = format!(
             r#"
             SELECT
-                "LP_Pool_State"."LP_Pool_timestamp",
-                SUM(CASE
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 100000000
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000000
-                    ELSE "LP_Pool_State"."LP_Pool_total_value_locked_stable" / 1000000
-                END) AS "Supplied",
-                SUM(CASE
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 100000000
-                    WHEN "LP_Pool_State"."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000000
-                    ELSE "LP_Pool_State"."LP_Pool_total_borrowed_stable" / 1000000
-                END) AS "Borrowed"
+                lps."LP_Pool_timestamp",
+                SUM(lps."LP_Pool_total_value_locked_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Supplied",
+                SUM(lps."LP_Pool_total_borrowed_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Borrowed"
             FROM
-                "LP_Pool_State"
-            WHERE "LP_Pool_State"."LP_Pool_id" IN ({})
+                "LP_Pool_State" lps
+            LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+            WHERE lps."LP_Pool_id" IN ({})
             {}
             GROUP BY
-                "LP_Pool_State"."LP_Pool_timestamp"
+                lps."LP_Pool_timestamp"
             ORDER BY
-                "LP_Pool_State"."LP_Pool_timestamp" DESC
+                lps."LP_Pool_timestamp" DESC
             "#,
             params, time_filter
         );
@@ -397,32 +369,15 @@ impl Table<LP_Pool_State> {
             r#"
               WITH Latest_Pool_Data AS (
                 SELECT
-                    "LP_Pool_id",
-                    "LP_Pool_total_value_locked_stable",
-                    RANK() OVER (PARTITION BY "LP_Pool_id" ORDER BY "LP_Pool_timestamp" DESC) AS rank
-                FROM "LP_Pool_State"
-                WHERE "LP_Pool_id" IN (
-                    'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5', -- USDC_AXL_OSMOSIS
-                    'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94', -- USDC_AXL_NEUTRON
-                    'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf', -- USDC_OSMOSIS
-                    'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6', -- USDC_NEUTRON
-                    'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990', -- ST_ATOM_OSMOSIS
-                    'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3', -- ALL_BTC_OSMOSIS (÷ 100M)
-                    'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', -- ALL_SOL_OSMOSIS (÷ 1B)
-                    'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z',  -- AKT_OSMOSIS
-                    'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6'  -- ATOM_OSMOSIS
-                )
+                    lps."LP_Pool_id",
+                    lps."LP_Pool_total_value_locked_stable",
+                    pc.lpn_decimals,
+                    RANK() OVER (PARTITION BY lps."LP_Pool_id" ORDER BY lps."LP_Pool_timestamp" DESC) AS rank
+                FROM "LP_Pool_State" lps
+                INNER JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
             )
             SELECT
-                SUM(
-                    CASE
-                        WHEN "LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3'
-                            THEN "LP_Pool_total_value_locked_stable" / 100000000 -- ALL_BTC_OSMOSIS
-                        WHEN "LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm'
-                            THEN "LP_Pool_total_value_locked_stable" / 1000000000 -- ALL_SOL_OSMOSIS
-                        ELSE "LP_Pool_total_value_locked_stable" / 1000000 -- All other pools
-                    END
-                ) AS "Total Supplied"
+                SUM("LP_Pool_total_value_locked_stable" / COALESCE(lpn_decimals, 1000000)::numeric) AS "Total Supplied"
             FROM Latest_Pool_Data
             WHERE rank = 1
             "#,
@@ -841,45 +796,28 @@ impl Table<LP_Pool_State> {
                 SELECT MAX("LP_Pool_timestamp") AS max_ts FROM "LP_Pool_State"
             ),
             LatestStates AS (
-                SELECT DISTINCT ON ("LP_Pool_id")
-                    "LP_Pool_id",
-                    "LP_Pool_total_value_locked_stable",
-                    "LP_Pool_total_borrowed_stable",
-                    "LP_Pool_timestamp"
-                FROM "LP_Pool_State"
-                WHERE "LP_Pool_timestamp" = (SELECT max_ts FROM Latest_Pool_Aggregation)
-                ORDER BY "LP_Pool_id", "LP_Pool_timestamp" DESC
+                SELECT DISTINCT ON (lps."LP_Pool_id")
+                    lps."LP_Pool_id",
+                    lps."LP_Pool_total_value_locked_stable",
+                    lps."LP_Pool_total_borrowed_stable",
+                    lps."LP_Pool_timestamp",
+                    pc.lpn_decimals,
+                    pc.label
+                FROM "LP_Pool_State" lps
+                LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+                WHERE lps."LP_Pool_timestamp" = (SELECT max_ts FROM Latest_Pool_Aggregation)
+                ORDER BY lps."LP_Pool_id", lps."LP_Pool_timestamp" DESC
             )
             SELECT
                 ls."LP_Pool_id" AS pool_id,
-                CASE
-                    WHEN ls."LP_Pool_id" = 'nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5' THEN 'OSMOSIS-OSMOSIS-USDC_AXELAR'
-                    WHEN ls."LP_Pool_id" = 'nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94' THEN 'NEUTRON-ASTROPORT-USDC_AXELAR'
-                    WHEN ls."LP_Pool_id" = 'nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6' THEN 'OSMOSIS-OSMOSIS-USDC_NOBLE'
-                    WHEN ls."LP_Pool_id" = 'nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf' THEN 'NEUTRON-ASTROPORT-USDC_NOBLE'
-                    WHEN ls."LP_Pool_id" = 'nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990' THEN 'OSMOSIS-OSMOSIS-ST_ATOM'
-                    WHEN ls."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN 'OSMOSIS-OSMOSIS-ALL_BTC'
-                    WHEN ls."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN 'OSMOSIS-OSMOSIS-ALL_SOL'
-                    WHEN ls."LP_Pool_id" = 'nolus1lxr7f5xe02jq6cce4puk6540mtu9sg36at2dms5sk69wdtzdrg9qq0t67z' THEN 'OSMOSIS-OSMOSIS-AKT'
-                    WHEN ls."LP_Pool_id" = 'nolus1u0zt8x3mkver0447glfupz9lz6wnt62j70p5fhhtu3fr46gcdd9s5dz9l6' THEN 'OSMOSIS-OSMOSIS-ATOM'
-                    WHEN ls."LP_Pool_id" = 'nolus1py7pxw74qvlgq0n6rfz7mjrhgnls37mh87wasg89n75qt725rams8yr46t' THEN 'OSMOSIS-OSMOSIS-OSMO'
-                    ELSE ls."LP_Pool_id"
-                END AS protocol,
+                COALESCE(ls.label, ls."LP_Pool_id") AS protocol,
                 CASE
                     WHEN ls."LP_Pool_total_value_locked_stable" > 0
                     THEN (ls."LP_Pool_total_borrowed_stable"::numeric / ls."LP_Pool_total_value_locked_stable"::numeric) * 100
                     ELSE 0
                 END AS utilization,
-                CASE
-                    WHEN ls."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN ls."LP_Pool_total_value_locked_stable" / 100000000
-                    WHEN ls."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN ls."LP_Pool_total_value_locked_stable" / 1000000000
-                    ELSE ls."LP_Pool_total_value_locked_stable" / 1000000
-                END AS supplied,
-                CASE
-                    WHEN ls."LP_Pool_id" = 'nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3' THEN ls."LP_Pool_total_borrowed_stable" / 100000000
-                    WHEN ls."LP_Pool_id" = 'nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm' THEN ls."LP_Pool_total_borrowed_stable" / 1000000000
-                    ELSE ls."LP_Pool_total_borrowed_stable" / 1000000
-                END AS borrowed
+                ls."LP_Pool_total_value_locked_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS supplied,
+                ls."LP_Pool_total_borrowed_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS borrowed
             FROM LatestStates ls
             ORDER BY protocol
             "#,
