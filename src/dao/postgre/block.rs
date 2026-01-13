@@ -22,9 +22,9 @@ impl Table<Block> {
         .await
     }
 
-    pub async fn get_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
-        // Optimized gap detection using index-friendly self-join
-        // instead of LAG() window function which requires full table scan
+    /// Full gap scan - scans entire block table for gaps.
+    /// Use on startup to catch any historical gaps.
+    pub async fn get_all_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
         sqlx::query_as(
             r#"
             SELECT
@@ -34,6 +34,28 @@ impl Table<Block> {
             LEFT JOIN block b2 ON b2.id = b1.id + 1
             WHERE b2.id IS NULL
               AND b1.id < (SELECT MAX(id) FROM block)
+            "#,
+        )
+        .persistent(true)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Recent gap scan - only checks last 100k blocks for gaps.
+    /// Use during runtime for fast gap detection.
+    pub async fn get_recent_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
+        sqlx::query_as(
+            r#"
+            WITH max_block AS (SELECT MAX(id) AS max_id FROM block)
+            SELECT
+                b1.id AS gap_begin,
+                (SELECT MIN(id) FROM block WHERE id > b1.id) AS gap_end
+            FROM block b1
+            CROSS JOIN max_block m
+            LEFT JOIN block b2 ON b2.id = b1.id + 1
+            WHERE b2.id IS NULL
+              AND b1.id > m.max_id - 100000
+              AND b1.id < m.max_id
             "#,
         )
         .persistent(true)

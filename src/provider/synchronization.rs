@@ -12,6 +12,10 @@ use crate::{
 };
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
+/// Tracks whether the initial full gap scan has been performed.
+/// On startup, we do a full scan to catch historical gaps.
+/// After that, we only scan recent blocks for performance.
+static INITIAL_SCAN_DONE: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug)]
 pub struct Synchronization {}
@@ -34,7 +38,19 @@ impl Synchronization {
         let first_block = block_model.get_first_block().await.ok();
         let last_block = block_model.get_last_block().await.ok();
         let block_height = app_state.grpc.get_latest_block().await?;
-        let missing_values = block_model.get_missing_blocks().await?;
+
+        // On first run, do a full gap scan to catch historical gaps.
+        // After that, only scan recent blocks (last 100k) for performance.
+        let is_initial = !INITIAL_SCAN_DONE.load(Ordering::SeqCst);
+        let missing_values = if is_initial {
+            info!("Performing full gap scan (startup)");
+            let gaps = block_model.get_all_missing_blocks().await?;
+            INITIAL_SCAN_DONE.store(true, Ordering::SeqCst);
+            gaps
+        } else {
+            block_model.get_recent_missing_blocks().await?
+        };
+
         let threads_count = app_state.config.sync_threads;
 
         let mut parts: Vec<(i64, i64)> = Vec::new();
