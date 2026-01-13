@@ -23,21 +23,17 @@ impl Table<Block> {
     }
 
     pub async fn get_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
+        // Optimized gap detection using index-friendly self-join
+        // instead of LAG() window function which requires full table scan
         sqlx::query_as(
             r#"
-            WITH gaps AS
-            (
-                SELECT
-                    LAG(id, 1, 0) OVER(ORDER BY id) AS gap_begin,
-                    id AS gap_end,
-                    id - LAG(id, 1, 0) OVER(ORDER BY id) AS gap
-                FROM block
-            )
             SELECT
-                gap_begin,
-                gap_end
-            FROM gaps
-            WHERE gap > 1
+                b1.id AS gap_begin,
+                (SELECT MIN(id) FROM block WHERE id > b1.id) AS gap_end
+            FROM block b1
+            LEFT JOIN block b2 ON b2.id = b1.id + 1
+            WHERE b2.id IS NULL
+              AND b1.id < (SELECT MAX(id) FROM block)
             "#,
         )
         .persistent(true)
@@ -48,7 +44,7 @@ impl Table<Block> {
     pub async fn get_first_block(&self) -> Result<(i64,), Error> {
         sqlx::query_as(
             r#"
-            SELECT id FROM block ORDER BY id ASC
+            SELECT id FROM block ORDER BY id ASC LIMIT 1
             "#,
         )
         .persistent(true)
@@ -59,7 +55,7 @@ impl Table<Block> {
     pub async fn get_last_block(&self) -> Result<(i64,), Error> {
         sqlx::query_as(
             r#"
-            SELECT id FROM block ORDER BY id DESC
+            SELECT id FROM block ORDER BY id DESC LIMIT 1
             "#,
         )
         .persistent(true)

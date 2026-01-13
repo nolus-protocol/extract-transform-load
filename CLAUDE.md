@@ -68,7 +68,7 @@ GRANT ALL ON SCHEMA public TO user_name;
 Copy `.env.example` to `.env` and configure settings.
 
 **Database Migrations** (using [refinery](https://github.com/rust-db/refinery)):
-- Versioned SQL migrations in `migrations/` directory (currently V001-V005)
+- Versioned SQL migrations in `migrations/` directory (currently V001-V006)
 - Migrations run automatically on startup before the connection pool is created
 - Migration state tracked in `refinery_schema_history` table
 - Checksum validation prevents modifying already-applied migrations
@@ -201,7 +201,7 @@ Interacts with Nolus contracts via gRPC CosmWasm queries:
 ## Common Tasks
 
 ### Adding a Database Migration
-1. Create a new file in `migrations/` with format `V{NNN}__{description}.sql` (next: `V006__description.sql`)
+1. Create a new file in `migrations/` with format `V{NNN}__{description}.sql` (next: `V007__description.sql`)
 2. Use `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for idempotency
 3. Migration will auto-run on next startup
 4. For existing databases, use `./etl migrate --fake` to mark migrations as applied without running them
@@ -238,7 +238,7 @@ Interacts with Nolus contracts via gRPC CosmWasm queries:
 ## Important Files
 
 - `entities.md` - Complete data model specification with all table schemas
-- `migrations/*.sql` - Versioned database migrations (V001-V005, auto-applied on startup)
+- `migrations/*.sql` - Versioned database migrations (V001-V006, auto-applied on startup)
 - `src/cli.rs` - CLI argument parsing (serve, migrate, backfill commands)
 - `src/migration.rs` - Migration runner using refinery
 - `.env.example` - Required configuration template with mainnet defaults
