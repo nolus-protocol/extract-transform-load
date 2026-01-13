@@ -935,6 +935,7 @@ impl Table<LS_State> {
                 o."LS_contract_id" AS "Contract ID",
                 COALESCE(pc.position_type, 'Long') AS "Type",
                 COALESCE(pc.lpn_symbol, o."LS_asset_symbol") AS "Symbol",
+                o."LS_asset_symbol" AS "Asset",
                 COALESCE(pc.lpn_decimals, 1000000)::numeric AS denom,
 
                 -- Loan from LS_State (use pool_config decimals)
@@ -994,6 +995,7 @@ impl Table<LS_State> {
               TO_CHAR("Time", 'YYYY-MM-DD') AS "Date",
               "Type",
               js."Symbol",
+              js."Asset",
               "Contract ID",
               "User",
               "Loan",
@@ -1077,6 +1079,7 @@ impl Table<LS_State> {
                 o."LS_contract_id" AS "Contract ID",
                 COALESCE(pc.position_type, 'Long') AS "Type",
                 COALESCE(pc.lpn_symbol, o."LS_asset_symbol") AS "Symbol",
+                o."LS_asset_symbol" AS "Asset",
                 COALESCE(pc.lpn_decimals, 1000000)::numeric AS denom,
 
                 -- Loan from LS_State (use pool_config decimals)
@@ -1136,6 +1139,7 @@ impl Table<LS_State> {
               TO_CHAR("Time", 'YYYY-MM-DD') AS "Date",
               "Type",
               js."Symbol",
+              js."Asset",
               "Contract ID",
               "User",
               "Loan",

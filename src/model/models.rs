@@ -643,6 +643,8 @@ pub struct Position {
     pub position_type: String,
     #[sqlx(rename = "Symbol")]
     pub symbol: String,
+    #[sqlx(rename = "Asset")]
+    pub asset: String,
     #[sqlx(rename = "Contract ID")]
     pub contract_id: String,
     #[sqlx(rename = "User")]

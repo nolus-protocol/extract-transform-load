@@ -251,9 +251,9 @@
     "description": "Returns detailed information for all open positions including PnL, prices, and liquidation levels. Use export=true for streaming CSV export of all data.",
     "url": "/api/positions",
     "type": "GET",
-    "response": "[{ date: String, type: String, symbol: String, contract_id: String, user: String, loan: BigDecimal, down_payment: BigDecimal, lease_value: BigDecimal, pnl: BigDecimal, pnl_percent: BigDecimal, current_price: BigDecimal, liquidation_price: BigDecimal }]",
+    "response": "[{ date: String, type: String, symbol: String, asset: String, contract_id: String, user: String, loan: BigDecimal, down_payment: BigDecimal, lease_value: BigDecimal, pnl: BigDecimal, pnl_percent: BigDecimal, current_price: BigDecimal, liquidation_price: BigDecimal }]",
     "cache": "1 hour",
-    "example": "[{ \"date\": \"2025-01-15\", \"type\": \"Long\", \"symbol\": \"ATOM\", \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"loan\": \"5000.00\", \"down_payment\": \"1000.00\", \"lease_value\": \"6500.00\", \"pnl\": \"500.00\", \"pnl_percent\": \"8.33\", \"current_price\": \"9.50\", \"liquidation_price\": \"7.20\" }]",
+    "example": "[{ \"date\": \"2025-01-15\", \"type\": \"Long\", \"symbol\": \"USDC_NOBLE\", \"asset\": \"ATOM\", \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"loan\": \"5000.00\", \"down_payment\": \"1000.00\", \"lease_value\": \"6500.00\", \"pnl\": \"500.00\", \"pnl_percent\": \"8.33\", \"current_price\": \"9.50\", \"liquidation_price\": \"7.20\" }]",
     "params": [
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
       { "name": "export", "type": "Boolean", "default": false, "description": "When true, returns streaming CSV export of all data (ignores period/from filters)" }
