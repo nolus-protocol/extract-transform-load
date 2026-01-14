@@ -1136,7 +1136,7 @@ impl Table<LS_State> {
                 a."MP_asset_symbol", a."MP_asset_timestamp" DESC
             )
             SELECT
-              TO_CHAR("Time", 'YYYY-MM-DD') AS "Date",
+              TO_CHAR("Time", 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "Date",
               "Type",
               js."Symbol",
               js."Asset",
