@@ -632,16 +632,26 @@ impl Table<LS_State> {
 
     /// Get the current unrealized PnL for an address by summing PnL from all active positions.
     /// This returns a single value (the sum) instead of a time series.
+    /// Filters by address early to avoid scanning the entire LS_State table.
     pub async fn get_current_unrealized_pnl_by_address(
         &self,
         address: String,
     ) -> Result<BigDecimal, Error> {
         let result: Option<(Option<BigDecimal>,)> = sqlx::query_as(
             r#"
-            WITH Latest_States AS (
+            WITH Address_Contracts AS (
+              -- First, get only the contract IDs for this address
+              SELECT "LS_contract_id"
+              FROM "LS_Opening"
+              WHERE "LS_address_id" = $1
+            ),
+            Latest_Aggregation AS (
+              SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
+            ),
+            Latest_States AS (
+              -- Only fetch states for this address's contracts
               SELECT DISTINCT ON (s."LS_contract_id")
                 s."LS_contract_id",
-                s."LS_timestamp",
                 s."LS_amnt_stable",
                 s."LS_principal_stable",
                 s."LS_prev_margin_stable",
@@ -649,56 +659,59 @@ impl Table<LS_State> {
                 s."LS_prev_interest_stable",
                 s."LS_current_interest_stable"
               FROM "LS_State" s
-              WHERE s."LS_amnt_stable" > 0
+              WHERE s."LS_contract_id" IN (SELECT "LS_contract_id" FROM Address_Contracts)
+                AND s."LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
+                AND s."LS_amnt_stable" > 0
               ORDER BY s."LS_contract_id", s."LS_timestamp" DESC
             ),
-            Position_PnL AS (
+            Repayments AS (
               SELECT
-                o."LS_address_id",
-                (
-                  -- Lease Value (position value)
-                  CASE
-                    WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000
-                    WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN s."LS_amnt_stable" / 1000000000
-                    WHEN o."LS_asset_symbol" IN ('PICA') THEN s."LS_amnt_stable" / 1000000000000
-                    WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN s."LS_amnt_stable" / 1000000000000000000
-                    ELSE s."LS_amnt_stable" / 1000000
-                  END
-                  -- Minus Loan
-                  - s."LS_principal_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric
-                  -- Minus Down Payment
-                  - CASE
-                      WHEN o."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN o."LS_cltr_amnt_stable" / 100000000
-                      WHEN o."LS_cltr_symbol" IN ('ALL_SOL') THEN o."LS_cltr_amnt_stable" / 1000000000
-                      WHEN o."LS_cltr_symbol" IN ('PICA') THEN o."LS_cltr_amnt_stable" / 1000000000000
-                      WHEN o."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000
-                      ELSE o."LS_cltr_amnt_stable" / 1000000
-                    END
-                  -- Minus Margin Interest
-                  - (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric
-                  -- Minus Loan Interest
-                  - (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric
-                  -- Minus Repayments
-                  - COALESCE(rp.total_repayment, 0)
-                ) AS pnl
-              FROM Latest_States s
-              JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
-              LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
-              LEFT JOIN (
-                SELECT
-                  r."LS_contract_id",
-                  SUM(
-                    (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / COALESCE(pc2.lpn_decimals, 1000000)::numeric
-                  ) AS total_repayment
-                FROM "LS_Repayment" r
-                JOIN "LS_Opening" o2 ON r."LS_contract_id" = o2."LS_contract_id"
-                LEFT JOIN pool_config pc2 ON o2."LS_loan_pool_id" = pc2.pool_id
-                GROUP BY r."LS_contract_id"
-              ) rp ON s."LS_contract_id" = rp."LS_contract_id"
-              WHERE o."LS_address_id" = $1
+                r."LS_contract_id",
+                SUM(
+                  r."LS_prev_margin_stable"
+                  + r."LS_prev_interest_stable"
+                  + r."LS_current_margin_stable"
+                  + r."LS_current_interest_stable"
+                  + r."LS_principal_stable"
+                ) / 1000000.0 AS total_repayment
+              FROM "LS_Repayment" r
+              WHERE r."LS_contract_id" IN (SELECT "LS_contract_id" FROM Address_Contracts)
+              GROUP BY r."LS_contract_id"
             )
-            SELECT SUM(pnl) AS total_pnl
-            FROM Position_PnL
+            SELECT SUM(
+              -- Lease Value
+              CASE
+                WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000.0
+                WHEN o."LS_asset_symbol" = 'ALL_SOL' THEN s."LS_amnt_stable" / 1000000000.0
+                WHEN o."LS_asset_symbol" = 'PICA' THEN s."LS_amnt_stable" / 1000000000000.0
+                WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN s."LS_amnt_stable" / 1000000000000000000.0
+                ELSE s."LS_amnt_stable" / 1000000.0
+              END
+              -- Minus Loan
+              - CASE
+                  WHEN pc.lpn_symbol = 'ALL_BTC' THEN s."LS_principal_stable" / 100000000.0
+                  WHEN pc.lpn_symbol = 'ALL_SOL' THEN s."LS_principal_stable" / 1000000000.0
+                  ELSE s."LS_principal_stable" / 1000000.0
+                END
+              -- Minus Down Payment
+              - CASE
+                  WHEN o."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN o."LS_cltr_amnt_stable" / 100000000.0
+                  WHEN o."LS_cltr_symbol" = 'ALL_SOL' THEN o."LS_cltr_amnt_stable" / 1000000000.0
+                  WHEN o."LS_cltr_symbol" = 'PICA' THEN o."LS_cltr_amnt_stable" / 1000000000000.0
+                  WHEN o."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000.0
+                  ELSE o."LS_cltr_amnt_stable" / 1000000.0
+                END
+              -- Minus Margin Interest
+              - (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric
+              -- Minus Loan Interest
+              - (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric
+              -- Minus Repayments
+              - COALESCE(rp.total_repayment, 0)
+            ) AS total_pnl
+            FROM Latest_States s
+            JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
+            LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
+            LEFT JOIN Repayments rp ON s."LS_contract_id" = rp."LS_contract_id"
             "#,
         )
         .bind(address)
