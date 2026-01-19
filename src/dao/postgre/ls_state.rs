@@ -1,7 +1,5 @@
 use super::{DataBase, QueryResult};
-use crate::model::{
-    LS_Opening, LS_State, Pnl_Over_Time, Table, TvlPoolParams, Unrealized_Pnl,
-};
+use crate::model::{LS_Opening, LS_State, Pnl_Over_Time, Table, TvlPoolParams};
 use chrono::{DateTime, Utc};
 use sqlx::{types::BigDecimal, Error, FromRow, QueryBuilder};
 use std::str::FromStr as _;
@@ -632,99 +630,85 @@ impl Table<LS_State> {
         Ok(value)
     }
 
-    pub async fn get_unrealized_pnl_by_address(
+    /// Get the current unrealized PnL for an address by summing PnL from all active positions.
+    /// This returns a single value (the sum) instead of a time series.
+    pub async fn get_current_unrealized_pnl_by_address(
         &self,
         address: String,
-    ) -> Result<Vec<Unrealized_Pnl>, Error> {
-        let data = sqlx::query_as(
-          r#"
-          WITH Filtered_Opening AS (
-            SELECT fo.*, pc.lpn_decimals
-            FROM "LS_Opening" fo
-            LEFT JOIN pool_config pc ON fo."LS_loan_pool_id" = pc.pool_id
-            WHERE fo."LS_address_id" = $1
-          ),
-          Latest_Aggregation AS (
-            SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
-          ),
-          Active_Positions AS (
-            SELECT DISTINCT "LS_contract_id"
-            FROM "LS_State"
-            WHERE "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
-          ),
-          DP_Loan_Table AS (
-            SELECT
-              fo."LS_address_id" AS "Address ID",
-              fo."LS_contract_id" AS "Contract ID",
-              DATE_TRUNC('hour', fs."LS_timestamp") AS "Hour",
-              SUM(fs."LS_principal_stable" / COALESCE(fo.lpn_decimals, 1000000)::numeric) AS "Loan",
-              SUM(
-                CASE
-                  WHEN fo."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN fo."LS_cltr_amnt_stable" / 100000000
-                  WHEN fo."LS_cltr_symbol" IN ('ALL_SOL') THEN fo."LS_cltr_amnt_stable" / 1000000000
-                  WHEN fo."LS_cltr_symbol" IN ('PICA') THEN fo."LS_cltr_amnt_stable" / 1000000000000
-                  ELSE fo."LS_cltr_amnt_stable" / 1000000
-                END
-              ) AS "Down Payment"
-            FROM "LS_State" fs
-            INNER JOIN Filtered_Opening fo ON fo."LS_contract_id" = fs."LS_contract_id"
-            WHERE fs."LS_timestamp" >= NOW() - INTERVAL '20 days'
-              AND fs."LS_contract_id" IN (SELECT "LS_contract_id" FROM Active_Positions)
-            GROUP BY fo."LS_address_id", fo."LS_contract_id", DATE_TRUNC('hour', fs."LS_timestamp")
-          ),
-          Lease_Value_Table AS (
-            SELECT
-              fo."LS_address_id" AS "Address ID",
-              fo."LS_contract_id" AS "Contract ID",
-              DATE_TRUNC('hour', fs."LS_timestamp") AS "Hour",
-              SUM(
-                CASE
-                  WHEN fo."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN fs."LS_amnt_stable" / 100000000
-                  WHEN fo."LS_asset_symbol" IN ('ALL_SOL') THEN fs."LS_amnt_stable" / 1000000000
-                  ELSE fs."LS_amnt_stable" / 1000000
-                END
-              ) AS "Lease Value",
-              SUM((fs."LS_prev_margin_stable" + fs."LS_current_margin_stable") / COALESCE(fo.lpn_decimals, 1000000)::numeric) AS "Margin Interest",
-              SUM((fs."LS_prev_interest_stable" + fs."LS_current_interest_stable") / COALESCE(fo.lpn_decimals, 1000000)::numeric) AS "Loan Interest"
-            FROM "LS_State" fs
-            INNER JOIN Filtered_Opening fo ON fo."LS_contract_id" = fs."LS_contract_id"
-            WHERE fs."LS_timestamp" >= NOW() - INTERVAL '20 days'
-              AND fs."LS_contract_id" IN (SELECT "LS_contract_id" FROM Active_Positions)
-            GROUP BY fo."LS_address_id", fo."LS_contract_id", DATE_TRUNC('hour', fs."LS_timestamp")
-          ),
-          Repayment_Summary AS (
-            SELECT
-              fo."LS_address_id" AS "Address ID",
-              r."LS_contract_id" AS "Contract ID",
-              DATE_TRUNC('hour', r."LS_timestamp") AS "Hour",
-              SUM(
-                (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / COALESCE(fo.lpn_decimals, 1000000)::numeric
-              ) OVER (PARTITION BY fo."LS_address_id", r."LS_contract_id" ORDER BY DATE_TRUNC('hour', r."LS_timestamp") ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-              AS "Cumulative Repayment"
-            FROM "LS_Repayment" r
-            INNER JOIN Filtered_Opening fo ON fo."LS_contract_id" = r."LS_contract_id"
-            WHERE r."LS_contract_id" IN (SELECT "LS_contract_id" FROM Active_Positions)
-          )
-          SELECT DISTINCT ON (lvt."Hour")
-            lvt."Hour" as "time",
-            lvt."Address ID" as "address",
-            (lvt."Lease Value" - dplt."Loan" - dplt."Down Payment" - lvt."Margin Interest" - lvt."Loan Interest" - COALESCE(rs."Cumulative Repayment", 0))
-            AS "pnl"
-          FROM Lease_Value_Table lvt
-          LEFT JOIN DP_Loan_Table dplt
-            ON lvt."Contract ID" = dplt."Contract ID"
-            AND lvt."Hour" = dplt."Hour"
-          LEFT JOIN Repayment_Summary rs
-            ON lvt."Contract ID" = rs."Contract ID"
-            AND lvt."Hour" >= rs."Hour"
-          ORDER BY lvt."Hour";
-          "#,
-      )
-      .bind(address)
-      .persistent(true)
-      .fetch_all(&self.pool)
-      .await?;
-        Ok(data)
+    ) -> Result<BigDecimal, Error> {
+        let result: Option<(Option<BigDecimal>,)> = sqlx::query_as(
+            r#"
+            WITH Latest_States AS (
+              SELECT DISTINCT ON (s."LS_contract_id")
+                s."LS_contract_id",
+                s."LS_timestamp",
+                s."LS_amnt_stable",
+                s."LS_principal_stable",
+                s."LS_prev_margin_stable",
+                s."LS_current_margin_stable",
+                s."LS_prev_interest_stable",
+                s."LS_current_interest_stable"
+              FROM "LS_State" s
+              WHERE s."LS_amnt_stable" > 0
+              ORDER BY s."LS_contract_id", s."LS_timestamp" DESC
+            ),
+            Position_PnL AS (
+              SELECT
+                o."LS_address_id",
+                (
+                  -- Lease Value (position value)
+                  CASE
+                    WHEN o."LS_asset_symbol" IN ('WBTC', 'CRO', 'ALL_BTC') THEN s."LS_amnt_stable" / 100000000
+                    WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN s."LS_amnt_stable" / 1000000000
+                    WHEN o."LS_asset_symbol" IN ('PICA') THEN s."LS_amnt_stable" / 1000000000000
+                    WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN s."LS_amnt_stable" / 1000000000000000000
+                    ELSE s."LS_amnt_stable" / 1000000
+                  END
+                  -- Minus Loan
+                  - s."LS_principal_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric
+                  -- Minus Down Payment
+                  - CASE
+                      WHEN o."LS_cltr_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN o."LS_cltr_amnt_stable" / 100000000
+                      WHEN o."LS_cltr_symbol" IN ('ALL_SOL') THEN o."LS_cltr_amnt_stable" / 1000000000
+                      WHEN o."LS_cltr_symbol" IN ('PICA') THEN o."LS_cltr_amnt_stable" / 1000000000000
+                      WHEN o."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000
+                      ELSE o."LS_cltr_amnt_stable" / 1000000
+                    END
+                  -- Minus Margin Interest
+                  - (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric
+                  -- Minus Loan Interest
+                  - (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric
+                  -- Minus Repayments
+                  - COALESCE(rp.total_repayment, 0)
+                ) AS pnl
+              FROM Latest_States s
+              JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
+              LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
+              LEFT JOIN (
+                SELECT
+                  r."LS_contract_id",
+                  SUM(
+                    (r."LS_principal_stable" + r."LS_current_interest_stable" + r."LS_current_margin_stable" + r."LS_prev_interest_stable" + r."LS_prev_margin_stable") / COALESCE(pc2.lpn_decimals, 1000000)::numeric
+                  ) AS total_repayment
+                FROM "LS_Repayment" r
+                JOIN "LS_Opening" o2 ON r."LS_contract_id" = o2."LS_contract_id"
+                LEFT JOIN pool_config pc2 ON o2."LS_loan_pool_id" = pc2.pool_id
+                GROUP BY r."LS_contract_id"
+              ) rp ON s."LS_contract_id" = rp."LS_contract_id"
+              WHERE o."LS_address_id" = $1
+            )
+            SELECT SUM(pnl) AS total_pnl
+            FROM Position_PnL
+            "#,
+        )
+        .bind(address)
+        .persistent(true)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(result
+            .and_then(|(pnl,)| pnl)
+            .unwrap_or_else(|| BigDecimal::from(0)))
     }
 
     pub async fn get_total_value_locked(
@@ -1039,12 +1023,12 @@ impl Table<LS_State> {
     ) -> Result<Vec<crate::model::Position>, Error> {
         // Use a transaction with extended timeout for this expensive query
         let mut tx = self.pool.begin().await?;
-        
+
         // Set statement timeout to 5 minutes (300000 ms) for this transaction only
         sqlx::query("SET LOCAL statement_timeout = '300000'")
             .execute(&mut *tx)
             .await?;
-        
+
         let data = sqlx::query_as(
             r#"
             WITH Latest_Aggregation AS (

@@ -4,7 +4,9 @@ use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
 
 use crate::{
     configuration::{AppState, State},
-    controller::{admin, leases, liquidity, metrics, misc, pnl, positions, treasury},
+    controller::{
+        admin, leases, liquidity, metrics, misc, pnl, positions, treasury,
+    },
     error::Error,
 };
 

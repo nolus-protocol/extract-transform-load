@@ -12,7 +12,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     configuration::{AppState, State},
     error::Error,
-    helpers::{build_cache_key, cached_fetch, parse_period_months, to_csv_response, to_streaming_csv_response},
+    helpers::{
+        build_cache_key, cached_fetch, parse_period_months, to_csv_response,
+        to_streaming_csv_response,
+    },
 };
 
 // =============================================================================
@@ -75,11 +78,19 @@ pub async fn realized_pnl_data(
 pub async fn realized_pnl_stats(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let data = cached_fetch(&state.api_cache.realized_pnl_stats, "realized_pnl_stats", || async {
-        let data = state.database.ls_loan_closing.get_realized_pnl_stats().await?
-            + BigDecimal::from_str("2958250")?;
-        Ok(data.with_scale(2))
-    })
+    let data = cached_fetch(
+        &state.api_cache.realized_pnl_stats,
+        "realized_pnl_stats",
+        || async {
+            let data = state
+                .database
+                .ls_loan_closing
+                .get_realized_pnl_stats()
+                .await?
+                + BigDecimal::from_str("2958250")?;
+            Ok(data.with_scale(2))
+        },
+    )
     .await?;
 
     Ok(web::Json(RealizedPnlStatsResponse { amount: data }))
@@ -111,8 +122,13 @@ pub async fn realized_pnl_wallet(
     if query.export.unwrap_or(false) {
         const CACHE_KEY: &str = "realized_pnl_wallet_all";
 
-        if let Some(cached) = state.api_cache.realized_pnl_wallet.get(CACHE_KEY).await {
-            return to_streaming_csv_response(cached, "realized-pnl-wallet.csv");
+        if let Some(cached) =
+            state.api_cache.realized_pnl_wallet.get(CACHE_KEY).await
+        {
+            return to_streaming_csv_response(
+                cached,
+                "realized-pnl-wallet.csv",
+            );
         }
 
         let data = state
@@ -121,16 +137,23 @@ pub async fn realized_pnl_wallet(
             .get_realized_pnl_by_wallet_with_window(None, None)
             .await?;
 
-        state.api_cache.realized_pnl_wallet.set(CACHE_KEY, data.clone()).await;
+        state
+            .api_cache
+            .realized_pnl_wallet
+            .set(CACHE_KEY, data.clone())
+            .await;
 
         return to_streaming_csv_response(data, "realized-pnl-wallet.csv");
     }
 
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("3m");
-    let cache_key = build_cache_key("realized_pnl_wallet", period_str, query.from);
+    let cache_key =
+        build_cache_key("realized_pnl_wallet", period_str, query.from);
 
-    if let Some(cached) = state.api_cache.realized_pnl_wallet.get(&cache_key).await {
+    if let Some(cached) =
+        state.api_cache.realized_pnl_wallet.get(&cache_key).await
+    {
         return match query.format.as_deref() {
             Some("csv") => to_csv_response(&cached, "realized-pnl-wallet.csv"),
             _ => Ok(HttpResponse::Ok().json(cached)),
@@ -143,7 +166,11 @@ pub async fn realized_pnl_wallet(
         .get_realized_pnl_by_wallet_with_window(months, query.from)
         .await?;
 
-    state.api_cache.realized_pnl_wallet.set(&cache_key, data.clone()).await;
+    state
+        .api_cache
+        .realized_pnl_wallet
+        .set(&cache_key, data.clone())
+        .await;
 
     match query.format.as_deref() {
         Some("csv") => to_csv_response(&data, "realized-pnl-wallet.csv"),
@@ -159,12 +186,16 @@ pub async fn realized_pnl_wallet(
 pub async fn unrealized_pnl(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let data = cached_fetch(&state.api_cache.unrealized_pnl, "unrealized_pnl", || async {
-        state.database.ls_state.get_unrealized_pnl().await
-    })
+    let data = cached_fetch(
+        &state.api_cache.unrealized_pnl,
+        "unrealized_pnl",
+        || async { state.database.ls_state.get_unrealized_pnl().await },
+    )
     .await?;
 
-    Ok(web::Json(UnrealizedPnlResponse { unrealized_pnl: data }))
+    Ok(web::Json(UnrealizedPnlResponse {
+        unrealized_pnl: data,
+    }))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -181,18 +212,26 @@ pub struct UnrealizedPnlByAddressQuery {
     address: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UnrealizedPnlByAddressResponse {
+    pub unrealized_pnl: BigDecimal,
+}
+
+/// Returns the current unrealized PnL for an address by summing PnL from all active positions.
 #[get("/unrealized-pnl-by-address")]
 pub async fn unrealized_pnl_by_address(
     state: web::Data<AppState<State>>,
     query: web::Query<UnrealizedPnlByAddressQuery>,
 ) -> Result<impl Responder, Error> {
-    let items = state
+    let pnl = state
         .database
         .ls_state
-        .get_unrealized_pnl_by_address(query.address.to_owned())
+        .get_current_unrealized_pnl_by_address(query.address.to_owned())
         .await?;
 
-    Ok(web::Json(items))
+    Ok(web::Json(UnrealizedPnlByAddressResponse {
+        unrealized_pnl: pnl,
+    }))
 }
 
 // =============================================================================
