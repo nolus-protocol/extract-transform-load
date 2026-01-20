@@ -2,10 +2,10 @@
 -- Insert pool configurations (upsert to handle re-runs)
 
 INSERT INTO "pool_config" ("pool_id", "position_type", "lpn_symbol", "lpn_decimals", "label", "protocol") VALUES
-    ('nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6', 'Long', 'USDC_NOBLE', 1000000, 'USDC_NOBLE', 'OSMOSIS-OSMOSIS-USDC_NOBLE'),
+    ('nolus17vsedux675vc44yu7et9m64ndxsy907v7sfgrk7tw3xnjtqemx3q6t3xw6', 'Long', 'USDC_NOBLE', 1000000, 'USDC_NOBLE', 'NEUTRON-ASTROPORT-USDC_NOBLE'),
     ('nolus1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sqaa3c5', 'Long', 'USDC', 1000000, 'USDC', 'OSMOSIS-OSMOSIS-USDC_AXELAR'),
     ('nolus1qqcr7exupnymvg6m63eqwu8pd4n5x6r5t3pyyxdy7r97rcgajmhqy3gn94', 'Long', 'USDC_AXELAR', 1000000, 'USDC_AXELAR', 'NEUTRON-ASTROPORT-USDC_AXELAR'),
-    ('nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf', 'Long', 'USDC_NOBLE', 1000000, 'USDC_NOBLE (Neutron)', 'NEUTRON-ASTROPORT-USDC_NOBLE'),
+    ('nolus1ueytzwqyadm6r0z8ajse7g6gzum4w3vv04qazctf8ugqrrej6n4sq027cf', 'Long', 'USDC_NOBLE', 1000000, 'USDC_NOBLE (Neutron)', 'OSMOSIS-OSMOSIS-USDC_NOBLE'),
     ('nolus1jufcaqm6657xmfltdezzz85quz92rmtd88jk5x0hq9zqseem32ysjdm990', 'Short', 'ST_ATOM', 1000000, 'ST_ATOM (Short)', 'OSMOSIS-OSMOSIS-ST_ATOM'),
     ('nolus1w2yz345pqheuk85f0rj687q6ny79vlj9sd6kxwwex696act6qgkqfz7jy3', 'Short', 'ALL_BTC', 100000000, 'ALL_BTC (Short)', 'OSMOSIS-OSMOSIS-ALL_BTC'),
     ('nolus1qufnnuwj0dcerhkhuxefda6h5m24e64v2hfp9pac5lglwclxz9dsva77wm', 'Short', 'ALL_SOL', 1000000000, 'ALL_SOL (Short)', 'OSMOSIS-OSMOSIS-ALL_SOL'),
