@@ -479,6 +479,22 @@ impl Table<LS_State> {
           WHERE "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
           ORDER BY "LS_contract_id", "LS_timestamp" DESC
         ),
+        Repayments AS (
+          SELECT
+            r."LS_contract_id",
+            (
+              SUM(
+                r."LS_prev_margin_stable"
+              + r."LS_prev_interest_stable"
+              + r."LS_current_margin_stable"
+              + r."LS_current_interest_stable"
+              + r."LS_principal_stable"
+              )
+            ) / 1000000.0 AS "Repayment Stable"
+          FROM "LS_Repayment" r
+          JOIN Latest_States ls ON ls."LS_contract_id" = r."LS_contract_id"
+          GROUP BY r."LS_contract_id"
+        ),
         Joined_States AS (
           SELECT
             o."LS_contract_id",
@@ -509,14 +525,18 @@ impl Table<LS_State> {
 
             -- Margin & Loan Interest (use pool_config decimals)
             (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Margin Interest",
-            (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Interest"
+            (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan Interest",
+
+            -- Repayment
+            COALESCE(rp."Repayment Stable", 0) AS "Repayment"
           FROM Latest_States s
           JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
           LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
+          LEFT JOIN Repayments rp ON s."LS_contract_id" = rp."LS_contract_id"
           WHERE s."LS_amnt_stable" > 0
         )
         SELECT
-          SUM("Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest") AS "PnL"
+          SUM("Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest" - "Repayment") AS "PnL"
         FROM Joined_States
         "#,
     )
