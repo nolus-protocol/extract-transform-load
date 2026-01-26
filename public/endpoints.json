@@ -1,11 +1,65 @@
 [
   {
+    "category": "Configuration",
+    "description": "Returns all protocols (active and deprecated) with their configuration, contracts, and status. Protocols are dynamically discovered from blockchain contracts at startup.",
+    "url": "/api/protocols",
+    "type": "GET",
+    "response": "{ protocols: [{ name: String, network: String, dex: String, position_type: String, lpn_symbol: String, is_active: Boolean, contracts: { leaser: String, lpp: String, oracle: String, profit: String, reserve: String }, deprecated_at: DateTime }], count: Number, active_count: Number, deprecated_count: Number }",
+    "example": "{ \"protocols\": [{ \"name\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"network\": \"Osmosis\", \"dex\": \"\\\"Osmosis\\\"\", \"position_type\": \"Long\", \"lpn_symbol\": \"USDC_NOBLE\", \"is_active\": true, \"contracts\": { \"leaser\": \"nolus1...\", \"lpp\": \"nolus1...\", \"oracle\": \"nolus1...\", \"profit\": \"nolus1...\", \"reserve\": \"nolus1...\" } }], \"count\": 10, \"active_count\": 8, \"deprecated_count\": 2 }"
+  },
+  {
+    "category": "Configuration",
+    "description": "Returns only active protocols with their configuration and contracts.",
+    "url": "/api/protocols/active",
+    "type": "GET",
+    "response": "{ protocols: [{ name: String, network: String, dex: String, position_type: String, lpn_symbol: String, is_active: Boolean, contracts: { leaser: String, lpp: String, oracle: String, profit: String, reserve: String } }], count: Number, active_count: Number, deprecated_count: Number }",
+    "example": "{ \"protocols\": [{ \"name\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"network\": \"Osmosis\", \"dex\": \"\\\"Osmosis\\\"\", \"position_type\": \"Long\", \"lpn_symbol\": \"USDC_NOBLE\", \"is_active\": true, \"contracts\": { ... } }], \"count\": 8, \"active_count\": 8, \"deprecated_count\": 2 }"
+  },
+  {
+    "category": "Configuration",
+    "description": "Returns a single protocol by name. Returns 404 if not found.",
+    "url": "/api/protocols/{name}",
+    "type": "GET",
+    "response": "{ name: String, network: String, dex: String, position_type: String, lpn_symbol: String, is_active: Boolean, contracts: { leaser: String, lpp: String, oracle: String, profit: String, reserve: String }, deprecated_at: DateTime }",
+    "example": "{ \"name\": \"OSMOSIS-OSMOSIS-ATOM\", \"network\": \"Osmosis\", \"dex\": \"\\\"Osmosis\\\"\", \"position_type\": \"Short\", \"lpn_symbol\": \"ATOM\", \"is_active\": true, \"contracts\": { \"leaser\": \"nolus1...\", \"lpp\": \"nolus1...\", \"oracle\": \"nolus1...\", \"profit\": \"nolus1...\", \"reserve\": \"nolus1...\" } }",
+    "params": [
+      { "name": "name", "type": "String", "required": true, "description": "Protocol name (e.g., OSMOSIS-OSMOSIS-USDC_NOBLE)" }
+    ]
+  },
+  {
+    "category": "Configuration",
+    "description": "Returns all currencies (active and deprecated) with their configuration. Currencies are dynamically discovered from blockchain contracts at startup.",
+    "url": "/api/currencies",
+    "type": "GET",
+    "response": "{ currencies: [{ ticker: String, bank_symbol: String, decimal_digits: Number, group: String, is_active: Boolean, deprecated_at: DateTime, last_seen_protocol: String }], count: Number, active_count: Number, deprecated_count: Number }",
+    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663...\", \"decimal_digits\": 6, \"group\": \"lease\", \"is_active\": true, \"last_seen_protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\" }], \"count\": 29, \"active_count\": 28, \"deprecated_count\": 1 }"
+  },
+  {
+    "category": "Configuration",
+    "description": "Returns only active currencies with their configuration.",
+    "url": "/api/currencies/active",
+    "type": "GET",
+    "response": "{ currencies: [{ ticker: String, bank_symbol: String, decimal_digits: Number, group: String, is_active: Boolean, last_seen_protocol: String }], count: Number, active_count: Number, deprecated_count: Number }",
+    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663...\", \"decimal_digits\": 6, \"group\": \"lease\", \"is_active\": true, \"last_seen_protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\" }], \"count\": 28, \"active_count\": 28, \"deprecated_count\": 1 }"
+  },
+  {
+    "category": "Configuration",
+    "description": "Returns a single currency by ticker symbol. Returns 404 if not found.",
+    "url": "/api/currencies/{ticker}",
+    "type": "GET",
+    "response": "{ ticker: String, bank_symbol: String, decimal_digits: Number, group: String, is_active: Boolean, deprecated_at: DateTime, last_seen_protocol: String }",
+    "example": "{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663F2F09CD62285E2D45891FC149A3568E316CE3EBBE201A71A78A69388\", \"decimal_digits\": 6, \"group\": \"lease\", \"is_active\": true, \"last_seen_protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\" }",
+    "params": [
+      { "name": "ticker", "type": "String", "required": true, "description": "Currency ticker symbol (e.g., ATOM, USDC_NOBLE, NLS)" }
+    ]
+  },
+  {
     "category": "Protocol Analytics",
     "description": "Returns the total value locked (TVL) across all liquidity pools in USD.",
     "url": "/api/total-value-locked",
     "type": "GET",
     "response": "{ total_value_locked: BigDecimal }",
-    "cache": "30 min",
+    "cache": "5 min",
     "example": "{ \"total_value_locked\": \"12543892.45\" }"
   },
   {
@@ -14,7 +68,7 @@
     "url": "/api/total-tx-value",
     "type": "GET",
     "response": "{ total_tx_value: BigDecimal }",
-    "cache": "30 min",
+    "cache": "5 min",
     "example": "{ \"total_tx_value\": \"89234521.12\" }"
   },
   {
@@ -23,7 +77,7 @@
     "url": "/api/revenue",
     "type": "GET",
     "response": "{ revenue: BigDecimal }",
-    "cache": "30 min",
+    "cache": "5 min",
     "example": "{ \"revenue\": \"1823456.78\" }"
   },
   {
@@ -32,7 +86,7 @@
     "url": "/api/borrowed",
     "type": "GET",
     "response": "{ borrowed: BigDecimal }",
-    "cache": "30 min",
+    "cache": "5 min",
     "example": "{ \"borrowed\": \"5432109.87\" }",
     "params": [
       { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns total if not specified." }
@@ -44,7 +98,7 @@
     "url": "/api/supplied-funds",
     "type": "GET",
     "response": "{ amount: BigDecimal }",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "{ \"amount\": \"18234567.90\" }"
   },
   {
@@ -69,7 +123,7 @@
     "url": "/api/supplied-borrowed-history",
     "type": "GET",
     "response": "[{ date: DateTime, supplied: BigDecimal, borrowed: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"supplied\": \"18234567.90\", \"borrowed\": \"5432109.87\" }]",
     "params": [
       { "name": "protocol", "type": "String", "default": "total", "description": "Filter by protocol (e.g., OSMOSIS-OSMOSIS-USDC). Defaults to 'total' for aggregated data." },
@@ -84,7 +138,7 @@
     "url": "/api/monthly-active-wallets",
     "type": "GET",
     "response": "[{ month: String, unique_addresses: Number }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"month\": \"2025-01\", \"unique_addresses\": 1523 }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -98,7 +152,7 @@
     "url": "/api/revenue-series",
     "type": "GET",
     "response": "[{ time: DateTime, daily: BigDecimal, cumulative: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"time\": \"2025-01-15T00:00:00Z\", \"daily\": \"12345.67\", \"cumulative\": \"1823456.78\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -112,7 +166,7 @@
     "url": "/api/utilization-level",
     "type": "GET",
     "response": "[BigDecimal]",
-    "cache": "30 min",
+    "cache": "5 min",
     "example": "[\"68.5\", \"67.2\", \"69.1\"]",
     "params": [
       { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns empty array if not specified." },
@@ -127,7 +181,7 @@
     "url": "/api/pools",
     "type": "GET",
     "response": "{ protocols: [{ protocol: String, utilization: BigDecimal, supplied: BigDecimal, borrowed: BigDecimal, borrow_apr: BigDecimal, earn_apr: BigDecimal }], optimal: String, deposit_suspension: String }",
-    "cache": "30 min",
+    "cache": "5 min",
     "example": "{ \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"utilization\": \"68.5\", \"supplied\": \"5432109.87\", \"borrowed\": \"3721543.21\", \"borrow_apr\": \"12.5\", \"earn_apr\": \"8.75\" }], \"optimal\": \"70.00\", \"deposit_suspension\": \"65.00\" }"
   },
   {
@@ -136,7 +190,7 @@
     "url": "/api/buyback",
     "type": "GET",
     "response": "[{ time: DateTime, Bought-back: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"time\": \"2025-01-15T12:30:00Z\", \"Bought-back\": \"50000.00\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -150,7 +204,7 @@
     "url": "/api/buyback-total",
     "type": "GET",
     "response": "{ buyback_total: BigDecimal }",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "{ \"buyback_total\": \"2345678.90\" }"
   },
   {
@@ -159,7 +213,7 @@
     "url": "/api/distributed",
     "type": "GET",
     "response": "{ distributed: BigDecimal }",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "{ \"distributed\": \"987654.32\" }"
   },
   {
@@ -168,7 +222,7 @@
     "url": "/api/incentives-pool",
     "type": "GET",
     "response": "{ incentives_pool: BigDecimal }",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "{ \"incentives_pool\": \"1234567.89\" }"
   },
   {
@@ -177,7 +231,7 @@
     "url": "/api/open-position-value",
     "type": "GET",
     "response": "{ open_position_value: BigDecimal }",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "{ \"open_position_value\": \"8765432.10\" }"
   },
   {
@@ -186,7 +240,7 @@
     "url": "/api/open-interest",
     "type": "GET",
     "response": "{ open_interest: BigDecimal }",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "{ \"open_interest\": \"4321098.76\" }"
   },
   {
@@ -195,7 +249,7 @@
     "url": "/api/unrealized-pnl",
     "type": "GET",
     "response": "{ unrealized_pnl: BigDecimal }",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "{ \"unrealized_pnl\": \"234567.89\" }"
   },
   {
@@ -204,7 +258,7 @@
     "url": "/api/realized-pnl-stats",
     "type": "GET",
     "response": "{ amount: BigDecimal }",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "{ \"amount\": \"567890.12\" }"
   },
   {
@@ -213,7 +267,7 @@
     "url": "/api/leased-assets",
     "type": "GET",
     "response": "[{ symbol: String, value: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"symbol\": \"ATOM\", \"value\": \"1234567.89\" }, { \"symbol\": \"OSMO\", \"value\": \"987654.32\" }]",
     "params": [
       { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns total if not specified." }
@@ -225,7 +279,7 @@
     "url": "/api/loans-by-token",
     "type": "GET",
     "response": "[{ symbol: String, value: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"symbol\": \"USDC\", \"value\": \"2345678.90\" }, { \"symbol\": \"USDC_NOBLE\", \"value\": \"1234567.89\" }]"
   },
   {
@@ -234,7 +288,7 @@
     "url": "/api/open-positions-by-token",
     "type": "GET",
     "response": "[{ token: String, market_value: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"token\": \"ATOM\", \"market_value\": \"1234567.89\" }]"
   },
   {
@@ -243,7 +297,7 @@
     "url": "/api/position-buckets",
     "type": "GET",
     "response": "[{ loan_category: String, loan_count: Number, loan_size: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"loan_category\": \"$1k-$5k\", \"loan_count\": 145, \"loan_size\": \"432100.00\" }]"
   },
   {
@@ -252,7 +306,7 @@
     "url": "/api/positions",
     "type": "GET",
     "response": "[{ date: String, type: String, symbol: String, asset: String, contract_id: String, user: String, loan: BigDecimal, down_payment: BigDecimal, lease_value: BigDecimal, pnl: BigDecimal, pnl_percent: BigDecimal, current_price: BigDecimal, liquidation_price: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"date\": \"2025-01-15\", \"type\": \"Long\", \"symbol\": \"USDC_NOBLE\", \"asset\": \"ATOM\", \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"loan\": \"5000.00\", \"down_payment\": \"1000.00\", \"lease_value\": \"6500.00\", \"pnl\": \"500.00\", \"pnl_percent\": \"8.33\", \"current_price\": \"9.50\", \"liquidation_price\": \"7.20\" }]",
     "params": [
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] },
@@ -265,7 +319,7 @@
     "url": "/api/leases-monthly",
     "type": "GET",
     "response": "[{ month: String, lease_count: Number, total_value: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"month\": \"2025-01\", \"lease_count\": 234, \"total_value\": \"4567890.12\" }]"
   },
   {
@@ -274,7 +328,7 @@
     "url": "/api/daily-positions",
     "type": "GET",
     "response": "[{ date: DateTime, closed_loans: BigDecimal, opened_loans: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"date\": \"2025-01-15T00:00:00Z\", \"closed_loans\": \"12\", \"opened_loans\": \"18\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -288,7 +342,7 @@
     "url": "/api/current-lenders",
     "type": "GET",
     "response": "[{ joined: DateTime, pool: String, lender: String, lent_stables: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"joined\": \"2025-01-15T10:00:00Z\", \"pool\": \"Osmosis USDC\", \"lender\": \"nolus1abc...\", \"lent_stables\": \"10000.00\" }]",
     "params": [
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
@@ -300,7 +354,7 @@
     "url": "/api/liquidations",
     "type": "GET",
     "response": "[{ timestamp: DateTime, ticker: String, contract_id: String, user: String, transaction_type: String, liquidation_amount: BigDecimal, closed_loan: Boolean, down_payment: BigDecimal, loan: BigDecimal, liquidation_price: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"timestamp\": \"2025-01-15T14:30:00Z\", \"ticker\": \"ATOM\", \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"transaction_type\": \"partial\", \"liquidation_amount\": \"2500.00\", \"closed_loan\": false, \"down_payment\": \"1000.00\", \"loan\": \"5000.00\", \"liquidation_price\": \"7.20\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -315,7 +369,7 @@
     "url": "/api/lease-value-stats",
     "type": "GET",
     "response": "[{ asset: String, avg_value: BigDecimal, max_value: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"asset\": \"ATOM\", \"avg_value\": \"5432.10\", \"max_value\": \"50000.00\" }]",
     "params": [
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
@@ -327,7 +381,7 @@
     "url": "/api/historical-lenders",
     "type": "GET",
     "response": "[{ transaction_type: String, timestamp: DateTime, user: String, amount: BigDecimal, pool: String }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"transaction_type\": \"Deposit\", \"timestamp\": \"2025-01-15T10:00:00Z\", \"user\": \"nolus1abc...\", \"amount\": \"5000.00\", \"pool\": \"Osmosis USDC\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -342,7 +396,7 @@
     "url": "/api/loans-granted",
     "type": "GET",
     "response": "[{ asset: String, loan: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"asset\": \"ATOM\", \"loan\": \"12345678.90\" }]",
     "params": [
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
@@ -354,7 +408,7 @@
     "url": "/api/historically-liquidated",
     "type": "GET",
     "response": "[{ contract_id: String, asset: String, loan: BigDecimal, total_liquidated: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"contract_id\": \"nolus1abc...\", \"asset\": \"ATOM\", \"loan\": \"5000.00\", \"total_liquidated\": \"5234.56\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -369,7 +423,7 @@
     "url": "/api/historically-repaid",
     "type": "GET",
     "response": "[{ contract_id: String, symbol: String, loan: BigDecimal, total_repaid: BigDecimal, close_timestamp: DateTime, loan_closed: String }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"contract_id\": \"nolus1abc...\", \"symbol\": \"ATOM\", \"loan\": \"5000.00\", \"total_repaid\": \"5234.56\", \"close_timestamp\": \"2025-01-15T14:30:00Z\", \"loan_closed\": \"true\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -384,7 +438,7 @@
     "url": "/api/interest-repayments",
     "type": "GET",
     "response": "[{ timestamp: DateTime, contract_id: String, position_owner: String, position_type: String, event_type: String, loan_interest_repaid: BigDecimal, margin_interest_repaid: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"timestamp\": \"2025-01-15T14:30:00Z\", \"contract_id\": \"nolus1abc...\", \"position_owner\": \"nolus1xyz...\", \"position_type\": \"Long\", \"event_type\": \"repayment\", \"loan_interest_repaid\": \"45.67\", \"margin_interest_repaid\": \"12.34\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -399,7 +453,7 @@
     "url": "/api/historically-opened",
     "type": "GET",
     "response": "[{ contract_id: String, user: String, leased_asset: String, opening_date: DateTime, position_type: String, down_payment_amount: BigDecimal, down_payment_asset: String, loan: BigDecimal, total_position_amount_lpn: BigDecimal, price: BigDecimal, open: Boolean, liquidation_price: BigDecimal }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"contract_id\": \"nolus1abc...\", \"user\": \"nolus1xyz...\", \"leased_asset\": \"ATOM\", \"opening_date\": \"2025-01-15T10:00:00Z\", \"position_type\": \"Long\", \"down_payment_amount\": \"1000.00\", \"down_payment_asset\": \"USDC\", \"loan\": \"5000.00\", \"total_position_amount_lpn\": \"6000.00\", \"price\": \"9.50\", \"open\": true, \"liquidation_price\": \"7.20\" }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
@@ -414,7 +468,7 @@
     "url": "/api/realized-pnl-wallet",
     "type": "GET",
     "response": "[{ wallet: String, realized_pnl: BigDecimal, trade_count: Number }]",
-    "cache": "1 hour",
+    "cache": "5 min",
     "example": "[{ \"wallet\": \"nolus1abc...\", \"realized_pnl\": \"1234.56\", \"trade_count\": 15 }]",
     "params": [
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },

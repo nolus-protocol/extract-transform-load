@@ -3,7 +3,7 @@ pub use self::{
     event::Event,
     grpc::Grpc,
     http::HTTP,
-    synchronization::{is_sync_runing, Synchronization},
+    synchronization::{is_sync_running, Synchronization},
 };
 
 mod database;

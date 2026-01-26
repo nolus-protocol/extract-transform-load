@@ -79,9 +79,10 @@ impl Table<LS_Liquidation> {
                 "LS_payment_symbol",
                 "LS_payment_amnt",
                 "LS_payment_amnt_stable",
-                "LS_loan_close"
+                "LS_loan_close",
+                "LS_liquidation_price"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         "#,
         )
         .bind(data.LS_liquidation_height)
@@ -101,6 +102,7 @@ impl Table<LS_Liquidation> {
         .bind(&data.LS_payment_amnt)
         .bind(&data.LS_payment_amnt_stable)
         .bind(data.LS_loan_close)
+        .bind(&data.LS_liquidation_price)
         .persistent(true)
         .execute(&mut **transaction)
         .await
@@ -130,9 +132,10 @@ impl Table<LS_Liquidation> {
                 "LS_payment_symbol",
                 "LS_payment_amnt",
                 "LS_payment_amnt_stable",
-                "LS_loan_close"
+                "LS_loan_close",
+                "LS_liquidation_price"
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
             ON CONFLICT ("LS_liquidation_height", "LS_contract_id") DO NOTHING
         "#,
         )
@@ -153,6 +156,7 @@ impl Table<LS_Liquidation> {
         .bind(&data.LS_payment_amnt)
         .bind(&data.LS_payment_amnt_stable)
         .bind(data.LS_loan_close)
+        .bind(&data.LS_liquidation_price)
         .persistent(true)
         .execute(&mut **transaction)
         .await
@@ -186,7 +190,8 @@ impl Table<LS_Liquidation> {
                 "LS_payment_symbol",
                 "LS_payment_amnt",
                 "LS_payment_amnt_stable",
-                "LS_loan_close"
+                "LS_loan_close",
+                "LS_liquidation_price"
             )"#,
         );
 
@@ -207,7 +212,8 @@ impl Table<LS_Liquidation> {
                 .push_bind(&ls.LS_payment_symbol)
                 .push_bind(&ls.LS_payment_amnt)
                 .push_bind(&ls.LS_payment_amnt_stable)
-                .push_bind(ls.LS_loan_close);
+                .push_bind(ls.LS_loan_close)
+                .push_bind(&ls.LS_liquidation_price);
         });
 
         let query = query_builder.build().persistent(true);
@@ -241,13 +247,13 @@ impl Table<LS_Liquidation> {
 
         if let Some(m) = months {
             conditions.push(format!(
-                "\"LS_Liquidation\".\"LS_timestamp\" >= NOW() - INTERVAL '{} months'",
+                "liq.\"LS_timestamp\" >= NOW() - INTERVAL '{} months'",
                 m
             ));
         }
 
         if from.is_some() {
-            conditions.push("\"LS_Liquidation\".\"LS_timestamp\" > $1".to_string());
+            conditions.push("liq.\"LS_timestamp\" > $1".to_string());
         }
 
         let time_condition = if conditions.is_empty() {
@@ -256,58 +262,31 @@ impl Table<LS_Liquidation> {
             format!("WHERE {}", conditions.join(" AND "))
         };
 
+        // Simplified query using stored LS_liquidation_price instead of expensive CTE
         let query = format!(
             r#"
-            WITH Liquidation_With_DP AS (
-                SELECT
-                    "LS_Liquidation"."LS_timestamp" AS "Timestamp",
-                    "LS_amnt_symbol" AS "Ticker",
-                    "LS_Liquidation"."LS_contract_id" AS "Contract ID",
-                    "LS_Opening"."LS_address_id" AS "User",
-                    "LS_transaction_type" AS "Type",
-                    "LS_payment_amnt_stable" / 1000000 AS "Liquidation Amount",
-                    "LS_loan_close" AS "Closed Loan",
-                    CASE
-                        WHEN "LS_cltr_symbol" IN ('WBTC', 'CRO') THEN "LS_cltr_amnt_stable" / 100000000
-                        WHEN "LS_cltr_symbol" IN ('PICA') THEN "LS_cltr_amnt_stable" / 1000000000000
-                        WHEN "LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN "LS_cltr_amnt_stable" / 1000000000000000000
-                        ELSE "LS_cltr_amnt_stable" / 1000000
-                    END AS "Down Payment",
-                    "LS_loan_amnt_asset" / 1000000 AS "Loan"
-                FROM
-                    "LS_Liquidation"
-                    LEFT JOIN "LS_Opening" ON "LS_Opening"."LS_contract_id" = "LS_Liquidation"."LS_contract_id"
-                {}
-            ),
-            Current_Market_Prices AS (
-                SELECT
-                    DATE_TRUNC('minute', "MP_asset_timestamp") AS "Truncated Timestamp",
-                    "MP_asset_symbol",
-                    AVG("MP_price_in_stable") AS "Price in Stable"
-                FROM
-                    "MP_Asset"
-                WHERE "MP_asset_timestamp" > NOW() - INTERVAL '30 days' AND "Protocol" = 'OSMOSIS-OSMOSIS-USDC_NOBLE'
-                GROUP BY
-                    DATE_TRUNC('minute', "MP_asset_timestamp"), "MP_asset_symbol"
-            )
             SELECT
-                ldp."Timestamp" AS timestamp,
-                ldp."Ticker" AS ticker,
-                ldp."Contract ID" AS contract_id,
-                ldp."User" AS user,
-                ldp."Type" AS transaction_type,
-                ldp."Liquidation Amount" AS liquidation_amount,
-                ldp."Closed Loan" AS closed_loan,
-                ldp."Down Payment" AS down_payment,
-                ldp."Loan" AS loan,
-                cmp."Price in Stable" AS liquidation_price
+                liq."LS_timestamp" AS timestamp,
+                liq."LS_amnt_symbol" AS ticker,
+                liq."LS_contract_id" AS contract_id,
+                o."LS_address_id" AS user,
+                liq."LS_transaction_type" AS transaction_type,
+                liq."LS_payment_amnt_stable" / 1000000 AS liquidation_amount,
+                liq."LS_loan_close" AS closed_loan,
+                CASE
+                    WHEN o."LS_cltr_symbol" IN ('WBTC', 'CRO') THEN o."LS_cltr_amnt_stable" / 100000000
+                    WHEN o."LS_cltr_symbol" IN ('PICA') THEN o."LS_cltr_amnt_stable" / 1000000000000
+                    WHEN o."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000
+                    ELSE o."LS_cltr_amnt_stable" / 1000000
+                END AS down_payment,
+                o."LS_loan_amnt_asset" / 1000000 AS loan,
+                liq."LS_liquidation_price" AS liquidation_price
             FROM
-                Liquidation_With_DP ldp
-                LEFT JOIN Current_Market_Prices cmp 
-                    ON DATE_TRUNC('minute', ldp."Timestamp") = cmp."Truncated Timestamp"
-                    AND ldp."Ticker" = cmp."MP_asset_symbol"
+                "LS_Liquidation" liq
+                LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = liq."LS_contract_id"
+            {}
             ORDER BY
-                ldp."Timestamp" DESC
+                liq."LS_timestamp" DESC
             "#,
             time_condition
         );

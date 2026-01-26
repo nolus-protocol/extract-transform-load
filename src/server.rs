@@ -4,9 +4,7 @@ use actix_web::{dev::Server, http::header, middleware, web, App, HttpServer};
 
 use crate::{
     configuration::{AppState, State},
-    controller::{
-        admin, leases, liquidity, metrics, misc, pnl, positions, treasury,
-    },
+    controller::{leases, liquidity, metrics, misc, pnl, positions, protocols, treasury},
     error::Error,
 };
 
@@ -113,9 +111,13 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(misc::subscribe_get)
                     .service(misc::subscribe_post)
                     .service(misc::test_push)
-                    // Admin endpoints
-                    .service(admin::update_raw_txs)
-                    .service(admin::backfill_ls_opening),
+                    // Protocol & Currency endpoints
+                    .service(protocols::get_protocols)
+                    .service(protocols::get_active_protocols)
+                    .service(protocols::get_protocol_by_name)
+                    .service(protocols::get_currencies)
+                    .service(protocols::get_active_currencies)
+                    .service(protocols::get_currency_by_ticker),
             )
             .service(Files::new("/", static_dir).index_file("index.html"))
     })

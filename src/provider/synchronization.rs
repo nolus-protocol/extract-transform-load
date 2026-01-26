@@ -22,7 +22,7 @@ pub struct Synchronization {}
 
 impl Synchronization {
     pub fn is_running(&self) -> bool {
-        is_sync_runing()
+        is_sync_running()
     }
 
     pub fn set_running(&self, bool: bool) {
@@ -190,7 +190,7 @@ pub async fn start_sync(app_state: AppState<State>) -> Result<(), Error> {
     .await?
 }
 
-pub fn is_sync_runing() -> bool {
+pub fn is_sync_running() -> bool {
     let running = &RUNNING;
     running.load(Ordering::SeqCst)
 }

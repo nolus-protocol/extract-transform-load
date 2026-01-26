@@ -24,16 +24,17 @@ impl Table<Block> {
 
     /// Full gap scan - scans entire block table for gaps.
     /// Use on startup to catch any historical gaps.
+    /// Uses window function LEAD() to efficiently find gaps without correlated subqueries.
     pub async fn get_all_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
         sqlx::query_as(
             r#"
-            SELECT
-                b1.id AS gap_begin,
-                (SELECT MIN(id) FROM block WHERE id > b1.id) AS gap_end
-            FROM block b1
-            LEFT JOIN block b2 ON b2.id = b1.id + 1
-            WHERE b2.id IS NULL
-              AND b1.id < (SELECT MAX(id) FROM block)
+            WITH with_next AS (
+                SELECT id, LEAD(id) OVER (ORDER BY id) AS next_id
+                FROM block
+            )
+            SELECT id AS gap_begin, next_id AS gap_end
+            FROM with_next
+            WHERE next_id IS NOT NULL AND next_id > id + 1
             "#,
         )
         .persistent(true)
@@ -43,19 +44,23 @@ impl Table<Block> {
 
     /// Recent gap scan - only checks last 100k blocks for gaps.
     /// Use during runtime for fast gap detection.
+    /// Uses window function LEAD() to efficiently find gaps without correlated subqueries.
     pub async fn get_recent_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
         sqlx::query_as(
             r#"
-            WITH max_block AS (SELECT MAX(id) AS max_id FROM block)
-            SELECT
-                b1.id AS gap_begin,
-                (SELECT MIN(id) FROM block WHERE id > b1.id) AS gap_end
-            FROM block b1
-            CROSS JOIN max_block m
-            LEFT JOIN block b2 ON b2.id = b1.id + 1
-            WHERE b2.id IS NULL
-              AND b1.id > m.max_id - 100000
-              AND b1.id < m.max_id
+            WITH recent_blocks AS (
+                SELECT id
+                FROM block
+                WHERE id > (SELECT MAX(id) - 100000 FROM block)
+                ORDER BY id
+            ),
+            with_next AS (
+                SELECT id, LEAD(id) OVER (ORDER BY id) AS next_id
+                FROM recent_blocks
+            )
+            SELECT id AS gap_begin, next_id AS gap_end
+            FROM with_next
+            WHERE next_id IS NOT NULL AND next_id > id + 1
             "#,
         )
         .persistent(true)

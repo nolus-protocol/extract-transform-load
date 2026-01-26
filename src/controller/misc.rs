@@ -133,9 +133,8 @@ pub async fn txs(
         let item = Filter_Types::from_str(filter)?;
         match item {
             Filter_Types::Earn => {
-                for c in &state.config.lp_pools {
-                    to.push(c.0.clone());
-                }
+                // Get all active pool IDs dynamically
+                to.extend(state.get_active_pool_ids());
             },
             Filter_Types::Positions => {
                 let ids = state

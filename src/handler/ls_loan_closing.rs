@@ -12,9 +12,9 @@ use crate::{
     configuration::{AppState, State},
     dao::DataBase,
     error::Error,
-    helpers::{Loan_Closing_Status, Protocol_Types},
+    helpers::Loan_Closing_Status,
     model::{LS_Loan, LS_Loan_Closing, LS_Loan_Collect, LS_Opening},
-    provider::is_sync_runing,
+    provider::is_sync_running,
     types::AmountTicker,
 };
 
@@ -56,12 +56,22 @@ async fn proceed_loan_collect(
         .ls_opening
         .get(ls_loan_closing.LS_contract_id.to_owned())
         .await?;
+    
+    // Skip if lease opening not found (happens during partial sync)
+    let Some(ls_opening) = ls_opening else {
+        tracing::debug!(
+            "Skipping loan collect for {} - lease opening not found (partial sync)",
+            ls_loan_closing.LS_contract_id
+        );
+        return Ok(());
+    };
+    
     match Loan_Closing_Status::from_str(&ls_loan_closing.Type)? {
         Loan_Closing_Status::Repay => {
             proceed_repayment(
                 state,
                 ls_loan_closing,
-                ls_opening.context("lease not found in loan collect")?,
+                ls_opening,
             )
             .await?;
         },
@@ -69,7 +79,7 @@ async fn proceed_loan_collect(
             proceed_market_close(
                 state,
                 ls_loan_closing,
-                ls_opening.context("lease not found in loan collect")?,
+                ls_opening,
                 change_amount,
             )
             .await?;
@@ -124,11 +134,13 @@ async fn proceed_repayment(
     }
 
     for b in balances.balances {
-        let item = state.config.supported_currencies.iter().find(|item| {
+        // Look up currency by bank_symbol (IBC denom)
+        let item = state.config.hash_map_currencies.values().find(|item| {
             item.2 == b.denom.to_uppercase()
         });
 
         if let Some(c) = item {
+            let c = c.clone();
             data.insert(
                 c.0.to_owned(),
                 LS_Loan_Collect {
@@ -148,9 +160,10 @@ async fn proceed_repayment(
         }
     }
 
+    let native_currency = &state.config.native_currency;
     let contract_balances: Vec<LS_Loan_Collect> = data
         .into_values()
-        .filter(|item| item.LS_symbol != state.config.native_currency)
+        .filter(|item| item.LS_symbol != *native_currency)
         .collect();
 
     state
@@ -254,11 +267,13 @@ async fn proceed_market_close(
         };
 
         for b in balances.balances {
-            let item = state.config.supported_currencies.iter().find(|item| {
+            // Look up currency by bank_symbol (IBC denom)
+            let item = state.config.hash_map_currencies.values().find(|item| {
                 item.2 == b.denom.to_uppercase()
             });
 
             if let Some(c) = item {
+                let c = c.clone();
                 data.insert(
                     c.0.to_owned(),
                     LS_Loan_Collect {
@@ -280,9 +295,10 @@ async fn proceed_market_close(
             }
         }
 
+        let native_currency = &state.config.native_currency;
         let contract_balances: Vec<LS_Loan_Collect> = data
             .into_values()
-            .filter(|item| item.LS_symbol != state.config.native_currency)
+            .filter(|item| item.LS_symbol != *native_currency)
             .collect();
 
         state
@@ -362,7 +378,7 @@ async fn get_loan(
     at: DateTime<Utc>,
     block: i64,
 ) -> Result<LS_Loan_Closing, Error> {
-    if is_sync_runing() {
+    if is_sync_running() {
         return Ok(LS_Loan_Closing {
             LS_contract_id: contract.to_owned(),
             LS_amnt_stable: BigDecimal::from(0),
@@ -403,17 +419,13 @@ async fn get_loan(
                 });
             }
 
-            let protocol_data = app_state
-                .config
-                .hash_map_lp_pools
-                .get(&lease.LS_loan_pool_id)
-                .context(format!(
-                    "could not get protocol {}",
-                    &lease.LS_loan_pool_id
-                ))?;
+            // Get position type from protocol registry
+            let position_type = app_state
+                .get_position_type_by_pool_id(&lease.LS_loan_pool_id)
+                .await?;
 
-            let loan = match protocol_data.2 {
-                Protocol_Types::Long => {
+            let loan = match position_type.as_str() {
+                "Long" => {
                     get_pnl_long(
                         &app_state,
                         &lease,
@@ -423,7 +435,8 @@ async fn get_loan(
                     )
                     .await?
                 },
-                Protocol_Types::Short => {
+                _ => {
+                    // Default to Short for any non-Long position type
                     get_pnl_short(
                         &app_state,
                         &lease,

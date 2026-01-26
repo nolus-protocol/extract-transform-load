@@ -418,6 +418,135 @@ Aggragation is done over all records pertaining to the same _aggregation interva
 | Tx_Hash         | Alphanumeric(64)  | tx hash                                 | Transaction hash                               |
 
 
+### **LS_Auto_Close_Position** [Primary Key = Tx_Hash + LS_contract_id + LS_timestamp]
+
+| Property Name         | Type             | Event, Attribute                     | Description                                |
+| --------------------- | ---------------- | ------------------------------------ | ------------------------------------------ |
+| Tx_Hash               | Alphanumeric(64) | tx hash                              | Transaction hash                           |
+| LS_contract_id        | Alphanumeric(64) | wasm-ls-auto-close.lease             | Lease Smart Contract ID                    |
+| LS_Close_Strategy     | Alphanumeric(64) | wasm-ls-auto-close.strategy          | Auto-close strategy type                   |
+| LS_Close_Strategy_Ltv | SMALLINT         | wasm-ls-auto-close.ltv               | LTV threshold for auto-close               |
+| LS_timestamp          | Timestamp        | wasm-ls-auto-close.at                | Timestamp of the auto-close event          |
+
+### **LS_Loan_Collect** [Primary Key = LS_contract_id + LS_symbol]
+
+Stores collected amounts per symbol for a lease during closing/liquidation operations.
+
+| Property Name    | Type              | Source                     | Description                        |
+| ---------------- | ----------------- | -------------------------- | ---------------------------------- |
+| LS_contract_id   | Alphanumeric(64)  | Lease address              | Lease Smart Contract ID            |
+| LS_symbol        | Alphanumeric(68)  | Currency symbol            | Currency symbol of collected amount|
+| LS_amount        | Unsigned Int(128) | Collected amount           | Amount collected in currency       |
+| LS_amount_stable | Unsigned Int(128) | in_stable(LS_amount)       | Amount collected in stable         |
+
+## System Tables
+
+The following tables are used internally by the ETL service for tracking synchronization state, configuration, and operational data.
+
+### **action_history** [Primary Key = action_type + created_at]
+
+Tracks when aggregation tasks were last executed.
+
+| Property Name | Type             | Description                                    |
+| ------------- | ---------------- | ---------------------------------------------- |
+| action_type   | Alphanumeric(1)  | Type of action (e.g., aggregation)             |
+| created_at    | Timestamp        | When the action was performed                  |
+
+### **block** [Primary Key = id]
+
+Tracks synced block IDs. Gaps in this table trigger historical sync operations.
+
+| Property Name | Type   | Description                          |
+| ------------- | ------ | ------------------------------------ |
+| id            | BIGINT | Block height ID                      |
+
+### **pool_config** [Primary Key = pool_id]
+
+Stores configuration for liquidity pools discovered from the blockchain.
+
+| Property Name  | Type             | Description                                    |
+| -------------- | ---------------- | ---------------------------------------------- |
+| pool_id        | Alphanumeric(128)| LPP Smart Contract ID                          |
+| position_type  | Alphanumeric(10) | Position type (Long/Short)                     |
+| lpn_symbol     | Alphanumeric(20) | Liquidity Provider Native currency symbol      |
+| lpn_decimals   | BIGINT           | Decimal precision for LPN                      |
+| label          | Alphanumeric(50) | Human-readable label for the pool              |
+| protocol       | Alphanumeric(50) | Protocol name this pool belongs to             |
+
+### **raw_message** [Primary Key = index + tx_hash]
+
+Stores all raw blockchain transactions for historical analysis and audit trail.
+
+| Property Name | Type              | Description                                    |
+| ------------- | ----------------- | ---------------------------------------------- |
+| index         | INT               | Index of message within transaction            |
+| from          | Alphanumeric(128) | Sender address                                 |
+| to            | Alphanumeric(128) | Receiver address                               |
+| tx_hash       | Alphanumeric(64)  | Transaction hash                               |
+| type          | Alphanumeric(64)  | Message type                                   |
+| value         | TEXT              | Message value/payload (optional)               |
+| block         | BIGINT            | Block height                                   |
+| fee_amount    | Unsigned Int(128) | Transaction fee amount (optional)              |
+| fee_denom     | Alphanumeric(68)  | Fee denomination (optional)                    |
+| memo          | TEXT              | Transaction memo (optional)                    |
+| timestamp     | Timestamp         | Block timestamp                                |
+| rewards       | TEXT              | Rewards data (optional)                        |
+| code          | INT               | Transaction result code (optional)             |
+
+### **subscription** [Primary Key = address + p256dh + auth]
+
+Stores push notification subscriptions for users.
+
+| Property Name | Type             | Description                                    |
+| ------------- | ---------------- | ---------------------------------------------- |
+| active        | BOOLEAN          | Whether subscription is active                 |
+| address       | Alphanumeric(44) | User wallet address                            |
+| p256dh        | Alphanumeric(87) | P-256 Diffie-Hellman public key                |
+| auth          | Alphanumeric(22) | Authentication secret                          |
+| endpoint      | TEXT             | Push service endpoint URL                      |
+| expiration    | Timestamp        | Subscription expiration time (optional)        |
+| ip            | Alphanumeric(45) | Client IP address (optional)                   |
+| user_agent    | TEXT             | Client user agent (optional)                   |
+
+## Registry Tables
+
+The following tables enable dynamic configuration discovery from the blockchain while preserving historical data for deprecated protocols and currencies.
+
+### **currency_registry** [Primary Key = ticker]
+
+Stores all currencies ever encountered in the system, including deprecated ones.
+
+| Property Name      | Type              | Description                                    |
+| ------------------ | ----------------- | ---------------------------------------------- |
+| ticker             | Alphanumeric(20)  | Currency ticker symbol (e.g., NLS, USDC)       |
+| bank_symbol        | Alphanumeric(256) | IBC denomination (optional)                    |
+| decimal_digits     | SMALLINT          | Decimal precision (default: 6)                 |
+| group              | Alphanumeric(20)  | Currency group: lpn, lease, native (optional)  |
+| is_active          | BOOLEAN           | Whether currency is currently active           |
+| first_seen_at      | Timestamp         | When currency was first discovered             |
+| deprecated_at      | Timestamp         | When currency was marked deprecated (optional) |
+| last_seen_protocol | Alphanumeric(100) | Last protocol this currency was seen in        |
+
+### **protocol_registry** [Primary Key = protocol_name]
+
+Stores all protocols ever encountered, with contract addresses and status.
+
+| Property Name    | Type              | Description                                    |
+| ---------------- | ----------------- | ---------------------------------------------- |
+| protocol_name    | Alphanumeric(100) | Unique protocol identifier                     |
+| network          | Alphanumeric(50)  | Network name (optional)                        |
+| dex              | Alphanumeric(512) | DEX configuration (may contain JSON)           |
+| leaser_contract  | Alphanumeric(128) | Leaser smart contract address (optional)       |
+| lpp_contract     | Alphanumeric(128) | LPP smart contract address (pool_id)           |
+| oracle_contract  | Alphanumeric(128) | Oracle smart contract address (optional)       |
+| profit_contract  | Alphanumeric(128) | Profit smart contract address (optional)       |
+| reserve_contract | Alphanumeric(128) | Reserve smart contract address (optional)      |
+| lpn_symbol       | Alphanumeric(20)  | Liquidity Provider Native currency symbol      |
+| position_type    | Alphanumeric(10)  | Position type: Long or Short (default: Long)   |
+| is_active        | BOOLEAN           | Whether protocol is currently active           |
+| first_seen_at    | Timestamp         | When protocol was first discovered             |
+| deprecated_at    | Timestamp         | When protocol was marked deprecated (optional) |
+
 #### Database types
 
 Due to the lack of unsigned integer types in the databases with more that 64 bits we define the mapping of Unsigned Int(128) as Decimal(log(2 ** 128, 10), 0), i.e. Decimal(39, 0). Simmilarly, the fields that accumulate such values we map into Decimal(log(2 ** 140, 10), 0), i.e. Decimal(42, 0).

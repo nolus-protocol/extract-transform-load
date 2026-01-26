@@ -11,7 +11,7 @@ use crate::{
     configuration::{AppState, State},
     error::Error,
     helpers::{build_cache_key, build_protocol_cache_key, cached_fetch, parse_period_months, to_csv_response},
-    model::{MonthlyActiveWallet, TvlPoolParams},
+    model::MonthlyActiveWallet,
 };
 
 // =============================================================================
@@ -30,28 +30,13 @@ pub async fn total_value_locked(
         }));
     }
 
-    let pools = &state.config.lp_pools;
-
-    let get_pool = |idx: usize, name: &str| -> Result<String, Error> {
-        pools
-            .get(idx)
-            .map(|(id, _, _, _)| id.clone())
-            .ok_or_else(|| Error::ProtocolError(name.to_string()))
-    };
+    // Build TVL pool params from dynamic protocol configuration
+    let tvl_params = state.build_tvl_pool_params();
 
     let data = state
         .database
         .ls_state
-        .get_total_value_locked(TvlPoolParams {
-            osmosis_usdc: get_pool(1, "osmosis_usdc")?,
-            neutron_axelar: get_pool(2, "neutron_usdc_axelar")?,
-            osmosis_usdc_noble: get_pool(3, "osmosis_usdc_noble")?,
-            neutron_usdc_noble: get_pool(0, "neutron_usdc_noble")?,
-            osmosis_st_atom: get_pool(4, "osmosis_st_atom")?,
-            osmosis_all_btc: get_pool(5, "osmosis_all_btc")?,
-            osmosis_all_sol: get_pool(6, "osmosis_all_sol")?,
-            osmosis_akt: get_pool(7, "osmosis_akt")?,
-        })
+        .get_total_value_locked(tvl_params)
         .await?;
 
     state.api_cache.total_value_locked.set(CACHE_KEY, data.clone()).await;

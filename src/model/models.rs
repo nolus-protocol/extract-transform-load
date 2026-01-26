@@ -138,6 +138,8 @@ pub struct LS_Liquidation {
     pub LS_current_interest_stable: SqlxBigDecimal,
     pub LS_principal_stable: SqlxBigDecimal,
     pub LS_loan_close: bool,
+    /// Price of the liquidated asset at the time of liquidation (stored for fast queries)
+    pub LS_liquidation_price: Option<SqlxBigDecimal>,
 }
 
 #[derive(Debug, FromRow)]
@@ -558,6 +560,41 @@ pub struct Pool_Config {
     pub lpn_symbol: String,
     pub lpn_decimals: i64,
     pub label: String,
+}
+
+// =============================================================================
+// DYNAMIC CONFIGURATION REGISTRY TYPES
+// =============================================================================
+
+/// Currency registry entry - stores all currencies ever seen (active and deprecated)
+#[derive(Debug, Clone, FromRow)]
+pub struct CurrencyRegistry {
+    pub ticker: String,
+    pub bank_symbol: Option<String>,
+    pub decimal_digits: i16,
+    pub group: Option<String>,
+    pub is_active: bool,
+    pub first_seen_at: DateTime<Utc>,
+    pub deprecated_at: Option<DateTime<Utc>>,
+    pub last_seen_protocol: Option<String>,
+}
+
+/// Protocol registry entry - stores all protocols ever seen (active and deprecated)
+#[derive(Debug, Clone, FromRow)]
+pub struct ProtocolRegistry {
+    pub protocol_name: String,
+    pub network: Option<String>,
+    pub dex: Option<String>,
+    pub leaser_contract: Option<String>,
+    pub lpp_contract: Option<String>,
+    pub oracle_contract: Option<String>,
+    pub profit_contract: Option<String>,
+    pub reserve_contract: Option<String>,
+    pub lpn_symbol: String,
+    pub position_type: String,
+    pub is_active: bool,
+    pub first_seen_at: DateTime<Utc>,
+    pub deprecated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, FromRow)]

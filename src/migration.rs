@@ -131,14 +131,23 @@ mod tests {
         let migrations = runner.get_migrations();
         assert!(!migrations.is_empty(), "No migrations found");
         
-        // Verify migrations are in order
+        // Sort migrations by version (refinery sorts them at runtime, but get_migrations() may not be sorted)
+        let mut sorted_versions: Vec<u32> = migrations.iter().map(|m| m.version()).collect();
+        sorted_versions.sort();
+        
+        // Verify no duplicate versions
         let mut prev_version = 0;
-        for m in migrations {
+        for version in &sorted_versions {
             assert!(
-                m.version() > prev_version,
-                "Migrations must be in ascending version order"
+                *version > prev_version,
+                "Migrations must have unique ascending version numbers"
             );
-            prev_version = m.version();
+            prev_version = *version;
         }
+        
+        // Verify we have all expected migrations (V001 through V008)
+        assert_eq!(sorted_versions.len(), 8, "Expected 8 migrations");
+        assert_eq!(sorted_versions.first(), Some(&1), "First migration should be V001");
+        assert_eq!(sorted_versions.last(), Some(&8), "Last migration should be V008");
     }
 }

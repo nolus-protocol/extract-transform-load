@@ -26,12 +26,14 @@ pub async fn parse_and_insert(
         }
     }
 
+    // Use native currency and first available protocol for treasury state
+    let protocol = app_state.get_default_protocol();
     let (stable_price,) = app_state
         .database
         .mp_asset
         .get_price(
             &app_state.config.native_currency,
-            Some(app_state.config.initial_protocol.to_owned()),
+            protocol,
         )
         .await?;
 

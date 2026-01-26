@@ -1,5 +1,45 @@
+# Build artifacts
 /target
+debug/
+release/
+
+# Environment and secrets
 .env
+.env.local
+.env.*.local
+*.pem
+!cert/vapid_private.pem
+
+# OS files
+.DS_Store
 .DS_STORE
+Thumbs.db
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.sql.bak
+*.dump
+
+# AI assistant files
 CLAUDE.md
-/docs
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Documentation (auto-generated)
+docs/

@@ -68,21 +68,6 @@ pub fn formatter(mut parser: String, args: &[Formatter]) -> String {
     parser
 }
 
-pub fn parse_tuple_string(data: String) -> Vec<String> {
-    let str = &data[1..];
-    let splited = str.split(",(");
-    let mut items: Vec<String> = Vec::new();
-
-    for c in splited {
-        if let Some(index) = c.find(')') {
-            let tuple_data = &c[0..index];
-            items.push(tuple_data.to_owned());
-        }
-    }
-
-    items
-}
-
 /// Extracts a required field from a HashMap, returning an error if not found.
 /// Reduces verbosity of repeated `.get().ok_or(Error::FieldNotExist(...))?.to_owned()` pattern.
 fn extract_field(
@@ -847,44 +832,6 @@ impl FromStr for Loan_Closing_Status {
 }
 
 #[derive(Debug, Clone)]
-pub enum Protocol_Types {
-    Long,
-    Short,
-}
-
-impl fmt::Display for Protocol_Types {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Protocol_Types::Short => write!(f, "short"),
-            Protocol_Types::Long => write!(f, "long"),
-        }
-    }
-}
-
-impl From<Protocol_Types> for String {
-    fn from(value: Protocol_Types) -> Self {
-        match value {
-            Protocol_Types::Long => String::from("long"),
-            Protocol_Types::Short => String::from("short"),
-        }
-    }
-}
-
-impl FromStr for Protocol_Types {
-    type Err = io::Error;
-
-    fn from_str(value: &str) -> Result<Protocol_Types, Self::Err> {
-        match value {
-            "long" => Ok(Protocol_Types::Long),
-            "short" => Ok(Protocol_Types::Short),
-            _ => Err(io::Error::other(
-                "Protocol_Types not supported",
-            )),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub enum Auto_Close_Strategies {
     TakeProfit,
     StopLoss,
@@ -1062,18 +1009,8 @@ where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<T, crate::error::Error>>,
 {
-    // Try cache first
-    if let Some(cached) = cache.get(key).await {
-        return Ok(cached);
-    }
-
-    // Cache miss - fetch data
-    let data = fetch_fn().await?;
-
-    // Store in cache
-    cache.set(key, data.clone()).await;
-
-    Ok(data)
+    // Use get_or_fetch with stampede protection and stale-while-revalidate
+    cache.get_or_fetch(key, fetch_fn).await
 }
 
 /// Time window filter parameters for historical endpoints.

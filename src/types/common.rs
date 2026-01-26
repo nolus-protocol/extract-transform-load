@@ -268,12 +268,42 @@ pub struct AdminProtocolExtendType {
     pub contracts: ProtocolContracts,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ProtocolContracts {
     pub leaser: String,
     pub lpp: String,
     pub oracle: String,
     pub profit: String,
+    #[serde(default)]
+    pub reserve: Option<String>,
+}
+
+/// Response from admin contract {"platform":{}} query
+#[derive(Debug, Deserialize)]
+pub struct PlatformInfo {
+    pub timealarms: String,
+    pub treasury: String,
+}
+
+/// Response from oracle contract {"currencies":{}} query
+/// Contains all currencies supported by a protocol's oracle
+#[derive(Debug, Deserialize, Clone)]
+pub struct OracleCurrency {
+    pub ticker: String,
+    pub bank_symbol: String,
+    #[serde(default)]
+    pub dex_symbol: Option<String>,
+    pub decimal_digits: i16,
+    pub group: String,
+}
+
+/// Extended admin protocol type with optional dex configuration
+#[derive(Debug, Deserialize)]
+pub struct AdminProtocolFullType {
+    pub network: String,
+    #[serde(default)]
+    pub dex: Option<serde_json::Value>,
+    pub contracts: ProtocolContracts,
 }
 
 // =============================================================================

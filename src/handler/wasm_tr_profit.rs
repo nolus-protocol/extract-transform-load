@@ -19,7 +19,8 @@ pub async fn parse_and_insert(
     transaction: &mut Transaction<'_, DataBase>,
 ) -> Result<(), Error> {
     let at = parse_event_timestamp(&item.at)?;
-    let protocol = &app_state.config.initial_protocol;
+    // Use the first available protocol for treasury operations
+    let protocol = app_state.get_default_protocol();
 
     let tr_profit = TR_Profit {
         Tx_Hash: tx_hash,
@@ -30,7 +31,7 @@ pub async fn parse_and_insert(
             .in_stable_by_date(
                 &item.profit_symbol,
                 &item.profit_amount,
-                Some(protocol.to_owned()),
+                protocol.clone(),
                 &at,
             )
             .await?,

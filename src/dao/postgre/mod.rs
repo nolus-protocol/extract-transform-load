@@ -4,7 +4,9 @@ pub use self::types::{
 
 mod action_history;
 mod block;
+mod currency_registry;
 mod pool_config;
+mod protocol_registry;
 pub mod lp_deposit;
 pub mod lp_lender_state;
 mod lp_pool;

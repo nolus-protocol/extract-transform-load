@@ -321,7 +321,7 @@ pub struct LsOpeningBatchItem {
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum LsOpeningResult {
-    Single(Option<LsOpeningResponse>),
+    Single(Box<Option<LsOpeningResponse>>),
     Batch(Vec<LsOpeningBatchItem>),
 }
 
@@ -453,17 +453,17 @@ pub async fn ls_opening(
                     / BigDecimal::from(u64::pow(10, currency.1.try_into()?));
             }
 
-            return Ok(web::Json(LsOpeningResult::Single(Some(LsOpeningResponse {
+            return Ok(web::Json(LsOpeningResult::Single(Box::new(Some(LsOpeningResponse {
                 lease,
                 downpayment_price,
                 lpn_price,
                 fee,
                 repayment_value,
                 history,
-            }))));
+            })))));
         }
 
-        return Ok(web::Json(LsOpeningResult::Single(None)));
+        return Ok(web::Json(LsOpeningResult::Single(Box::new(None))));
     }
 
     // No parameters provided - return empty batch

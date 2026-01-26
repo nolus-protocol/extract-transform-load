@@ -5,13 +5,13 @@ use crate::{
     dao::{PoolOption, PoolType},
     error::Error,
     model::{
-        Action_History, Block, LP_Deposit, LP_Lender_State, LP_Pool,
-        LP_Pool_State, LP_Withdraw, LS_Auto_Close_Position, LS_Close_Position,
-        LS_Closing, LS_Liquidation, LS_Liquidation_Warning, LS_Loan_Closing,
-        LS_Loan_Collect, LS_Opening, LS_Repayment, LS_Slippage_Anomaly,
-        LS_State, MP_Asset, MP_Yield, PL_State, Pool_Config, Raw_Message,
-        Reserve_Cover_Loss, Subscription, TR_Profit, TR_Rewards_Distribution,
-        TR_State, Table,
+        Action_History, Block, CurrencyRegistry, LP_Deposit, LP_Lender_State,
+        LP_Pool, LP_Pool_State, LP_Withdraw, LS_Auto_Close_Position,
+        LS_Close_Position, LS_Closing, LS_Liquidation, LS_Liquidation_Warning,
+        LS_Loan_Closing, LS_Loan_Collect, LS_Opening, LS_Repayment,
+        LS_Slippage_Anomaly, LS_State, MP_Asset, MP_Yield, PL_State,
+        Pool_Config, ProtocolRegistry, Raw_Message, Reserve_Cover_Loss,
+        Subscription, TR_Profit, TR_Rewards_Distribution, TR_State, Table,
     },
 };
 
@@ -45,6 +45,8 @@ pub struct DatabasePool {
     pub subscription: Table<Subscription>,
     pub ls_loan_collect: Table<LS_Loan_Collect>,
     pub pool_config: Table<Pool_Config>,
+    pub currency_registry: Table<CurrencyRegistry>,
+    pub protocol_registry: Table<ProtocolRegistry>,
     pub pool: PoolType,
 }
 
@@ -103,6 +105,8 @@ impl DatabasePool {
             subscription: Table::new(pool.clone()),
             ls_loan_collect: Table::new(pool.clone()),
             pool_config: Table::new(pool.clone()),
+            currency_registry: Table::new(pool.clone()),
+            protocol_registry: Table::new(pool.clone()),
             raw_message: Table::new(pool),
         })
     }

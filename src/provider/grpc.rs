@@ -6,9 +6,10 @@ use crate::{
     configuration::Config,
     error::Error,
     types::{
-        AdminProtocolExtendType, AdminProtocolType, AmountObject, Balance,
-        LPP_Price, LP_Pool_Config_State_Type, LP_Pool_State_Type, LS_Raw_State,
-        LS_State_Type, Prices,
+        AdminProtocolExtendType, AdminProtocolFullType, AdminProtocolType,
+        AmountObject, Balance, LPP_Price, LP_Pool_Config_State_Type,
+        LP_Pool_State_Type, LS_Raw_State, LS_State_Type, OracleCurrency,
+        PlatformInfo, Prices,
     },
 };
 use anyhow::Context as _;
@@ -906,6 +907,199 @@ impl Grpc {
             .and_then(|data| {
                 serde_json::from_slice::<LP_Pool_Config_State_Type>(&data)
                     .context(PARCE_MESSAGE_ERROR)
+            })?;
+
+        Ok(data)
+    }
+
+    /// Query admin contract for platform info (treasury, timealarms)
+    pub async fn get_platform(
+        &self,
+        contract: String,
+    ) -> Result<PlatformInfo, Error> {
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against admin platform contract!";
+        const PARSE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against admin platform contract!";
+
+        let data = self
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = b"{\"platform\": {}}";
+                        client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data)
+                    }
+                },
+            )
+            .await
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice::<PlatformInfo>(&data)
+                    .context(PARSE_MESSAGE_ERROR)
+            })?;
+
+        Ok(data)
+    }
+
+    /// Query admin contract for full protocol config (includes reserve contract)
+    pub async fn get_protocol_config_full(
+        &self,
+        contract: String,
+        protocol: String,
+    ) -> Result<AdminProtocolFullType, Error> {
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against admin protocol contract!";
+        const PARSE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against admin protocol contract!";
+
+        let data = self
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    let protocol = protocol.to_owned();
+                    async move {
+                        let bytes =
+                            format!(r#"{{"protocol": "{}"}}"#, protocol);
+                        let bytes = bytes.as_bytes();
+                        client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data)
+                    }
+                },
+            )
+            .await
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice::<AdminProtocolFullType>(&data)
+                    .context(PARSE_MESSAGE_ERROR)
+            })?;
+
+        Ok(data)
+    }
+
+    /// Query oracle contract for all supported currencies
+    pub async fn get_currencies(
+        &self,
+        contract: String,
+    ) -> Result<Vec<OracleCurrency>, Error> {
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against oracle currencies contract!";
+        const PARSE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against oracle currencies contract!";
+
+        let data = self
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = b"{\"currencies\": {}}";
+                        client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data)
+                    }
+                },
+            )
+            .await
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice::<Vec<OracleCurrency>>(&data)
+                    .context(PARSE_MESSAGE_ERROR)
+            })?;
+
+        Ok(data)
+    }
+
+    /// Query LPP contract for LPN (liquidity provider note) symbol
+    pub async fn get_lpn(&self, contract: String) -> Result<String, Error> {
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against LPP lpn contract!";
+        const PARSE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against LPP lpn contract!";
+
+        let data = self
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = contract.to_owned();
+                    async move {
+                        let bytes = b"{\"lpn\": []}";
+                        client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data)
+                    }
+                },
+            )
+            .await
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice::<String>(&data)
+                    .context(PARSE_MESSAGE_ERROR)
+            })?;
+
+        Ok(data)
+    }
+
+    /// Query oracle contract for stable currency symbol
+    pub async fn get_stable_currency(&self, oracle_contract: String) -> Result<String, Error> {
+        const QUERY_CONTRACT_ERROR: &str =
+            "Failed to run query against oracle stable_currency contract!";
+        const PARSE_MESSAGE_ERROR: &str =
+            "Failed to parse message query against oracle stable_currency contract!";
+
+        let data = self
+            .with_retry(
+                || self.wasm_query_client.clone(),
+                |mut client| {
+                    let contract = oracle_contract.to_owned();
+                    async move {
+                        let bytes = b"{\"stable_currency\": {}}";
+                        client
+                            .smart_contract_state(
+                                QuerySmartContractStateRequest {
+                                    address: contract,
+                                    query_data: bytes.to_vec(),
+                                },
+                            )
+                            .await
+                            .map(|response| response.into_inner().data)
+                    }
+                },
+            )
+            .await
+            .context(QUERY_CONTRACT_ERROR)
+            .and_then(|data| {
+                serde_json::from_slice::<String>(&data)
+                    .context(PARSE_MESSAGE_ERROR)
             })?;
 
         Ok(data)
