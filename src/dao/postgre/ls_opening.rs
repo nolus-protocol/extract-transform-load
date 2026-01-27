@@ -1795,7 +1795,7 @@ impl Table<LS_Opening> {
                     c."LS_contract_id" AS "Contract ID",
                     MAX(c."LS_timestamp") AS "Close Timestamp",
                     c."LS_payment_symbol" AS "Returned LPN",
-                    SUM(c."LS_change") / POWER(10, cr.decimal_digits)::NUMERIC AS "Returned Amount (LPN Units)",
+                    (SUM(c."LS_change") / POWER(10, cr.decimal_digits))::NUMERIC AS "Returned Amount (LPN Units)",
                     SUM(c."LS_payment_amnt_stable") / o."stable_decimals" AS "Returned Amount (Stable)"
                 FROM "LS_Close_Position" c
                 JOIN openings o ON o."Contract ID" = c."LS_contract_id"
@@ -1921,7 +1921,7 @@ impl Table<LS_Opening> {
                     c."LS_contract_id" AS "Contract ID",
                     MAX(c."LS_timestamp") AS "Close Timestamp",
                     c."LS_payment_symbol" AS "Returned LPN",
-                    SUM(c."LS_change") / POWER(10, cr.decimal_digits)::NUMERIC AS "Returned Amount (LPN Units)",
+                    (SUM(c."LS_change") / POWER(10, cr.decimal_digits))::NUMERIC AS "Returned Amount (LPN Units)",
                     SUM(c."LS_payment_amnt_stable") / o."stable_decimals" AS "Returned Amount (Stable)"
                 FROM "LS_Close_Position" c
                 JOIN openings o ON o."Contract ID" = c."LS_contract_id"
