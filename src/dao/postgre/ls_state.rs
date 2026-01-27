@@ -968,13 +968,13 @@ impl Table<LS_State> {
                 pc.lpn_decimals::numeric AS denom,
 
                 -- Loan from LS_State (use currency_registry for lpn decimals)
-                s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits) AS "Loan",
+                (s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits))::NUMERIC AS "Loan",
 
                 -- Down Payment from LS_Opening (use currency_registry for collateral decimals)
-                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS "Down Payment",
+                (o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits))::NUMERIC AS "Down Payment",
 
                 -- Lease Value from LS_State (use currency_registry for asset decimals)
-                s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Lease Value",
+                (s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits))::NUMERIC AS "Lease Value",
 
                 -- Margin & Interest from LS_State (use pool_config decimals)
                 (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / pc.lpn_decimals::numeric AS "Margin Interest",
