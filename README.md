@@ -108,6 +108,14 @@ src/
 
 ## API Endpoints
 
+### Configuration
+- `GET /api/protocols` - All protocols (active + deprecated)
+- `GET /api/protocols/active` - Active protocols only
+- `GET /api/protocols/{name}` - Single protocol by name
+- `GET /api/currencies` - All currencies (active + deprecated)
+- `GET /api/currencies/active` - Active currencies only
+- `GET /api/currencies/{ticker}` - Single currency by ticker
+
 ### Treasury
 - `GET /api/revenue` - Total protocol revenue
 - `GET /api/distributed` - Total distributed rewards
@@ -175,6 +183,7 @@ journalctl -u etl -f  # View logs
 | Network | RPC | gRPC | ETL |
 |---------|-----|------|-----|
 | Mainnet | rpc.nolus.network | grpc.nolus.network | etl.nolus.network |
+| Staging | - | - | etl-internal.nolus.network |
 | Archive | archive-rpc.nolus.network | archive-grpc.nolus.network | - |
 | Testnet | rila-cl.nolus.network:26657 | rila-cl.nolus.network:9090 | - |
 
