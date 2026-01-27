@@ -686,60 +686,54 @@ impl Table<LS_Opening> {
     pub async fn get_total_tx_value(
         &self,
     ) -> Result<BigDecimal, crate::error::Error> {
-        let value: Option<(Option<BigDecimal>,)>  = sqlx::query_as(
-          r#"
-                WITH Opened_Leases AS (
-                    SELECT
-                        lo."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment Amount",
-                        lo."LS_loan_amnt_stable" / pc.lpn_decimals::numeric AS "Loan"
-                    FROM "LS_Opening" lo
-                    INNER JOIN pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
-                    INNER JOIN currency_registry cr_cltr ON cr_cltr.ticker = lo."LS_cltr_symbol"
-                    ),
-                    LP_Deposits AS (
-                    SELECT
-                        d."LP_amnt_stable" / pc.lpn_decimals::numeric AS "Volume"
-                    FROM "LP_Deposit" d
-                    INNER JOIN pool_config pc ON d."LP_address_id" = pc.pool_id
-                    ),
-
-                    LP_Withdrawals AS (
-                    SELECT
-                        w."LP_amnt_stable" / pc.lpn_decimals::numeric AS "Volume"
-                    FROM "LP_Withdraw" w
-                    INNER JOIN pool_config pc ON w."LP_address_id" = pc.pool_id
-                    ),
-                    LS_Close AS (
-                    SELECT
-                        c."LS_payment_amnt_stable" / POWER(10, cr.decimal_digits)::NUMERIC AS "Volume"
-                    FROM "LS_Close_Position" c
-                    INNER JOIN currency_registry cr ON cr.ticker = c."LS_payment_symbol"
-                    ),
-                    LS_Repayment AS (
-                    SELECT
-                        r."LS_payment_amnt_stable" / POWER(10, cr.decimal_digits)::NUMERIC AS "Volume"
-                    FROM "LS_Repayment" r
-                    INNER JOIN currency_registry cr ON cr.ticker = r."LS_payment_symbol"
-                    )
-
-                    SELECT
-                        SUM ("Volume") AS "Tx Value"
-                    FROM (
-                        SELECT ("Down Payment Amount" + "Loan") AS "Volume" FROM Opened_Leases
-                        UNION ALL
-                        SELECT "Volume" FROM LP_Deposits
-                        UNION ALL
-                        SELECT "Volume" FROM LP_Withdrawals
-                        UNION ALL
-                    SELECT "Volume" FROM LS_Close
-                        UNION ALL
-                        SELECT "Volume" FROM LS_Repayment
-                    ) AS combined_data
-              "#,
-          )
-          .persistent(true)
-          .fetch_optional(&self.pool)
-          .await?;
+        let value: Option<(Option<BigDecimal>,)> = sqlx::query_as(
+            r#"
+            WITH Opened_Leases AS (
+                SELECT
+                    lo."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::numeric AS "Down Payment Amount",
+                    lo."LS_loan_amnt_stable" / NULLIF(pc.stable_currency_decimals::numeric, 0) AS "Loan"
+                FROM "LS_Opening" lo
+                JOIN pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
+                JOIN currency_registry cr_cltr ON cr_cltr.ticker = lo."LS_cltr_symbol"
+            ),
+            LP_Deposits AS (
+                SELECT
+                    d."LP_amnt_stable" / NULLIF(pc.stable_currency_decimals::numeric, 0) AS "Volume"
+                FROM "LP_Deposit" d
+                JOIN pool_config pc ON d."LP_Pool_id" = pc.pool_id
+            ),
+            LP_Withdrawals AS (
+                SELECT
+                    w."LP_amnt_stable" / NULLIF(pc.stable_currency_decimals::numeric, 0) AS "Volume"
+                FROM "LP_Withdraw" w
+                JOIN pool_config pc ON w."LP_Pool_id" = pc.pool_id
+            ),
+            LS_Close AS (
+                SELECT
+                    c."LS_payment_amnt_stable" / POWER(10, cr.decimal_digits)::numeric AS "Volume"
+                FROM "LS_Close_Position" c
+                JOIN currency_registry cr ON cr.ticker = c."LS_payment_symbol"
+            ),
+            LS_Repayment AS (
+                SELECT
+                    r."LS_payment_amnt_stable" / POWER(10, cr.decimal_digits)::numeric AS "Volume"
+                FROM "LS_Repayment" r
+                JOIN currency_registry cr ON cr.ticker = r."LS_payment_symbol"
+            )
+            SELECT
+                SUM("Volume") AS "Tx Value"
+            FROM (
+                SELECT ("Down Payment Amount" + "Loan") AS "Volume" FROM Opened_Leases
+                UNION ALL SELECT "Volume" FROM LP_Deposits
+                UNION ALL SELECT "Volume" FROM LP_Withdrawals
+                UNION ALL SELECT "Volume" FROM LS_Close
+                UNION ALL SELECT "Volume" FROM LS_Repayment
+            ) combined
+            "#,
+        )
+        .persistent(true)
+        .fetch_optional(&self.pool)
+        .await?;
 
         let default = BigDecimal::from_str("0")?;
         let amount = if let Some(v) = value {
@@ -1615,7 +1609,7 @@ impl Table<LS_Opening> {
                 o."LS_contract_id" AS contract_id,
                 o."LS_address_id" AS "user",
                 -- Use pool_config label for short positions, otherwise asset symbol
-                CASE 
+                CASE
                     WHEN COALESCE(o."LS_position_type", pc.position_type) = 'Short' THEN COALESCE(pc."label", o."LS_asset_symbol")
                     ELSE o."LS_asset_symbol"
                 END AS leased_asset,
@@ -1653,7 +1647,7 @@ impl Table<LS_Opening> {
                     o."LS_liquidation_price_at_open",
                     CASE
                         WHEN COALESCE(o."LS_position_type", pc.position_type, 'Long') = 'Long' THEN
-                            (o."LS_loan_amnt_stable" / pc.lpn_decimals::numeric / 0.9) / 
+                            (o."LS_loan_amnt_stable" / pc.lpn_decimals::numeric / 0.9) /
                             NULLIF((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / pc.lpn_decimals::numeric, 0) *
                             COALESCE(o."LS_opening_price", (
                                 SELECT m."MP_price_in_stable"
@@ -1730,7 +1724,7 @@ impl Table<LS_Opening> {
                     o."LS_liquidation_price_at_open",
                     CASE
                         WHEN COALESCE(o."LS_position_type", pc.position_type, 'Long') = 'Long' THEN
-                            (o."LS_loan_amnt_stable" / pc.lpn_decimals::numeric / 0.9) / 
+                            (o."LS_loan_amnt_stable" / pc.lpn_decimals::numeric / 0.9) /
                             NULLIF((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / pc.lpn_decimals::numeric, 0) *
                             COALESCE(o."LS_opening_price", (
                                 SELECT m."MP_price_in_stable"
@@ -1813,19 +1807,19 @@ impl Table<LS_Opening> {
                 FULL OUTER JOIN close_position_agg cp ON lc."Contract ID" = cp."Contract ID"
             ),
             repays AS (
-                SELECT 
+                SELECT
                     r."LS_contract_id" AS "Contract ID",
                     SUM(r."LS_payment_amnt_stable") / o."stable_decimals" AS "Manual Repayments (Stable)"
-                FROM "LS_Repayment" r 
+                FROM "LS_Repayment" r
                 JOIN openings o ON o."Contract ID" = r."LS_contract_id"
                 GROUP BY r."LS_contract_id", o."stable_decimals"
             ),
             liqs AS (
-                SELECT 
+                SELECT
                     l."LS_contract_id" AS "Contract ID",
                     SUM(l."LS_payment_amnt_stable") / o."stable_decimals" AS "Liquidations (Stable)",
                     COUNT(*) AS "Liquidation Events"
-                FROM "LS_Liquidation" l 
+                FROM "LS_Liquidation" l
                 JOIN openings o ON o."Contract ID" = l."LS_contract_id"
                 GROUP BY l."LS_contract_id", o."stable_decimals"
             )
@@ -1844,7 +1838,7 @@ impl Table<LS_Opening> {
                 i."Returned LPN" AS returned_lpn,
                 i."Returned Amount (LPN Units)" AS returned_amount_lpn_units,
                 i."Returned Amount (Stable)" AS returned_amount_stable,
-                CASE 
+                CASE
                     WHEN i."Returned Amount (Stable)" IS NULL THEN NULL
                     ELSE i."Returned Amount (Stable)" - (o."Down Payment (Stable)" + COALESCE(r."Manual Repayments (Stable)", 0))
                 END AS realized_pnl_stable
@@ -1939,19 +1933,19 @@ impl Table<LS_Opening> {
                 FULL OUTER JOIN close_position_agg cp ON lc."Contract ID" = cp."Contract ID"
             ),
             repays AS (
-                SELECT 
+                SELECT
                     r."LS_contract_id" AS "Contract ID",
                     SUM(r."LS_payment_amnt_stable") / o."stable_decimals" AS "Manual Repayments (Stable)"
-                FROM "LS_Repayment" r 
+                FROM "LS_Repayment" r
                 JOIN openings o ON o."Contract ID" = r."LS_contract_id"
                 GROUP BY r."LS_contract_id", o."stable_decimals"
             ),
             liqs AS (
-                SELECT 
+                SELECT
                     l."LS_contract_id" AS "Contract ID",
                     SUM(l."LS_payment_amnt_stable") / o."stable_decimals" AS "Liquidations (Stable)",
                     COUNT(*) AS "Liquidation Events"
-                FROM "LS_Liquidation" l 
+                FROM "LS_Liquidation" l
                 JOIN openings o ON o."Contract ID" = l."LS_contract_id"
                 GROUP BY l."LS_contract_id", o."stable_decimals"
             )
@@ -1970,7 +1964,7 @@ impl Table<LS_Opening> {
                 i."Returned LPN" AS returned_lpn,
                 i."Returned Amount (LPN Units)" AS returned_amount_lpn_units,
                 i."Returned Amount (Stable)" AS returned_amount_stable,
-                CASE 
+                CASE
                     WHEN i."Returned Amount (Stable)" IS NULL THEN NULL
                     ELSE i."Returned Amount (Stable)" - (o."Down Payment (Stable)" + COALESCE(r."Manual Repayments (Stable)", 0))
                 END AS realized_pnl_stable
