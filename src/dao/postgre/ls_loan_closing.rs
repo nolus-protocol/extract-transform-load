@@ -158,13 +158,10 @@ impl Table<LS_Loan_Closing> {
                 openings AS (
                 SELECT
                     o."LS_contract_id",
-                    o."LS_timestamp"                              AS open_ts,
                     o."LS_asset_symbol",
-                    o."LS_loan_amnt",
                     o."LS_cltr_symbol",
                     o."LS_cltr_amnt_stable",
-                    o."LS_loan_pool_id",
-                    o."Tx_Hash"                                   AS open_tx_hash
+                    o."LS_loan_pool_id"
                 FROM "LS_Opening" o
                 WHERE o."LS_address_id" = $1
                 ),
@@ -174,6 +171,7 @@ impl Table<LS_Loan_Closing> {
                     r."LS_contract_id",
                     SUM(r."LS_payment_amnt_stable" / POWER(10, cr_pay.decimal_digits)::NUMERIC) AS total_repaid_usdc
                 FROM "LS_Repayment" r
+                INNER JOIN openings o ON o."LS_contract_id" = r."LS_contract_id"
                 INNER JOIN currency_registry cr_pay ON cr_pay.ticker = r."LS_payment_symbol"
                 GROUP BY r."LS_contract_id"
                 ),
@@ -183,13 +181,9 @@ impl Table<LS_Loan_Closing> {
                     lc."LS_contract_id",
                     SUM(lc."LS_amount_stable" / POWER(10, cr_col.decimal_digits)::NUMERIC)::numeric(38,8) AS total_collected_usdc
                 FROM "LS_Loan_Collect" lc
+                INNER JOIN openings o ON o."LS_contract_id" = lc."LS_contract_id"
                 INNER JOIN currency_registry cr_col ON cr_col.ticker = lc."LS_symbol"
                 GROUP BY lc."LS_contract_id"
-                ),
-
-                closing_ts AS (
-                SELECT c."LS_contract_id", c."LS_timestamp" AS close_ts, c."Type"
-                FROM "LS_Loan_Closing" c
                 )
 
                 SELECT
@@ -197,26 +191,26 @@ impl Table<LS_Loan_Closing> {
                 o."LS_asset_symbol",
                 o."LS_loan_pool_id",
                 ct."Type",
-                ct.close_ts                                                               AS "LS_timestamp",
-                to_char(ct.close_ts, 'YYYY-MM-DD HH24:MI UTC')                            AS "Close Date UTC",
+                ct."LS_timestamp",
+                to_char(ct."LS_timestamp", 'YYYY-MM-DD HH24:MI UTC')                      AS "Close Date UTC",
                 (
                     (o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC)::numeric(38,8)
                     + COALESCE(r.total_repaid_usdc, 0::numeric(38,8))
-                )::double precision                                                          AS "Sent (USDC, Opening)",
-                COALESCE(c.total_collected_usdc, 0::numeric(38,8))::double precision          AS "Received (USDC, Closing)",
+                )::double precision                                                        AS "Sent (USDC, Opening)",
+                COALESCE(c.total_collected_usdc, 0::numeric(38,8))::double precision        AS "Received (USDC, Closing)",
                 (
                     COALESCE(c.total_collected_usdc, 0::numeric(38,8))
                     - (
                         (o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC)::numeric(38,8)
                         + COALESCE(r.total_repaid_usdc, 0::numeric(38,8))
                     )
-                )::double precision                                                           AS "Realized PnL (USDC)"
+                )::double precision                                                        AS "Realized PnL (USDC)"
                 FROM openings o
                 INNER JOIN currency_registry cr_cltr ON cr_cltr.ticker = o."LS_cltr_symbol"
                 LEFT JOIN repayments r ON r."LS_contract_id" = o."LS_contract_id"
-                LEFT JOIN collects   c ON c."LS_contract_id" = o."LS_contract_id"
-                INNER JOIN closing_ts ct ON ct."LS_contract_id" = o."LS_contract_id"
-                ORDER BY ct.close_ts DESC
+                LEFT JOIN collects c ON c."LS_contract_id" = o."LS_contract_id"
+                INNER JOIN "LS_Loan_Closing" ct ON ct."LS_contract_id" = o."LS_contract_id"
+                ORDER BY ct."LS_timestamp" DESC
                 OFFSET
                     $2
                 LIMIT
@@ -239,63 +233,48 @@ impl Table<LS_Loan_Closing> {
         let value: (Option<f64>,) = sqlx::query_as(
             r#"
                 WITH
-                -- Openings for this wallet (this is the *opening* side)
                 openings AS (
                 SELECT
                     o."LS_contract_id",
-                    o."LS_timestamp"                              AS open_ts,
-                    o."LS_asset_symbol",
-                    o."LS_loan_amnt",
                     o."LS_cltr_symbol",
-                    o."LS_cltr_amnt_stable",
-                    o."LS_loan_pool_id",
-                    o."Tx_Hash"                                   AS open_tx_hash
+                    o."LS_cltr_amnt_stable"
                 FROM "LS_Opening" o
                 WHERE o."LS_address_id" = $1
                 ),
 
-                -- USDC repayments (part of *sent/opening* cash flow)
                 repayments AS (
                 SELECT
                     r."LS_contract_id",
                     SUM(r."LS_payment_amnt_stable" / POWER(10, cr_pay.decimal_digits)::NUMERIC) AS total_repaid_usdc
                 FROM "LS_Repayment" r
+                INNER JOIN openings o ON o."LS_contract_id" = r."LS_contract_id"
                 INNER JOIN currency_registry cr_pay ON cr_pay.ticker = r."LS_payment_symbol"
                 GROUP BY r."LS_contract_id"
                 ),
 
-                -- User collects (this is the *closing* side cash flow, in USDC normalized)
                 collects AS (
                 SELECT
                     lc."LS_contract_id",
                     SUM(lc."LS_amount_stable" / POWER(10, cr_col.decimal_digits)::NUMERIC)::numeric(38,8) AS total_collected_usdc
                 FROM "LS_Loan_Collect" lc
+                INNER JOIN openings o ON o."LS_contract_id" = lc."LS_contract_id"
                 INNER JOIN currency_registry cr_col ON cr_col.ticker = lc."LS_symbol"
                 GROUP BY lc."LS_contract_id"
                 ),
 
-                -- Close timestamp (a position is realized only if it has a close)
-                closing_ts AS (
-                SELECT c."LS_contract_id", c."LS_timestamp" AS close_ts
-                FROM "LS_Loan_Closing" c
-                ),
-
-                -- Compute opening-sent and closing-received per position
                 position_flows AS (
                 SELECT
                     o."LS_contract_id"                            AS position_id,
-                    -- Sent at opening: normalized collateral + total repayments (USDC)
                     (
                     (o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC)::numeric(38,8)
                     + COALESCE(r.total_repaid_usdc, 0::numeric(38,8))
                     )                                               AS sent_open_usdc,
-                    -- Received at closing: normalized collects (USDC). Zero if liquidated without collects.
                     COALESCE(c.total_collected_usdc, 0::numeric(38,8)) AS received_close_usdc
                 FROM openings o
                 INNER JOIN currency_registry cr_cltr ON cr_cltr.ticker = o."LS_cltr_symbol"
                 LEFT JOIN repayments r ON r."LS_contract_id" = o."LS_contract_id"
-                LEFT JOIN collects   c ON c."LS_contract_id" = o."LS_contract_id"
-                INNER JOIN closing_ts ct ON ct."LS_contract_id" = o."LS_contract_id"
+                LEFT JOIN collects c ON c."LS_contract_id" = o."LS_contract_id"
+                INNER JOIN "LS_Loan_Closing" ct ON ct."LS_contract_id" = o."LS_contract_id"
                 )
 
                 SELECT

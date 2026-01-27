@@ -1090,7 +1090,7 @@ impl Table<LS_Opening> {
                     r."LS_contract_id",
                     SUM(r."LS_payment_amnt_stable") / pc.stable_currency_decimals::numeric AS total_repaid_stable
                 FROM "LS_Repayment" r
-                LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = r."LS_contract_id"
+                INNER JOIN openings o ON o."LS_contract_id" = r."LS_contract_id"
                 INNER JOIN pool_config pc ON pc.pool_id = o."LS_loan_pool_id"
                 GROUP BY r."LS_contract_id", pc.stable_currency_decimals
                 ),
@@ -1101,6 +1101,7 @@ impl Table<LS_Opening> {
                     lc."LS_contract_id",
                     SUM(lc."LS_amount_stable" / POWER(10, cr.decimal_digits)::NUMERIC) AS total_collect_normalized
                 FROM "LS_Loan_Collect" lc
+                INNER JOIN openings o ON o."LS_contract_id" = lc."LS_contract_id"
                 INNER JOIN currency_registry cr ON cr.ticker = lc."LS_symbol"
                 GROUP BY lc."LS_contract_id"
                 ),
@@ -1109,6 +1110,7 @@ impl Table<LS_Opening> {
                 liqs AS (
                 SELECT li."LS_contract_id"
                 FROM "LS_Liquidation" li
+                INNER JOIN openings o ON o."LS_contract_id" = li."LS_contract_id"
                 WHERE li."LS_loan_close" = TRUE
                 ),
 
@@ -1116,24 +1118,28 @@ impl Table<LS_Opening> {
                 closing_ts AS (
                 SELECT c."LS_contract_id", c."LS_timestamp" AS close_ts
                 FROM "LS_Loan_Closing" c
+                INNER JOIN openings o ON o."LS_contract_id" = c."LS_contract_id"
                 ),
 
                 -- Closing TxHash candidates
                 repayment_close_tx AS (
                 SELECT r."LS_contract_id", MAX(r."Tx_Hash") AS tx_hash
                 FROM "LS_Repayment" r
+                INNER JOIN openings o ON o."LS_contract_id" = r."LS_contract_id"
                 WHERE r."LS_loan_close" = TRUE
                 GROUP BY r."LS_contract_id"
                 ),
                 closepos_tx AS (
                 SELECT cp."LS_contract_id", MAX(cp."Tx_Hash") AS tx_hash
                 FROM "LS_Close_Position" cp
+                INNER JOIN openings o ON o."LS_contract_id" = cp."LS_contract_id"
                 WHERE cp."LS_loan_close" = TRUE
                 GROUP BY cp."LS_contract_id"
                 ),
                 liquidation_tx AS (
                 SELECT li."LS_contract_id", MAX(li."Tx_Hash") AS tx_hash
                 FROM "LS_Liquidation" li
+                INNER JOIN openings o ON o."LS_contract_id" = li."LS_contract_id"
                 WHERE li."LS_loan_close" = TRUE
                 GROUP BY li."LS_contract_id"
                 ),

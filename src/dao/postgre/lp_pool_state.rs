@@ -452,30 +452,11 @@ impl Table<LP_Pool_State> {
     ) -> Result<BigDecimal, crate::error::Error> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
-            WITH 
-            -- Get all active pools with their config
-            ActivePools AS (
-                SELECT pool_id, lpn_symbol, lpn_decimals, position_type, protocol
-                FROM pool_config
-                WHERE is_active = true
-            ),
-            -- Get latest prices for Short position assets from Long protocols
-            LongProtocols AS (
-                SELECT protocol FROM pool_config WHERE position_type = 'Long' AND is_active = true
-            ),
-            LatestPrices AS (
-                SELECT DISTINCT ON (a."MP_asset_symbol")
-                    a."MP_asset_symbol",
-                    a."MP_price_in_stable"
-                FROM "MP_Asset" a
-                INNER JOIN LongProtocols lp ON a."Protocol" = lp.protocol
-                ORDER BY a."MP_asset_symbol", a."MP_asset_timestamp" DESC
-            ),
+            WITH
             -- Get latest lender state per pool for this address
             LatestLenderState AS (
                 SELECT DISTINCT ON (ls."LP_Pool_id")
                     ls."LP_Pool_id",
-                    ls."LP_Lender_id",
                     ls."LP_Lender_stable",
                     ls."LP_Lender_asset",
                     ls."LP_timestamp"
@@ -485,26 +466,32 @@ impl Table<LP_Pool_State> {
             ),
             -- Calculate deposits per pool up to the lender state timestamp
             Deposits AS (
-                SELECT 
+                SELECT
                     d."LP_Pool_id",
                     COALESCE(SUM(d."LP_amnt_stable"), 0)::numeric AS deposited_stable,
                     COALESCE(SUM(d."LP_amnt_asset"), 0)::numeric AS deposited_asset
                 FROM "LP_Deposit" d
-                INNER JOIN LatestLenderState ls ON d."LP_Pool_id" = ls."LP_Pool_id"
                 WHERE d."LP_address_id" = $1
-                AND d."LP_timestamp" <= ls."LP_timestamp"
+                AND EXISTS (
+                    SELECT 1 FROM LatestLenderState ls
+                    WHERE ls."LP_Pool_id" = d."LP_Pool_id"
+                    AND d."LP_timestamp" <= ls."LP_timestamp"
+                )
                 GROUP BY d."LP_Pool_id"
             ),
             -- Calculate withdrawals per pool up to the lender state timestamp
             Withdrawals AS (
-                SELECT 
+                SELECT
                     w."LP_Pool_id",
                     COALESCE(SUM(w."LP_amnt_stable"), 0)::numeric AS withdrawn_stable,
                     COALESCE(SUM(w."LP_amnt_asset"), 0)::numeric AS withdrawn_asset
                 FROM "LP_Withdraw" w
-                INNER JOIN LatestLenderState ls ON w."LP_Pool_id" = ls."LP_Pool_id"
                 WHERE w."LP_address_id" = $1
-                AND w."LP_timestamp" <= ls."LP_timestamp"
+                AND EXISTS (
+                    SELECT 1 FROM LatestLenderState ls
+                    WHERE ls."LP_Pool_id" = w."LP_Pool_id"
+                    AND w."LP_timestamp" <= ls."LP_timestamp"
+                )
                 GROUP BY w."LP_Pool_id"
             ),
             -- Calculate earnings per pool
@@ -512,23 +499,31 @@ impl Table<LP_Pool_State> {
                 SELECT
                     ap.pool_id,
                     ap.position_type,
-                    CASE 
+                    CASE
                         -- Long pools (USDC-based): use stable values directly
                         WHEN ap.position_type = 'Long' THEN
-                            (ls."LP_Lender_stable"::numeric - (COALESCE(dep.deposited_stable, 0) - COALESCE(wdr.withdrawn_stable, 0))) 
+                            (ls."LP_Lender_stable"::numeric - (COALESCE(dep.deposited_stable, 0) - COALESCE(wdr.withdrawn_stable, 0)))
                             / ap.lpn_decimals::numeric
                         -- Short pools (asset-based): convert to stable using price
                         WHEN ap.position_type = 'Short' THEN
-                            (ls."LP_Lender_asset"::numeric - (COALESCE(dep.deposited_asset, 0) - COALESCE(wdr.withdrawn_asset, 0))) 
-                            / ap.lpn_decimals::numeric 
-                            * COALESCE(p."MP_price_in_stable", 0)
+                            (ls."LP_Lender_asset"::numeric - (COALESCE(dep.deposited_asset, 0) - COALESCE(wdr.withdrawn_asset, 0)))
+                            / ap.lpn_decimals::numeric
+                            * COALESCE(lp."MP_price_in_stable", 0)
                         ELSE 0
                     END AS earnings_in_stable
-                FROM ActivePools ap
+                FROM pool_config ap
                 INNER JOIN LatestLenderState ls ON ap.pool_id = ls."LP_Pool_id"
                 LEFT JOIN Deposits dep ON ap.pool_id = dep."LP_Pool_id"
                 LEFT JOIN Withdrawals wdr ON ap.pool_id = wdr."LP_Pool_id"
-                LEFT JOIN LatestPrices p ON ap.lpn_symbol = p."MP_asset_symbol"
+                LEFT JOIN LATERAL (
+                    SELECT a."MP_price_in_stable"
+                    FROM "MP_Asset" a
+                    INNER JOIN pool_config lpc ON lpc.position_type = 'Long' AND lpc.is_active = true AND a."Protocol" = lpc.protocol
+                    WHERE a."MP_asset_symbol" = ap.lpn_symbol
+                    ORDER BY a."MP_asset_timestamp" DESC
+                    LIMIT 1
+                ) lp ON ap.position_type = 'Short'
+                WHERE ap.is_active = true
             )
             SELECT
                 COALESCE(SUM(GREATEST(earnings_in_stable, 0)), 0)::numeric AS total_earnings_in_stable
