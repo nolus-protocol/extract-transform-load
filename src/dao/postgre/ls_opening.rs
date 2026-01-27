@@ -1775,18 +1775,23 @@ impl Table<LS_Opening> {
                     o."LS_timestamp" AS "Opening Date",
                     o."LS_asset_symbol" AS "Leased Asset",
                     o."LS_cltr_symbol" AS "Down Payment Asset",
-                    o."LS_cltr_amnt_stable" / pc.stable_currency_decimals::numeric AS "Down Payment (Stable)",
+                    -- Divide by down payment token's decimals, not stable currency decimals
+                    o."LS_cltr_amnt_stable" / POWER(10, cr_dp.decimal_digits)::numeric AS "Down Payment (Stable)",
                     COALESCE(pc.lpn_symbol, 'USDC_NOBLE') AS "LPN_Symbol",
-                    pc.stable_currency_decimals::numeric AS "stable_decimals"
+                    -- Keep leased asset decimals for loan_close calculations
+                    POWER(10, cr_asset.decimal_digits)::numeric AS "leased_asset_decimals"
                 FROM "LS_Opening" o
                 INNER JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
+                INNER JOIN currency_registry cr_dp ON cr_dp.ticker = o."LS_cltr_symbol"
+                INNER JOIN currency_registry cr_asset ON cr_asset.ticker = o."LS_asset_symbol"
                 WHERE o."LS_timestamp" >= NOW() - INTERVAL '1 year'
             ),
             loan_close AS (
                 SELECT
                     lc."LS_contract_id" AS "Contract ID",
                     lc."LS_timestamp" AS "Close Timestamp",
-                    lc."LS_amnt_stable" / o."stable_decimals" AS "Returned Amount (Stable)"
+                    -- LS_amnt_stable is stored with leased asset decimals
+                    lc."LS_amnt_stable" / o."leased_asset_decimals" AS "Returned Amount (Stable)"
                 FROM "LS_Loan_Closing" lc
                 JOIN openings o ON o."Contract ID" = lc."LS_contract_id"
             ),
@@ -1796,11 +1801,12 @@ impl Table<LS_Opening> {
                     MAX(c."LS_timestamp") AS "Close Timestamp",
                     c."LS_payment_symbol" AS "Returned LPN",
                     (SUM(c."LS_change") / POWER(10, cr.decimal_digits))::NUMERIC AS "Returned Amount (LPN Units)",
-                    SUM(c."LS_payment_amnt_stable") / o."stable_decimals" AS "Returned Amount (Stable)"
+                    -- Divide by payment token's decimals
+                    SUM(c."LS_payment_amnt_stable") / POWER(10, cr.decimal_digits)::numeric AS "Returned Amount (Stable)"
                 FROM "LS_Close_Position" c
                 JOIN openings o ON o."Contract ID" = c."LS_contract_id"
                 INNER JOIN currency_registry cr ON cr.ticker = c."LS_payment_symbol"
-                GROUP BY c."LS_contract_id", c."LS_payment_symbol", o."stable_decimals", cr.decimal_digits
+                GROUP BY c."LS_contract_id", c."LS_payment_symbol", cr.decimal_digits
             ),
             inflow AS (
                 SELECT
@@ -1815,19 +1821,23 @@ impl Table<LS_Opening> {
             repays AS (
                 SELECT
                     r."LS_contract_id" AS "Contract ID",
-                    SUM(r."LS_payment_amnt_stable") / o."stable_decimals" AS "Manual Repayments (Stable)"
+                    -- Divide by payment token's decimals
+                    SUM(r."LS_payment_amnt_stable") / POWER(10, cr.decimal_digits)::numeric AS "Manual Repayments (Stable)"
                 FROM "LS_Repayment" r
                 JOIN openings o ON o."Contract ID" = r."LS_contract_id"
-                GROUP BY r."LS_contract_id", o."stable_decimals"
+                INNER JOIN currency_registry cr ON cr.ticker = r."LS_payment_symbol"
+                GROUP BY r."LS_contract_id", cr.decimal_digits
             ),
             liqs AS (
                 SELECT
                     l."LS_contract_id" AS "Contract ID",
-                    SUM(l."LS_payment_amnt_stable") / o."stable_decimals" AS "Liquidations (Stable)",
+                    -- Divide by payment token's decimals
+                    SUM(l."LS_payment_amnt_stable") / POWER(10, cr.decimal_digits)::numeric AS "Liquidations (Stable)",
                     COUNT(*) AS "Liquidation Events"
                 FROM "LS_Liquidation" l
                 JOIN openings o ON o."Contract ID" = l."LS_contract_id"
-                GROUP BY l."LS_contract_id", o."stable_decimals"
+                INNER JOIN currency_registry cr ON cr.ticker = l."LS_payment_symbol"
+                GROUP BY l."LS_contract_id", cr.decimal_digits
             )
             SELECT
                 o."Contract ID" AS contract_id,
@@ -1901,18 +1911,23 @@ impl Table<LS_Opening> {
                     o."LS_timestamp" AS "Opening Date",
                     o."LS_asset_symbol" AS "Leased Asset",
                     o."LS_cltr_symbol" AS "Down Payment Asset",
-                    o."LS_cltr_amnt_stable" / pc.stable_currency_decimals::numeric AS "Down Payment (Stable)",
+                    -- Divide by down payment token's decimals, not stable currency decimals
+                    o."LS_cltr_amnt_stable" / POWER(10, cr_dp.decimal_digits)::numeric AS "Down Payment (Stable)",
                     COALESCE(pc.lpn_symbol, 'USDC_NOBLE') AS "LPN_Symbol",
-                    pc.stable_currency_decimals::numeric AS "stable_decimals"
+                    -- Keep leased asset decimals for loan_close calculations
+                    POWER(10, cr_asset.decimal_digits)::numeric AS "leased_asset_decimals"
                 FROM "LS_Opening" o
                 INNER JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
+                INNER JOIN currency_registry cr_dp ON cr_dp.ticker = o."LS_cltr_symbol"
+                INNER JOIN currency_registry cr_asset ON cr_asset.ticker = o."LS_asset_symbol"
                 {}
             ),
             loan_close AS (
                 SELECT
                     lc."LS_contract_id" AS "Contract ID",
                     lc."LS_timestamp" AS "Close Timestamp",
-                    lc."LS_amnt_stable" / o."stable_decimals" AS "Returned Amount (Stable)"
+                    -- LS_amnt_stable is stored with leased asset decimals
+                    lc."LS_amnt_stable" / o."leased_asset_decimals" AS "Returned Amount (Stable)"
                 FROM "LS_Loan_Closing" lc
                 JOIN openings o ON o."Contract ID" = lc."LS_contract_id"
             ),
@@ -1922,11 +1937,12 @@ impl Table<LS_Opening> {
                     MAX(c."LS_timestamp") AS "Close Timestamp",
                     c."LS_payment_symbol" AS "Returned LPN",
                     (SUM(c."LS_change") / POWER(10, cr.decimal_digits))::NUMERIC AS "Returned Amount (LPN Units)",
-                    SUM(c."LS_payment_amnt_stable") / o."stable_decimals" AS "Returned Amount (Stable)"
+                    -- Divide by payment token's decimals
+                    SUM(c."LS_payment_amnt_stable") / POWER(10, cr.decimal_digits)::numeric AS "Returned Amount (Stable)"
                 FROM "LS_Close_Position" c
                 JOIN openings o ON o."Contract ID" = c."LS_contract_id"
                 INNER JOIN currency_registry cr ON cr.ticker = c."LS_payment_symbol"
-                GROUP BY c."LS_contract_id", c."LS_payment_symbol", o."stable_decimals", cr.decimal_digits
+                GROUP BY c."LS_contract_id", c."LS_payment_symbol", cr.decimal_digits
             ),
             inflow AS (
                 SELECT
@@ -1941,19 +1957,23 @@ impl Table<LS_Opening> {
             repays AS (
                 SELECT
                     r."LS_contract_id" AS "Contract ID",
-                    SUM(r."LS_payment_amnt_stable") / o."stable_decimals" AS "Manual Repayments (Stable)"
+                    -- Divide by payment token's decimals
+                    SUM(r."LS_payment_amnt_stable") / POWER(10, cr.decimal_digits)::numeric AS "Manual Repayments (Stable)"
                 FROM "LS_Repayment" r
                 JOIN openings o ON o."Contract ID" = r."LS_contract_id"
-                GROUP BY r."LS_contract_id", o."stable_decimals"
+                INNER JOIN currency_registry cr ON cr.ticker = r."LS_payment_symbol"
+                GROUP BY r."LS_contract_id", cr.decimal_digits
             ),
             liqs AS (
                 SELECT
                     l."LS_contract_id" AS "Contract ID",
-                    SUM(l."LS_payment_amnt_stable") / o."stable_decimals" AS "Liquidations (Stable)",
+                    -- Divide by payment token's decimals
+                    SUM(l."LS_payment_amnt_stable") / POWER(10, cr.decimal_digits)::numeric AS "Liquidations (Stable)",
                     COUNT(*) AS "Liquidation Events"
                 FROM "LS_Liquidation" l
                 JOIN openings o ON o."Contract ID" = l."LS_contract_id"
-                GROUP BY l."LS_contract_id", o."stable_decimals"
+                INNER JOIN currency_registry cr ON cr.ticker = l."LS_payment_symbol"
+                GROUP BY l."LS_contract_id", cr.decimal_digits
             )
             SELECT
                 o."Contract ID" AS contract_id,
