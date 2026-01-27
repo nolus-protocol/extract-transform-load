@@ -323,7 +323,7 @@ impl Table<LS_State> {
             Lease_Value_Table AS (
                 SELECT
                     op."Asset Type" AS "Token",
-                    op."LS_amnt_stable" / POWER(10, op.asset_decimals) AS "Lease Value"
+                    op."LS_amnt_stable" / POWER(10, op.asset_decimals)::NUMERIC AS "Lease Value"
                 FROM
                     Opened op
             )
@@ -380,7 +380,7 @@ impl Table<LS_State> {
       Lease_Value_Table AS (
           SELECT
               op."Asset Type" AS "Token",
-              op."LS_amnt_stable" / POWER(10, op.asset_decimals) AS "Lease Value"
+              op."LS_amnt_stable" / POWER(10, op.asset_decimals)::NUMERIC AS "Lease Value"
           FROM
               Opened op
       )
@@ -435,7 +435,7 @@ impl Table<LS_State> {
           Lease_Value_Table AS (
               SELECT
                   op."Asset Type" AS "Token",
-                  op."Interest" / POWER(10, op.asset_decimals) AS "Total Interest Due"
+                  op."Interest" / POWER(10, op.asset_decimals)::NUMERIC AS "Total Interest Due"
               FROM
                   Opened op
           )
@@ -492,13 +492,13 @@ impl Table<LS_State> {
           SELECT
             o."LS_contract_id",
             -- Lease Value (use currency_registry for asset decimals)
-            s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Lease Value",
+            s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Lease Value",
 
             -- Loan (use currency_registry for lpn decimals)
-            s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits) AS "Loan",
+            s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits)::NUMERIC AS "Loan",
 
             -- Down Payment (use currency_registry for collateral decimals)
-            o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS "Down Payment",
+            o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment",
 
             -- Margin & Loan Interest (use pool_config decimals)
             (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / pc.lpn_decimals::numeric AS "Margin Interest",
@@ -545,7 +545,7 @@ impl Table<LS_State> {
             o."LS_contract_id" AS "Contract ID",
             DATE_TRUNC('hour', s."LS_timestamp") AS "Hour",
             s."LS_principal_stable" / pc.lpn_decimals::numeric AS "Loan",
-            o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS "Down Payment"
+            o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment"
           FROM "LS_State" s
           INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
           INNER JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
@@ -557,7 +557,7 @@ impl Table<LS_State> {
           SELECT
             o."LS_contract_id" AS "Contract ID",
             DATE_TRUNC('hour', s."LS_timestamp") AS "Hour",
-            s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Lease Value",
+            s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Lease Value",
             (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / pc.lpn_decimals::numeric AS "Margin Interest",
             (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / pc.lpn_decimals::numeric AS "Loan Interest"
           FROM "LS_State" s
@@ -672,11 +672,11 @@ impl Table<LS_State> {
             )
             SELECT SUM(
               -- Lease Value (use currency_registry for asset decimals)
-              s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)
+              s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC
               -- Minus Loan (use currency_registry for lpn decimals)
-              - s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits)
+              - s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits)::NUMERIC
               -- Minus Down Payment (use currency_registry for collateral decimals)
-              - o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)
+              - o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC
               -- Minus Margin Interest
               - (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / pc.lpn_decimals::numeric
               -- Minus Loan Interest
@@ -713,7 +713,7 @@ impl Table<LS_State> {
             SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
           ),
           Lease_Value AS (
-            SELECT s."LS_amnt_stable" / POWER(10, cr.decimal_digits) AS "Lease Value"
+            SELECT s."LS_amnt_stable" / POWER(10, cr.decimal_digits)::NUMERIC AS "Lease Value"
             FROM
               "LS_State" s
             LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
@@ -775,7 +775,7 @@ impl Table<LS_State> {
             Joined_States AS (
                 SELECT
                     o."LS_asset_symbol" AS "Symbol",
-                    s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Lease Value"
+                    s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Lease Value"
                 FROM Latest_States s
                 JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
                 INNER JOIN currency_registry cr_asset ON cr_asset.ticker = o."LS_asset_symbol"
@@ -841,13 +841,13 @@ impl Table<LS_State> {
                 pc.lpn_decimals::numeric AS denom,
 
                 -- Loan from LS_State (use currency_registry for lpn decimals)
-                s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits) AS "Loan",
+                s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits)::NUMERIC AS "Loan",
 
                 -- Down Payment from LS_Opening (use currency_registry for collateral decimals)
-                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS "Down Payment",
+                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment",
 
                 -- Lease Value from LS_State (use currency_registry for asset decimals)
-                s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Lease Value",
+                s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Lease Value",
 
                 -- Margin & Interest from LS_State (use pool_config decimals)
                 (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / pc.lpn_decimals::numeric AS "Margin Interest",
@@ -976,13 +976,13 @@ impl Table<LS_State> {
                 pc.lpn_decimals::numeric AS denom,
 
                 -- Loan from LS_State (use currency_registry for lpn decimals)
-                s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits) AS "Loan",
+                s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits)::NUMERIC AS "Loan",
 
                 -- Down Payment from LS_Opening (use currency_registry for collateral decimals)
-                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS "Down Payment",
+                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment",
 
                 -- Lease Value from LS_State (use currency_registry for asset decimals)
-                s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Lease Value",
+                s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Lease Value",
 
                 -- Margin & Interest from LS_State (use pool_config decimals)
                 (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / pc.lpn_decimals::numeric AS "Margin Interest",

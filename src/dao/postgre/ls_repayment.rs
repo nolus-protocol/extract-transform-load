@@ -246,7 +246,7 @@ impl Table<LS_Repayment> {
                     lso."LS_asset_symbol" AS "Symbol",
                     lso."LS_loan_amnt_asset" / pc.lpn_decimals::numeric AS "Loan",
                     COALESCE(
-                        SUM(cl."LS_amnt_stable" / POWER(10, cr_amnt.decimal_digits)),
+                        SUM(cl."LS_amnt_stable" / POWER(10, cr_amnt.decimal_digits)::NUMERIC),
                         0
                     ) AS "Total Repaid",
                     MAX(
@@ -345,7 +345,7 @@ impl Table<LS_Repayment> {
                     lso."LS_asset_symbol" AS "Symbol",
                     lso."LS_loan_amnt_asset" / pc.lpn_decimals::numeric AS "Loan",
                     COALESCE(
-                        SUM(cl."LS_amnt_stable" / POWER(10, cr_amnt.decimal_digits)),
+                        SUM(cl."LS_amnt_stable" / POWER(10, cr_amnt.decimal_digits)::NUMERIC),
                         0
                     ) AS "Total Repaid",
                     MAX(

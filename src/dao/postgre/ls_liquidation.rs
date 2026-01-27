@@ -193,7 +193,7 @@ impl Table<LS_Liquidation> {
                 liq."LS_transaction_type" AS transaction_type,
                 liq."LS_payment_amnt_stable" / pc.stable_currency_decimals::numeric AS liquidation_amount,
                 liq."LS_loan_close" AS closed_loan,
-                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS down_payment,
+                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS down_payment,
                 o."LS_loan_amnt_asset" / pc.lpn_decimals::numeric AS loan,
                 liq."LS_liquidation_price" AS liquidation_price
             FROM
@@ -238,7 +238,7 @@ impl Table<LS_Liquidation> {
                         ELSE lso."LS_asset_symbol"
                     END AS "Asset",
                     lso."LS_loan_amnt_asset" / pc.lpn_decimals::numeric AS "Loan",
-                    lsl."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Liquidation Amount"
+                    lsl."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Liquidation Amount"
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"
@@ -301,7 +301,7 @@ impl Table<LS_Liquidation> {
                         ELSE lso."LS_asset_symbol"
                     END AS "Asset",
                     lso."LS_loan_amnt_asset" / pc.lpn_decimals::numeric AS "Loan",
-                    lsl."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Liquidation Amount"
+                    lsl."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Liquidation Amount"
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"

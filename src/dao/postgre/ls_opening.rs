@@ -431,7 +431,7 @@ impl Table<LS_Opening> {
             Lease_Value_Table AS (
                 SELECT
                     op."Asset Type" AS "Asset",
-                    op."LS_amnt_stable" / POWER(10, op.asset_decimals) AS "Lease Value"
+                    op."LS_amnt_stable" / POWER(10, op.asset_decimals)::NUMERIC AS "Lease Value"
                 FROM
                     Opened op
             )
@@ -690,7 +690,7 @@ impl Table<LS_Opening> {
           r#"
                 WITH Opened_Leases AS (
                     SELECT
-                        lo."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS "Down Payment Amount",
+                        lo."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment Amount",
                         lo."LS_loan_amnt_stable" / pc.lpn_decimals::numeric AS "Loan"
                     FROM "LS_Opening" lo
                     INNER JOIN pool_config pc ON lo."LS_loan_pool_id" = pc.pool_id
@@ -711,13 +711,13 @@ impl Table<LS_Opening> {
                     ),
                     LS_Close AS (
                     SELECT
-                        c."LS_payment_amnt_stable" / POWER(10, cr.decimal_digits) AS "Volume"
+                        c."LS_payment_amnt_stable" / POWER(10, cr.decimal_digits)::NUMERIC AS "Volume"
                     FROM "LS_Close_Position" c
                     INNER JOIN currency_registry cr ON cr.ticker = c."LS_payment_symbol"
                     ),
                     LS_Repayment AS (
                     SELECT
-                        r."LS_payment_amnt_stable" / POWER(10, cr.decimal_digits) AS "Volume"
+                        r."LS_payment_amnt_stable" / POWER(10, cr.decimal_digits)::NUMERIC AS "Volume"
                     FROM "LS_Repayment" r
                     INNER JOIN currency_registry cr ON cr.ticker = r."LS_payment_symbol"
                     )
@@ -979,7 +979,7 @@ impl Table<LS_Opening> {
                     ELSE lso."LS_asset_symbol"
                 END AS "Leased Asset",
                 DATE_TRUNC('month', lso."LS_timestamp") AS "Date",
-                lso."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS "Down Payment Amount",
+                lso."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment Amount",
                 lso."LS_loan_amnt_stable" / pc.lpn_decimals::numeric AS "Loan Amount"
             FROM
                 "LS_Opening" lso
@@ -1013,7 +1013,7 @@ impl Table<LS_Opening> {
             r#"
            SELECT
             s."LS_timestamp" AS "time",
-            SUM(s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)) AS "amount"
+            SUM(s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC) AS "amount"
             FROM "LS_State" s
             INNER JOIN "LS_Opening" o ON o."LS_contract_id" = s."LS_contract_id"
             INNER JOIN currency_registry cr_asset ON cr_asset.ticker = o."LS_asset_symbol"
@@ -1105,7 +1105,7 @@ impl Table<LS_Opening> {
                 collects AS (
                 SELECT
                     lc."LS_contract_id",
-                    SUM(lc."LS_amount_stable" / POWER(10, cr.decimal_digits)) AS total_collect_normalized
+                    SUM(lc."LS_amount_stable" / POWER(10, cr.decimal_digits)::NUMERIC) AS total_collect_normalized
                 FROM "LS_Loan_Collect" lc
                 INNER JOIN currency_registry cr ON cr.ticker = lc."LS_symbol"
                 GROUP BY lc."LS_contract_id"
@@ -1158,11 +1158,11 @@ impl Table<LS_Opening> {
                     o."LS_timestamp" AS "Date",
                     o."LS_contract_id" AS "Position ID",
                     (
-                    o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)
+                    o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC
                     + COALESCE(r.total_repaid_stable, 0.0)
                     ) AS "Sent Amount",
                     'USDC' AS "Sent Currency",
-                    o."LS_loan_amnt" / POWER(10, cr_asset.decimal_digits) AS "Received Amount",
+                    o."LS_loan_amnt" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Received Amount",
                     CASE WHEN o."LS_asset_symbol" IN ('USDC','USDC_NOBLE') THEN 'USDC' ELSE o."LS_asset_symbol" END AS "Received Currency",
                     0.0 AS "Fee Amount",
                     'USDC' AS "Fee Currency",
@@ -1183,7 +1183,7 @@ impl Table<LS_Opening> {
                 SELECT
                     cts.close_ts AS "Date",
                     o."LS_contract_id" AS "Position ID",
-                    o."LS_loan_amnt" / POWER(10, cr_asset.decimal_digits) AS "Sent Amount",
+                    o."LS_loan_amnt" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Sent Amount",
                     CASE WHEN o."LS_asset_symbol" IN ('USDC','USDC_NOBLE') THEN 'USDC' ELSE o."LS_asset_symbol" END AS "Sent Currency",
                     COALESCE(c.total_collect_normalized,0.0) AS "Received Amount",
                     'USDC' AS "Received Currency",
@@ -1519,7 +1519,7 @@ impl Table<LS_Opening> {
                     END AS "Leased Asset",
                     lso."LS_timestamp" AS "Opening Date",
                     COALESCE(pc.position_type, 'Long') AS "Type",
-                    lso."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS "Down Payment Amount",
+                    lso."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment Amount",
                     lso."LS_cltr_symbol" AS "Down Payment Asset",
                     lso."LS_loan_amnt_stable" / pc.lpn_decimals::numeric AS "Loan",
                     lso."LS_lpn_loan_amnt" / lso."LS_lpn_decimals"::numeric AS "Total Position Amount (LPN)"
@@ -1623,7 +1623,7 @@ impl Table<LS_Opening> {
                 -- Use pre-computed position_type or fallback to pool_config
                 COALESCE(o."LS_position_type", pc.position_type, 'Long') AS position_type,
                 -- Normalized down payment amount using currency_registry
-                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS down_payment_amount,
+                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS down_payment_amount,
                 o."LS_cltr_symbol" AS down_payment_asset,
                 -- Normalized loan amount using pool_config
                 o."LS_loan_amnt_stable" / pc.lpn_decimals::numeric AS loan,
@@ -1705,7 +1705,7 @@ impl Table<LS_Opening> {
                 END AS leased_asset,
                 o."LS_timestamp" AS opening_date,
                 COALESCE(o."LS_position_type", pc.position_type, 'Long') AS position_type,
-                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS down_payment_amount,
+                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS down_payment_amount,
                 o."LS_cltr_symbol" AS down_payment_asset,
                 o."LS_loan_amnt_stable" / pc.lpn_decimals::numeric AS loan,
                 COALESCE(o."LS_lpn_loan_amnt" / o."LS_lpn_decimals"::numeric, 0) AS total_position_amount_lpn,
@@ -1795,7 +1795,7 @@ impl Table<LS_Opening> {
                     c."LS_contract_id" AS "Contract ID",
                     MAX(c."LS_timestamp") AS "Close Timestamp",
                     c."LS_payment_symbol" AS "Returned LPN",
-                    SUM(c."LS_change") / POWER(10, cr.decimal_digits) AS "Returned Amount (LPN Units)",
+                    SUM(c."LS_change") / POWER(10, cr.decimal_digits)::NUMERIC AS "Returned Amount (LPN Units)",
                     SUM(c."LS_payment_amnt_stable") / o."stable_decimals" AS "Returned Amount (Stable)"
                 FROM "LS_Close_Position" c
                 JOIN openings o ON o."Contract ID" = c."LS_contract_id"
@@ -1921,7 +1921,7 @@ impl Table<LS_Opening> {
                     c."LS_contract_id" AS "Contract ID",
                     MAX(c."LS_timestamp") AS "Close Timestamp",
                     c."LS_payment_symbol" AS "Returned LPN",
-                    SUM(c."LS_change") / POWER(10, cr.decimal_digits) AS "Returned Amount (LPN Units)",
+                    SUM(c."LS_change") / POWER(10, cr.decimal_digits)::NUMERIC AS "Returned Amount (LPN Units)",
                     SUM(c."LS_payment_amnt_stable") / o."stable_decimals" AS "Returned Amount (Stable)"
                 FROM "LS_Close_Position" c
                 JOIN openings o ON o."Contract ID" = c."LS_contract_id"
