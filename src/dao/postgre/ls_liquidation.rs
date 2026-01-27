@@ -191,16 +191,16 @@ impl Table<LS_Liquidation> {
                 liq."LS_contract_id" AS contract_id,
                 o."LS_address_id" AS user,
                 liq."LS_transaction_type" AS transaction_type,
-                liq."LS_payment_amnt_stable" / COALESCE(pc.stable_currency_decimals, 1000000)::numeric AS liquidation_amount,
+                liq."LS_payment_amnt_stable" / pc.stable_currency_decimals::numeric AS liquidation_amount,
                 liq."LS_loan_close" AS closed_loan,
-                o."LS_cltr_amnt_stable" / POWER(10, COALESCE(cr_cltr.decimal_digits, 6)) AS down_payment,
-                o."LS_loan_amnt_asset" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS loan,
+                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits) AS down_payment,
+                o."LS_loan_amnt_asset" / pc.lpn_decimals::numeric AS loan,
                 liq."LS_liquidation_price" AS liquidation_price
             FROM
                 "LS_Liquidation" liq
                 LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = liq."LS_contract_id"
-                LEFT JOIN currency_registry cr_cltr ON cr_cltr.ticker = o."LS_cltr_symbol"
-                LEFT JOIN pool_config pc ON pc.pool_id = o."LS_loan_pool_id"
+                INNER JOIN currency_registry cr_cltr ON cr_cltr.ticker = o."LS_cltr_symbol"
+                INNER JOIN pool_config pc ON pc.pool_id = o."LS_loan_pool_id"
             {}
             ORDER BY
                 liq."LS_timestamp" DESC
@@ -237,13 +237,13 @@ impl Table<LS_Liquidation> {
                         WHEN pc.position_type = 'Short' THEN CONCAT(pc.label, ' (Short)')
                         ELSE lso."LS_asset_symbol"
                     END AS "Asset",
-                    lso."LS_loan_amnt_asset" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
-                    lsl."LS_amnt_stable" / POWER(10, COALESCE(cr_asset.decimal_digits, 6)) AS "Liquidation Amount"
+                    lso."LS_loan_amnt_asset" / pc.lpn_decimals::numeric AS "Loan",
+                    lsl."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Liquidation Amount"
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"
-                    LEFT JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
-                    LEFT JOIN currency_registry cr_asset ON cr_asset.ticker = lso."LS_asset_symbol"
+                    INNER JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
+                    INNER JOIN currency_registry cr_asset ON cr_asset.ticker = lso."LS_asset_symbol"
             )
             SELECT
                 "LS_contract_id" AS contract_id,
@@ -300,13 +300,13 @@ impl Table<LS_Liquidation> {
                         WHEN pc.position_type = 'Short' THEN CONCAT(pc.label, ' (Short)')
                         ELSE lso."LS_asset_symbol"
                     END AS "Asset",
-                    lso."LS_loan_amnt_asset" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
-                    lsl."LS_amnt_stable" / POWER(10, COALESCE(cr_asset.decimal_digits, 6)) AS "Liquidation Amount"
+                    lso."LS_loan_amnt_asset" / pc.lpn_decimals::numeric AS "Loan",
+                    lsl."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits) AS "Liquidation Amount"
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"
-                    LEFT JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
-                    LEFT JOIN currency_registry cr_asset ON cr_asset.ticker = lso."LS_asset_symbol"
+                    INNER JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
+                    INNER JOIN currency_registry cr_asset ON cr_asset.ticker = lso."LS_asset_symbol"
                 {}
             )
             SELECT

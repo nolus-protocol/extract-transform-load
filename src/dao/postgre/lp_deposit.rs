@@ -165,11 +165,11 @@ impl Table<LP_Deposit> {
                     'Deposit' AS transaction_type,
                     d."LP_timestamp" AS timestamp,
                     d."LP_address_id" AS user,
-                    d."LP_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS amount,
+                    d."LP_amnt_stable" / pc.lpn_decimals::numeric AS amount,
                     COALESCE(pc.label, d."LP_Pool_id") AS pool
                 FROM 
                     "LP_Deposit" d
-                LEFT JOIN pool_config pc ON d."LP_Pool_id" = pc.pool_id
+                INNER JOIN pool_config pc ON d."LP_Pool_id" = pc.pool_id
 
                 UNION ALL
 
@@ -177,11 +177,11 @@ impl Table<LP_Deposit> {
                     'Withdraw' AS transaction_type,
                     w."LP_timestamp" AS timestamp,
                     w."LP_address_id" AS user,
-                    w."LP_amnt_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS amount,
+                    w."LP_amnt_stable" / pc.lpn_decimals::numeric AS amount,
                     COALESCE(pc.label, w."LP_Pool_id") AS pool
                 FROM 
                     "LP_Withdraw" w
-                LEFT JOIN pool_config pc ON w."LP_Pool_id" = pc.pool_id
+                INNER JOIN pool_config pc ON w."LP_Pool_id" = pc.pool_id
             ) combined
             {}
             ORDER BY timestamp DESC

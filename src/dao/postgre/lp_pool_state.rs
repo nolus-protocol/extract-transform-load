@@ -124,11 +124,11 @@ impl Table<LP_Pool_State> {
             r#"
             SELECT
                 lps."LP_Pool_timestamp",
-                SUM(lps."LP_Pool_total_value_locked_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Supplied",
-                SUM(lps."LP_Pool_total_borrowed_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Borrowed"
+                SUM(lps."LP_Pool_total_value_locked_stable" / pc.lpn_decimals::numeric) AS "Supplied",
+                SUM(lps."LP_Pool_total_borrowed_stable" / pc.lpn_decimals::numeric) AS "Borrowed"
             FROM
                 "LP_Pool_State" lps
-            LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+            INNER JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
             WHERE lps."LP_Pool_id" = $1
             GROUP BY
                 lps."LP_Pool_timestamp"
@@ -157,11 +157,11 @@ impl Table<LP_Pool_State> {
             r#"
             SELECT
                 lps."LP_Pool_timestamp",
-                SUM(lps."LP_Pool_total_value_locked_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Supplied",
-                SUM(lps."LP_Pool_total_borrowed_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Borrowed"
+                SUM(lps."LP_Pool_total_value_locked_stable" / pc.lpn_decimals::numeric) AS "Supplied",
+                SUM(lps."LP_Pool_total_borrowed_stable" / pc.lpn_decimals::numeric) AS "Borrowed"
             FROM
                 "LP_Pool_State" lps
-            LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+            INNER JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
             WHERE lps."LP_Pool_id" IN ({})
             GROUP BY
                 lps."LP_Pool_timestamp"
@@ -204,11 +204,11 @@ impl Table<LP_Pool_State> {
             r#"
             SELECT
                 lps."LP_Pool_timestamp",
-                SUM(lps."LP_Pool_total_value_locked_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Supplied",
-                SUM(lps."LP_Pool_total_borrowed_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Borrowed"
+                SUM(lps."LP_Pool_total_value_locked_stable" / pc.lpn_decimals::numeric) AS "Supplied",
+                SUM(lps."LP_Pool_total_borrowed_stable" / pc.lpn_decimals::numeric) AS "Borrowed"
             FROM
                 "LP_Pool_State" lps
-            LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+            INNER JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
             WHERE lps."LP_Pool_id" = $1
             {}
             GROUP BY
@@ -255,11 +255,11 @@ impl Table<LP_Pool_State> {
             r#"
             SELECT
                 lps."LP_Pool_timestamp",
-                SUM(lps."LP_Pool_total_value_locked_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Supplied",
-                SUM(lps."LP_Pool_total_borrowed_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric) AS "Borrowed"
+                SUM(lps."LP_Pool_total_value_locked_stable" / pc.lpn_decimals::numeric) AS "Supplied",
+                SUM(lps."LP_Pool_total_borrowed_stable" / pc.lpn_decimals::numeric) AS "Borrowed"
             FROM
                 "LP_Pool_State" lps
-            LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+            INNER JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
             WHERE lps."LP_Pool_id" IN ({})
             {}
             GROUP BY
@@ -432,7 +432,7 @@ impl Table<LP_Pool_State> {
                 INNER JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
             )
             SELECT
-                SUM("LP_Pool_total_value_locked_stable" / COALESCE(lpn_decimals, 1000000)::numeric) AS "Total Supplied"
+                SUM("LP_Pool_total_value_locked_stable" / lpn_decimals::numeric) AS "Total Supplied"
             FROM Latest_Pool_Data
             WHERE rank = 1
             "#,
@@ -591,7 +591,7 @@ impl Table<LP_Pool_State> {
                     pc.lpn_decimals,
                     pc.protocol
                 FROM "LP_Pool_State" lps
-                LEFT JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
+                INNER JOIN pool_config pc ON lps."LP_Pool_id" = pc.pool_id
                 WHERE lps."LP_Pool_timestamp" = (SELECT max_ts FROM Latest_Pool_Aggregation)
                 ORDER BY lps."LP_Pool_id", lps."LP_Pool_timestamp" DESC
             ),
@@ -643,8 +643,8 @@ impl Table<LP_Pool_State> {
                     THEN (ls."LP_Pool_total_borrowed_stable"::numeric / ls."LP_Pool_total_value_locked_stable"::numeric) * 100
                     ELSE 0
                 END AS utilization,
-                ls."LP_Pool_total_value_locked_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS supplied,
-                ls."LP_Pool_total_borrowed_stable" / COALESCE(ls.lpn_decimals, 1000000)::numeric AS borrowed,
+                ls."LP_Pool_total_value_locked_stable" / ls.lpn_decimals::numeric AS supplied,
+                ls."LP_Pool_total_borrowed_stable" / ls.lpn_decimals::numeric AS borrowed,
                 COALESCE(apr.borrow_apr, 0) AS borrow_apr,
                 CASE
                     WHEN ea.apr_simple IS NOT NULL AND ea.apr_simple > 0

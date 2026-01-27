@@ -168,10 +168,10 @@ impl Table<LP_Lender_State> {
                 unique_lpd."Joined" AS joined,
                 COALESCE(pc.label, lps."LP_Pool_id") AS pool,
                 lps."LP_Lender_id" AS lender,
-                lps."LP_Lender_stable" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS lent_stables
+                lps."LP_Lender_stable" / pc.lpn_decimals::numeric AS lent_stables
             FROM
                 "LP_Lender_State" lps
-            LEFT JOIN pool_config pc ON pc.pool_id = lps."LP_Pool_id"
+            INNER JOIN pool_config pc ON pc.pool_id = lps."LP_Pool_id"
             CROSS JOIN
                 LatestAggregation la
             LEFT JOIN (
