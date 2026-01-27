@@ -9,8 +9,9 @@ pub use self::aggregation_task::aggregation_task;
 pub fn parse_event_timestamp(nanos_str: &str) -> Result<DateTime<Utc>, Error> {
     let nanos: i64 = nanos_str.parse()?;
     let secs = nanos / 1_000_000_000;
-    DateTime::from_timestamp(secs, 0)
-        .ok_or_else(|| Error::DecodeDateTimeError(format!("timestamp: {}", secs)))
+    DateTime::from_timestamp(secs, 0).ok_or_else(|| {
+        Error::DecodeDateTimeError(format!("timestamp: {}", secs))
+    })
 }
 
 mod aggregation_task;

@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cache_keys,
     configuration::{AppState, State},
     error::Error,
     helpers::{
@@ -80,7 +81,7 @@ pub async fn realized_pnl_stats(
 ) -> Result<impl Responder, Error> {
     let data = cached_fetch(
         &state.api_cache.realized_pnl_stats,
-        "realized_pnl_stats",
+        cache_keys::REALIZED_PNL_STATS,
         || async {
             let data = state
                 .database
@@ -120,28 +121,18 @@ pub async fn realized_pnl_wallet(
 ) -> Result<HttpResponse, Error> {
     // Handle export=true: return all data as streaming CSV
     if query.export.unwrap_or(false) {
-        const CACHE_KEY: &str = "realized_pnl_wallet_all";
-
-        if let Some(cached) =
-            state.api_cache.realized_pnl_wallet.get(CACHE_KEY).await
-        {
-            return to_streaming_csv_response(
-                cached,
-                "realized-pnl-wallet.csv",
-            );
-        }
-
-        let data = state
-            .database
-            .ls_opening
-            .get_realized_pnl_by_wallet_with_window(None, None)
-            .await?;
-
-        state
-            .api_cache
-            .realized_pnl_wallet
-            .set(CACHE_KEY, data.clone())
-            .await;
+        let data = cached_fetch(
+            &state.api_cache.realized_pnl_wallet,
+            cache_keys::REALIZED_PNL_WALLET,
+            || async {
+                state
+                    .database
+                    .ls_opening
+                    .get_realized_pnl_by_wallet_with_window(None, None)
+                    .await
+            },
+        )
+        .await?;
 
         return to_streaming_csv_response(data, "realized-pnl-wallet.csv");
     }
@@ -151,26 +142,18 @@ pub async fn realized_pnl_wallet(
     let cache_key =
         build_cache_key("realized_pnl_wallet", period_str, query.from);
 
-    if let Some(cached) =
-        state.api_cache.realized_pnl_wallet.get(&cache_key).await
-    {
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&cached, "realized-pnl-wallet.csv"),
-            _ => Ok(HttpResponse::Ok().json(cached)),
-        };
-    }
-
-    let data = state
-        .database
-        .ls_opening
-        .get_realized_pnl_by_wallet_with_window(months, query.from)
-        .await?;
-
-    state
-        .api_cache
-        .realized_pnl_wallet
-        .set(&cache_key, data.clone())
-        .await;
+    let data = cached_fetch(
+        &state.api_cache.realized_pnl_wallet,
+        &cache_key,
+        || async {
+            state
+                .database
+                .ls_opening
+                .get_realized_pnl_by_wallet_with_window(months, query.from)
+                .await
+        },
+    )
+    .await?;
 
     match query.format.as_deref() {
         Some("csv") => to_csv_response(&data, "realized-pnl-wallet.csv"),
@@ -188,7 +171,7 @@ pub async fn unrealized_pnl(
 ) -> Result<impl Responder, Error> {
     let data = cached_fetch(
         &state.api_cache.unrealized_pnl,
-        "unrealized_pnl",
+        cache_keys::UNREALIZED_PNL,
         || async { state.database.ls_state.get_unrealized_pnl().await },
     )
     .await?;

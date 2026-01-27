@@ -119,8 +119,10 @@ async fn proceed(
             ticker: pool_currency.0.to_owned(),
         });
 
-        let previous_margin_due_stable = state
-            .in_stable_calc(&pool_currency_price, &previous_margin_due.amount)?;
+        let previous_margin_due_stable = state.in_stable_calc(
+            &pool_currency_price,
+            &previous_margin_due.amount,
+        )?;
         let overdue_margin_stable = state
             .in_stable_calc(&pool_currency_price, &overdue_margin.amount)?;
 

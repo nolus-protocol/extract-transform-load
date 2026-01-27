@@ -8,61 +8,7 @@ use crate::model::{Buyback, TR_Profit, Table};
 use super::{DataBase, QueryResult};
 
 impl Table<TR_Profit> {
-    pub async fn isExists(
-        &self,
-        tr_profit: &TR_Profit,
-    ) -> Result<bool, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT
-                COUNT(*)
-            FROM "TR_Profit"
-            WHERE
-                "TR_Profit_height" = $1 AND
-                "TR_Profit_timestamp" = $2
-            "#,
-        )
-        .bind(tr_profit.TR_Profit_height)
-        .bind(tr_profit.TR_Profit_timestamp)
-        .persistent(true)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub async fn insert(
-        &self,
-        data: TR_Profit,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "TR_Profit" (
-                "TR_Profit_height",
-                "TR_Profit_timestamp",
-                "TR_Profit_amnt_stable",
-                "TR_Profit_amnt_nls",
-                "Tx_Hash"
-            )
-            VALUES($1, $2, $3, $4, $5)
-        "#,
-        )
-        .bind(data.TR_Profit_height)
-        .bind(data.TR_Profit_timestamp)
-        .bind(&data.TR_Profit_amnt_stable)
-        .bind(&data.TR_Profit_amnt_nls)
-        .bind(&data.Tx_Hash)
-        .persistent(true)
-        .execute(&mut **transaction)
-        .await
-    }
-
-    /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
+    /// Inserts a record if it doesn't already exist.
     /// Uses Tx_Hash for deduplication since multiple profit events can occur in same block.
     pub async fn insert_if_not_exists(
         &self,
@@ -185,7 +131,10 @@ impl Table<TR_Profit> {
         // Build time conditions
         let mut conditions = Vec::new();
         if let Some(m) = months {
-            conditions.push(format!("\"TR_Profit_timestamp\" >= NOW() - INTERVAL '{} months'", m));
+            conditions.push(format!(
+                "\"TR_Profit_timestamp\" >= NOW() - INTERVAL '{} months'",
+                m
+            ));
         }
         if from.is_some() {
             conditions.push("\"TR_Profit_timestamp\" > $1".to_string());
@@ -285,7 +234,8 @@ impl Table<TR_Profit> {
         &self,
         months: Option<i32>,
         from: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> Result<Vec<(DateTime<Utc>, BigDecimal, BigDecimal)>, crate::error::Error> {
+    ) -> Result<Vec<(DateTime<Utc>, BigDecimal, BigDecimal)>, crate::error::Error>
+    {
         let time_filter = match (months, from) {
             (_, Some(from_ts)) => format!(
                 r#"AND "TR_Profit_timestamp" > '{}'"#,
@@ -313,10 +263,11 @@ impl Table<TR_Profit> {
             time_filter
         );
 
-        let data: Vec<(DateTime<Utc>, BigDecimal, BigDecimal)> = sqlx::query_as(&query_str)
-            .persistent(true)
-            .fetch_all(&self.pool)
-            .await?;
+        let data: Vec<(DateTime<Utc>, BigDecimal, BigDecimal)> =
+            sqlx::query_as(&query_str)
+                .persistent(true)
+                .fetch_all(&self.pool)
+                .await?;
 
         Ok(data)
     }

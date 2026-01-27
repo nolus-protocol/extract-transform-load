@@ -54,14 +54,16 @@ pub async fn parse_and_insert(
 
     // Fetch the liquidation price at the time of the event
     let f3 = async {
-        app_state.database.mp_asset.get_price_by_date(
-            &item.amount_symbol,
-            protocol.to_owned(),
-            &at,
-        ).await.map_err(Error::from)
+        app_state
+            .database
+            .mp_asset
+            .get_price_by_date(&item.amount_symbol, protocol.to_owned(), &at)
+            .await
+            .map_err(Error::from)
     };
 
-    let (LS_amnt_stable, LS_payment_amnt_stable, liquidation_price) = tokio::try_join!(f1, f2, f3)?;
+    let (LS_amnt_stable, LS_payment_amnt_stable, liquidation_price) =
+        tokio::try_join!(f1, f2, f3)?;
     let amount = BigDecimal::from_str(&item.amount_amount)?;
     let ls_liquidation = LS_Liquidation {
         Tx_Hash: tx_hash,

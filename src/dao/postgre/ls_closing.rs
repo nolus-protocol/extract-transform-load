@@ -6,51 +6,7 @@ use crate::model::{LS_Closing, Table};
 use super::{DataBase, QueryResult};
 
 impl Table<LS_Closing> {
-    pub async fn isExists(
-        &self,
-        ls_closing: &LS_Closing,
-    ) -> Result<bool, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT
-                COUNT(*)
-            FROM "LS_Closing"
-            WHERE
-                "LS_contract_id" = $1
-            "#,
-        )
-        .bind(&ls_closing.LS_contract_id)
-        .persistent(true)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-    pub async fn insert(
-        &self,
-        data: LS_Closing,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "LS_Closing" ("LS_contract_id", "LS_timestamp", "Tx_Hash")
-            VALUES($1, $2, $3)
-        "#,
-        )
-        .bind(&data.LS_contract_id)
-        .bind(data.LS_timestamp)
-        .bind(data.Tx_Hash)
-        .persistent(true)
-        .execute(&mut **transaction)
-        .await
-    }
-
     /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
-    /// This is more efficient than calling isExists() followed by insert().
     pub async fn insert_if_not_exists(
         &self,
         data: LS_Closing,

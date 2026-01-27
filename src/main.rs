@@ -58,7 +58,9 @@ async fn app_main() -> Result<(), Error> {
         None | Some(Commands::Serve) => run_server().await,
 
         // Run migrations only
-        Some(Commands::Migrate { status, fake }) => cli::run_migrate(status, fake).await,
+        Some(Commands::Migrate { status, fake }) => {
+            cli::run_migrate(status, fake).await
+        },
 
         // Run backfill operations
         Some(Commands::Backfill { command }) => match command {

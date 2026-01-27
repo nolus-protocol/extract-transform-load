@@ -46,7 +46,12 @@ pub async fn prices(
     let data = state
         .database
         .mp_asset
-        .get_prices(query.key.to_owned(), query.protocol.to_owned(), date, group)
+        .get_prices(
+            query.key.to_owned(),
+            query.protocol.to_owned(),
+            date,
+            group,
+        )
         .await?;
     let mut prices = vec![];
 

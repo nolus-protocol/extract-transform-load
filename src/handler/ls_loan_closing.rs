@@ -56,7 +56,7 @@ async fn proceed_loan_collect(
         .ls_opening
         .get(ls_loan_closing.LS_contract_id.to_owned())
         .await?;
-    
+
     // Skip if lease opening not found (happens during partial sync)
     let Some(ls_opening) = ls_opening else {
         tracing::debug!(
@@ -65,15 +65,10 @@ async fn proceed_loan_collect(
         );
         return Ok(());
     };
-    
+
     match Loan_Closing_Status::from_str(&ls_loan_closing.Type)? {
         Loan_Closing_Status::Repay => {
-            proceed_repayment(
-                state,
-                ls_loan_closing,
-                ls_opening,
-            )
-            .await?;
+            proceed_repayment(state, ls_loan_closing, ls_opening).await?;
         },
         Loan_Closing_Status::MarketClose => {
             proceed_market_close(
@@ -135,9 +130,11 @@ async fn proceed_repayment(
 
     for b in balances.balances {
         // Look up currency by bank_symbol (IBC denom)
-        let item = state.config.hash_map_currencies.values().find(|item| {
-            item.2 == b.denom.to_uppercase()
-        });
+        let item = state
+            .config
+            .hash_map_currencies
+            .values()
+            .find(|item| item.2 == b.denom.to_uppercase());
 
         if let Some(c) = item {
             let c = c.clone();
@@ -268,9 +265,11 @@ async fn proceed_market_close(
 
         for b in balances.balances {
             // Look up currency by bank_symbol (IBC denom)
-            let item = state.config.hash_map_currencies.values().find(|item| {
-                item.2 == b.denom.to_uppercase()
-            });
+            let item = state
+                .config
+                .hash_map_currencies
+                .values()
+                .find(|item| item.2 == b.denom.to_uppercase());
 
             if let Some(c) = item {
                 let c = c.clone();
@@ -459,18 +458,16 @@ async fn get_loan(
                 LS_pnl: loan.LS_pnl,
             })
         },
-        None => {
-            Ok(LS_Loan_Closing {
-                LS_contract_id: contract.to_owned(),
-                LS_amnt_stable: BigDecimal::from(0),
-                LS_timestamp: at,
-                Type: String::from(r#type),
-                LS_amnt: BigDecimal::from(0),
-                LS_pnl: BigDecimal::from(0),
-                Block: block,
-                Active: false,
-            })
-        },
+        None => Ok(LS_Loan_Closing {
+            LS_contract_id: contract.to_owned(),
+            LS_amnt_stable: BigDecimal::from(0),
+            LS_timestamp: at,
+            Type: String::from(r#type),
+            LS_amnt: BigDecimal::from(0),
+            LS_pnl: BigDecimal::from(0),
+            Block: block,
+            Active: false,
+        }),
     }
 }
 

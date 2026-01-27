@@ -9,16 +9,13 @@ impl Table<LP_Pool> {
         sqlx::query(
             r#"
             INSERT INTO "LP_Pool" ("LP_Pool_id", "LP_symbol", "LP_status")
-            SELECT * FROM (SELECT $1 as "LP_Pool_id", $2 as "LP_symbol", $3 as "LP_status") AS tmp
-            WHERE NOT EXISTS (
-                SELECT "LP_Pool_id" FROM "LP_Pool" WHERE "LP_Pool_id" = $4
-            ) LIMIT 1
+            VALUES($1, $2, $3)
+            ON CONFLICT ("LP_Pool_id") DO NOTHING
         "#,
         )
         .bind(&data.LP_Pool_id)
         .bind(&data.LP_symbol)
         .bind(data.LP_status)
-        .bind(&data.LP_Pool_id)
         .persistent(true)
         .execute(&self.pool)
         .await

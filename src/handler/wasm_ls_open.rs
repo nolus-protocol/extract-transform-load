@@ -26,7 +26,9 @@ fn calculate_liquidation_price(
     let ltv_factor = BigDecimal::from_str("0.9").ok()?;
     let total_collateral = down_payment_stable + loan_stable;
 
-    if total_collateral == BigDecimal::from(0) || *total_position_lpn == BigDecimal::from(0) {
+    if total_collateral == BigDecimal::from(0)
+        || *total_position_lpn == BigDecimal::from(0)
+    {
         return None;
     }
 
@@ -35,12 +37,12 @@ fn calculate_liquidation_price(
             // (loan / 0.9) / (down_payment + loan) * price
             let debt_at_liquidation = loan_stable / &ltv_factor;
             Some(&debt_at_liquidation / &total_collateral * opening_price)
-        }
+        },
         "Short" => {
             // (down_payment + loan) / (total_position_lpn / 0.9)
             let position_at_liquidation = total_position_lpn / &ltv_factor;
             Some(&total_collateral / &position_at_liquidation)
-        }
+        },
         _ => None,
     }
 }
@@ -130,8 +132,8 @@ pub async fn parse_and_insert(
     };
 
     // Calculate down payment in stable
-    let down_payment_stable = app_state
-        .in_stable_calc(&d_price, &item.downpayment_amount)?;
+    let down_payment_stable =
+        app_state.in_stable_calc(&d_price, &item.downpayment_amount)?;
 
     // Opening price is the leased currency price
     let opening_price = Some(lease_currency_price.clone());

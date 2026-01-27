@@ -71,10 +71,7 @@ impl Synchronization {
         Ok((threads_count, parts))
     }
 
-    pub async fn run(
-        &self,
-        app_state: AppState<State>,
-    ) -> Result<(), Error> {
+    pub async fn run(&self, app_state: AppState<State>) -> Result<(), Error> {
         let (threads_count, parts) = self.get_params(&app_state).await?;
 
         if !self.is_running() {

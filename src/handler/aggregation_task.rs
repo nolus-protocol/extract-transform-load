@@ -8,7 +8,8 @@ use crate::{
 };
 
 use super::{
-    cache_refresher, lp_lender_state, lp_pool_state, ls_state, pl_state, tr_state,
+    cache_refresher, lp_lender_state, lp_pool_state, ls_state, pl_state,
+    tr_state,
 };
 
 pub fn aggregation_task(

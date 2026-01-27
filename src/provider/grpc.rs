@@ -675,7 +675,6 @@ impl Grpc {
                         metadata.insert("x-cosmos-block-height", height);
 
                         let data = client.smart_contract_state(request).await;
-                        
 
                         data.map(|response| response.into_inner().data)
                     }
@@ -729,7 +728,6 @@ impl Grpc {
                         metadata.insert("x-cosmos-block-height", height);
 
                         let data = client.raw_contract_state(request).await;
-                        
 
                         data.map(|response| response.into_inner().data)
                     }
@@ -1070,7 +1068,10 @@ impl Grpc {
     }
 
     /// Query oracle contract for stable currency symbol
-    pub async fn get_stable_currency(&self, oracle_contract: String) -> Result<String, Error> {
+    pub async fn get_stable_currency(
+        &self,
+        oracle_contract: String,
+    ) -> Result<String, Error> {
         const QUERY_CONTRACT_ERROR: &str =
             "Failed to run query against oracle stable_currency contract!";
         const PARSE_MESSAGE_ERROR: &str =

@@ -24,15 +24,18 @@ pub async fn run_migrations(database_url: &str) -> Result<(), Error> {
     tracing::info!("Running database migrations...");
 
     // Parse the database URL for tokio-postgres
-    let config: tokio_postgres::Config = database_url
-        .parse()
-        .map_err(|e| Error::ConfigurationError(format!("Invalid database URL: {}", e)))?;
+    let config: tokio_postgres::Config = database_url.parse().map_err(|e| {
+        Error::ConfigurationError(format!("Invalid database URL: {}", e))
+    })?;
 
     // Connect to the database
-    let (mut client, connection) = config
-        .connect(NoTls)
-        .await
-        .map_err(|e| Error::ConfigurationError(format!("Failed to connect for migrations: {}", e)))?;
+    let (mut client, connection) =
+        config.connect(NoTls).await.map_err(|e| {
+            Error::ConfigurationError(format!(
+                "Failed to connect for migrations: {}",
+                e
+            ))
+        })?;
 
     // Spawn the connection handler
     tokio::spawn(async move {
@@ -42,10 +45,13 @@ pub async fn run_migrations(database_url: &str) -> Result<(), Error> {
     });
 
     // Run migrations
-    let report = migrations::runner()
-        .run_async(&mut client)
-        .await
-        .map_err(|e| Error::ConfigurationError(format!("Migration failed: {}", e)))?;
+    let report =
+        migrations::runner()
+            .run_async(&mut client)
+            .await
+            .map_err(|e| {
+                Error::ConfigurationError(format!("Migration failed: {}", e))
+            })?;
 
     // Log results
     let applied = report.applied_migrations();
@@ -74,15 +80,21 @@ pub async fn run_migrations(database_url: &str) -> Result<(), Error> {
 ///
 /// - `up_to_version: None` - fake all migrations
 /// - `up_to_version: Some(N)` - fake only up to version N
-pub async fn run_migrations_fake(database_url: &str, up_to_version: Option<u32>) -> Result<(), Error> {
-    let config: tokio_postgres::Config = database_url
-        .parse()
-        .map_err(|e| Error::ConfigurationError(format!("Invalid database URL: {}", e)))?;
+pub async fn run_migrations_fake(
+    database_url: &str,
+    up_to_version: Option<u32>,
+) -> Result<(), Error> {
+    let config: tokio_postgres::Config = database_url.parse().map_err(|e| {
+        Error::ConfigurationError(format!("Invalid database URL: {}", e))
+    })?;
 
-    let (mut client, connection) = config
-        .connect(NoTls)
-        .await
-        .map_err(|e| Error::ConfigurationError(format!("Failed to connect for migrations: {}", e)))?;
+    let (mut client, connection) =
+        config.connect(NoTls).await.map_err(|e| {
+            Error::ConfigurationError(format!(
+                "Failed to connect for migrations: {}",
+                e
+            ))
+        })?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
@@ -100,7 +112,9 @@ pub async fn run_migrations_fake(database_url: &str, up_to_version: Option<u32>)
         .set_target(target)
         .run_async(&mut client)
         .await
-        .map_err(|e| Error::ConfigurationError(format!("Migration failed: {}", e)))?;
+        .map_err(|e| {
+            Error::ConfigurationError(format!("Migration failed: {}", e))
+        })?;
 
     let applied = report.applied_migrations();
     if applied.is_empty() {
@@ -130,11 +144,12 @@ mod tests {
         let runner = migrations::runner();
         let migrations = runner.get_migrations();
         assert!(!migrations.is_empty(), "No migrations found");
-        
+
         // Sort migrations by version (refinery sorts them at runtime, but get_migrations() may not be sorted)
-        let mut sorted_versions: Vec<u32> = migrations.iter().map(|m| m.version()).collect();
+        let mut sorted_versions: Vec<u32> =
+            migrations.iter().map(|m| m.version()).collect();
         sorted_versions.sort();
-        
+
         // Verify no duplicate versions
         let mut prev_version = 0;
         for version in &sorted_versions {
@@ -144,10 +159,18 @@ mod tests {
             );
             prev_version = *version;
         }
-        
-        // Verify we have all expected migrations (V001 through V008)
-        assert_eq!(sorted_versions.len(), 8, "Expected 8 migrations");
-        assert_eq!(sorted_versions.first(), Some(&1), "First migration should be V001");
-        assert_eq!(sorted_versions.last(), Some(&8), "Last migration should be V008");
+
+        // Verify we have all expected migrations (V001 through V011)
+        assert_eq!(sorted_versions.len(), 12, "Expected 12 migrations");
+        assert_eq!(
+            sorted_versions.first(),
+            Some(&1),
+            "First migration should be V001"
+        );
+        assert_eq!(
+            sorted_versions.last(),
+            Some(&12),
+            "Last migration should be V012"
+        );
     }
 }

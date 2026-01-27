@@ -172,7 +172,9 @@ impl From<LS_transactions> for String {
     fn from(value: LS_transactions) -> Self {
         match value {
             LS_transactions::Interest_Overdue_Liquidation => String::from("0"),
-            LS_transactions::Liability_Exceeded_Liquidation => String::from("1"),
+            LS_transactions::Liability_Exceeded_Liquidation => {
+                String::from("1")
+            },
         }
     }
 }
@@ -198,7 +200,9 @@ pub enum LS_Liquidation_Type {
 impl fmt::Display for LS_Liquidation_Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            LS_Liquidation_Type::OverdueInterest => write!(f, "overdue interest"),
+            LS_Liquidation_Type::OverdueInterest => {
+                write!(f, "overdue interest")
+            },
             LS_Liquidation_Type::HighLiability => write!(f, "high liability"),
             LS_Liquidation_Type::Unsupported => write!(f, "unsupported"),
         }
@@ -208,8 +212,12 @@ impl fmt::Display for LS_Liquidation_Type {
 impl From<LS_Liquidation_Type> for String {
     fn from(value: LS_Liquidation_Type) -> Self {
         match value {
-            LS_Liquidation_Type::OverdueInterest => String::from("overdue interest"),
-            LS_Liquidation_Type::HighLiability => String::from("high liability"),
+            LS_Liquidation_Type::OverdueInterest => {
+                String::from("overdue interest")
+            },
+            LS_Liquidation_Type::HighLiability => {
+                String::from("high liability")
+            },
             LS_Liquidation_Type::Unsupported => String::from("unsupported"),
         }
     }
@@ -560,6 +568,11 @@ pub struct Pool_Config {
     pub lpn_symbol: String,
     pub lpn_decimals: i64,
     pub label: String,
+    pub is_active: bool,
+    pub first_seen_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub deprecated_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub stable_currency_symbol: Option<String>,
+    pub stable_currency_decimals: Option<i64>,
 }
 
 // =============================================================================
@@ -748,18 +761,6 @@ pub struct TokenPosition {
 // -----------------------------------------------------------------------------
 // Parameter Types
 // -----------------------------------------------------------------------------
-
-#[derive(Debug, Clone)]
-pub struct TvlPoolParams {
-    pub osmosis_usdc: String,
-    pub neutron_axelar: String,
-    pub osmosis_usdc_noble: String,
-    pub neutron_usdc_noble: String,
-    pub osmosis_st_atom: String,
-    pub osmosis_all_btc: String,
-    pub osmosis_all_sol: String,
-    pub osmosis_akt: String,
-}
 
 pub struct RawTxParams<'a> {
     pub tx_hash: String,

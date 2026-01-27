@@ -25,7 +25,9 @@ impl Table<Block> {
     /// Full gap scan - scans entire block table for gaps.
     /// Use on startup to catch any historical gaps.
     /// Uses window function LEAD() to efficiently find gaps without correlated subqueries.
-    pub async fn get_all_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
+    pub async fn get_all_missing_blocks(
+        &self,
+    ) -> Result<Vec<(i64, i64)>, Error> {
         sqlx::query_as(
             r#"
             WITH with_next AS (
@@ -45,7 +47,9 @@ impl Table<Block> {
     /// Recent gap scan - only checks last 100k blocks for gaps.
     /// Use during runtime for fast gap detection.
     /// Uses window function LEAD() to efficiently find gaps without correlated subqueries.
-    pub async fn get_recent_missing_blocks(&self) -> Result<Vec<(i64, i64)>, Error> {
+    pub async fn get_recent_missing_blocks(
+        &self,
+    ) -> Result<Vec<(i64, i64)>, Error> {
         sqlx::query_as(
             r#"
             WITH recent_blocks AS (

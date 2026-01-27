@@ -10,10 +10,14 @@ use futures::{future::join_all, TryFutureExt as _};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cache_keys,
     configuration::{AppState, State},
     error::Error,
     handler::ls_loan_closing::get_fees,
-    helpers::{build_cache_key, build_protocol_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
+    helpers::{
+        build_cache_key, build_protocol_cache_key, cached_fetch,
+        parse_period_months, to_csv_response, to_streaming_csv_response,
+    },
     model::{LS_History, LS_Opening, TokenLoan},
 };
 
@@ -95,15 +99,12 @@ pub async fn leases_search(
 pub async fn leases_monthly(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    const CACHE_KEY: &str = "leases_monthly";
-
-    if let Some(cached) = state.api_cache.leases_monthly.get(CACHE_KEY).await {
-        return Ok(web::Json(cached));
-    }
-
-    let data = state.database.ls_opening.get_leases_monthly().await?;
-
-    state.api_cache.leases_monthly.set(CACHE_KEY, data.clone()).await;
+    let data = cached_fetch(
+        &state.api_cache.leases_monthly,
+        cache_keys::LEASES_MONTHLY,
+        || async { Ok(state.database.ls_opening.get_leases_monthly().await?) },
+    )
+    .await?;
 
     Ok(web::Json(data))
 }
@@ -122,28 +123,29 @@ pub async fn leased_assets(
     state: web::Data<AppState<State>>,
     query: web::Query<LeasedAssetsQuery>,
 ) -> Result<impl Responder, Error> {
-    let cache_key = build_protocol_cache_key("leased_assets", query.protocol.as_deref());
+    let cache_key =
+        build_protocol_cache_key("leased_assets", query.protocol.as_deref());
+    let protocol = query.protocol.clone();
 
-    if let Some(cached) = state.api_cache.leased_assets.get(&cache_key).await {
-        return Ok(web::Json(cached));
-    }
-
-    let data = if let Some(protocol_key) = &query.protocol {
-        let protocol_key = protocol_key.to_uppercase();
-        if let Some(protocol) = state.protocols.get(&protocol_key) {
-            state
-                .database
-                .ls_opening
-                .get_leased_assets(protocol.contracts.lpp.to_owned())
-                .await?
-        } else {
-            vec![]
-        }
-    } else {
-        state.database.ls_opening.get_leased_assets_total().await?
-    };
-
-    state.api_cache.leased_assets.set(&cache_key, data.clone()).await;
+    let data =
+        cached_fetch(&state.api_cache.leased_assets, &cache_key, || async {
+            let data = if let Some(protocol_key) = &protocol {
+                let protocol_key = protocol_key.to_uppercase();
+                if let Some(protocol) = state.protocols.get(&protocol_key) {
+                    state
+                        .database
+                        .ls_opening
+                        .get_leased_assets(protocol.contracts.lpp.to_owned())
+                        .await?
+                } else {
+                    vec![]
+                }
+            } else {
+                state.database.ls_opening.get_leased_assets_total().await?
+            };
+            Ok(data)
+        })
+        .await?;
 
     Ok(web::Json(data))
 }
@@ -169,26 +171,12 @@ pub async fn lease_value_stats(
     state: web::Data<AppState<State>>,
     query: web::Query<LeaseValueStatsQuery>,
 ) -> Result<HttpResponse, Error> {
-    const CACHE_KEY: &str = "lease_value_stats";
-
-    if let Some(cached) = state.api_cache.lease_value_stats.get(CACHE_KEY).await {
-        let stats: Vec<LeaseValueStat> = cached
-            .into_iter()
-            .map(|s| LeaseValueStat {
-                asset: s.asset,
-                avg_value: s.avg_value,
-                max_value: s.max_value,
-            })
-            .collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&stats, "lease-value-stats.csv"),
-            _ => Ok(HttpResponse::Ok().json(stats)),
-        };
-    }
-
-    let data = state.database.ls_state.get_lease_value_stats().await?;
-
-    state.api_cache.lease_value_stats.set(CACHE_KEY, data.clone()).await;
+    let data = cached_fetch(
+        &state.api_cache.lease_value_stats,
+        cache_keys::LEASE_VALUE_STATS,
+        || async { state.database.ls_state.get_lease_value_stats().await },
+    )
+    .await?;
 
     let stats: Vec<LeaseValueStat> = data
         .into_iter()
@@ -213,24 +201,24 @@ pub async fn lease_value_stats(
 pub async fn loans_by_token(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    const CACHE_KEY: &str = "loans_by_token";
+    let data = cached_fetch(
+        &state.api_cache.loans_by_token,
+        cache_keys::LOANS_BY_TOKEN,
+        || async {
+            let data = state.database.ls_state.get_loans_by_token().await?;
+            let loans: Vec<TokenLoan> = data
+                .into_iter()
+                .map(|l| TokenLoan {
+                    symbol: l.symbol,
+                    value: l.value,
+                })
+                .collect();
+            Ok(loans)
+        },
+    )
+    .await?;
 
-    if let Some(cached) = state.api_cache.loans_by_token.get(CACHE_KEY).await {
-        return Ok(web::Json(cached));
-    }
-
-    let data = state.database.ls_state.get_loans_by_token().await?;
-    let loans: Vec<TokenLoan> = data
-        .into_iter()
-        .map(|l| TokenLoan {
-            symbol: l.symbol,
-            value: l.value,
-        })
-        .collect();
-
-    state.api_cache.loans_by_token.set(CACHE_KEY, loans.clone()).await;
-
-    Ok(web::Json(loans))
+    Ok(web::Json(data))
 }
 
 // =============================================================================
@@ -253,25 +241,12 @@ pub async fn loans_granted(
     state: web::Data<AppState<State>>,
     query: web::Query<LoansGrantedQuery>,
 ) -> Result<HttpResponse, Error> {
-    const CACHE_KEY: &str = "loans_granted";
-
-    if let Some(cached) = state.api_cache.loans_granted.get(CACHE_KEY).await {
-        let loans: Vec<LoanGranted> = cached
-            .into_iter()
-            .map(|l| LoanGranted {
-                asset: l.asset,
-                loan: l.loan,
-            })
-            .collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&loans, "loans-granted.csv"),
-            _ => Ok(HttpResponse::Ok().json(loans)),
-        };
-    }
-
-    let data = state.database.ls_opening.get_loans_granted().await?;
-
-    state.api_cache.loans_granted.set(CACHE_KEY, data.clone()).await;
+    let data = cached_fetch(
+        &state.api_cache.loans_granted,
+        cache_keys::LOANS_GRANTED,
+        || async { state.database.ls_opening.get_loans_granted().await },
+    )
+    .await?;
 
     let loans: Vec<LoanGranted> = data
         .into_iter()
@@ -453,14 +428,16 @@ pub async fn ls_opening(
                     / BigDecimal::from(u64::pow(10, currency.1.try_into()?));
             }
 
-            return Ok(web::Json(LsOpeningResult::Single(Box::new(Some(LsOpeningResponse {
-                lease,
-                downpayment_price,
-                lpn_price,
-                fee,
-                repayment_value,
-                history,
-            })))));
+            return Ok(web::Json(LsOpeningResult::Single(Box::new(Some(
+                LsOpeningResponse {
+                    lease,
+                    downpayment_price,
+                    lpn_price,
+                    fee,
+                    repayment_value,
+                    history,
+                },
+            )))));
         }
 
         return Ok(web::Json(LsOpeningResult::Single(Box::new(None))));
@@ -528,7 +505,9 @@ pub struct Liquidation {
     pub liquidation_price: Option<BigDecimal>,
 }
 
-impl From<crate::dao::postgre::ls_liquidation::LiquidationData> for Liquidation {
+impl From<crate::dao::postgre::ls_liquidation::LiquidationData>
+    for Liquidation
+{
     fn from(l: crate::dao::postgre::ls_liquidation::LiquidationData) -> Self {
         Self {
             timestamp: l.timestamp,
@@ -552,17 +531,17 @@ pub async fn liquidations(
 ) -> Result<HttpResponse, Error> {
     // Handle export=true: return all data as streaming CSV
     if query.export.unwrap_or(false) {
-        const CACHE_KEY: &str = "liquidations_all";
+        let data = cached_fetch(
+            &state.api_cache.liquidations,
+            cache_keys::LIQUIDATIONS,
+            || async {
+                state.database.ls_liquidation.get_all_liquidations().await
+            },
+        )
+        .await?;
 
-        if let Some(cached) = state.api_cache.liquidations.get(CACHE_KEY).await {
-            let data: Vec<Liquidation> = cached.into_iter().map(Into::into).collect();
-            return to_streaming_csv_response(data, "liquidations.csv");
-        }
-
-        let data = state.database.ls_liquidation.get_all_liquidations().await?;
-        state.api_cache.liquidations.set(CACHE_KEY, data.clone()).await;
-
-        let response: Vec<Liquidation> = data.into_iter().map(Into::into).collect();
+        let response: Vec<Liquidation> =
+            data.into_iter().map(Into::into).collect();
         return to_streaming_csv_response(response, "liquidations.csv");
     }
 
@@ -570,25 +549,19 @@ pub async fn liquidations(
     let period_str = query.period.as_deref().unwrap_or("3m");
     let cache_key = build_cache_key("liquidations", period_str, query.from);
 
-    if query.from.is_none() {
-        if let Some(cached) = state.api_cache.liquidations.get(&cache_key).await {
-            let data: Vec<Liquidation> = cached.into_iter().map(Into::into).collect();
-            return match query.format.as_deref() {
-                Some("csv") => to_csv_response(&data, "liquidations.csv"),
-                _ => Ok(HttpResponse::Ok().json(data)),
-            };
-        }
-    }
+    let fetch = || async {
+        state
+            .database
+            .ls_liquidation
+            .get_liquidations_with_window(months, query.from)
+            .await
+    };
 
-    let data = state
-        .database
-        .ls_liquidation
-        .get_liquidations_with_window(months, query.from)
-        .await?;
-
-    if query.from.is_none() {
-        state.api_cache.liquidations.set(&cache_key, data.clone()).await;
-    }
+    let data = if query.from.is_none() {
+        cached_fetch(&state.api_cache.liquidations, &cache_key, fetch).await?
+    } else {
+        fetch().await?
+    };
 
     let response: Vec<Liquidation> = data.into_iter().map(Into::into).collect();
 
@@ -621,8 +594,12 @@ pub struct InterestRepayment {
     pub margin_interest_repaid: BigDecimal,
 }
 
-impl From<crate::dao::postgre::ls_repayment::InterestRepaymentData> for InterestRepayment {
-    fn from(r: crate::dao::postgre::ls_repayment::InterestRepaymentData) -> Self {
+impl From<crate::dao::postgre::ls_repayment::InterestRepaymentData>
+    for InterestRepayment
+{
+    fn from(
+        r: crate::dao::postgre::ls_repayment::InterestRepaymentData,
+    ) -> Self {
         Self {
             timestamp: r.timestamp,
             contract_id: r.contract_id,
@@ -642,46 +619,44 @@ pub async fn interest_repayments(
 ) -> Result<HttpResponse, Error> {
     // Handle export=true: return all data as streaming CSV
     if query.export.unwrap_or(false) {
-        const CACHE_KEY: &str = "interest_repayments_all";
+        let data = cached_fetch(
+            &state.api_cache.interest_repayments,
+            cache_keys::INTEREST_REPAYMENTS,
+            || async {
+                state
+                    .database
+                    .ls_repayment
+                    .get_interest_repayments_with_window(None, None)
+                    .await
+            },
+        )
+        .await?;
 
-        if let Some(cached) = state.api_cache.interest_repayments.get(CACHE_KEY).await {
-            let data: Vec<InterestRepayment> = cached.into_iter().map(Into::into).collect();
-            return to_streaming_csv_response(data, "interest-repayments.csv");
-        }
-
-        let data = state
-            .database
-            .ls_repayment
-            .get_interest_repayments_with_window(None, None)
-            .await?;
-
-        state.api_cache.interest_repayments.set(CACHE_KEY, data.clone()).await;
-
-        let response: Vec<InterestRepayment> = data.into_iter().map(Into::into).collect();
+        let response: Vec<InterestRepayment> =
+            data.into_iter().map(Into::into).collect();
         return to_streaming_csv_response(response, "interest-repayments.csv");
     }
 
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("3m");
-    let cache_key = build_cache_key("interest_repayments", period_str, query.from);
+    let cache_key =
+        build_cache_key("interest_repayments", period_str, query.from);
 
-    if let Some(cached) = state.api_cache.interest_repayments.get(&cache_key).await {
-        let data: Vec<InterestRepayment> = cached.into_iter().map(Into::into).collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&data, "interest-repayments.csv"),
-            _ => Ok(HttpResponse::Ok().json(data)),
-        };
-    }
+    let data = cached_fetch(
+        &state.api_cache.interest_repayments,
+        &cache_key,
+        || async {
+            state
+                .database
+                .ls_repayment
+                .get_interest_repayments_with_window(months, query.from)
+                .await
+        },
+    )
+    .await?;
 
-    let data = state
-        .database
-        .ls_repayment
-        .get_interest_repayments_with_window(months, query.from)
-        .await?;
-
-    state.api_cache.interest_repayments.set(&cache_key, data.clone()).await;
-
-    let response: Vec<InterestRepayment> = data.into_iter().map(Into::into).collect();
+    let response: Vec<InterestRepayment> =
+        data.into_iter().map(Into::into).collect();
 
     match query.format.as_deref() {
         Some("csv") => to_csv_response(&response, "interest-repayments.csv"),
@@ -717,7 +692,9 @@ pub struct HistoricallyOpened {
     pub liquidation_price: Option<BigDecimal>,
 }
 
-impl From<crate::dao::postgre::ls_opening::HistoricallyOpened> for HistoricallyOpened {
+impl From<crate::dao::postgre::ls_opening::HistoricallyOpened>
+    for HistoricallyOpened
+{
     fn from(o: crate::dao::postgre::ls_opening::HistoricallyOpened) -> Self {
         Self {
             contract_id: o.contract_id,
@@ -743,41 +720,44 @@ pub async fn historically_opened(
 ) -> Result<HttpResponse, Error> {
     // Handle export=true: return all data as streaming CSV
     if query.export.unwrap_or(false) {
-        const CACHE_KEY: &str = "historically_opened_all";
+        let data = cached_fetch(
+            &state.api_cache.historically_opened,
+            cache_keys::HISTORICALLY_OPENED,
+            || async {
+                state
+                    .database
+                    .ls_opening
+                    .get_all_historically_opened()
+                    .await
+            },
+        )
+        .await?;
 
-        if let Some(cached) = state.api_cache.historically_opened.get(CACHE_KEY).await {
-            let data: Vec<HistoricallyOpened> = cached.into_iter().map(Into::into).collect();
-            return to_streaming_csv_response(data, "historically-opened.csv");
-        }
-
-        let data = state.database.ls_opening.get_all_historically_opened().await?;
-        state.api_cache.historically_opened.set(CACHE_KEY, data.clone()).await;
-
-        let response: Vec<HistoricallyOpened> = data.into_iter().map(Into::into).collect();
+        let response: Vec<HistoricallyOpened> =
+            data.into_iter().map(Into::into).collect();
         return to_streaming_csv_response(response, "historically-opened.csv");
     }
 
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("3m");
-    let cache_key = build_cache_key("historically_opened", period_str, query.from);
+    let cache_key =
+        build_cache_key("historically_opened", period_str, query.from);
 
-    if let Some(cached) = state.api_cache.historically_opened.get(&cache_key).await {
-        let data: Vec<HistoricallyOpened> = cached.into_iter().map(Into::into).collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&data, "historically-opened.csv"),
-            _ => Ok(HttpResponse::Ok().json(data)),
-        };
-    }
+    let data = cached_fetch(
+        &state.api_cache.historically_opened,
+        &cache_key,
+        || async {
+            state
+                .database
+                .ls_opening
+                .get_historically_opened_with_window(months, query.from)
+                .await
+        },
+    )
+    .await?;
 
-    let data = state
-        .database
-        .ls_opening
-        .get_historically_opened_with_window(months, query.from)
-        .await?;
-
-    state.api_cache.historically_opened.set(&cache_key, data.clone()).await;
-
-    let response: Vec<HistoricallyOpened> = data.into_iter().map(Into::into).collect();
+    let response: Vec<HistoricallyOpened> =
+        data.into_iter().map(Into::into).collect();
 
     match query.format.as_deref() {
         Some("csv") => to_csv_response(&response, "historically-opened.csv"),
@@ -807,7 +787,9 @@ pub struct HistoricallyRepaid {
     pub loan_closed: String,
 }
 
-impl From<crate::dao::postgre::ls_repayment::HistoricallyRepaid> for HistoricallyRepaid {
+impl From<crate::dao::postgre::ls_repayment::HistoricallyRepaid>
+    for HistoricallyRepaid
+{
     fn from(r: crate::dao::postgre::ls_repayment::HistoricallyRepaid) -> Self {
         Self {
             contract_id: r.contract_id,
@@ -827,41 +809,40 @@ pub async fn historically_repaid(
 ) -> Result<HttpResponse, Error> {
     // Handle export=true: return all data as streaming CSV
     if query.export.unwrap_or(false) {
-        const CACHE_KEY: &str = "historically_repaid_all";
+        let data = cached_fetch(
+            &state.api_cache.historically_repaid,
+            cache_keys::HISTORICALLY_REPAID,
+            || async {
+                state.database.ls_repayment.get_historically_repaid().await
+            },
+        )
+        .await?;
 
-        if let Some(cached) = state.api_cache.historically_repaid.get(CACHE_KEY).await {
-            let data: Vec<HistoricallyRepaid> = cached.into_iter().map(Into::into).collect();
-            return to_streaming_csv_response(data, "historically-repaid.csv");
-        }
-
-        let data = state.database.ls_repayment.get_historically_repaid().await?;
-        state.api_cache.historically_repaid.set(CACHE_KEY, data.clone()).await;
-
-        let response: Vec<HistoricallyRepaid> = data.into_iter().map(Into::into).collect();
+        let response: Vec<HistoricallyRepaid> =
+            data.into_iter().map(Into::into).collect();
         return to_streaming_csv_response(response, "historically-repaid.csv");
     }
 
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("3m");
-    let cache_key = build_cache_key("historically_repaid", period_str, query.from);
+    let cache_key =
+        build_cache_key("historically_repaid", period_str, query.from);
 
-    if let Some(cached) = state.api_cache.historically_repaid.get(&cache_key).await {
-        let data: Vec<HistoricallyRepaid> = cached.into_iter().map(Into::into).collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&data, "historically-repaid.csv"),
-            _ => Ok(HttpResponse::Ok().json(data)),
-        };
-    }
+    let data = cached_fetch(
+        &state.api_cache.historically_repaid,
+        &cache_key,
+        || async {
+            state
+                .database
+                .ls_repayment
+                .get_historically_repaid_with_window(months, query.from)
+                .await
+        },
+    )
+    .await?;
 
-    let data = state
-        .database
-        .ls_repayment
-        .get_historically_repaid_with_window(months, query.from)
-        .await?;
-
-    state.api_cache.historically_repaid.set(&cache_key, data.clone()).await;
-
-    let response: Vec<HistoricallyRepaid> = data.into_iter().map(Into::into).collect();
+    let response: Vec<HistoricallyRepaid> =
+        data.into_iter().map(Into::into).collect();
 
     match query.format.as_deref() {
         Some("csv") => to_csv_response(&response, "historically-repaid.csv"),
@@ -889,8 +870,12 @@ pub struct HistoricallyLiquidated {
     pub total_liquidated: Option<BigDecimal>,
 }
 
-impl From<crate::dao::postgre::ls_liquidation::HistoricallyLiquidated> for HistoricallyLiquidated {
-    fn from(l: crate::dao::postgre::ls_liquidation::HistoricallyLiquidated) -> Self {
+impl From<crate::dao::postgre::ls_liquidation::HistoricallyLiquidated>
+    for HistoricallyLiquidated
+{
+    fn from(
+        l: crate::dao::postgre::ls_liquidation::HistoricallyLiquidated,
+    ) -> Self {
         Self {
             contract_id: l.contract_id,
             asset: l.asset,
@@ -907,44 +892,52 @@ pub async fn historically_liquidated(
 ) -> Result<HttpResponse, Error> {
     // Handle export=true: return all data as streaming CSV
     if query.export.unwrap_or(false) {
-        const CACHE_KEY: &str = "historically_liquidated_all";
+        let data = cached_fetch(
+            &state.api_cache.historically_liquidated,
+            cache_keys::HISTORICALLY_LIQUIDATED,
+            || async {
+                state
+                    .database
+                    .ls_liquidation
+                    .get_historically_liquidated()
+                    .await
+            },
+        )
+        .await?;
 
-        if let Some(cached) = state.api_cache.historically_liquidated.get(CACHE_KEY).await {
-            let data: Vec<HistoricallyLiquidated> = cached.into_iter().map(Into::into).collect();
-            return to_streaming_csv_response(data, "historically-liquidated.csv");
-        }
-
-        let data = state.database.ls_liquidation.get_historically_liquidated().await?;
-        state.api_cache.historically_liquidated.set(CACHE_KEY, data.clone()).await;
-
-        let response: Vec<HistoricallyLiquidated> = data.into_iter().map(Into::into).collect();
-        return to_streaming_csv_response(response, "historically-liquidated.csv");
+        let response: Vec<HistoricallyLiquidated> =
+            data.into_iter().map(Into::into).collect();
+        return to_streaming_csv_response(
+            response,
+            "historically-liquidated.csv",
+        );
     }
 
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("3m");
-    let cache_key = build_cache_key("historically_liquidated", period_str, query.from);
+    let cache_key =
+        build_cache_key("historically_liquidated", period_str, query.from);
 
-    if let Some(cached) = state.api_cache.historically_liquidated.get(&cache_key).await {
-        let data: Vec<HistoricallyLiquidated> = cached.into_iter().map(Into::into).collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&data, "historically-liquidated.csv"),
-            _ => Ok(HttpResponse::Ok().json(data)),
-        };
-    }
+    let data = cached_fetch(
+        &state.api_cache.historically_liquidated,
+        &cache_key,
+        || async {
+            state
+                .database
+                .ls_liquidation
+                .get_historically_liquidated_with_window(months, query.from)
+                .await
+        },
+    )
+    .await?;
 
-    let data = state
-        .database
-        .ls_liquidation
-        .get_historically_liquidated_with_window(months, query.from)
-        .await?;
-
-    state.api_cache.historically_liquidated.set(&cache_key, data.clone()).await;
-
-    let response: Vec<HistoricallyLiquidated> = data.into_iter().map(Into::into).collect();
+    let response: Vec<HistoricallyLiquidated> =
+        data.into_iter().map(Into::into).collect();
 
     match query.format.as_deref() {
-        Some("csv") => to_csv_response(&response, "historically-liquidated.csv"),
+        Some("csv") => {
+            to_csv_response(&response, "historically-liquidated.csv")
+        },
         _ => Ok(HttpResponse::Ok().json(response)),
     }
 }

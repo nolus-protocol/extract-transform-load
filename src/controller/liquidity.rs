@@ -8,10 +8,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cache_keys,
     configuration::{AppState, State},
     dao::postgre::lp_pool_state::PoolUtilizationLevel,
     error::Error,
-    helpers::{build_cache_key, build_cache_key_with_protocol, parse_period_months, to_csv_response, to_streaming_csv_response},
+    helpers::{
+        build_cache_key, build_cache_key_with_protocol, cached_fetch,
+        parse_period_months, to_csv_response, to_streaming_csv_response,
+    },
 };
 
 // =============================================================================
@@ -33,23 +37,15 @@ pub struct PoolsResponse {
 pub async fn pools(
     state: web::Data<AppState<State>>,
 ) -> Result<HttpResponse, Error> {
-    const CACHE_KEY: &str = "pools_all";
-
-    if let Some(cached) = state.api_cache.pools.get(CACHE_KEY).await {
-        return Ok(HttpResponse::Ok().json(PoolsResponse {
-            protocols: cached,
-            optimal: String::from("70.00"),
-            deposit_suspension: String::from("65.00"),
-        }));
-    }
-
-    let data = state
-        .database
-        .lp_pool_state
-        .get_all_utilization_levels()
+    let data =
+        cached_fetch(&state.api_cache.pools, cache_keys::POOLS, || async {
+            Ok(state
+                .database
+                .lp_pool_state
+                .get_all_utilization_levels()
+                .await?)
+        })
         .await?;
-
-    state.api_cache.pools.set(CACHE_KEY, data.clone()).await;
 
     Ok(HttpResponse::Ok().json(PoolsResponse {
         protocols: data,
@@ -103,27 +99,12 @@ pub async fn current_lenders(
     state: web::Data<AppState<State>>,
     query: web::Query<CurrentLendersQuery>,
 ) -> Result<HttpResponse, Error> {
-    const CACHE_KEY: &str = "current_lenders";
-
-    if let Some(cached) = state.api_cache.current_lenders.get(CACHE_KEY).await {
-        let lenders: Vec<Lender> = cached
-            .into_iter()
-            .map(|l| Lender {
-                joined: l.joined,
-                pool: l.pool,
-                lender: l.lender,
-                lent_stables: l.lent_stables,
-            })
-            .collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&lenders, "current-lenders.csv"),
-            _ => Ok(HttpResponse::Ok().json(lenders)),
-        };
-    }
-
-    let data = state.database.lp_lender_state.get_current_lenders().await?;
-
-    state.api_cache.current_lenders.set(CACHE_KEY, data.clone()).await;
+    let data = cached_fetch(
+        &state.api_cache.current_lenders,
+        cache_keys::CURRENT_LENDERS,
+        || async { state.database.lp_lender_state.get_current_lenders().await },
+    )
+    .await?;
 
     let lenders: Vec<Lender> = data
         .into_iter()
@@ -162,7 +143,9 @@ pub struct HistoricalLender {
     pub pool: String,
 }
 
-impl From<crate::dao::postgre::lp_deposit::HistoricalLender> for HistoricalLender {
+impl From<crate::dao::postgre::lp_deposit::HistoricalLender>
+    for HistoricalLender
+{
     fn from(l: crate::dao::postgre::lp_deposit::HistoricalLender) -> Self {
         Self {
             transaction_type: l.transaction_type,
@@ -181,41 +164,40 @@ pub async fn historical_lenders(
 ) -> Result<HttpResponse, Error> {
     // Handle export=true: return all data as streaming CSV
     if query.export.unwrap_or(false) {
-        const CACHE_KEY: &str = "historical_lenders_all";
+        let data = cached_fetch(
+            &state.api_cache.historical_lenders,
+            cache_keys::HISTORICAL_LENDERS,
+            || async {
+                state.database.lp_deposit.get_all_historical_lenders().await
+            },
+        )
+        .await?;
 
-        if let Some(cached) = state.api_cache.historical_lenders.get(CACHE_KEY).await {
-            let data: Vec<HistoricalLender> = cached.into_iter().map(Into::into).collect();
-            return to_streaming_csv_response(data, "historical-lenders.csv");
-        }
-
-        let data = state.database.lp_deposit.get_all_historical_lenders().await?;
-        state.api_cache.historical_lenders.set(CACHE_KEY, data.clone()).await;
-
-        let response: Vec<HistoricalLender> = data.into_iter().map(Into::into).collect();
+        let response: Vec<HistoricalLender> =
+            data.into_iter().map(Into::into).collect();
         return to_streaming_csv_response(response, "historical-lenders.csv");
     }
 
     let months = parse_period_months(&query.period)?;
     let period_str = query.period.as_deref().unwrap_or("3m");
-    let cache_key = build_cache_key("historical_lenders", period_str, query.from);
+    let cache_key =
+        build_cache_key("historical_lenders", period_str, query.from);
 
-    if let Some(cached) = state.api_cache.historical_lenders.get(&cache_key).await {
-        let data: Vec<HistoricalLender> = cached.into_iter().map(Into::into).collect();
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&data, "historical-lenders.csv"),
-            _ => Ok(HttpResponse::Ok().json(data)),
-        };
-    }
+    let data = cached_fetch(
+        &state.api_cache.historical_lenders,
+        &cache_key,
+        || async {
+            state
+                .database
+                .lp_deposit
+                .get_historical_lenders_with_window(months, query.from)
+                .await
+        },
+    )
+    .await?;
 
-    let data = state
-        .database
-        .lp_deposit
-        .get_historical_lenders_with_window(months, query.from)
-        .await?;
-
-    state.api_cache.historical_lenders.set(&cache_key, data.clone()).await;
-
-    let response: Vec<HistoricalLender> = data.into_iter().map(Into::into).collect();
+    let response: Vec<HistoricalLender> =
+        data.into_iter().map(Into::into).collect();
 
     match query.format.as_deref() {
         Some("csv") => to_csv_response(&response, "historical-lenders.csv"),
@@ -248,26 +230,28 @@ pub async fn utilization_level(
         let admin = state.protocols.get(&protocol_key);
 
         if let Some(protocol) = admin {
-            let cache_key = build_cache_key_with_protocol("utilization_level", &protocol_key, period_str, query.from);
+            let cache_key = build_cache_key_with_protocol(
+                "utilization_level",
+                &protocol_key,
+                period_str,
+                query.from,
+            );
+            let lpp = protocol.contracts.lpp.clone();
 
-            if let Some(cached) = state.api_cache.utilization_level.get(&cache_key).await {
-                let items: Vec<BigDecimal> = cached
-                    .iter()
-                    .map(|item| item.utilization_level.clone())
-                    .collect();
-                return match query.format.as_deref() {
-                    Some("csv") => to_csv_response(&cached, "utilization-level.csv"),
-                    _ => Ok(HttpResponse::Ok().json(items)),
-                };
-            }
-
-            let data = state
-                .database
-                .lp_pool_state
-                .get_utilization_level_with_window(protocol.contracts.lpp.clone(), months, query.from)
-                .await?;
-
-            state.api_cache.utilization_level.set(&cache_key, data.clone()).await;
+            let data = cached_fetch(
+                &state.api_cache.utilization_level,
+                &cache_key,
+                || async {
+                    Ok(state
+                        .database
+                        .lp_pool_state
+                        .get_utilization_level_with_window(
+                            lpp, months, query.from,
+                        )
+                        .await?)
+                },
+            )
+            .await?;
 
             let items: Vec<BigDecimal> = data
                 .iter()

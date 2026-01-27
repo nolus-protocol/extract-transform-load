@@ -8,68 +8,7 @@ use crate::model::{TR_Rewards_Distribution, Table};
 use super::{DataBase, QueryResult};
 
 impl Table<TR_Rewards_Distribution> {
-    pub async fn isExists(
-        &self,
-        tr_reward: &TR_Rewards_Distribution,
-    ) -> Result<bool, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT
-                COUNT(*)
-            FROM "TR_Rewards_Distribution"
-            WHERE
-                "TR_Rewards_height" = $1 AND
-                "TR_Rewards_Pool_id" = $2 AND
-                "Event_Block_Index" = $3
-            "#,
-        )
-        .bind(tr_reward.TR_Rewards_height)
-        .bind(&tr_reward.TR_Rewards_Pool_id)
-        .bind(tr_reward.Event_Block_Index)
-        .persistent(true)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub async fn insert(
-        &self,
-        data: TR_Rewards_Distribution,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "TR_Rewards_Distribution" (
-                "TR_Rewards_height",
-                "TR_Rewards_Pool_id",
-                "TR_Rewards_timestamp",
-                "TR_Rewards_amnt_stable",
-                "TR_Rewards_amnt_nls",
-                "Event_Block_Index",
-                "Tx_Hash"
-            )
-            VALUES($1, $2, $3, $4, $5, $6, $7)
-        "#,
-        )
-        .bind(data.TR_Rewards_height)
-        .bind(&data.TR_Rewards_Pool_id)
-        .bind(data.TR_Rewards_timestamp)
-        .bind(&data.TR_Rewards_amnt_stable)
-        .bind(&data.TR_Rewards_amnt_nls)
-        .bind(data.Event_Block_Index)
-        .bind(data.Tx_Hash)
-        .persistent(true)
-        .execute(&mut **transaction)
-        .await
-    }
-
     /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
-    /// More efficient than calling isExists() followed by insert().
     pub async fn insert_if_not_exists(
         &self,
         data: TR_Rewards_Distribution,

@@ -31,78 +31,6 @@ pub struct HistoricallyRepaid {
 }
 
 impl Table<LS_Repayment> {
-    pub async fn isExists(
-        &self,
-        ls_repayment: &LS_Repayment,
-    ) -> Result<bool, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT
-                COUNT(*)
-            FROM "LS_Repayment"
-            WHERE
-                "LS_repayment_height" = $1 AND
-                "LS_contract_id" = $2 AND
-                "LS_timestamp" = $3
-            "#,
-        )
-        .bind(ls_repayment.LS_repayment_height)
-        .bind(&ls_repayment.LS_contract_id)
-        .bind(ls_repayment.LS_timestamp)
-        .persistent(true)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub async fn insert(
-        &self,
-        data: LS_Repayment,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "LS_Repayment" (
-                "LS_repayment_height",
-                "LS_contract_id",
-                "LS_payment_symbol",
-                "LS_payment_amnt",
-                "LS_payment_amnt_stable",
-                "LS_timestamp",
-                "LS_loan_close",
-                "LS_prev_margin_stable",
-                "LS_prev_interest_stable",
-                "LS_current_margin_stable",
-                "LS_current_interest_stable",
-                "LS_principal_stable",
-                "Tx_Hash"
-            )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        "#,
-        )
-        .bind(data.LS_repayment_height)
-        .bind(&data.LS_contract_id)
-        .bind(&data.LS_payment_symbol)
-        .bind(&data.LS_payment_amnt)
-        .bind(&data.LS_payment_amnt_stable)
-        .bind(data.LS_timestamp)
-        .bind(data.LS_loan_close)
-        .bind(&data.LS_prev_margin_stable)
-        .bind(&data.LS_prev_interest_stable)
-        .bind(&data.LS_current_margin_stable)
-        .bind(&data.LS_current_interest_stable)
-        .bind(&data.LS_principal_stable)
-        .bind(&data.Tx_Hash)
-        .persistent(true)
-        .execute(&mut **transaction)
-        .await
-    }
-
     pub async fn insert_if_not_exists(
         &self,
         data: LS_Repayment,
@@ -316,17 +244,9 @@ impl Table<LS_Repayment> {
                 SELECT
                     lso."LS_contract_id" AS "Contract ID",
                     lso."LS_asset_symbol" AS "Symbol",
-                    lso."LS_loan_amnt_asset" / 1000000 AS "Loan",
+                    lso."LS_loan_amnt_asset" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
                     COALESCE(
-                        SUM(
-                            CASE
-                                WHEN cl."Amount Symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN cl."LS_amnt_stable" / 100000000
-                                WHEN cl."Amount Symbol" IN ('ALL_SOL') THEN cl."LS_amnt_stable" / 1000000000
-                                WHEN cl."Amount Symbol" IN ('PICA') THEN cl."LS_amnt_stable" / 1000000000000
-                                WHEN cl."Amount Symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN cl."LS_amnt_stable" / 1000000000000000000
-                                ELSE cl."LS_amnt_stable" / 1000000
-                            END
-                        ),
+                        SUM(cl."LS_amnt_stable" / POWER(10, COALESCE(cr_amnt.decimal_digits, 6))),
                         0
                     ) AS "Total Repaid",
                     MAX(
@@ -346,10 +266,13 @@ impl Table<LS_Repayment> {
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN Closed_Loans cl ON lso."LS_contract_id" = cl."LS_contract_id"
+                    LEFT JOIN currency_registry cr_amnt ON cr_amnt.ticker = cl."Amount Symbol"
+                    LEFT JOIN pool_config pc ON pc.pool_id = lso."LS_loan_pool_id"
                 GROUP BY
                     lso."LS_contract_id",
                     lso."LS_asset_symbol",
-                    lso."LS_loan_amnt_asset"
+                    lso."LS_loan_amnt_asset",
+                    pc.lpn_decimals
             )
             SELECT
                 rl."Contract ID" AS contract_id,
@@ -420,17 +343,9 @@ impl Table<LS_Repayment> {
                 SELECT
                     lso."LS_contract_id" AS "Contract ID",
                     lso."LS_asset_symbol" AS "Symbol",
-                    lso."LS_loan_amnt_asset" / 1000000 AS "Loan",
+                    lso."LS_loan_amnt_asset" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
                     COALESCE(
-                        SUM(
-                            CASE
-                                WHEN cl."Amount Symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN cl."LS_amnt_stable" / 100000000
-                                WHEN cl."Amount Symbol" IN ('ALL_SOL') THEN cl."LS_amnt_stable" / 1000000000
-                                WHEN cl."Amount Symbol" IN ('PICA') THEN cl."LS_amnt_stable" / 1000000000000
-                                WHEN cl."Amount Symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN cl."LS_amnt_stable" / 1000000000000000000
-                                ELSE cl."LS_amnt_stable" / 1000000
-                            END
-                        ),
+                        SUM(cl."LS_amnt_stable" / POWER(10, COALESCE(cr_amnt.decimal_digits, 6))),
                         0
                     ) AS "Total Repaid",
                     MAX(
@@ -450,11 +365,14 @@ impl Table<LS_Repayment> {
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN Closed_Loans cl ON lso."LS_contract_id" = cl."LS_contract_id"
+                    LEFT JOIN currency_registry cr_amnt ON cr_amnt.ticker = cl."Amount Symbol"
+                    LEFT JOIN pool_config pc ON pc.pool_id = lso."LS_loan_pool_id"
                 {}
                 GROUP BY
                     lso."LS_contract_id",
                     lso."LS_asset_symbol",
-                    lso."LS_loan_amnt_asset"
+                    lso."LS_loan_amnt_asset",
+                    pc.lpn_decimals
             )
             SELECT
                 rl."Contract ID" AS contract_id,
@@ -499,7 +417,8 @@ impl Table<LS_Repayment> {
                 SELECT
                     o."LS_contract_id",
                     o."LS_address_id" AS position_owner,
-                    COALESCE(pc.position_type, 'Long') AS position_type
+                    COALESCE(pc.position_type, 'Long') AS position_type,
+                    COALESCE(pc.stable_currency_decimals, 1000000)::numeric AS stable_decimals
                 FROM "LS_Opening" o
                 LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
             ),
@@ -507,30 +426,33 @@ impl Table<LS_Repayment> {
                 SELECT
                     r."LS_timestamp" AS timestamp,
                     r."LS_contract_id" AS contract_id,
-                    (COALESCE(r."LS_prev_interest_stable", 0) + COALESCE(r."LS_current_interest_stable", 0)) / 1000000.0 AS loan_interest_repaid,
-                    (COALESCE(r."LS_prev_margin_stable", 0) + COALESCE(r."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
+                    (COALESCE(r."LS_prev_interest_stable", 0) + COALESCE(r."LS_current_interest_stable", 0)) / ci.stable_decimals AS loan_interest_repaid,
+                    (COALESCE(r."LS_prev_margin_stable", 0) + COALESCE(r."LS_current_margin_stable", 0)) / ci.stable_decimals AS margin_interest_repaid,
                     'repayment' AS event_type
                 FROM "LS_Repayment" r
+                JOIN ContractInfo ci ON ci."LS_contract_id" = r."LS_contract_id"
                 WHERE r."LS_timestamp" > $3
             ),
             CloseEvents AS (
                 SELECT
                     c."LS_timestamp" AS timestamp,
                     c."LS_contract_id" AS contract_id,
-                    (COALESCE(c."LS_prev_interest_stable", 0) + COALESCE(c."LS_current_interest_stable", 0)) / 1000000.0 AS loan_interest_repaid,
-                    (COALESCE(c."LS_prev_margin_stable", 0) + COALESCE(c."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
+                    (COALESCE(c."LS_prev_interest_stable", 0) + COALESCE(c."LS_current_interest_stable", 0)) / ci.stable_decimals AS loan_interest_repaid,
+                    (COALESCE(c."LS_prev_margin_stable", 0) + COALESCE(c."LS_current_margin_stable", 0)) / ci.stable_decimals AS margin_interest_repaid,
                     'close' AS event_type
                 FROM "LS_Close_Position" c
+                JOIN ContractInfo ci ON ci."LS_contract_id" = c."LS_contract_id"
                 WHERE c."LS_timestamp" > $3
             ),
             LiquidationEvents AS (
                 SELECT
                     l."LS_timestamp" AS timestamp,
                     l."LS_contract_id" AS contract_id,
-                    (COALESCE(l."LS_prev_interest_stable", 0) + COALESCE(l."LS_current_interest_stable", 0)) / 1000000.0 AS loan_interest_repaid,
-                    (COALESCE(l."LS_prev_margin_stable", 0) + COALESCE(l."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
+                    (COALESCE(l."LS_prev_interest_stable", 0) + COALESCE(l."LS_current_interest_stable", 0)) / ci.stable_decimals AS loan_interest_repaid,
+                    (COALESCE(l."LS_prev_margin_stable", 0) + COALESCE(l."LS_current_margin_stable", 0)) / ci.stable_decimals AS margin_interest_repaid,
                     'liquidation' AS event_type
                 FROM "LS_Liquidation" l
+                JOIN ContractInfo ci ON ci."LS_contract_id" = l."LS_contract_id"
                 WHERE l."LS_timestamp" > $3
             ),
             AllEvents AS (
@@ -575,7 +497,8 @@ impl Table<LS_Repayment> {
         // Build time conditions
         let mut conditions = Vec::new();
         if let Some(m) = months {
-            conditions.push(format!("timestamp >= NOW() - INTERVAL '{} months'", m));
+            conditions
+                .push(format!("timestamp >= NOW() - INTERVAL '{} months'", m));
         }
         if from.is_some() {
             conditions.push("timestamp > $1".to_string());
@@ -593,7 +516,8 @@ impl Table<LS_Repayment> {
                 SELECT
                     o."LS_contract_id",
                     o."LS_address_id" AS position_owner,
-                    COALESCE(pc.position_type, 'Long') AS position_type
+                    COALESCE(pc.position_type, 'Long') AS position_type,
+                    COALESCE(pc.stable_currency_decimals, 1000000)::numeric AS stable_decimals
                 FROM "LS_Opening" o
                 LEFT JOIN pool_config pc ON o."LS_loan_pool_id" = pc.pool_id
             ),
@@ -601,26 +525,29 @@ impl Table<LS_Repayment> {
                 SELECT
                     r."LS_timestamp" AS timestamp,
                     r."LS_contract_id" AS contract_id,
-                    (COALESCE(r."LS_prev_interest_stable", 0) + COALESCE(r."LS_current_interest_stable", 0)) / 1000000.0 AS loan_interest_repaid,
-                    (COALESCE(r."LS_prev_margin_stable", 0) + COALESCE(r."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
+                    (COALESCE(r."LS_prev_interest_stable", 0) + COALESCE(r."LS_current_interest_stable", 0)) / ci.stable_decimals AS loan_interest_repaid,
+                    (COALESCE(r."LS_prev_margin_stable", 0) + COALESCE(r."LS_current_margin_stable", 0)) / ci.stable_decimals AS margin_interest_repaid,
                     'repayment' AS event_type
                 FROM "LS_Repayment" r
+                JOIN ContractInfo ci ON ci."LS_contract_id" = r."LS_contract_id"
                 UNION ALL
                 SELECT
                     c."LS_timestamp" AS timestamp,
                     c."LS_contract_id" AS contract_id,
-                    (COALESCE(c."LS_prev_interest_stable", 0) + COALESCE(c."LS_current_interest_stable", 0)) / 1000000.0 AS loan_interest_repaid,
-                    (COALESCE(c."LS_prev_margin_stable", 0) + COALESCE(c."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
+                    (COALESCE(c."LS_prev_interest_stable", 0) + COALESCE(c."LS_current_interest_stable", 0)) / ci.stable_decimals AS loan_interest_repaid,
+                    (COALESCE(c."LS_prev_margin_stable", 0) + COALESCE(c."LS_current_margin_stable", 0)) / ci.stable_decimals AS margin_interest_repaid,
                     'close' AS event_type
                 FROM "LS_Close_Position" c
+                JOIN ContractInfo ci ON ci."LS_contract_id" = c."LS_contract_id"
                 UNION ALL
                 SELECT
                     l."LS_timestamp" AS timestamp,
                     l."LS_contract_id" AS contract_id,
-                    (COALESCE(l."LS_prev_interest_stable", 0) + COALESCE(l."LS_current_interest_stable", 0)) / 1000000.0 AS loan_interest_repaid,
-                    (COALESCE(l."LS_prev_margin_stable", 0) + COALESCE(l."LS_current_margin_stable", 0)) / 1000000.0 AS margin_interest_repaid,
+                    (COALESCE(l."LS_prev_interest_stable", 0) + COALESCE(l."LS_current_interest_stable", 0)) / ci.stable_decimals AS loan_interest_repaid,
+                    (COALESCE(l."LS_prev_margin_stable", 0) + COALESCE(l."LS_current_margin_stable", 0)) / ci.stable_decimals AS margin_interest_repaid,
                     'liquidation' AS event_type
                 FROM "LS_Liquidation" l
+                JOIN ContractInfo ci ON ci."LS_contract_id" = l."LS_contract_id"
             ),
             FilteredEvents AS (
                 SELECT * FROM AllEvents

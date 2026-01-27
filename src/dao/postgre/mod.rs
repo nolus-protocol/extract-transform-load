@@ -5,8 +5,6 @@ pub use self::types::{
 mod action_history;
 mod block;
 mod currency_registry;
-mod pool_config;
-mod protocol_registry;
 pub mod lp_deposit;
 pub mod lp_lender_state;
 mod lp_pool;
@@ -26,6 +24,8 @@ pub mod ls_state;
 mod mp_asset;
 mod mp_yield;
 mod pl_state;
+mod pool_config;
+mod protocol_registry;
 mod raw_message;
 mod reserve_cover_loss;
 mod subscription;

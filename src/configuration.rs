@@ -1,15 +1,7 @@
-use std::{
-    collections::HashMap,
-    env, fs,
-    ops::Deref,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::HashMap, env, fs, ops::Deref, str::FromStr, sync::Arc};
 
 use tokio::sync::{RwLock, Semaphore};
 
-use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
 use crate::{
     cache::TimedCache,
     dao::postgre::{
@@ -22,16 +14,17 @@ use crate::{
         ls_state::LeaseValueStats,
     },
     error::Error,
-    helpers::{formatter, Formatter},
     model::{
-        Buyback, DailyPositionsPoint, Leased_Asset, Leases_Monthly, LP_Pool,
+        Buyback, DailyPositionsPoint, LP_Pool, Leased_Asset, Leases_Monthly,
         MonthlyActiveWallet, Position, PositionBucket, ProtocolRegistry,
         RevenueSeriesPoint, Supplied_Borrowed_Series, TokenLoan, TokenPosition,
-        TvlPoolParams, Utilization_Level,
+        Utilization_Level,
     },
     provider::{DatabasePool, Grpc, HTTP},
     types::{AdminProtocolExtendType, Currency, ProtocolContracts},
 };
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 
 #[derive(Debug)]
 pub struct AppState<T>(Arc<T>);
@@ -57,7 +50,8 @@ impl<T> Deref for AppState<T> {
 }
 
 /// Cache TTL constants (in seconds)
-const CACHE_TTL_STANDARD: u64 = 300;     // 5 minutes for all endpoints
+const CACHE_TTL_STANDARD: u64 = 300; // 5 minutes for real-time/price-dependent data
+const CACHE_TTL_HOURLY: u64 = 3600; // 1 hour for aggregated state data (refreshed by aggregation task)
 
 /// Unified API response cache with TTL support
 #[derive(Debug)]
@@ -105,44 +99,55 @@ pub struct ApiCache {
 impl ApiCache {
     pub fn new() -> Self {
         Self {
-            // 30-minute TTL endpoints (auto-refreshed)
-            total_value_locked: TimedCache::new(CACHE_TTL_STANDARD),
-            total_tx_value: TimedCache::new(CACHE_TTL_STANDARD),
-            realized_pnl_stats: TimedCache::new(CACHE_TTL_STANDARD),
-            revenue: TimedCache::new(CACHE_TTL_STANDARD),
+            // =================================================================
+            // HOURLY TTL - Data from *_State tables (updated by aggregation task)
+            // =================================================================
+            // From LS_State
+            positions: TimedCache::new(CACHE_TTL_HOURLY),
+            open_position_value: TimedCache::new(CACHE_TTL_HOURLY),
+            open_interest: TimedCache::new(CACHE_TTL_HOURLY),
+            unrealized_pnl: TimedCache::new(CACHE_TTL_HOURLY),
+            lease_value_stats: TimedCache::new(CACHE_TTL_HOURLY),
+            position_buckets: TimedCache::new(CACHE_TTL_HOURLY),
+            open_positions_by_token: TimedCache::new(CACHE_TTL_HOURLY),
+            loans_by_token: TimedCache::new(CACHE_TTL_HOURLY),
+            daily_positions: TimedCache::new(CACHE_TTL_HOURLY),
+            // From LP_Pool_State
+            supplied_borrowed_history: TimedCache::new(CACHE_TTL_HOURLY),
+            pools: TimedCache::new(CACHE_TTL_HOURLY),
+            utilization_level: TimedCache::new(CACHE_TTL_HOURLY),
+            supplied_funds: TimedCache::new(CACHE_TTL_HOURLY),
+            borrowed: TimedCache::new(CACHE_TTL_HOURLY),
+            // From LP_Lender_State
+            current_lenders: TimedCache::new(CACHE_TTL_HOURLY),
 
-            // All endpoints use 5-minute TTL
-            current_lenders: TimedCache::new(CACHE_TTL_STANDARD),
+            // =================================================================
+            // STANDARD TTL (5 min) - Real-time events or price-dependent data
+            // =================================================================
+            // Price-dependent (uses current market prices)
+            total_value_locked: TimedCache::new(CACHE_TTL_STANDARD),
+            leased_assets: TimedCache::new(CACHE_TTL_STANDARD),
+            // Real-time event data
             liquidations: TimedCache::new(CACHE_TTL_STANDARD),
-            lease_value_stats: TimedCache::new(CACHE_TTL_STANDARD),
-            historical_lenders: TimedCache::new(CACHE_TTL_STANDARD),
-            loans_granted: TimedCache::new(CACHE_TTL_STANDARD),
-            historically_repaid: TimedCache::new(CACHE_TTL_STANDARD),
-            realized_pnl_wallet: TimedCache::new(CACHE_TTL_STANDARD),
-            daily_positions: TimedCache::new(CACHE_TTL_STANDARD),
-            position_buckets: TimedCache::new(CACHE_TTL_STANDARD),
-            loans_by_token: TimedCache::new(CACHE_TTL_STANDARD),
-            open_positions_by_token: TimedCache::new(CACHE_TTL_STANDARD),
-            historically_liquidated: TimedCache::new(CACHE_TTL_STANDARD),
             interest_repayments: TimedCache::new(CACHE_TTL_STANDARD),
+            historical_lenders: TimedCache::new(CACHE_TTL_STANDARD),
+            historically_opened: TimedCache::new(CACHE_TTL_STANDARD),
+            historically_repaid: TimedCache::new(CACHE_TTL_STANDARD),
+            historically_liquidated: TimedCache::new(CACHE_TTL_STANDARD),
+            loans_granted: TimedCache::new(CACHE_TTL_STANDARD),
+            realized_pnl_stats: TimedCache::new(CACHE_TTL_STANDARD),
+            realized_pnl_wallet: TimedCache::new(CACHE_TTL_STANDARD),
+            // Treasury (real-time events)
+            buyback: TimedCache::new(CACHE_TTL_STANDARD),
             buyback_total: TimedCache::new(CACHE_TTL_STANDARD),
             distributed: TimedCache::new(CACHE_TTL_STANDARD),
             incentives_pool: TimedCache::new(CACHE_TTL_STANDARD),
-            open_position_value: TimedCache::new(CACHE_TTL_STANDARD),
-            open_interest: TimedCache::new(CACHE_TTL_STANDARD),
-            supplied_funds: TimedCache::new(CACHE_TTL_STANDARD),
-            unrealized_pnl: TimedCache::new(CACHE_TTL_STANDARD),
+            revenue: TimedCache::new(CACHE_TTL_STANDARD),
+            revenue_series: TimedCache::new(CACHE_TTL_STANDARD),
+            // Other real-time data
+            total_tx_value: TimedCache::new(CACHE_TTL_STANDARD),
             leases_monthly: TimedCache::new(CACHE_TTL_STANDARD),
             monthly_active_wallets: TimedCache::new(CACHE_TTL_STANDARD),
-            revenue_series: TimedCache::new(CACHE_TTL_STANDARD),
-            pools: TimedCache::new(CACHE_TTL_STANDARD),
-            positions: TimedCache::new(CACHE_TTL_STANDARD),
-            leased_assets: TimedCache::new(CACHE_TTL_STANDARD),
-            supplied_borrowed_history: TimedCache::new(CACHE_TTL_STANDARD),
-            historically_opened: TimedCache::new(CACHE_TTL_STANDARD),
-            buyback: TimedCache::new(CACHE_TTL_STANDARD),
-            utilization_level: TimedCache::new(CACHE_TTL_STANDARD),
-            borrowed: TimedCache::new(CACHE_TTL_STANDARD),
         }
     }
 }
@@ -209,12 +214,14 @@ impl State {
         // Get platform info (treasury contract)
         let platform = grpc.get_platform(config.admin_contract.clone()).await?;
         config.treasury_contract = platform.treasury;
-        tracing::info!("Loaded treasury contract: {}", config.treasury_contract);
+        tracing::info!(
+            "Loaded treasury contract: {}",
+            config.treasury_contract
+        );
 
         // Get all active protocols from admin contract
-        let active_protocol_names = grpc
-            .get_admin_config(config.admin_contract.clone())
-            .await?;
+        let active_protocol_names =
+            grpc.get_admin_config(config.admin_contract.clone()).await?;
         tracing::info!(
             "Found {} protocols from admin contract",
             active_protocol_names.len()
@@ -224,6 +231,7 @@ impl State {
         let mut active_protocols: HashMap<String, AdminProtocolExtendType> =
             HashMap::new();
         let mut protocol_registry_entries: Vec<ProtocolRegistry> = Vec::new();
+        let mut active_pool_ids: Vec<String> = Vec::new();
 
         for protocol_name in &active_protocol_names {
             if config.ignore_protocols.contains(protocol_name) {
@@ -266,17 +274,20 @@ impl State {
             // Get LPN from LPP contract and stable currency from oracle
             let (lpn, stable_currency) = tokio::try_join!(
                 grpc.get_lpn(protocol_config.contracts.lpp.clone()),
-                grpc.get_stable_currency(protocol_config.contracts.oracle.clone())
+                grpc.get_stable_currency(
+                    protocol_config.contracts.oracle.clone()
+                )
             )?;
 
             // Determine position type: Long if LPN is the stable currency, Short otherwise
-            let position_type = if lpn == stable_currency { "Long" } else { "Short" };
+            let position_type = if lpn == stable_currency {
+                "Long"
+            } else {
+                "Short"
+            };
 
             // Get dex as string for storage
-            let dex_str = protocol_config
-                .dex
-                .as_ref()
-                .map(|d| d.to_string());
+            let dex_str = protocol_config.dex.as_ref().map(|d| d.to_string());
 
             // Create protocol registry entry
             let registry_entry = ProtocolRegistry {
@@ -296,6 +307,46 @@ impl State {
             };
             protocol_registry_entries.push(registry_entry);
 
+            // Upsert pool_config with LPN decimals and stable currency info from currency registry
+            // This ensures pool_config is always in sync with discovered protocols
+            let lpn_decimals =
+                active_currencies.get(&lpn).map(|c| c.1 as i64).unwrap_or(6); // Default to 6 decimals if not found
+
+            // Get stable currency decimals (for _stable field conversions)
+            let stable_currency_decimals = active_currencies
+                .get(&stable_currency)
+                .map(|c| c.1 as i64)
+                .unwrap_or(6); // Default to 6 decimals if not found
+
+            // Build label: "SYMBOL" for Long, "SYMBOL (Short)" for Short
+            let label = if position_type == "Short" {
+                format!("{} (Short)", lpn)
+            } else {
+                lpn.clone()
+            };
+
+            // Convert decimals to the divisor format used in pool_config (e.g., 6 -> 1000000)
+            let lpn_decimals_divisor = 10_i64.pow(lpn_decimals as u32);
+            let stable_currency_decimals_divisor =
+                10_i64.pow(stable_currency_decimals as u32);
+
+            database
+                .pool_config
+                .upsert(
+                    &protocol_config.contracts.lpp,
+                    position_type,
+                    &lpn,
+                    lpn_decimals_divisor,
+                    &label,
+                    protocol_name,
+                    &stable_currency,
+                    stable_currency_decimals_divisor,
+                )
+                .await?;
+
+            // Track active pool_id for deprecation marking
+            active_pool_ids.push(protocol_config.contracts.lpp.clone());
+
             // Build active protocol for price fetching
             active_protocols.insert(
                 protocol_name.clone(),
@@ -313,10 +364,11 @@ impl State {
             );
 
             tracing::info!(
-                "Loaded protocol: {} (LPN: {}, type: {})",
+                "Loaded protocol: {} (LPN: {}, type: {}, decimals: {})",
                 protocol_name,
                 lpn,
-                position_type
+                position_type,
+                lpn_decimals
             );
         }
 
@@ -357,6 +409,15 @@ impl State {
             );
         }
 
+        // Mark pools NOT in active set as deprecated
+        let deprecated_pools = database
+            .pool_config
+            .mark_deprecated_except(&active_pool_ids)
+            .await?;
+        if deprecated_pools > 0 {
+            tracing::info!("Marked {} pools as deprecated", deprecated_pools);
+        }
+
         // =====================================================================
         // PHASE 3: Load ALL data (active + deprecated) into runtime state
         // =====================================================================
@@ -380,8 +441,10 @@ impl State {
         let all_protocols_db = database.protocol_registry.get_all().await?;
 
         // Build pool_id -> protocol_name mapping (for get_protocol_by_pool_id)
-        let mut hash_map_pool_protocol: HashMap<String, String> = HashMap::new();
-        let mut hash_map_pool_currency: HashMap<String, Currency> = HashMap::new();
+        let mut hash_map_pool_protocol: HashMap<String, String> =
+            HashMap::new();
+        let mut hash_map_pool_currency: HashMap<String, Currency> =
+            HashMap::new();
 
         for p in &all_protocols_db {
             if let Some(lpp) = &p.lpp_contract {
@@ -392,7 +455,8 @@ impl State {
                 if let Some(currency) =
                     config.hash_map_currencies.get(&p.lpn_symbol)
                 {
-                    hash_map_pool_currency.insert(lpp.clone(), currency.clone());
+                    hash_map_pool_currency
+                        .insert(lpp.clone(), currency.clone());
                 }
             }
         }
@@ -449,13 +513,16 @@ impl State {
         // Try to get from in-memory cache first
         if let Some(protocol_str) = &protocol {
             let cache = self.latest_prices.read().await;
-            if let Some(price) = cache.get(&(symbol.to_owned(), protocol_str.clone())) {
+            if let Some(price) =
+                cache.get(&(symbol.to_owned(), protocol_str.clone()))
+            {
                 return Ok(price.clone());
             }
         }
 
         // Fall back to database
-        let (price,) = self.database.mp_asset.get_price(symbol, protocol).await?;
+        let (price,) =
+            self.database.mp_asset.get_price(symbol, protocol).await?;
         Ok(price)
     }
 
@@ -580,36 +647,18 @@ impl State {
         &self,
         pool_id: &str,
     ) -> Result<String, Error> {
-        if let Some(protocol) = self.database.protocol_registry.get_by_lpp_contract(pool_id).await? {
+        if let Some(protocol) = self
+            .database
+            .protocol_registry
+            .get_by_lpp_contract(pool_id)
+            .await?
+        {
             Ok(protocol.position_type)
         } else {
             Err(Error::ProtocolError(format!(
                 "Protocol not found for pool {}",
                 pool_id
             )))
-        }
-    }
-
-    /// Build TvlPoolParams from dynamic protocol configuration
-    /// Maps protocol names to their LPP contract addresses
-    /// Returns empty strings for missing protocols (SQL will handle gracefully)
-    pub fn build_tvl_pool_params(&self) -> TvlPoolParams {
-        let get_pool = |name: &str| -> String {
-            self.protocols
-                .get(name)
-                .map(|p| p.contracts.lpp.clone())
-                .unwrap_or_default()
-        };
-
-        TvlPoolParams {
-            osmosis_usdc: get_pool("OSMOSIS"),
-            neutron_axelar: get_pool("NEUTRON-USDC-AXELAR"),
-            osmosis_usdc_noble: get_pool("OSMOSIS-USDC-NOBLE"),
-            neutron_usdc_noble: get_pool("NEUTRON"),
-            osmosis_st_atom: get_pool("OSMOSIS-ST-ATOM"),
-            osmosis_all_btc: get_pool("OSMOSIS-ALL-BTC"),
-            osmosis_all_sol: get_pool("OSMOSIS-ALL-SOL"),
-            osmosis_akt: get_pool("OSMOSIS-AKT"),
         }
     }
 }
@@ -657,6 +706,10 @@ pub struct Config {
     pub db_acquire_timeout: u64,
     pub db_idle_timeout: u64,
     pub db_statement_timeout: u64,
+    // Cache refresh settings
+    pub cache_refresh_interval_secs: u64,
+    pub cache_max_concurrent_refreshes: usize,
+    pub cache_max_concurrent_initial_refreshes: usize,
 }
 
 impl Config {}
@@ -683,10 +736,10 @@ pub fn get_configuration() -> Result<Config, Error> {
         env::var("CACHE_INTERVAL_IN_MINUTES")?.parse()?;
     let timeout = env::var("TIMEOUT")?.parse()?;
     let max_tasks = env::var("MAX_TASKS")?.parse()?;
-    
+
     // Admin contract is the bootstrap for dynamic configuration
     let admin_contract = env::var("ADMIN_CONTRACT")?.parse()?;
-    
+
     let socket_reconnect_interval =
         env::var("SOCKET_RECONNECT_INTERVAL")?.parse()?;
     let grpc_host = env::var("GRPC_HOST")?.parse()?;
@@ -701,8 +754,8 @@ pub fn get_configuration() -> Result<Config, Error> {
         .collect::<Vec<String>>();
 
     // Native currency (defaults to NLS)
-    let native_currency = env::var("NATIVE_CURRENCY")
-        .unwrap_or_else(|_| "NLS".to_string());
+    let native_currency =
+        env::var("NATIVE_CURRENCY").unwrap_or_else(|_| "NLS".to_string());
 
     let server_host = env::var("SERVER_HOST")?;
     let port: u16 = env::var("PORT")?.parse()?;
@@ -756,6 +809,20 @@ pub fn get_configuration() -> Result<Config, Error> {
         .unwrap_or_else(|_| "60".to_string())
         .parse()?;
 
+    // Cache refresh settings
+    let cache_refresh_interval_secs: u64 =
+        env::var("CACHE_REFRESH_INTERVAL_SECS")
+            .unwrap_or_else(|_| "30".to_string())
+            .parse()?;
+    let cache_max_concurrent_refreshes: usize =
+        env::var("CACHE_MAX_CONCURRENT_REFRESHES")
+            .unwrap_or_else(|_| "4".to_string())
+            .parse()?;
+    let cache_max_concurrent_initial_refreshes: usize =
+        env::var("CACHE_MAX_CONCURRENT_INITIAL_REFRESHES")
+            .unwrap_or_else(|_| "6".to_string())
+            .parse()?;
+
     let config = Config {
         host,
         websocket_host,
@@ -795,6 +862,9 @@ pub fn get_configuration() -> Result<Config, Error> {
         db_acquire_timeout,
         db_idle_timeout,
         db_statement_timeout,
+        cache_refresh_interval_secs,
+        cache_max_concurrent_refreshes,
+        cache_max_concurrent_initial_refreshes,
     };
 
     Ok(config)
@@ -802,17 +872,13 @@ pub fn get_configuration() -> Result<Config, Error> {
 
 pub fn set_configuration() -> Result<(), Error> {
     let config_file: &str = ".env";
-    let etl_config_file: &str = "etl.conf";
 
     let directory = env!("CARGO_MANIFEST_DIR");
     let path = format!("{}/{}", directory, config_file);
-    let etl_config_path = format!("{}/{}", directory, etl_config_file);
 
     let config_string = fs::read_to_string(path)?;
-    let etl_config_string = fs::read_to_string(etl_config_path)?;
 
     parse_config_string(config_string)?;
-    parse_config_string(etl_config_string)?;
 
     Ok(())
 }
@@ -836,17 +902,8 @@ fn parse_config_string(config: String) -> Result<(), Error> {
         .collect();
 
     for (key, value) in params.into_iter().flatten() {
-        let parsed_value = match key {
-            "WEBSOCKET_HOST" => {
-                let host = env::var("HOST")?;
-                formatter(value.to_owned(), &[Formatter::Str(host)])
-            },
-            _ => value.to_owned(),
-        };
-        std::env::set_var(key, parsed_value);
+        std::env::set_var(key, value);
     }
 
     Ok(())
 }
-
-

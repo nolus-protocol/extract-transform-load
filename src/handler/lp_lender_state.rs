@@ -25,7 +25,9 @@ pub async fn parse_and_insert(
 
     for item in items {
         // Check if the pool is from an active protocol
-        if let Some(protocol_name) = app_state.hash_map_pool_protocol.get(&item.1) {
+        if let Some(protocol_name) =
+            app_state.hash_map_pool_protocol.get(&item.1)
+        {
             // Only proceed if the protocol is active
             if app_state.protocols.contains_key(protocol_name) {
                 tasks.push(proceed(app_state.clone(), item, timestsamp));
@@ -88,8 +90,9 @@ async fn proceed(
     let lpp_balance = BigDecimal::from_str(&balance.amount)?;
     let value = lpp_balance * lpp_price;
     let amnt_stable = value.to_string();
-    let amnt_stable =
-        state.in_stable_by_pool_id(&LP_Pool_id, &amnt_stable).await?;
+    let amnt_stable = state
+        .in_stable_by_pool_id(&LP_Pool_id, &amnt_stable)
+        .await?;
 
     let lp_lender_state = LP_Lender_State {
         LP_Lender_id: LP_address_id.to_owned(),

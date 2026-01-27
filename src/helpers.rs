@@ -22,7 +22,10 @@ use crate::{
         wasm_ls_slippage_anomaly, wasm_reserve_cover_loss, wasm_tr_profit,
         wasm_tr_rewards,
     },
-    model::{Block, CosmosTypes, Raw_Message, RawMsgParams, RawTxParams, Subscription},
+    model::{
+        Block, CosmosTypes, RawMsgParams, RawTxParams, Raw_Message,
+        Subscription,
+    },
     types::{
         Claims, Interest_values, LP_Deposit_Type, LP_Withdraw_Type,
         LS_Auto_Close_Position_Type, LS_Close_Position_Type, LS_Closing_Type,
@@ -607,8 +610,8 @@ pub async fn parse_raw_tx(
     for (index, msg) in c.body.messages.iter().enumerate() {
         let fee = c.auth_info.fee.clone();
         let memo = c.body.memo.to_owned();
-        let msg: Result<Raw_Message, anyhow::Error> = Raw_Message::from_any(
-            RawMsgParams {
+        let msg: Result<Raw_Message, anyhow::Error> =
+            Raw_Message::from_any(RawMsgParams {
                 index: index.try_into()?,
                 value: msg.clone(),
                 tx_hash: params.tx_hash.clone(),
@@ -619,8 +622,7 @@ pub async fn parse_raw_tx(
                 events: app_state.config.events_subscribe.clone(),
                 tx_events: params.tx_events,
                 code: params.code,
-            },
-        );
+            });
 
         if let Ok(msg) = msg {
             app_state
@@ -774,9 +776,7 @@ impl FromStr for EventsType {
             "wasm-lp-withdraw" => Ok(EventsType::LP_Withdraw),
             "wasm-tr-profit" => Ok(EventsType::TR_Profit),
             "wasm-tr-rewards" => Ok(EventsType::TR_Rewards_Distribution),
-            _ => Err(io::Error::other(
-                "Message Type not supported",
-            )),
+            _ => Err(io::Error::other("Message Type not supported")),
         }
     }
 }
@@ -824,9 +824,7 @@ impl FromStr for Loan_Closing_Status {
             "liquidation" => Ok(Loan_Closing_Status::Liquidation),
             "market-close" => Ok(Loan_Closing_Status::MarketClose),
             "none" => Ok(Loan_Closing_Status::None),
-            _ => Err(io::Error::other(
-                "Loan_Closing_Status not supported",
-            )),
+            _ => Err(io::Error::other("Loan_Closing_Status not supported")),
         }
     }
 }
@@ -862,9 +860,7 @@ impl FromStr for Auto_Close_Strategies {
         match value {
             "take-profit" => Ok(Auto_Close_Strategies::TakeProfit),
             "stop-loss" => Ok(Auto_Close_Strategies::StopLoss),
-            _ => Err(io::Error::other(
-                "Auto_Close_Strategies not supported",
-            )),
+            _ => Err(io::Error::other("Auto_Close_Strategies not supported")),
         }
     }
 }
@@ -936,9 +932,7 @@ impl FromStr for Filter_Types {
             "staking" => Ok(Filter_Types::Staking),
             "positions" => Ok(Filter_Types::Positions),
             "positions_ids" => Ok(Filter_Types::PositionsIds),
-            _ => Err(io::Error::other(
-                "Filter_Types not supported",
-            )),
+            _ => Err(io::Error::other("Filter_Types not supported")),
         }
     }
 }
@@ -1040,7 +1034,7 @@ pub fn build_cache_key(
     let from_key = from
         .map(|ts| ts.timestamp().to_string())
         .unwrap_or_else(|| "none".to_string());
-    format!("{}_{}_{}",endpoint, period, from_key)
+    format!("{}_{}_{}", endpoint, period, from_key)
 }
 
 /// Build a cache key for protocol-specific period-based endpoints.
@@ -1059,7 +1053,7 @@ pub fn build_cache_key_with_protocol(
     let from_key = from
         .map(|ts| ts.timestamp().to_string())
         .unwrap_or_else(|| "none".to_string());
-    format!("{}_{}_{}_{}",endpoint, protocol, period, from_key)
+    format!("{}_{}_{}_{}", endpoint, protocol, period, from_key)
 }
 
 /// Build a cache key for protocol-specific endpoints (no period).
@@ -1070,7 +1064,10 @@ pub fn build_cache_key_with_protocol(
 /// build_protocol_cache_key("borrowed", Some("OSMOSIS")) // "borrowed_OSMOSIS"
 /// build_protocol_cache_key("borrowed", None) // "borrowed_total"
 /// ```
-pub fn build_protocol_cache_key(endpoint: &str, protocol: Option<&str>) -> String {
+pub fn build_protocol_cache_key(
+    endpoint: &str,
+    protocol: Option<&str>,
+) -> String {
     match protocol {
         Some(p) => format!("{}_{}", endpoint, p.to_uppercase()),
         None => format!("{}_total", endpoint),
@@ -1080,7 +1077,9 @@ pub fn build_protocol_cache_key(endpoint: &str, protocol: Option<&str>) -> Strin
 /// Parse period query parameter to number of months for time window filtering.
 /// Returns Some(months) for time-limited queries, None for "all" (no limit).
 /// Default is 3 months if no period specified.
-pub fn parse_period_months(period: &Option<String>) -> Result<Option<i32>, Error> {
+pub fn parse_period_months(
+    period: &Option<String>,
+) -> Result<Option<i32>, Error> {
     match period.as_deref() {
         None | Some("3m") => Ok(Some(3)),
         Some("6m") => Ok(Some(6)),

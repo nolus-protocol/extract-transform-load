@@ -8,66 +8,7 @@ use crate::model::{LS_Loan_Closing, Pnl_Result, Table};
 use super::{DataBase, QueryResult};
 
 impl Table<LS_Loan_Closing> {
-    pub async fn isExists(
-        &self,
-        contract: String,
-    ) -> Result<bool, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT
-                COUNT(*)
-            FROM "LS_Loan_Closing"
-            WHERE
-                "LS_contract_id" = $1
-            "#,
-        )
-        .bind(contract)
-        .persistent(true)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub async fn insert(
-        &self,
-        data: LS_Loan_Closing,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "LS_Loan_Closing" (
-                "LS_contract_id",
-                "LS_amnt",
-                "LS_amnt_stable",
-                "LS_pnl",
-                "LS_timestamp",
-                "Type",
-                "Block",
-                "Active"
-            )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
-        "#,
-        )
-        .bind(&data.LS_contract_id)
-        .bind(&data.LS_amnt)
-        .bind(&data.LS_amnt_stable)
-        .bind(&data.LS_pnl)
-        .bind(data.LS_timestamp)
-        .bind(&data.Type)
-        .bind(data.Block)
-        .bind(data.Active)
-        .persistent(true)
-        .execute(&mut **transaction)
-        .await
-    }
-
     /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
-    /// This is more efficient than calling isExists() followed by insert().
     pub async fn insert_if_not_exists(
         &self,
         data: LS_Loan_Closing,
@@ -142,21 +83,14 @@ impl Table<LS_Loan_Closing> {
         let value: (Option<BigDecimal>,) = sqlx::query_as(
             r#"
                 SELECT
-                SUM(
-                    CASE
-                    WHEN o."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN c."LS_pnl" / 100000000
-                    WHEN o."LS_asset_symbol" IN ('ALL_SOL') THEN c."LS_pnl" / 1000000000
-                    WHEN o."LS_asset_symbol" IN ('PICA') THEN c."LS_pnl" / 1000000000000
-                    WHEN o."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN c."LS_pnl" / 1000000000000000000
-                    ELSE c."LS_pnl" / 1000000
-                    END
-                ) AS "Total Adjusted Stable Amount"
+                SUM(c."LS_pnl" / POWER(10, COALESCE(cr_asset.decimal_digits, 6))) AS "Total Adjusted Stable Amount"
                 FROM
                 "LS_Loan_Closing" c
                 LEFT JOIN
                 "LS_Opening" o
                 ON
                 c."LS_contract_id" = o."LS_contract_id"
+                LEFT JOIN currency_registry cr_asset ON cr_asset.ticker = o."LS_asset_symbol"
                 WHERE
                 c."LS_timestamp" >= '2025-01-01'
             "#,
@@ -238,34 +172,18 @@ impl Table<LS_Loan_Closing> {
                 repayments AS (
                 SELECT
                     r."LS_contract_id",
-                    SUM(
-                    CASE
-                        WHEN r."LS_payment_symbol" IN ('ALL_BTC','WBTC','CRO') THEN r."LS_payment_amnt_stable" / 100000000.0
-                        WHEN r."LS_payment_symbol" = 'ALL_SOL'                 THEN r."LS_payment_amnt_stable" / 1000000000.0
-                        WHEN r."LS_payment_symbol" = 'PICA'                    THEN r."LS_payment_amnt_stable" / 1000000000000.0
-                        WHEN r."LS_payment_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
-                                                                        THEN r."LS_payment_amnt_stable" / 1000000000000000000.0
-                        ELSE r."LS_payment_amnt_stable" / 1000000.0
-                    END
-                    ) AS total_repaid_usdc
+                    SUM(r."LS_payment_amnt_stable" / POWER(10, COALESCE(cr_pay.decimal_digits, 6))) AS total_repaid_usdc
                 FROM "LS_Repayment" r
+                LEFT JOIN currency_registry cr_pay ON cr_pay.ticker = r."LS_payment_symbol"
                 GROUP BY r."LS_contract_id"
                 ),
 
                 collects AS (
                 SELECT
                     lc."LS_contract_id",
-                    SUM(
-                    CASE
-                        WHEN lc."LS_symbol" IN ('ALL_BTC','WBTC','CRO') THEN lc."LS_amount_stable" / 100000000.0
-                        WHEN lc."LS_symbol" = 'ALL_SOL'                 THEN lc."LS_amount_stable" / 1000000000.0
-                        WHEN lc."LS_symbol" = 'PICA'                    THEN lc."LS_amount_stable" / 1000000000000.0
-                        WHEN lc."LS_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
-                                                                        THEN lc."LS_amount_stable" / 1000000000000000000.0
-                        ELSE lc."LS_amount_stable" / 1000000.0
-                    END
-                    )::numeric(38,8) AS total_collected_usdc
+                    SUM(lc."LS_amount_stable" / POWER(10, COALESCE(cr_col.decimal_digits, 6)))::numeric(38,8) AS total_collected_usdc
                 FROM "LS_Loan_Collect" lc
+                LEFT JOIN currency_registry cr_col ON cr_col.ticker = lc."LS_symbol"
                 GROUP BY lc."LS_contract_id"
                 ),
 
@@ -282,32 +200,19 @@ impl Table<LS_Loan_Closing> {
                 ct.close_ts                                                               AS "LS_timestamp",
                 to_char(ct.close_ts, 'YYYY-MM-DD HH24:MI UTC')                            AS "Close Date UTC",
                 (
-                    (CASE
-                    WHEN o."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_cltr_amnt_stable" / 100000000.0
-                    WHEN o."LS_cltr_symbol" = 'ALL_SOL'                 THEN o."LS_cltr_amnt_stable" / 1000000000.0
-                    WHEN o."LS_cltr_symbol" = 'PICA'                    THEN o."LS_cltr_amnt_stable" / 1000000000000.0
-                    WHEN o."LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
-                                                                        THEN o."LS_cltr_amnt_stable" / 1000000000000000000.0
-                    ELSE o."LS_cltr_amnt_stable" / 1000000.0
-                    END)::numeric(38,8)
+                    (o."LS_cltr_amnt_stable" / POWER(10, COALESCE(cr_cltr.decimal_digits, 6)))::numeric(38,8)
                     + COALESCE(r.total_repaid_usdc, 0::numeric(38,8))
                 )::double precision                                                          AS "Sent (USDC, Opening)",
                 COALESCE(c.total_collected_usdc, 0::numeric(38,8))::double precision          AS "Received (USDC, Closing)",
                 (
                     COALESCE(c.total_collected_usdc, 0::numeric(38,8))
                     - (
-                        (CASE
-                        WHEN o."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_cltr_amnt_stable" / 100000000.0
-                        WHEN o."LS_cltr_symbol" = 'ALL_SOL'                 THEN o."LS_cltr_amnt_stable" / 1000000000.0
-                        WHEN o."LS_cltr_symbol" = 'PICA'                    THEN o."LS_cltr_amnt_stable" / 1000000000000.0
-                        WHEN o."LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
-                                                                        THEN o."LS_cltr_amnt_stable" / 1000000000000000000.0
-                        ELSE o."LS_cltr_amnt_stable" / 1000000.0
-                        END)::numeric(38,8)
+                        (o."LS_cltr_amnt_stable" / POWER(10, COALESCE(cr_cltr.decimal_digits, 6)))::numeric(38,8)
                         + COALESCE(r.total_repaid_usdc, 0::numeric(38,8))
                     )
                 )::double precision                                                           AS "Realized PnL (USDC)"
                 FROM openings o
+                LEFT JOIN currency_registry cr_cltr ON cr_cltr.ticker = o."LS_cltr_symbol"
                 LEFT JOIN repayments r ON r."LS_contract_id" = o."LS_contract_id"
                 LEFT JOIN collects   c ON c."LS_contract_id" = o."LS_contract_id"
                 INNER JOIN closing_ts ct ON ct."LS_contract_id" = o."LS_contract_id"
@@ -353,17 +258,9 @@ impl Table<LS_Loan_Closing> {
                 repayments AS (
                 SELECT
                     r."LS_contract_id",
-                    SUM(
-                    CASE
-                        WHEN r."LS_payment_symbol" IN ('ALL_BTC','WBTC','CRO') THEN r."LS_payment_amnt_stable" / 100000000.0
-                        WHEN r."LS_payment_symbol" = 'ALL_SOL'                 THEN r."LS_payment_amnt_stable" / 1000000000.0
-                        WHEN r."LS_payment_symbol" = 'PICA'                    THEN r."LS_payment_amnt_stable" / 1000000000000.0
-                        WHEN r."LS_payment_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
-                                                                        THEN r."LS_payment_amnt_stable" / 1000000000000000000.0
-                        ELSE r."LS_payment_amnt_stable" / 1000000.0
-                    END
-                    ) AS total_repaid_usdc
+                    SUM(r."LS_payment_amnt_stable" / POWER(10, COALESCE(cr_pay.decimal_digits, 6))) AS total_repaid_usdc
                 FROM "LS_Repayment" r
+                LEFT JOIN currency_registry cr_pay ON cr_pay.ticker = r."LS_payment_symbol"
                 GROUP BY r."LS_contract_id"
                 ),
 
@@ -371,17 +268,9 @@ impl Table<LS_Loan_Closing> {
                 collects AS (
                 SELECT
                     lc."LS_contract_id",
-                    SUM(
-                    CASE
-                        WHEN lc."LS_symbol" IN ('ALL_BTC','WBTC','CRO') THEN lc."LS_amount_stable" / 100000000.0
-                        WHEN lc."LS_symbol" = 'ALL_SOL'                 THEN lc."LS_amount_stable" / 1000000000.0
-                        WHEN lc."LS_symbol" = 'PICA'                    THEN lc."LS_amount_stable" / 1000000000000.0
-                        WHEN lc."LS_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
-                                                                        THEN lc."LS_amount_stable" / 1000000000000000000.0
-                        ELSE lc."LS_amount_stable" / 1000000.0
-                    END
-                    )::numeric(38,8) AS total_collected_usdc
+                    SUM(lc."LS_amount_stable" / POWER(10, COALESCE(cr_col.decimal_digits, 6)))::numeric(38,8) AS total_collected_usdc
                 FROM "LS_Loan_Collect" lc
+                LEFT JOIN currency_registry cr_col ON cr_col.ticker = lc."LS_symbol"
                 GROUP BY lc."LS_contract_id"
                 ),
 
@@ -397,19 +286,13 @@ impl Table<LS_Loan_Closing> {
                     o."LS_contract_id"                            AS position_id,
                     -- Sent at opening: normalized collateral + total repayments (USDC)
                     (
-                    (CASE
-                        WHEN o."LS_cltr_symbol" IN ('ALL_BTC','WBTC','CRO') THEN o."LS_cltr_amnt_stable" / 100000000.0
-                        WHEN o."LS_cltr_symbol" = 'ALL_SOL'                 THEN o."LS_cltr_amnt_stable" / 1000000000.0
-                        WHEN o."LS_cltr_symbol" = 'PICA'                    THEN o."LS_cltr_amnt_stable" / 1000000000000.0
-                        WHEN o."LS_cltr_symbol" IN ('WETH','EVMOS','INJ','DYDX','DYM','CUDOS','ALL_ETH')
-                                                                        THEN o."LS_cltr_amnt_stable" / 1000000000000000000.0
-                        ELSE o."LS_cltr_amnt_stable" / 1000000.0
-                    END)::numeric(38,8)
+                    (o."LS_cltr_amnt_stable" / POWER(10, COALESCE(cr_cltr.decimal_digits, 6)))::numeric(38,8)
                     + COALESCE(r.total_repaid_usdc, 0::numeric(38,8))
                     )                                               AS sent_open_usdc,
                     -- Received at closing: normalized collects (USDC). Zero if liquidated without collects.
                     COALESCE(c.total_collected_usdc, 0::numeric(38,8)) AS received_close_usdc
                 FROM openings o
+                LEFT JOIN currency_registry cr_cltr ON cr_cltr.ticker = o."LS_cltr_symbol"
                 LEFT JOIN repayments r ON r."LS_contract_id" = o."LS_contract_id"
                 LEFT JOIN collects   c ON c."LS_contract_id" = o."LS_contract_id"
                 INNER JOIN closing_ts ct ON ct."LS_contract_id" = o."LS_contract_id"

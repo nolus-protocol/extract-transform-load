@@ -7,9 +7,13 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cache_keys,
     configuration::{AppState, State},
     error::Error,
-    helpers::{build_cache_key, parse_period_months, to_csv_response, to_streaming_csv_response},
+    helpers::{
+        build_cache_key, cached_fetch, parse_period_months, to_csv_response,
+        to_streaming_csv_response,
+    },
     model::{DailyPositionsPoint, LS_Amount, PositionBucket, TokenPosition},
 };
 
@@ -28,30 +32,17 @@ pub async fn positions(
     state: web::Data<AppState<State>>,
     query: web::Query<PositionsQuery>,
 ) -> Result<HttpResponse, Error> {
-    const CACHE_KEY: &str = "positions_all";
+    let data = cached_fetch(
+        &state.api_cache.positions,
+        cache_keys::POSITIONS,
+        || async { Ok(state.database.ls_state.get_all_positions().await?) },
+    )
+    .await?;
 
     // Handle export=true: return all data as streaming CSV
     if query.export.unwrap_or(false) {
-        if let Some(cached) = state.api_cache.positions.get(CACHE_KEY).await {
-            return to_streaming_csv_response(cached, "positions.csv");
-        }
-
-        let data = state.database.ls_state.get_all_positions().await?;
-        state.api_cache.positions.set(CACHE_KEY, data.clone()).await;
-
         return to_streaming_csv_response(data, "positions.csv");
     }
-
-    if let Some(cached) = state.api_cache.positions.get(CACHE_KEY).await {
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&cached, "positions.csv"),
-            _ => Ok(HttpResponse::Ok().json(cached)),
-        };
-    }
-
-    let data = state.database.ls_state.get_all_positions().await?;
-
-    state.api_cache.positions.set(CACHE_KEY, data.clone()).await;
 
     match query.format.as_deref() {
         Some("csv") => to_csv_response(&data, "positions.csv"),
@@ -67,25 +58,25 @@ pub async fn positions(
 pub async fn position_buckets(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    const CACHE_KEY: &str = "position_buckets";
+    let data = cached_fetch(
+        &state.api_cache.position_buckets,
+        cache_keys::POSITION_BUCKETS,
+        || async {
+            let data = state.database.ls_state.get_position_buckets().await?;
+            let buckets: Vec<PositionBucket> = data
+                .into_iter()
+                .map(|b| PositionBucket {
+                    loan_category: b.loan_category.unwrap_or_default(),
+                    loan_count: b.loan_count,
+                    loan_size: b.loan_size,
+                })
+                .collect();
+            Ok(buckets)
+        },
+    )
+    .await?;
 
-    if let Some(cached) = state.api_cache.position_buckets.get(CACHE_KEY).await {
-        return Ok(web::Json(cached));
-    }
-
-    let data = state.database.ls_state.get_position_buckets().await?;
-    let buckets: Vec<PositionBucket> = data
-        .into_iter()
-        .map(|b| PositionBucket {
-            loan_category: b.loan_category.unwrap_or_default(),
-            loan_count: b.loan_count,
-            loan_size: b.loan_size,
-        })
-        .collect();
-
-    state.api_cache.position_buckets.set(CACHE_KEY, buckets.clone()).await;
-
-    Ok(web::Json(buckets))
+    Ok(web::Json(data))
 }
 
 // =============================================================================
@@ -108,32 +99,28 @@ pub async fn daily_positions(
     let period_str = query.period.as_deref().unwrap_or("3m");
     let cache_key = build_cache_key("daily_positions", period_str, query.from);
 
-    if let Some(cached) = state.api_cache.daily_positions.get(&cache_key).await {
-        return match query.format.as_deref() {
-            Some("csv") => to_csv_response(&cached, "daily-positions.csv"),
-            _ => Ok(HttpResponse::Ok().json(cached)),
-        };
-    }
-
-    let data = state
-        .database
-        .ls_opening
-        .get_daily_opened_closed_with_window(months, query.from)
-        .await?;
-    let series: Vec<DailyPositionsPoint> = data
-        .into_iter()
-        .map(|(date, closed, opened)| DailyPositionsPoint {
-            date,
-            closed_loans: closed,
-            opened_loans: opened,
+    let data =
+        cached_fetch(&state.api_cache.daily_positions, &cache_key, || async {
+            let data = state
+                .database
+                .ls_opening
+                .get_daily_opened_closed_with_window(months, query.from)
+                .await?;
+            let series: Vec<DailyPositionsPoint> = data
+                .into_iter()
+                .map(|(date, closed, opened)| DailyPositionsPoint {
+                    date,
+                    closed_loans: closed,
+                    opened_loans: opened,
+                })
+                .collect();
+            Ok(series)
         })
-        .collect();
-
-    state.api_cache.daily_positions.set(&cache_key, series.clone()).await;
+        .await?;
 
     match query.format.as_deref() {
-        Some("csv") => to_csv_response(&series, "daily-positions.csv"),
-        _ => Ok(HttpResponse::Ok().json(series)),
+        Some("csv") => to_csv_response(&data, "daily-positions.csv"),
+        _ => Ok(HttpResponse::Ok().json(data)),
     }
 }
 
@@ -145,24 +132,28 @@ pub async fn daily_positions(
 pub async fn open_positions_by_token(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    const CACHE_KEY: &str = "open_positions_by_token";
+    let data = cached_fetch(
+        &state.api_cache.open_positions_by_token,
+        cache_keys::OPEN_POSITIONS_BY_TOKEN,
+        || async {
+            let data = state
+                .database
+                .ls_state
+                .get_open_positions_by_token()
+                .await?;
+            let token_positions: Vec<TokenPosition> = data
+                .into_iter()
+                .map(|p| TokenPosition {
+                    token: p.token,
+                    market_value: p.market_value,
+                })
+                .collect();
+            Ok(token_positions)
+        },
+    )
+    .await?;
 
-    if let Some(cached) = state.api_cache.open_positions_by_token.get(CACHE_KEY).await {
-        return Ok(web::Json(cached));
-    }
-
-    let data = state.database.ls_state.get_open_positions_by_token().await?;
-    let token_positions: Vec<TokenPosition> = data
-        .into_iter()
-        .map(|p| TokenPosition {
-            token: p.token,
-            market_value: p.market_value,
-        })
-        .collect();
-
-    state.api_cache.open_positions_by_token.set(CACHE_KEY, token_positions.clone()).await;
-
-    Ok(web::Json(token_positions))
+    Ok(web::Json(data))
 }
 
 // =============================================================================

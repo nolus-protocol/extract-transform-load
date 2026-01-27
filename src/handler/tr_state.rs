@@ -31,10 +31,7 @@ pub async fn parse_and_insert(
     let (stable_price,) = app_state
         .database
         .mp_asset
-        .get_price(
-            &app_state.config.native_currency,
-            protocol,
-        )
+        .get_price(&app_state.config.native_currency, protocol)
         .await?;
 
     for coin in all_balances.balances {

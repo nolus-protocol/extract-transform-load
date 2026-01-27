@@ -4,59 +4,6 @@ use bigdecimal::BigDecimal;
 use sqlx::{Error, QueryBuilder, Transaction};
 
 impl Table<LS_Loan_Collect> {
-    pub async fn isExists(
-        &self,
-        contract: String,
-        symbol: String,
-    ) -> Result<bool, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT
-                COUNT(*)
-            FROM "LS_Loan_Collect"
-            WHERE
-                "LS_contract_id" = $1 AND
-                "LS_symbol" = $2
-            "#,
-        )
-        .bind(contract)
-        .bind(symbol)
-        .persistent(true)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub async fn insert(
-        &self,
-        data: LS_Loan_Collect,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "LS_Loan_Collect" (
-                "LS_contract_id",
-                "LS_symbol",
-                "LS_amount",
-                "LS_amount_stable"
-            )
-            VALUES($1, $2, $3, $4)
-        "#,
-        )
-        .bind(&data.LS_contract_id)
-        .bind(&data.LS_symbol)
-        .bind(&data.LS_amount)
-        .bind(&data.LS_amount_stable)
-        .persistent(true)
-        .execute(&mut **transaction)
-        .await
-    }
-
     pub async fn insert_many_transaction(
         &self,
         data: &Vec<LS_Loan_Collect>,

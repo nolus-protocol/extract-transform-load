@@ -83,24 +83,33 @@ pub fn init_config() -> Result<Config, Error> {
 }
 
 /// Run migrations and show status
-pub async fn run_migrate(status_only: bool, fake: Option<Option<u32>>) -> Result<(), Error> {
+pub async fn run_migrate(
+    status_only: bool,
+    fake: Option<Option<u32>>,
+) -> Result<(), Error> {
     let config = init_config()?;
 
     match fake {
         // --fake (no version) - fake all migrations
         Some(None) => {
-            tracing::info!("Marking all migrations as applied without running them...");
+            tracing::info!(
+                "Marking all migrations as applied without running them..."
+            );
             migration::run_migrations_fake(&config.database_url, None).await?;
             tracing::info!("All migrations marked as applied");
-        }
+        },
         // --fake <version> - fake up to version, then run remaining
         Some(Some(version)) => {
-            tracing::info!("Marking migrations up to V{:03} as applied...", version);
-            migration::run_migrations_fake(&config.database_url, Some(version)).await?;
+            tracing::info!(
+                "Marking migrations up to V{:03} as applied...",
+                version
+            );
+            migration::run_migrations_fake(&config.database_url, Some(version))
+                .await?;
             tracing::info!("Running remaining migrations...");
             migration::run_migrations(&config.database_url).await?;
             tracing::info!("Migrations complete");
-        }
+        },
         // No --fake flag
         None => {
             if status_only {
@@ -112,7 +121,7 @@ pub async fn run_migrate(status_only: bool, fake: Option<Option<u32>>) -> Result
                 migration::run_migrations(&config.database_url).await?;
                 tracing::info!("Migrations complete");
             }
-        }
+        },
     }
 
     Ok(())
@@ -247,14 +256,16 @@ pub async fn run_backfill_ls_opening(
                     UPDATE "LS_Opening" o SET "LS_liquidation_price_at_open" = 
                         CASE 
                             WHEN o."LS_position_type" = 'Long' THEN 
-                                (o."LS_loan_amnt_stable" / 1000000.0 / 0.9) / 
-                                NULLIF((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / 1000000.0, 0) * 
+                                (o."LS_loan_amnt_stable" / COALESCE(pc.stable_currency_decimals, 1000000)::numeric / 0.9) / 
+                                NULLIF((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / COALESCE(pc.stable_currency_decimals, 1000000)::numeric, 0) * 
                                 o."LS_opening_price"
                             WHEN o."LS_position_type" = 'Short' THEN 
-                                ((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / 1000000.0) / 
-                                NULLIF(o."LS_lpn_loan_amnt" / 1000000.0 / 0.9, 0)
+                                ((o."LS_cltr_amnt_stable" + o."LS_loan_amnt_stable") / COALESCE(pc.stable_currency_decimals, 1000000)::numeric) / 
+                                NULLIF(o."LS_lpn_loan_amnt" / COALESCE(pc.lpn_decimals, 1000000)::numeric / 0.9, 0)
                         END
-                    WHERE o."LS_liquidation_price_at_open" IS NULL
+                    FROM pool_config pc
+                    WHERE pc.pool_id = o."LS_loan_pool_id"
+                      AND o."LS_liquidation_price_at_open" IS NULL
                       AND o."LS_opening_price" IS NOT NULL
                       AND o."LS_position_type" IS NOT NULL
                     RETURNING 1
@@ -314,10 +325,10 @@ pub async fn run_backfill_raw_txs(
     concurrency: usize,
     dry_run: bool,
 ) -> Result<(), Error> {
-    use tokio::task::JoinSet;
     use crate::configuration::{AppState, State};
     use crate::provider::{Grpc, HTTP};
     use anyhow::Context;
+    use tokio::task::JoinSet;
 
     let config = init_config()?;
 
@@ -356,7 +367,11 @@ pub async fn run_backfill_raw_txs(
     let total = data.len();
     let mut processed = 0;
 
-    tracing::info!("Processing {} records with concurrency {}", total, concurrency);
+    tracing::info!(
+        "Processing {} records with concurrency {}",
+        total,
+        concurrency
+    );
 
     let mut tasks: Vec<_> = data.into_iter().collect();
 
@@ -370,9 +385,15 @@ pub async fn run_backfill_raw_txs(
                 set.spawn(async move {
                     let tx = s
                         .grpc
-                        .get_tx(raw_message.tx_hash.to_owned(), raw_message.block)
+                        .get_tx(
+                            raw_message.tx_hash.to_owned(),
+                            raw_message.block,
+                        )
                         .await?
-                        .context(format!("missing transaction {}", &raw_message.tx_hash))?;
+                        .context(format!(
+                            "missing transaction {}",
+                            &raw_message.tx_hash
+                        ))?;
 
                     let mut msg = raw_message;
                     msg.code = Some(tx.code.try_into()?);
@@ -391,7 +412,12 @@ pub async fn run_backfill_raw_txs(
         }
 
         if processed % 100 == 0 || tasks.is_empty() {
-            tracing::info!("Progress: {}/{} ({:.1}%)", processed, total, (processed as f64 / total as f64) * 100.0);
+            tracing::info!(
+                "Progress: {}/{} ({:.1}%)",
+                processed,
+                total,
+                (processed as f64 / total as f64) * 100.0
+            );
         }
     }
 

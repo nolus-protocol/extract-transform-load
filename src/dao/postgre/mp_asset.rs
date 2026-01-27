@@ -3,25 +3,9 @@ use sqlx::{types::BigDecimal, Error, QueryBuilder};
 
 use crate::model::{MP_Asset, Table};
 
-use super::{DataBase, QueryResult};
+use super::DataBase;
 
 impl Table<MP_Asset> {
-    pub async fn insert(&self, data: MP_Asset) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "MP_Asset" ("MP_asset_symbol","MP_asset_timestamp", "MP_price_in_stable", "Protocol")
-            VALUES($1, $2, $3, $4)
-            "#,
-        )
-        .bind(&data.MP_asset_symbol)
-        .bind(data.MP_asset_timestamp)
-        .bind(&data.MP_price_in_stable)
-        .bind(&data.Protocol)
-        .persistent(true)
-        .execute(&self.pool)
-        .await
-    }
-
     pub async fn insert_many(&self, data: &Vec<MP_Asset>) -> Result<(), Error> {
         if data.is_empty() {
             return Ok(());
@@ -44,7 +28,9 @@ impl Table<MP_Asset> {
                 .push_bind(&mp.Protocol);
         });
 
-        // Dynamic query - cannot use prepared statement caching
+        query_builder
+            .push(r#" ON CONFLICT ("MP_asset_symbol", "MP_asset_timestamp", "Protocol") DO NOTHING"#);
+
         let query = query_builder.build().persistent(true);
         query.execute(&self.pool).await?;
 

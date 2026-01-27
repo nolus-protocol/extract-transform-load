@@ -28,86 +28,6 @@ pub struct HistoricallyLiquidated {
 }
 
 impl Table<LS_Liquidation> {
-    pub async fn isExists(
-        &self,
-        ls_liquidatiion: &LS_Liquidation,
-    ) -> Result<bool, crate::error::Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT
-                COUNT(*)
-            FROM "LS_Liquidation"
-            WHERE
-                "LS_liquidation_height" = $1 AND
-                "LS_contract_id" = $2
-            "#,
-        )
-        .bind(ls_liquidatiion.LS_liquidation_height)
-        .bind(&ls_liquidatiion.LS_contract_id)
-        .persistent(true)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub async fn insert(
-        &self,
-        data: &LS_Liquidation,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "LS_Liquidation" (
-                "LS_liquidation_height",
-                "LS_contract_id",
-                "LS_amnt_symbol",
-                "LS_timestamp",
-                "LS_amnt_stable",
-                "LS_transaction_type",
-                "LS_prev_margin_stable",
-                "LS_prev_interest_stable",
-                "LS_current_margin_stable",
-                "LS_current_interest_stable",
-                "LS_principal_stable",
-                "Tx_Hash",
-                "LS_amnt",
-                "LS_payment_symbol",
-                "LS_payment_amnt",
-                "LS_payment_amnt_stable",
-                "LS_loan_close",
-                "LS_liquidation_price"
-            )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-        "#,
-        )
-        .bind(data.LS_liquidation_height)
-        .bind(&data.LS_contract_id)
-        .bind(&data.LS_amnt_symbol)
-        .bind(data.LS_timestamp)
-        .bind(&data.LS_amnt_stable)
-        .bind(&data.LS_transaction_type)
-        .bind(&data.LS_prev_margin_stable)
-        .bind(&data.LS_prev_interest_stable)
-        .bind(&data.LS_current_margin_stable)
-        .bind(&data.LS_current_interest_stable)
-        .bind(&data.LS_principal_stable)
-        .bind(&data.Tx_Hash)
-        .bind(&data.LS_amnt)
-        .bind(&data.LS_payment_symbol)
-        .bind(&data.LS_payment_amnt)
-        .bind(&data.LS_payment_amnt_stable)
-        .bind(data.LS_loan_close)
-        .bind(&data.LS_liquidation_price)
-        .persistent(true)
-        .execute(&mut **transaction)
-        .await
-    }
-
     pub async fn insert_if_not_exists(
         &self,
         data: &LS_Liquidation,
@@ -271,19 +191,16 @@ impl Table<LS_Liquidation> {
                 liq."LS_contract_id" AS contract_id,
                 o."LS_address_id" AS user,
                 liq."LS_transaction_type" AS transaction_type,
-                liq."LS_payment_amnt_stable" / 1000000 AS liquidation_amount,
+                liq."LS_payment_amnt_stable" / COALESCE(pc.stable_currency_decimals, 1000000)::numeric AS liquidation_amount,
                 liq."LS_loan_close" AS closed_loan,
-                CASE
-                    WHEN o."LS_cltr_symbol" IN ('WBTC', 'CRO') THEN o."LS_cltr_amnt_stable" / 100000000
-                    WHEN o."LS_cltr_symbol" IN ('PICA') THEN o."LS_cltr_amnt_stable" / 1000000000000
-                    WHEN o."LS_cltr_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN o."LS_cltr_amnt_stable" / 1000000000000000000
-                    ELSE o."LS_cltr_amnt_stable" / 1000000
-                END AS down_payment,
-                o."LS_loan_amnt_asset" / 1000000 AS loan,
+                o."LS_cltr_amnt_stable" / POWER(10, COALESCE(cr_cltr.decimal_digits, 6)) AS down_payment,
+                o."LS_loan_amnt_asset" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS loan,
                 liq."LS_liquidation_price" AS liquidation_price
             FROM
                 "LS_Liquidation" liq
                 LEFT JOIN "LS_Opening" o ON o."LS_contract_id" = liq."LS_contract_id"
+                LEFT JOIN currency_registry cr_cltr ON cr_cltr.ticker = o."LS_cltr_symbol"
+                LEFT JOIN pool_config pc ON pc.pool_id = o."LS_loan_pool_id"
             {}
             ORDER BY
                 liq."LS_timestamp" DESC
@@ -320,18 +237,13 @@ impl Table<LS_Liquidation> {
                         WHEN pc.position_type = 'Short' THEN CONCAT(pc.label, ' (Short)')
                         ELSE lso."LS_asset_symbol"
                     END AS "Asset",
-                    lso."LS_loan_amnt_asset" / 1000000 AS "Loan",
-                    CASE
-                        WHEN lso."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN lsl."LS_amnt_stable" / 100000000
-                        WHEN lso."LS_asset_symbol" IN ('ALL_SOL') THEN lsl."LS_amnt_stable" / 1000000000
-                        WHEN lso."LS_asset_symbol" IN ('PICA') THEN lsl."LS_amnt_stable" / 1000000000000
-                        WHEN lso."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN lsl."LS_amnt_stable" / 1000000000000000000
-                        ELSE lsl."LS_amnt_stable" / 1000000
-                    END AS "Liquidation Amount"
+                    lso."LS_loan_amnt_asset" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
+                    lsl."LS_amnt_stable" / POWER(10, COALESCE(cr_asset.decimal_digits, 6)) AS "Liquidation Amount"
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"
                     LEFT JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
+                    LEFT JOIN currency_registry cr_asset ON cr_asset.ticker = lso."LS_asset_symbol"
             )
             SELECT
                 "LS_contract_id" AS contract_id,
@@ -388,18 +300,13 @@ impl Table<LS_Liquidation> {
                         WHEN pc.position_type = 'Short' THEN CONCAT(pc.label, ' (Short)')
                         ELSE lso."LS_asset_symbol"
                     END AS "Asset",
-                    lso."LS_loan_amnt_asset" / 1000000 AS "Loan",
-                    CASE
-                        WHEN lso."LS_asset_symbol" IN ('ALL_BTC', 'WBTC', 'CRO') THEN lsl."LS_amnt_stable" / 100000000
-                        WHEN lso."LS_asset_symbol" IN ('ALL_SOL') THEN lsl."LS_amnt_stable" / 1000000000
-                        WHEN lso."LS_asset_symbol" IN ('PICA') THEN lsl."LS_amnt_stable" / 1000000000000
-                        WHEN lso."LS_asset_symbol" IN ('WETH', 'EVMOS', 'INJ', 'DYDX', 'DYM', 'CUDOS', 'ALL_ETH') THEN lsl."LS_amnt_stable" / 1000000000000000000
-                        ELSE lsl."LS_amnt_stable" / 1000000
-                    END AS "Liquidation Amount"
+                    lso."LS_loan_amnt_asset" / COALESCE(pc.lpn_decimals, 1000000)::numeric AS "Loan",
+                    lsl."LS_amnt_stable" / POWER(10, COALESCE(cr_asset.decimal_digits, 6)) AS "Liquidation Amount"
                 FROM
                     "LS_Opening" lso
                     LEFT JOIN "LS_Liquidation" lsl ON lso."LS_contract_id" = lsl."LS_contract_id"
                     LEFT JOIN pool_config pc ON lso."LS_loan_pool_id" = pc.pool_id
+                    LEFT JOIN currency_registry cr_asset ON cr_asset.ticker = lso."LS_asset_symbol"
                 {}
             )
             SELECT
@@ -417,7 +324,8 @@ impl Table<LS_Liquidation> {
             time_condition
         );
 
-        let mut query_builder = sqlx::query_as::<_, HistoricallyLiquidated>(&query);
+        let mut query_builder =
+            sqlx::query_as::<_, HistoricallyLiquidated>(&query);
 
         if let Some(from_ts) = from {
             query_builder = query_builder.bind(from_ts);

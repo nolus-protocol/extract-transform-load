@@ -123,7 +123,10 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
     }
 
     /// Create a new cache with custom TTL and grace period
-    pub fn with_grace_period(ttl_seconds: u64, grace_period_seconds: u64) -> Self {
+    pub fn with_grace_period(
+        ttl_seconds: u64,
+        grace_period_seconds: u64,
+    ) -> Self {
         Self {
             entries: RwLock::new(HashMap::new()),
             refresh_states: RwLock::new(HashMap::new()),
@@ -184,7 +187,11 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
     /// Only one caller will execute the fetch function; others wait for the result.
     /// Supports stale-while-revalidate: returns stale data immediately while
     /// one background task refreshes.
-    pub async fn get_or_fetch<F, Fut, E>(&self, key: &str, fetch_fn: F) -> Result<T, E>
+    pub async fn get_or_fetch<F, Fut, E>(
+        &self,
+        key: &str,
+        fetch_fn: F,
+    ) -> Result<T, E>
     where
         F: FnOnce() -> Fut,
         Fut: Future<Output = Result<T, E>>,
@@ -197,10 +204,10 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
                 // Return stale data immediately, trigger background refresh
                 self.trigger_background_refresh_if_needed(key).await;
                 return Ok(data);
-            }
+            },
             CacheResult::Miss => {
                 // Need to fetch - continue below
-            }
+            },
         }
 
         // Get or create refresh state for this key
@@ -214,10 +221,14 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
             match &result {
                 Ok(data) => {
                     self.set(key, data.clone()).await;
-                }
+                },
                 Err(e) => {
-                    tracing::warn!("Cache fetch failed for key '{}': {:?}", key, e);
-                }
+                    tracing::warn!(
+                        "Cache fetch failed for key '{}': {:?}",
+                        key,
+                        e
+                    );
+                },
             }
 
             // Signal completion to any waiters
@@ -229,7 +240,9 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
         let mut receiver = refresh_state.subscribe();
 
         // Wait for the refresh to complete (with timeout)
-        let wait_result = tokio::time::timeout(Duration::from_secs(30), receiver.recv()).await;
+        let wait_result =
+            tokio::time::timeout(Duration::from_secs(30), receiver.recv())
+                .await;
 
         match wait_result {
             Ok(_) => {
@@ -239,14 +252,14 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
                 }
                 // If still no data, the fetch must have failed
                 // Fall through to do our own fetch
-            }
+            },
             Err(_) => {
                 // Timeout waiting - try to get whatever is in cache
                 if let Some(data) = self.get(key).await {
                     return Ok(data);
                 }
                 // Fall through to do our own fetch
-            }
+            },
         }
 
         // Last resort: do the fetch ourselves
@@ -258,7 +271,10 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
     }
 
     /// Get or create a refresh state for a key
-    async fn get_or_create_refresh_state(&self, key: &str) -> Arc<RefreshState> {
+    async fn get_or_create_refresh_state(
+        &self,
+        key: &str,
+    ) -> Arc<RefreshState> {
         // Try read lock first
         {
             let states = self.refresh_states.read().await;
@@ -359,7 +375,8 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
                 entry.needs_refresh(REFRESH_THRESHOLD)
             })
             .map(|(key, entry)| {
-                let time_until_expiry = entry.expires_at.saturating_duration_since(now);
+                let time_until_expiry =
+                    entry.expires_at.saturating_duration_since(now);
                 (key.clone(), time_until_expiry)
             })
             .collect();
@@ -391,7 +408,8 @@ impl<T: Clone + Send + Sync> TimedCache<T> {
         entries.retain(|_, entry| !entry.is_expired() || entry.is_stale(grace));
 
         // Also clean up refresh states for removed entries
-        let remaining_keys: std::collections::HashSet<_> = entries.keys().cloned().collect();
+        let remaining_keys: std::collections::HashSet<_> =
+            entries.keys().cloned().collect();
         let mut states = self.refresh_states.write().await;
         states.retain(|key, _| remaining_keys.contains(key));
     }
@@ -527,7 +545,7 @@ mod tests {
 
         // Fresh data
         match cache.get_with_stale("key").await {
-            CacheResult::Hit(_) => {}
+            CacheResult::Hit(_) => {},
             _ => panic!("Expected Hit"),
         }
 

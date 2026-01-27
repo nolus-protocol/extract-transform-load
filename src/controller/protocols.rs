@@ -76,11 +76,8 @@ pub async fn get_protocols(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
     let protocols = state.database.protocol_registry.get_all().await?;
-    let (active_count, deprecated_count) = state
-        .database
-        .protocol_registry
-        .count_by_status()
-        .await?;
+    let (active_count, deprecated_count) =
+        state.database.protocol_registry.count_by_status().await?;
 
     let protocol_infos: Vec<ProtocolInfo> = protocols
         .into_iter()
@@ -118,11 +115,8 @@ pub async fn get_active_protocols(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
     let protocols = state.database.protocol_registry.get_active().await?;
-    let (active_count, deprecated_count) = state
-        .database
-        .protocol_registry
-        .count_by_status()
-        .await?;
+    let (active_count, deprecated_count) =
+        state.database.protocol_registry.count_by_status().await?;
 
     let protocol_infos: Vec<ProtocolInfo> = protocols
         .into_iter()
@@ -161,11 +155,7 @@ pub async fn get_protocol_by_name(
     path: web::Path<String>,
 ) -> Result<impl Responder, Error> {
     let name = path.into_inner();
-    let protocol = state
-        .database
-        .protocol_registry
-        .get_by_name(&name)
-        .await?;
+    let protocol = state.database.protocol_registry.get_by_name(&name).await?;
 
     match protocol {
         Some(p) => {
@@ -186,7 +176,7 @@ pub async fn get_protocol_by_name(
                 deprecated_at: p.deprecated_at.map(|d| d.to_rfc3339()),
             };
             Ok(HttpResponse::Ok().json(info))
-        }
+        },
         None => Ok(HttpResponse::NotFound().json(serde_json::json!({
             "error": "Protocol not found",
             "name": name
@@ -204,11 +194,8 @@ pub async fn get_currencies(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
     let currencies = state.database.currency_registry.get_all().await?;
-    let (active_count, deprecated_count) = state
-        .database
-        .currency_registry
-        .count_by_status()
-        .await?;
+    let (active_count, deprecated_count) =
+        state.database.currency_registry.count_by_status().await?;
 
     let currency_infos: Vec<CurrencyInfo> = currencies
         .into_iter()
@@ -239,11 +226,8 @@ pub async fn get_active_currencies(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
     let currencies = state.database.currency_registry.get_active().await?;
-    let (active_count, deprecated_count) = state
-        .database
-        .currency_registry
-        .count_by_status()
-        .await?;
+    let (active_count, deprecated_count) =
+        state.database.currency_registry.count_by_status().await?;
 
     let currency_infos: Vec<CurrencyInfo> = currencies
         .into_iter()
@@ -293,7 +277,7 @@ pub async fn get_currency_by_ticker(
                 last_seen_protocol: c.last_seen_protocol,
             };
             Ok(HttpResponse::Ok().json(info))
-        }
+        },
         None => Ok(HttpResponse::NotFound().json(serde_json::json!({
             "error": "Currency not found",
             "ticker": ticker

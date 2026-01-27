@@ -17,72 +17,7 @@ pub struct HistoricalLender {
 }
 
 impl Table<LP_Deposit> {
-    pub async fn isExists(
-        &self,
-        ls_deposit: &LP_Deposit,
-    ) -> Result<bool, Error> {
-        let (value,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT
-                COUNT(*)
-            FROM "LP_Deposit"
-            WHERE
-                "LP_deposit_height" = $1 AND
-                "LP_address_id" = $2 AND
-                "LP_timestamp" = $3 AND
-                "LP_Pool_id" = $4
-            "#,
-        )
-        .bind(ls_deposit.LP_deposit_height)
-        .bind(&ls_deposit.LP_address_id)
-        .bind(ls_deposit.LP_timestamp)
-        .bind(&ls_deposit.LP_Pool_id)
-        .persistent(true)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if value > 0 {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub async fn insert(
-        &self,
-        data: LP_Deposit,
-        transaction: &mut Transaction<'_, DataBase>,
-    ) -> Result<QueryResult, Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO "LP_Deposit" (
-                "LP_deposit_height",
-                "LP_address_id",
-                "LP_timestamp",
-                "LP_Pool_id",
-                "LP_amnt_stable",
-                "LP_amnt_asset",
-                "LP_amnt_receipts",
-                "Tx_Hash"
-            )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
-        "#,
-        )
-        .bind(data.LP_deposit_height)
-        .bind(&data.LP_address_id)
-        .bind(data.LP_timestamp)
-        .bind(&data.LP_Pool_id)
-        .bind(&data.LP_amnt_stable)
-        .bind(&data.LP_amnt_asset)
-        .bind(&data.LP_amnt_receipts)
-        .bind(&data.Tx_Hash)
-        .persistent(true)
-        .execute(&mut **transaction)
-        .await
-    }
-
     /// Inserts a record if it doesn't already exist, using ON CONFLICT DO NOTHING.
-    /// More efficient than calling isExists() followed by insert().
     pub async fn insert_if_not_exists(
         &self,
         data: LP_Deposit,
@@ -209,10 +144,8 @@ impl Table<LP_Deposit> {
         let mut conditions = Vec::new();
 
         if let Some(m) = months {
-            conditions.push(format!(
-                "timestamp > NOW() - INTERVAL '{} months'",
-                m
-            ));
+            conditions
+                .push(format!("timestamp > NOW() - INTERVAL '{} months'", m));
         }
 
         if from.is_some() {

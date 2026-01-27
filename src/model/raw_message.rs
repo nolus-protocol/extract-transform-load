@@ -41,7 +41,9 @@ pub struct Raw_Message {
 }
 
 impl Raw_Message {
-    pub fn from_any(params: RawMsgParams<'_>) -> Result<Raw_Message, anyhow::Error> {
+    pub fn from_any(
+        params: RawMsgParams<'_>,
+    ) -> Result<Raw_Message, anyhow::Error> {
         let RawMsgParams {
             index,
             value,
@@ -476,9 +478,10 @@ impl FromStr for CosmosTypes {
             "/cosmwasm.wasm.v1.MsgExecuteContract" => {
                 Ok(CosmosTypes::MsgExecuteContract)
             },
-            _ => Err(io::Error::other(
-                format!("CosmosTypes message not supported: {}", &value),
-            )),
+            _ => Err(io::Error::other(format!(
+                "CosmosTypes message not supported: {}",
+                &value
+            ))),
         }
     }
 }

@@ -106,9 +106,13 @@ impl From<PUSH_TYPES> for String {
     fn from(value: PUSH_TYPES) -> Self {
         match value {
             PUSH_TYPES::Funding => String::from("Funding"),
-            PUSH_TYPES::FundingRecommended => String::from("FundingRecommended"),
+            PUSH_TYPES::FundingRecommended => {
+                String::from("FundingRecommended")
+            },
             PUSH_TYPES::FundNow => String::from("FundNow"),
-            PUSH_TYPES::PartiallyLiquidated => String::from("PartiallyLiquidated"),
+            PUSH_TYPES::PartiallyLiquidated => {
+                String::from("PartiallyLiquidated")
+            },
             PUSH_TYPES::FullyLiquidated => String::from("FullyLiquidated"),
             PUSH_TYPES::Unsupported => String::from("Unsupported"),
         }
