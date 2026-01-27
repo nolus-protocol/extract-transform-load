@@ -803,13 +803,10 @@ impl Table<LS_State> {
     ) -> Result<Vec<crate::model::Position>, Error> {
         let data = sqlx::query_as(
             r#"
-            WITH Latest_Aggregation AS (
-              SELECT MAX("LS_timestamp") AS max_ts FROM "LS_State"
-            ),
-            Latest_States AS (
+            WITH Latest_States AS (
               SELECT DISTINCT ON ("LS_contract_id") *
               FROM "LS_State"
-              WHERE "LS_timestamp" = (SELECT max_ts FROM Latest_Aggregation)
+              WHERE "LS_timestamp" > NOW() - INTERVAL '1 hour'
               ORDER BY "LS_contract_id", "LS_timestamp" DESC
             ),
             Repayments AS (
@@ -836,25 +833,32 @@ impl Table<LS_State> {
                 o."LS_address_id" AS "User",
                 o."LS_contract_id" AS "Contract ID",
                 COALESCE(pc.position_type, 'Long') AS "Type",
-                COALESCE(pc.lpn_symbol, o."LS_asset_symbol") AS "Symbol",
+                CASE
+                  WHEN COALESCE(pc.position_type, 'Long') = 'Long' THEN o."LS_asset_symbol"
+                  ELSE pc.lpn_symbol
+                END AS "Symbol",
                 o."LS_asset_symbol" AS "Asset",
                 pc.lpn_decimals::numeric AS denom,
 
                 -- Loan from LS_State (use currency_registry for lpn decimals)
-                s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits)::NUMERIC AS "Loan",
+                (s."LS_principal_stable" / POWER(10, cr_lpn.decimal_digits))::NUMERIC AS "Loan",
 
                 -- Down Payment from LS_Opening (use currency_registry for collateral decimals)
-                o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits)::NUMERIC AS "Down Payment",
+                (o."LS_cltr_amnt_stable" / POWER(10, cr_cltr.decimal_digits))::NUMERIC AS "Down Payment",
 
                 -- Lease Value from LS_State (use currency_registry for asset decimals)
-                s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits)::NUMERIC AS "Lease Value",
+                (s."LS_amnt_stable" / POWER(10, cr_asset.decimal_digits))::NUMERIC AS "Lease Value",
 
                 -- Margin & Interest from LS_State (use pool_config decimals)
                 (s."LS_prev_margin_stable" + s."LS_current_margin_stable") / pc.lpn_decimals::numeric AS "Margin Interest",
                 (s."LS_prev_interest_stable" + s."LS_current_interest_stable") / pc.lpn_decimals::numeric AS "Loan Interest",
 
                 -- Loan Token Amount (use pool_config decimals)
-                (s."LS_prev_margin_asset"+s."LS_prev_interest_asset"+s."LS_current_margin_asset"+s."LS_current_interest_asset"+s."LS_principal_asset") / pc.lpn_decimals::numeric AS "Loan Token Amount"
+                (s."LS_prev_margin_asset"
+                 + s."LS_prev_interest_asset"
+                 + s."LS_current_margin_asset"
+                 + s."LS_current_interest_asset"
+                 + s."LS_principal_asset") / pc.lpn_decimals::numeric AS "Loan Token Amount"
 
               FROM Latest_States s
               JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
@@ -869,7 +873,9 @@ impl Table<LS_State> {
               FROM Joined_States
             ),
             LongProtocols AS (
-              SELECT protocol FROM pool_config WHERE position_type = 'Long' AND is_active = true
+              SELECT protocol
+              FROM pool_config
+              WHERE position_type = 'Long' AND is_active = true
             ),
             Latest_Prices AS (
               SELECT DISTINCT ON (a."MP_asset_symbol")
@@ -879,6 +885,7 @@ impl Table<LS_State> {
                 "MP_Asset" a
                 INNER JOIN SymbolsInUse s ON a."MP_asset_symbol" = s."MP_asset_symbol"
                 INNER JOIN LongProtocols lp ON a."Protocol" = lp.protocol
+              WHERE a."MP_asset_timestamp" > NOW() - INTERVAL '1 hour'
               ORDER BY
                 a."MP_asset_symbol", a."MP_asset_timestamp" DESC
             )
@@ -896,16 +903,27 @@ impl Table<LS_State> {
                 "Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest"
                 - COALESCE(rp."Repayment Stable", 0)
               ) AS "PnL",
-              ROUND((
+              ROUND(
                 (
-                  "Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest"
-                  - COALESCE(rp."Repayment Stable", 0)
-                ) / "Down Payment"
-              ) * 100, 2) AS "PnL %",
+                  (
+                    "Lease Value" - "Loan" - "Down Payment" - "Margin Interest" - "Loan Interest"
+                    - COALESCE(rp."Repayment Stable", 0)
+                  ) / "Down Payment"
+                )::numeric * 100,
+                2
+              ) AS "PnL %",
               lp."Current Price",
               CASE
-                WHEN "Type" = 'Long' THEN ROUND((("Loan" / 0.9) / "Lease Value") * lp."Current Price", 4)
-                WHEN "Type" = 'Short' THEN ROUND("Lease Value" / ("Loan Token Amount" / 0.9), 4)
+                WHEN "Type" = 'Long' THEN
+                  ROUND(
+                    ((("Loan" / 0.9) / "Lease Value") * lp."Current Price")::numeric,
+                    4
+                  )
+                WHEN "Type" = 'Short' THEN
+                  ROUND(
+                    ("Lease Value" / ("Loan Token Amount" / 0.9))::numeric,
+                    4
+                  )
               END AS "Liquidation Price"
             FROM Joined_States js
             LEFT JOIN Latest_Prices lp ON js."Symbol" = lp."MP_asset_symbol"
