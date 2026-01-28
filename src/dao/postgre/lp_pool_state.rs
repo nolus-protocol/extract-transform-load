@@ -445,6 +445,7 @@ impl Table<LP_Pool_State> {
                     lps."LP_Pool_total_value_locked_stable",
                     lps."LP_Pool_total_borrowed_stable",
                     lps."LP_Pool_timestamp",
+                    lps."LP_Pool_min_utilization_threshold",
                     pc.lpn_decimals,
                     pc.protocol
                 FROM "LP_Pool_State" lps
@@ -507,7 +508,8 @@ impl Table<LP_Pool_State> {
                     WHEN ea.apr_simple IS NOT NULL AND ea.apr_simple > 0
                     THEN (POWER((1 + (ea.apr_simple / 100 / 365)), 365) - 1) * 100
                     ELSE 0
-                END AS earn_apr
+                END AS earn_apr,
+                ls."LP_Pool_min_utilization_threshold" / 10.0 AS deposit_suspension
             FROM LatestStates ls
             LEFT JOIN LatestBorrowAPR apr ON ls."LP_Pool_id" = apr."LS_loan_pool_id"
             LEFT JOIN EarnAPRCalc ea ON ls."LP_Pool_id" = ea.pool_id
@@ -532,4 +534,5 @@ pub struct PoolUtilizationLevel {
     pub borrowed: BigDecimal,
     pub borrow_apr: BigDecimal,
     pub earn_apr: BigDecimal,
+    pub deposit_suspension: BigDecimal,
 }

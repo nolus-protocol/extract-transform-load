@@ -27,8 +27,6 @@ pub struct PoolsResponse {
     pub protocols: Vec<PoolUtilizationLevel>,
     /// Optimal utilization rate threshold (percentage)
     pub optimal: String,
-    /// Deposit suspension threshold (percentage)
-    pub deposit_suspension: String,
 }
 
 /// Batch endpoint to get pool data for all pools in a single request.
@@ -50,7 +48,6 @@ pub async fn pools(
     Ok(HttpResponse::Ok().json(PoolsResponse {
         protocols: data,
         optimal: String::from("70.00"),
-        deposit_suspension: String::from("65.00"),
     }))
 }
 
