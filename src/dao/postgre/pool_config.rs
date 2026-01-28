@@ -1,20 +1,13 @@
 use sqlx::Error;
 
-use crate::model::{Pool_Config, Table};
+use crate::model::{PoolConfigUpsert, Pool_Config, Table};
 
 impl Table<Pool_Config> {
     /// Upsert an active pool configuration from blockchain data
     /// Sets is_active = true and clears deprecated_at
     pub async fn upsert(
         &self,
-        pool_id: &str,
-        position_type: &str,
-        lpn_symbol: &str,
-        lpn_decimals: i64,
-        label: &str,
-        protocol: &str,
-        stable_currency_symbol: &str,
-        stable_currency_decimals: i64,
+        data: &PoolConfigUpsert<'_>,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
@@ -35,14 +28,14 @@ impl Table<Pool_Config> {
                 "stable_currency_decimals" = EXCLUDED."stable_currency_decimals"
             "#,
         )
-        .bind(pool_id)
-        .bind(position_type)
-        .bind(lpn_symbol)
-        .bind(lpn_decimals)
-        .bind(label)
-        .bind(protocol)
-        .bind(stable_currency_symbol)
-        .bind(stable_currency_decimals)
+        .bind(data.pool_id)
+        .bind(data.position_type)
+        .bind(data.lpn_symbol)
+        .bind(data.lpn_decimals)
+        .bind(data.label)
+        .bind(data.protocol)
+        .bind(data.stable_currency_symbol)
+        .bind(data.stable_currency_decimals)
         .execute(&self.pool)
         .await?;
         Ok(())

@@ -31,24 +31,24 @@
     "description": "Returns all currencies (active and deprecated) with their configuration. Currencies are dynamically discovered from blockchain contracts at startup.",
     "url": "/api/currencies",
     "type": "GET",
-    "response": "{ currencies: [{ ticker: String, bank_symbol: String, decimal_digits: Number, group: String, is_active: Boolean, deprecated_at: DateTime, last_seen_protocol: String }], count: Number, active_count: Number, deprecated_count: Number }",
-    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663...\", \"decimal_digits\": 6, \"group\": \"lease\", \"is_active\": true, \"last_seen_protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\" }], \"count\": 29, \"active_count\": 28, \"deprecated_count\": 1 }"
+    "response": "{ currencies: [{ ticker: String, bank_symbol: String, decimal_digits: Number, is_active: Boolean, deprecated_at: DateTime, protocols: [{ protocol: String, group: String }] }], count: Number, active_count: Number, deprecated_count: Number }",
+    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663...\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\" }] }], \"count\": 29, \"active_count\": 28, \"deprecated_count\": 1 }"
   },
   {
     "category": "Configuration",
     "description": "Returns only active currencies with their configuration.",
     "url": "/api/currencies/active",
     "type": "GET",
-    "response": "{ currencies: [{ ticker: String, bank_symbol: String, decimal_digits: Number, group: String, is_active: Boolean, last_seen_protocol: String }], count: Number, active_count: Number, deprecated_count: Number }",
-    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663...\", \"decimal_digits\": 6, \"group\": \"lease\", \"is_active\": true, \"last_seen_protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\" }], \"count\": 28, \"active_count\": 28, \"deprecated_count\": 1 }"
+    "response": "{ currencies: [{ ticker: String, bank_symbol: String, decimal_digits: Number, is_active: Boolean, protocols: [{ protocol: String, group: String }] }], count: Number, active_count: Number, deprecated_count: Number }",
+    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663...\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\" }] }], \"count\": 28, \"active_count\": 28, \"deprecated_count\": 1 }"
   },
   {
     "category": "Configuration",
     "description": "Returns a single currency by ticker symbol. Returns 404 if not found.",
     "url": "/api/currencies/{ticker}",
     "type": "GET",
-    "response": "{ ticker: String, bank_symbol: String, decimal_digits: Number, group: String, is_active: Boolean, deprecated_at: DateTime, last_seen_protocol: String }",
-    "example": "{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663F2F09CD62285E2D45891FC149A3568E316CE3EBBE201A71A78A69388\", \"decimal_digits\": 6, \"group\": \"lease\", \"is_active\": true, \"last_seen_protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\" }",
+    "response": "{ ticker: String, bank_symbol: String, decimal_digits: Number, is_active: Boolean, deprecated_at: DateTime, protocols: [{ protocol: String, group: String }] }",
+    "example": "{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663F2F09CD62285E2D45891FC149A3568E316CE3EBBE201A71A78A69388\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\" }] }",
     "params": [
       { "name": "ticker", "type": "String", "required": true, "description": "Currency ticker symbol (e.g., ATOM, USDC_NOBLE, NLS)" }
     ]
@@ -158,21 +158,6 @@
       { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
       { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
       { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"] }
-    ]
-  },
-  {
-    "category": "Protocol Analytics",
-    "description": "Returns historical pool utilization values for a specific protocol. Returns array of utilization percentages (BigDecimal). CSV format includes full data with timestamps.",
-    "url": "/api/utilization-level",
-    "type": "GET",
-    "response": "[BigDecimal]",
-    "cache": "1 hour",
-    "example": "[\"68.5\", \"67.2\", \"69.1\"]",
-    "params": [
-      { "name": "protocol", "type": "String", "description": "Protocol identifier (e.g., OSMOSIS-OSMOSIS-USDC). Returns empty array if not specified." },
-      { "name": "period", "type": "String", "default": "3m", "options": ["3m", "6m", "12m", "all"] },
-      { "name": "from", "type": "DateTime", "description": "Only return records after this timestamp (exclusive), for incremental syncing" },
-      { "name": "format", "type": "String", "default": "json", "options": ["json", "csv"], "description": "CSV format includes timestamps and full utilization data" }
     ]
   },
   {
@@ -526,19 +511,6 @@
       { "name": "to", "type": "String", "description": "Comma-separated contract IDs to filter by (used with positions_ids filter)" },
       { "name": "skip", "type": "Number", "default": 0 },
       { "name": "limit", "type": "Number", "default": 10, "max": 100 }
-    ]
-  },
-  {
-    "category": "Wallet Analytics",
-    "description": "Returns a paginated list of leases for a specific wallet address.",
-    "url": "/api/leases",
-    "type": "GET",
-    "response": "[{ lease: String, status: String, opened: DateTime, closed: DateTime, pnl: BigDecimal }]",
-    "example": "[{ \"lease\": \"nolus1abc...\", \"status\": \"closed\", \"opened\": \"2025-01-01T10:00:00Z\", \"closed\": \"2025-01-15T14:00:00Z\", \"pnl\": \"234.56\" }]",
-    "params": [
-      { "name": "address", "type": "String", "required": true },
-      { "name": "skip", "type": "Number", "default": 0 },
-      { "name": "limit", "type": "Number", "default": 10, "max": 10 }
     ]
   },
   {

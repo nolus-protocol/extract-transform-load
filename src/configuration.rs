@@ -16,9 +16,9 @@ use crate::{
     error::Error,
     model::{
         Buyback, DailyPositionsPoint, LP_Pool, Leased_Asset, Leases_Monthly,
-        MonthlyActiveWallet, Position, PositionBucket, ProtocolRegistry,
-        RevenueSeriesPoint, Supplied_Borrowed_Series, TokenLoan, TokenPosition,
-        Utilization_Level,
+        MonthlyActiveWallet, PoolConfigUpsert, Position, PositionBucket,
+        ProtocolRegistry, RevenueSeriesPoint, Supplied_Borrowed_Series,
+        TokenLoan, TokenPosition,
     },
     provider::{DatabasePool, Grpc, HTTP},
     types::{AdminProtocolExtendType, Currency, ProtocolContracts},
@@ -92,7 +92,6 @@ pub struct ApiCache {
     pub pools: TimedCache<Vec<PoolUtilizationLevel>>,
     // Period-based endpoints (new)
     pub buyback: TimedCache<Vec<Buyback>>,
-    pub utilization_level: TimedCache<Vec<Utilization_Level>>,
     pub borrowed: TimedCache<BigDecimal>,
 }
 
@@ -115,7 +114,6 @@ impl ApiCache {
             // From LP_Pool_State
             supplied_borrowed_history: TimedCache::new(CACHE_TTL_HOURLY),
             pools: TimedCache::new(CACHE_TTL_HOURLY),
-            utilization_level: TimedCache::new(CACHE_TTL_HOURLY),
             supplied_funds: TimedCache::new(CACHE_TTL_HOURLY),
             borrowed: TimedCache::new(CACHE_TTL_HOURLY),
             // From LP_Lender_State
@@ -253,10 +251,13 @@ impl State {
                 .await?;
 
             for currency in &currencies {
-                // Upsert to database registry
+                // Upsert core currency data
+                database.currency_registry.upsert_active(currency).await?;
+
+                // Track currency-protocol relationship (group varies per protocol)
                 database
-                    .currency_registry
-                    .upsert_active(currency, protocol_name)
+                    .currency_protocol
+                    .upsert(&currency.ticker, protocol_name, &currency.group)
                     .await?;
 
                 // Build runtime currency
@@ -332,16 +333,16 @@ impl State {
 
             database
                 .pool_config
-                .upsert(
-                    &protocol_config.contracts.lpp,
+                .upsert(&PoolConfigUpsert {
+                    pool_id: &protocol_config.contracts.lpp,
                     position_type,
-                    &lpn,
-                    lpn_decimals_divisor,
-                    &label,
-                    protocol_name,
-                    &stable_currency,
-                    stable_currency_decimals_divisor,
-                )
+                    lpn_symbol: &lpn,
+                    lpn_decimals: lpn_decimals_divisor,
+                    label: &label,
+                    protocol: protocol_name,
+                    stable_currency_symbol: &stable_currency,
+                    stable_currency_decimals: stable_currency_decimals_divisor,
+                })
                 .await?;
 
             // Track active pool_id for deprecation marking
@@ -392,6 +393,18 @@ impl State {
             tracing::info!(
                 "Marked {} currencies as deprecated",
                 deprecated_currencies
+            );
+        }
+
+        // Clean up currency_protocol entries for deprecated tickers
+        let removed_protocol_links = database
+            .currency_protocol
+            .remove_deprecated(&active_tickers)
+            .await?;
+        if removed_protocol_links > 0 {
+            tracing::info!(
+                "Removed {} deprecated currency-protocol links",
+                removed_protocol_links
             );
         }
 

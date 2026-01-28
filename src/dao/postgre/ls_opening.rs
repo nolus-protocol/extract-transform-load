@@ -777,56 +777,6 @@ impl Table<LS_Opening> {
         Ok(data)
     }
 
-    pub async fn get_leases_by_address(
-        &self,
-        address: String,
-        skip: i64,
-        limit: i64,
-    ) -> Result<Vec<LS_Opening>, Error> {
-        let data = sqlx::query_as(
-            r#"
-                SELECT
-                    a."LS_contract_id",
-                    a."LS_address_id",
-                    a."LS_asset_symbol",
-                    a."LS_interest",
-                    a."LS_timestamp",
-                    a."LS_loan_pool_id",
-                    a."LS_loan_amnt_stable",
-                    a."LS_loan_amnt_asset",
-                    a."LS_cltr_symbol",
-                    a."LS_cltr_amnt_stable",
-                    a."LS_cltr_amnt_asset",
-                    a."LS_native_amnt_stable",
-                    a."LS_native_amnt_nolus",
-                    a."Tx_Hash",
-                    a."LS_loan_amnt",
-                    a."LS_lpn_loan_amnt",
-                    a."LS_position_type",
-                    a."LS_lpn_symbol",
-                    a."LS_lpn_decimals",
-                    a."LS_opening_price",
-                    a."LS_liquidation_price_at_open"
-                FROM
-                    "LS_Opening" as a
-                LEFT JOIN
-                    "LS_Closing" as b
-                ON a."LS_contract_id" = b."LS_contract_id"
-                WHERE
-                    a."LS_address_id" = $1
-                ORDER BY "LS_timestamp" DESC
-                OFFSET $2 LIMIT $3
-            "#,
-        )
-        .bind(address)
-        .bind(skip)
-        .bind(limit)
-        .persistent(true)
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(data)
-    }
-
     //TODO: delete
     pub async fn get_leases_data(
         &self,

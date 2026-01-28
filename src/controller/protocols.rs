@@ -3,6 +3,8 @@
 //! Endpoints for querying protocol configuration and currency information.
 //! This data is dynamically loaded from blockchain contracts at startup.
 
+use std::collections::HashMap;
+
 use actix_web::{get, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 
@@ -45,17 +47,21 @@ pub struct ProtocolsResponse {
     pub deprecated_count: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrencyProtocolInfo {
+    pub protocol: String,
+    pub group: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CurrencyInfo {
     pub ticker: String,
     pub bank_symbol: Option<String>,
     pub decimal_digits: i16,
-    pub group: Option<String>,
     pub is_active: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deprecated_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_seen_protocol: Option<String>,
+    pub protocols: Vec<CurrencyProtocolInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -188,25 +194,47 @@ pub async fn get_protocol_by_name(
 // Currency Endpoints
 // =============================================================================
 
+/// Build a HashMap of ticker -> Vec<CurrencyProtocolInfo> from all protocol links
+async fn build_protocol_map(
+    state: &web::Data<AppState<State>>,
+) -> Result<HashMap<String, Vec<CurrencyProtocolInfo>>, Error> {
+    let all_links = state.database.currency_protocol.get_all().await?;
+    let mut map: HashMap<String, Vec<CurrencyProtocolInfo>> = HashMap::new();
+    for link in all_links {
+        map.entry(link.ticker)
+            .or_default()
+            .push(CurrencyProtocolInfo {
+                protocol: link.protocol,
+                group: link.group,
+            });
+    }
+    Ok(map)
+}
+
 /// Get all currencies (active and deprecated)
 #[get("/currencies")]
 pub async fn get_currencies(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let currencies = state.database.currency_registry.get_all().await?;
-    let (active_count, deprecated_count) =
-        state.database.currency_registry.count_by_status().await?;
+    let (currencies, (active_count, deprecated_count)) = tokio::try_join!(
+        state.database.currency_registry.get_all(),
+        state.database.currency_registry.count_by_status(),
+    )?;
+    let protocol_map = build_protocol_map(&state).await?;
 
     let currency_infos: Vec<CurrencyInfo> = currencies
         .into_iter()
-        .map(|c| CurrencyInfo {
-            ticker: c.ticker,
-            bank_symbol: c.bank_symbol,
-            decimal_digits: c.decimal_digits,
-            group: c.group,
-            is_active: c.is_active,
-            deprecated_at: c.deprecated_at.map(|d| d.to_rfc3339()),
-            last_seen_protocol: c.last_seen_protocol,
+        .map(|c| {
+            let protocols =
+                protocol_map.get(&c.ticker).cloned().unwrap_or_default();
+            CurrencyInfo {
+                ticker: c.ticker,
+                bank_symbol: c.bank_symbol,
+                decimal_digits: c.decimal_digits,
+                is_active: c.is_active,
+                deprecated_at: c.deprecated_at.map(|d| d.to_rfc3339()),
+                protocols,
+            }
         })
         .collect();
 
@@ -225,20 +253,25 @@ pub async fn get_currencies(
 pub async fn get_active_currencies(
     state: web::Data<AppState<State>>,
 ) -> Result<impl Responder, Error> {
-    let currencies = state.database.currency_registry.get_active().await?;
-    let (active_count, deprecated_count) =
-        state.database.currency_registry.count_by_status().await?;
+    let (currencies, (active_count, deprecated_count)) = tokio::try_join!(
+        state.database.currency_registry.get_active(),
+        state.database.currency_registry.count_by_status(),
+    )?;
+    let protocol_map = build_protocol_map(&state).await?;
 
     let currency_infos: Vec<CurrencyInfo> = currencies
         .into_iter()
-        .map(|c| CurrencyInfo {
-            ticker: c.ticker,
-            bank_symbol: c.bank_symbol,
-            decimal_digits: c.decimal_digits,
-            group: c.group,
-            is_active: c.is_active,
-            deprecated_at: None,
-            last_seen_protocol: c.last_seen_protocol,
+        .map(|c| {
+            let protocols =
+                protocol_map.get(&c.ticker).cloned().unwrap_or_default();
+            CurrencyInfo {
+                ticker: c.ticker,
+                bank_symbol: c.bank_symbol,
+                decimal_digits: c.decimal_digits,
+                is_active: c.is_active,
+                deprecated_at: None,
+                protocols,
+            }
         })
         .collect();
 
@@ -259,22 +292,27 @@ pub async fn get_currency_by_ticker(
     path: web::Path<String>,
 ) -> Result<impl Responder, Error> {
     let ticker = path.into_inner();
-    let currency = state
-        .database
-        .currency_registry
-        .get_by_ticker(&ticker)
-        .await?;
+    let (currency, protocol_links) = tokio::try_join!(
+        state.database.currency_registry.get_by_ticker(&ticker),
+        state.database.currency_protocol.get_by_ticker(&ticker),
+    )?;
 
     match currency {
         Some(c) => {
+            let protocols: Vec<CurrencyProtocolInfo> = protocol_links
+                .into_iter()
+                .map(|l| CurrencyProtocolInfo {
+                    protocol: l.protocol,
+                    group: l.group,
+                })
+                .collect();
             let info = CurrencyInfo {
                 ticker: c.ticker,
                 bank_symbol: c.bank_symbol,
                 decimal_digits: c.decimal_digits,
-                group: c.group,
                 is_active: c.is_active,
                 deprecated_at: c.deprecated_at.map(|d| d.to_rfc3339()),
-                last_seen_protocol: c.last_seen_protocol,
+                protocols,
             };
             Ok(HttpResponse::Ok().json(info))
         },
