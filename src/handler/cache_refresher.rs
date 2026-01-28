@@ -29,7 +29,7 @@ use crate::{
         lp_pool_state::PoolUtilizationLevel, ls_opening::RealizedPnlWallet,
     },
     error::Error,
-    helpers::{build_cache_key_with_protocol, build_protocol_cache_key},
+    helpers::build_protocol_cache_key,
     model::{
         DailyPositionsPoint, MonthlyActiveWallet, PositionBucket,
         RevenueSeriesPoint, TokenLoan, TokenPosition,
@@ -141,8 +141,6 @@ define_caches! {
     POOLS => pools,
     CURRENT_LENDERS => current_lenders,
     HISTORICAL_LENDERS => historical_lenders,
-    UTILIZATION_LEVEL_PROTOCOL => utilization_level,
-
     // Misc
     TOTAL_TX_VALUE => total_tx_value,
     MONTHLY_ACTIVE_WALLETS => monthly_active_wallets,
@@ -387,10 +385,6 @@ async fn refresh_single_cache(
         cache_keys::HISTORICAL_LENDERS => {
             refresh_historical_lenders(app_state).await
         },
-        cache_keys::UTILIZATION_LEVEL_PROTOCOL => {
-            refresh_utilization_level_protocols(app_state).await
-        },
-
         // Misc
         cache_keys::TOTAL_TX_VALUE => refresh_total_tx_value(app_state).await,
         cache_keys::MONTHLY_ACTIVE_WALLETS => {
@@ -903,38 +897,6 @@ async fn refresh_borrowed(app_state: &AppState<State>) -> Result<(), Error> {
             .cloned()
             .unwrap_or_else(|| BigDecimal::from_str("0").unwrap());
         app_state.api_cache.borrowed.set(&cache_key, data).await;
-    }
-
-    Ok(())
-}
-
-async fn refresh_utilization_level_protocols(
-    app_state: &AppState<State>,
-) -> Result<(), Error> {
-    // Fetch all protocols' utilization in a single query (1 query instead of N)
-    let utilization_by_protocol = app_state
-        .database
-        .lp_pool_state
-        .get_utilization_level_by_protocols(Some(3))
-        .await?;
-
-    // Set per-protocol utilization from the batch result
-    for (protocol_key, protocol) in app_state.protocols.iter() {
-        let cache_key = build_cache_key_with_protocol(
-            "utilization_level",
-            protocol_key,
-            "3m",
-            None,
-        );
-        let data = utilization_by_protocol
-            .get(&protocol.contracts.lpp)
-            .cloned()
-            .unwrap_or_default();
-        app_state
-            .api_cache
-            .utilization_level
-            .set(&cache_key, data)
-            .await;
     }
 
     Ok(())

@@ -13,8 +13,8 @@ use crate::{
     dao::postgre::lp_pool_state::PoolUtilizationLevel,
     error::Error,
     helpers::{
-        build_cache_key, build_cache_key_with_protocol, cached_fetch,
-        parse_period_months, to_csv_response, to_streaming_csv_response,
+        build_cache_key, cached_fetch, parse_period_months, to_csv_response,
+        to_streaming_csv_response,
     },
 };
 
@@ -203,68 +203,4 @@ pub async fn historical_lenders(
         Some("csv") => to_csv_response(&response, "historical-lenders.csv"),
         _ => Ok(HttpResponse::Ok().json(response)),
     }
-}
-
-// =============================================================================
-// Utilization Level
-// =============================================================================
-
-#[derive(Debug, Deserialize)]
-pub struct UtilizationLevelQuery {
-    format: Option<String>,
-    period: Option<String>,
-    protocol: Option<String>,
-    from: Option<DateTime<Utc>>,
-}
-
-#[get("/utilization-level")]
-pub async fn utilization_level(
-    state: web::Data<AppState<State>>,
-    query: web::Query<UtilizationLevelQuery>,
-) -> Result<HttpResponse, Error> {
-    let months = parse_period_months(&query.period)?;
-    let period_str = query.period.as_deref().unwrap_or("3m");
-
-    if let Some(protocol_key) = &query.protocol {
-        let protocol_key = protocol_key.to_uppercase();
-        let admin = state.protocols.get(&protocol_key);
-
-        if let Some(protocol) = admin {
-            let cache_key = build_cache_key_with_protocol(
-                "utilization_level",
-                &protocol_key,
-                period_str,
-                query.from,
-            );
-            let lpp = protocol.contracts.lpp.clone();
-
-            let data = cached_fetch(
-                &state.api_cache.utilization_level,
-                &cache_key,
-                || async {
-                    Ok(state
-                        .database
-                        .lp_pool_state
-                        .get_utilization_level_with_window(
-                            lpp, months, query.from,
-                        )
-                        .await?)
-                },
-            )
-            .await?;
-
-            let items: Vec<BigDecimal> = data
-                .iter()
-                .map(|item| item.utilization_level.clone())
-                .collect();
-
-            return match query.format.as_deref() {
-                Some("csv") => to_csv_response(&data, "utilization-level.csv"),
-                _ => Ok(HttpResponse::Ok().json(items)),
-            };
-        }
-    }
-
-    let items: Vec<BigDecimal> = vec![];
-    Ok(HttpResponse::Ok().json(items))
 }

@@ -42,8 +42,6 @@ pub const DAILY_POSITIONS: &str = "daily_positions_3m_none";
 pub const POOLS: &str = "pools_all";
 pub const CURRENT_LENDERS: &str = "current_lenders";
 pub const HISTORICAL_LENDERS: &str = "historical_lenders_all";
-pub const UTILIZATION_LEVEL_PROTOCOL: &str = "utilization_level_protocol";
-
 // Misc endpoints
 pub const TOTAL_TX_VALUE: &str = "total_tx_value";
 pub const MONTHLY_ACTIVE_WALLETS: &str = "monthly_active_wallets";

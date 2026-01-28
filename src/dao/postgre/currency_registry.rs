@@ -9,27 +9,20 @@ impl Table<CurrencyRegistry> {
     pub async fn upsert_active(
         &self,
         currency: &OracleCurrency,
-        protocol: &str,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
             INSERT INTO "currency_registry" 
-                ("ticker", "bank_symbol", "decimal_digits", "group", "is_active", "last_seen_protocol", "first_seen_at")
-            VALUES ($1, $2, $3, $4, true, $5, NOW())
+                ("ticker", "decimal_digits", "is_active", "first_seen_at")
+            VALUES ($1, $2, true, NOW())
             ON CONFLICT ("ticker") DO UPDATE SET
-                "bank_symbol" = EXCLUDED."bank_symbol",
                 "decimal_digits" = EXCLUDED."decimal_digits",
-                "group" = EXCLUDED."group",
                 "is_active" = true,
-                "deprecated_at" = NULL,
-                "last_seen_protocol" = EXCLUDED."last_seen_protocol"
+                "deprecated_at" = NULL
             "#,
         )
         .bind(&currency.ticker)
-        .bind(&currency.bank_symbol)
         .bind(currency.decimal_digits)
-        .bind(&currency.group)
-        .bind(protocol)
         .execute(&self.pool)
         .await?;
 
@@ -59,8 +52,8 @@ impl Table<CurrencyRegistry> {
     pub async fn get_all(&self) -> Result<Vec<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "bank_symbol", "decimal_digits", "group", "is_active", 
-                   "first_seen_at", "deprecated_at", "last_seen_protocol"
+            SELECT "ticker", "decimal_digits", "is_active", 
+                   "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             ORDER BY "is_active" DESC, "ticker"
             "#,
@@ -74,8 +67,8 @@ impl Table<CurrencyRegistry> {
     pub async fn get_active(&self) -> Result<Vec<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "bank_symbol", "decimal_digits", "group", "is_active", 
-                   "first_seen_at", "deprecated_at", "last_seen_protocol"
+            SELECT "ticker", "decimal_digits", "is_active", 
+                   "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             WHERE "is_active" = true
             ORDER BY "ticker"
@@ -93,8 +86,8 @@ impl Table<CurrencyRegistry> {
     ) -> Result<Option<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "bank_symbol", "decimal_digits", "group", "is_active", 
-                   "first_seen_at", "deprecated_at", "last_seen_protocol"
+            SELECT "ticker", "decimal_digits", "is_active", 
+                   "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             WHERE "ticker" = $1
             "#,

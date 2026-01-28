@@ -575,6 +575,17 @@ pub struct Pool_Config {
     pub stable_currency_decimals: Option<i64>,
 }
 
+pub struct PoolConfigUpsert<'a> {
+    pub pool_id: &'a str,
+    pub position_type: &'a str,
+    pub lpn_symbol: &'a str,
+    pub lpn_decimals: i64,
+    pub label: &'a str,
+    pub protocol: &'a str,
+    pub stable_currency_symbol: &'a str,
+    pub stable_currency_decimals: i64,
+}
+
 // =============================================================================
 // DYNAMIC CONFIGURATION REGISTRY TYPES
 // =============================================================================
@@ -583,13 +594,21 @@ pub struct Pool_Config {
 #[derive(Debug, Clone, FromRow)]
 pub struct CurrencyRegistry {
     pub ticker: String,
-    pub bank_symbol: Option<String>,
     pub decimal_digits: i16,
-    pub group: Option<String>,
     pub is_active: bool,
     pub first_seen_at: DateTime<Utc>,
     pub deprecated_at: Option<DateTime<Utc>>,
-    pub last_seen_protocol: Option<String>,
+}
+
+/// Junction table: which protocols use each currency, and in what role (group)
+/// Also stores per-protocol IBC denoms (bank_symbol, dex_symbol)
+#[derive(Debug, Clone, FromRow)]
+pub struct CurrencyProtocol {
+    pub ticker: String,
+    pub protocol: String,
+    pub group: Option<String>,
+    pub bank_symbol: Option<String>,
+    pub dex_symbol: Option<String>,
 }
 
 /// Protocol registry entry - stores all protocols ever seen (active and deprecated)
@@ -629,12 +648,6 @@ pub struct Subscription {
 #[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
 pub struct Borrow_APR {
     pub APR: BigDecimal,
-}
-
-#[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
-pub struct Utilization_Level {
-    #[sqlx(rename = "Utilization_Level")]
-    pub utilization_level: BigDecimal,
 }
 
 #[derive(Debug, Clone, FromRow, Deserialize, Serialize)]

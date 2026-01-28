@@ -22,39 +22,6 @@ use crate::{
 };
 
 // =============================================================================
-// Leases by Address
-// =============================================================================
-
-#[derive(Debug, Deserialize)]
-pub struct LeasesQuery {
-    skip: Option<i64>,
-    limit: Option<i64>,
-    address: String,
-}
-
-#[get("/leases")]
-pub async fn leases(
-    state: web::Data<AppState<State>>,
-    query: web::Query<LeasesQuery>,
-) -> Result<impl Responder, Error> {
-    let skip = query.skip.unwrap_or(0);
-    let mut limit = query.limit.unwrap_or(10);
-
-    if limit > 10 {
-        limit = 10;
-    }
-
-    let address = query.address.to_lowercase().to_owned();
-    let data = state
-        .database
-        .ls_opening
-        .get_leases_by_address(address, skip, limit)
-        .await?;
-
-    Ok(web::Json(data))
-}
-
-// =============================================================================
 // Leases Search
 // =============================================================================
 

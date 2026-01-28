@@ -78,7 +78,6 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(pnl::unrealized_pnl_by_address)
                     .service(pnl::pnl_over_time)
                     // Lease endpoints
-                    .service(leases::leases)
                     .service(leases::leases_search)
                     .service(leases::leases_monthly)
                     .service(leases::leased_assets)
@@ -103,7 +102,6 @@ fn init_server(app_state: AppState<State>) -> Result<Server, Error> {
                     .service(liquidity::lp_withdraw)
                     .service(liquidity::current_lenders)
                     .service(liquidity::historical_lenders)
-                    .service(liquidity::utilization_level)
                     // Misc endpoints
                     .service(misc::prices)
                     .service(misc::blocks)

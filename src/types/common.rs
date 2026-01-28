@@ -72,7 +72,7 @@ pub struct Bucket_Type {
 }
 
 #[derive(Debug, Clone)]
-pub struct Currency(pub String, pub i16, pub String);
+pub struct Currency(pub String, pub i16);
 
 // =============================================================================
 // BLOCKCHAIN RPC TYPES
