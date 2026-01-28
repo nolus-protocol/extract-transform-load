@@ -129,31 +129,34 @@ async fn proceed_repayment(
     }
 
     for b in balances.balances {
-        // Look up currency by bank_symbol (IBC denom)
-        let item = state
+        // Look up currency ticker by bank_symbol (IBC denom)
+        let ticker = state
             .config
-            .hash_map_currencies
-            .values()
-            .find(|item| item.2 == b.denom.to_uppercase());
+            .hash_map_denom_ticker
+            .get(&b.denom.to_uppercase());
 
-        if let Some(c) = item {
-            let c = c.clone();
-            data.insert(
-                c.0.to_owned(),
-                LS_Loan_Collect {
-                    LS_contract_id: ls_loan_closing.LS_contract_id.to_owned(),
-                    LS_symbol: c.0.to_owned(),
-                    LS_amount: BigDecimal::from_str(&b.amount)?,
-                    LS_amount_stable: state
-                        .in_stable_by_date(
-                            &c.0,
-                            &b.amount,
-                            Some(protocol.to_owned()),
-                            &ls_loan_closing.LS_timestamp,
-                        )
-                        .await?,
-                },
-            );
+        if let Some(ticker) = ticker {
+            if let Some(c) = state.config.hash_map_currencies.get(ticker) {
+                let ticker = c.0.to_owned();
+                data.insert(
+                    ticker.clone(),
+                    LS_Loan_Collect {
+                        LS_contract_id: ls_loan_closing
+                            .LS_contract_id
+                            .to_owned(),
+                        LS_symbol: ticker.clone(),
+                        LS_amount: BigDecimal::from_str(&b.amount)?,
+                        LS_amount_stable: state
+                            .in_stable_by_date(
+                                &ticker,
+                                &b.amount,
+                                Some(protocol.to_owned()),
+                                &ls_loan_closing.LS_timestamp,
+                            )
+                            .await?,
+                    },
+                );
+            }
         }
     }
 
@@ -264,33 +267,34 @@ async fn proceed_market_close(
         };
 
         for b in balances.balances {
-            // Look up currency by bank_symbol (IBC denom)
-            let item = state
+            // Look up currency ticker by bank_symbol (IBC denom)
+            let ticker = state
                 .config
-                .hash_map_currencies
-                .values()
-                .find(|item| item.2 == b.denom.to_uppercase());
+                .hash_map_denom_ticker
+                .get(&b.denom.to_uppercase());
 
-            if let Some(c) = item {
-                let c = c.clone();
-                data.insert(
-                    c.0.to_owned(),
-                    LS_Loan_Collect {
-                        LS_contract_id: ls_loan_closing
-                            .LS_contract_id
-                            .to_owned(),
-                        LS_symbol: c.0.to_owned(),
-                        LS_amount: BigDecimal::from_str(&b.amount)?,
-                        LS_amount_stable: state
-                            .in_stable_by_date(
-                                &c.0,
-                                &b.amount,
-                                Some(protocol.to_owned()),
-                                &ls_loan_closing.LS_timestamp,
-                            )
-                            .await?,
-                    },
-                );
+            if let Some(ticker) = ticker {
+                if let Some(c) = state.config.hash_map_currencies.get(ticker) {
+                    let ticker = c.0.to_owned();
+                    data.insert(
+                        ticker.clone(),
+                        LS_Loan_Collect {
+                            LS_contract_id: ls_loan_closing
+                                .LS_contract_id
+                                .to_owned(),
+                            LS_symbol: ticker.clone(),
+                            LS_amount: BigDecimal::from_str(&b.amount)?,
+                            LS_amount_stable: state
+                                .in_stable_by_date(
+                                    &ticker,
+                                    &b.amount,
+                                    Some(protocol.to_owned()),
+                                    &ls_loan_closing.LS_timestamp,
+                                )
+                                .await?,
+                        },
+                    );
+                }
             }
         }
 

@@ -31,24 +31,24 @@
     "description": "Returns all currencies (active and deprecated) with their configuration. Currencies are dynamically discovered from blockchain contracts at startup.",
     "url": "/api/currencies",
     "type": "GET",
-    "response": "{ currencies: [{ ticker: String, bank_symbol: String, decimal_digits: Number, is_active: Boolean, deprecated_at: DateTime, protocols: [{ protocol: String, group: String }] }], count: Number, active_count: Number, deprecated_count: Number }",
-    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663...\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\" }] }], \"count\": 29, \"active_count\": 28, \"deprecated_count\": 1 }"
+    "response": "{ currencies: [{ ticker: String, decimal_digits: Number, is_active: Boolean, deprecated_at: DateTime, protocols: [{ protocol: String, group: String, bank_symbol: String, dex_symbol: String }] }], count: Number, active_count: Number, deprecated_count: Number }",
+    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\", \"bank_symbol\": \"ibc/6CDD4663...\", \"dex_symbol\": \"ibc/27394F...\" }] }], \"count\": 29, \"active_count\": 28, \"deprecated_count\": 1 }"
   },
   {
     "category": "Configuration",
     "description": "Returns only active currencies with their configuration.",
     "url": "/api/currencies/active",
     "type": "GET",
-    "response": "{ currencies: [{ ticker: String, bank_symbol: String, decimal_digits: Number, is_active: Boolean, protocols: [{ protocol: String, group: String }] }], count: Number, active_count: Number, deprecated_count: Number }",
-    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663...\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\" }] }], \"count\": 28, \"active_count\": 28, \"deprecated_count\": 1 }"
+    "response": "{ currencies: [{ ticker: String, decimal_digits: Number, is_active: Boolean, protocols: [{ protocol: String, group: String, bank_symbol: String, dex_symbol: String }] }], count: Number, active_count: Number, deprecated_count: Number }",
+    "example": "{ \"currencies\": [{ \"ticker\": \"ATOM\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\", \"bank_symbol\": \"ibc/6CDD4663...\", \"dex_symbol\": \"ibc/27394F...\" }] }], \"count\": 28, \"active_count\": 28, \"deprecated_count\": 1 }"
   },
   {
     "category": "Configuration",
     "description": "Returns a single currency by ticker symbol. Returns 404 if not found.",
     "url": "/api/currencies/{ticker}",
     "type": "GET",
-    "response": "{ ticker: String, bank_symbol: String, decimal_digits: Number, is_active: Boolean, deprecated_at: DateTime, protocols: [{ protocol: String, group: String }] }",
-    "example": "{ \"ticker\": \"ATOM\", \"bank_symbol\": \"ibc/6CDD4663F2F09CD62285E2D45891FC149A3568E316CE3EBBE201A71A78A69388\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\" }] }",
+    "response": "{ ticker: String, decimal_digits: Number, is_active: Boolean, deprecated_at: DateTime, protocols: [{ protocol: String, group: String, bank_symbol: String, dex_symbol: String }] }",
+    "example": "{ \"ticker\": \"ATOM\", \"decimal_digits\": 6, \"is_active\": true, \"protocols\": [{ \"protocol\": \"OSMOSIS-OSMOSIS-USDC_NOBLE\", \"group\": \"lease\", \"bank_symbol\": \"ibc/6CDD4663F2F09CD62285E2D45891FC149A3568E316CE3EBBE201A71A78A69388\", \"dex_symbol\": \"ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2\" }] }",
     "params": [
       { "name": "ticker", "type": "String", "required": true, "description": "Currency ticker symbol (e.g., ATOM, USDC_NOBLE, NLS)" }
     ]

@@ -594,7 +594,6 @@ pub struct PoolConfigUpsert<'a> {
 #[derive(Debug, Clone, FromRow)]
 pub struct CurrencyRegistry {
     pub ticker: String,
-    pub bank_symbol: Option<String>,
     pub decimal_digits: i16,
     pub is_active: bool,
     pub first_seen_at: DateTime<Utc>,
@@ -602,11 +601,14 @@ pub struct CurrencyRegistry {
 }
 
 /// Junction table: which protocols use each currency, and in what role (group)
+/// Also stores per-protocol IBC denoms (bank_symbol, dex_symbol)
 #[derive(Debug, Clone, FromRow)]
 pub struct CurrencyProtocol {
     pub ticker: String,
     pub protocol: String,
     pub group: Option<String>,
+    pub bank_symbol: Option<String>,
+    pub dex_symbol: Option<String>,
 }
 
 /// Protocol registry entry - stores all protocols ever seen (active and deprecated)

@@ -13,17 +13,15 @@ impl Table<CurrencyRegistry> {
         sqlx::query(
             r#"
             INSERT INTO "currency_registry" 
-                ("ticker", "bank_symbol", "decimal_digits", "is_active", "first_seen_at")
-            VALUES ($1, $2, $3, true, NOW())
+                ("ticker", "decimal_digits", "is_active", "first_seen_at")
+            VALUES ($1, $2, true, NOW())
             ON CONFLICT ("ticker") DO UPDATE SET
-                "bank_symbol" = EXCLUDED."bank_symbol",
                 "decimal_digits" = EXCLUDED."decimal_digits",
                 "is_active" = true,
                 "deprecated_at" = NULL
             "#,
         )
         .bind(&currency.ticker)
-        .bind(&currency.bank_symbol)
         .bind(currency.decimal_digits)
         .execute(&self.pool)
         .await?;
@@ -54,7 +52,7 @@ impl Table<CurrencyRegistry> {
     pub async fn get_all(&self) -> Result<Vec<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "bank_symbol", "decimal_digits", "is_active", 
+            SELECT "ticker", "decimal_digits", "is_active", 
                    "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             ORDER BY "is_active" DESC, "ticker"
@@ -69,7 +67,7 @@ impl Table<CurrencyRegistry> {
     pub async fn get_active(&self) -> Result<Vec<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "bank_symbol", "decimal_digits", "is_active", 
+            SELECT "ticker", "decimal_digits", "is_active", 
                    "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             WHERE "is_active" = true
@@ -88,7 +86,7 @@ impl Table<CurrencyRegistry> {
     ) -> Result<Option<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "bank_symbol", "decimal_digits", "is_active", 
+            SELECT "ticker", "decimal_digits", "is_active", 
                    "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             WHERE "ticker" = $1

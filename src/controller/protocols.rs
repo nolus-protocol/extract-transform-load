@@ -51,12 +51,13 @@ pub struct ProtocolsResponse {
 pub struct CurrencyProtocolInfo {
     pub protocol: String,
     pub group: Option<String>,
+    pub bank_symbol: Option<String>,
+    pub dex_symbol: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CurrencyInfo {
     pub ticker: String,
-    pub bank_symbol: Option<String>,
     pub decimal_digits: i16,
     pub is_active: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -206,6 +207,8 @@ async fn build_protocol_map(
             .push(CurrencyProtocolInfo {
                 protocol: link.protocol,
                 group: link.group,
+                bank_symbol: link.bank_symbol,
+                dex_symbol: link.dex_symbol,
             });
     }
     Ok(map)
@@ -229,7 +232,6 @@ pub async fn get_currencies(
                 protocol_map.get(&c.ticker).cloned().unwrap_or_default();
             CurrencyInfo {
                 ticker: c.ticker,
-                bank_symbol: c.bank_symbol,
                 decimal_digits: c.decimal_digits,
                 is_active: c.is_active,
                 deprecated_at: c.deprecated_at.map(|d| d.to_rfc3339()),
@@ -266,7 +268,6 @@ pub async fn get_active_currencies(
                 protocol_map.get(&c.ticker).cloned().unwrap_or_default();
             CurrencyInfo {
                 ticker: c.ticker,
-                bank_symbol: c.bank_symbol,
                 decimal_digits: c.decimal_digits,
                 is_active: c.is_active,
                 deprecated_at: None,
@@ -304,11 +305,12 @@ pub async fn get_currency_by_ticker(
                 .map(|l| CurrencyProtocolInfo {
                     protocol: l.protocol,
                     group: l.group,
+                    bank_symbol: l.bank_symbol,
+                    dex_symbol: l.dex_symbol,
                 })
                 .collect();
             let info = CurrencyInfo {
                 ticker: c.ticker,
-                bank_symbol: c.bank_symbol,
                 decimal_digits: c.decimal_digits,
                 is_active: c.is_active,
                 deprecated_at: c.deprecated_at.map(|d| d.to_rfc3339()),

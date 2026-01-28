@@ -254,20 +254,22 @@ impl State {
                 // Upsert core currency data
                 database.currency_registry.upsert_active(currency).await?;
 
-                // Track currency-protocol relationship (group varies per protocol)
+                // Track currency-protocol relationship with per-protocol denoms
                 database
                     .currency_protocol
-                    .upsert(&currency.ticker, protocol_name, &currency.group)
+                    .upsert(
+                        &currency.ticker,
+                        protocol_name,
+                        &currency.group,
+                        &currency.bank_symbol,
+                        currency.dex_symbol.as_deref(),
+                    )
                     .await?;
 
                 // Build runtime currency
                 active_currencies.insert(
                     currency.ticker.clone(),
-                    Currency(
-                        currency.ticker.clone(),
-                        currency.decimal_digits,
-                        currency.bank_symbol.clone(),
-                    ),
+                    Currency(currency.ticker.clone(), currency.decimal_digits),
                 );
             }
 
@@ -439,16 +441,22 @@ impl State {
         let all_currencies = database.currency_registry.get_all().await?;
         let mut hash_map_currencies: HashMap<String, Currency> = HashMap::new();
         for c in all_currencies {
-            hash_map_currencies.insert(
-                c.ticker.clone(),
-                Currency(
-                    c.ticker,
-                    c.decimal_digits,
-                    c.bank_symbol.unwrap_or_default(),
-                ),
-            );
+            hash_map_currencies
+                .insert(c.ticker.clone(), Currency(c.ticker, c.decimal_digits));
         }
         config.hash_map_currencies = hash_map_currencies;
+
+        // Build denom -> ticker reverse lookup from all currency_protocol entries
+        let all_currency_protocols =
+            database.currency_protocol.get_all().await?;
+        let mut hash_map_denom_ticker: HashMap<String, String> = HashMap::new();
+        for cp in &all_currency_protocols {
+            if let Some(ref bank_symbol) = cp.bank_symbol {
+                hash_map_denom_ticker
+                    .insert(bank_symbol.to_uppercase(), cp.ticker.clone());
+            }
+        }
+        config.hash_map_denom_ticker = hash_map_denom_ticker;
 
         // Load ALL protocols for historical lookups
         let all_protocols_db = database.protocol_registry.get_all().await?;
@@ -546,7 +554,7 @@ impl State {
         value: &str,
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
-        let Currency(symbol, _, _) = currency;
+        let Currency(symbol, _) = currency;
         let stabe_price = self.get_cached_price(symbol, protocol).await?;
         let val = self.in_stable_calc(&stabe_price, value)?;
 
@@ -561,7 +569,7 @@ impl State {
         date_time: &DateTime<Utc>,
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency(currency_symbol)?;
-        let Currency(symbol, _, _) = currency;
+        let Currency(symbol, _) = currency;
 
         let (stabe_price,) = self
             .database
@@ -579,7 +587,7 @@ impl State {
         value: &str,
     ) -> Result<BigDecimal, Error> {
         let currency = self.get_currency_by_pool_id(pool_id)?;
-        let Currency(symbol, _, _) = currency;
+        let Currency(symbol, _) = currency;
         let protocol = self.get_protocol_by_pool_id(pool_id);
 
         let stabe_price = self.get_cached_price(symbol, protocol).await?;
@@ -688,6 +696,7 @@ pub struct Config {
     pub timeout: u64,
     // Dynamic configuration - populated from registry at startup
     pub hash_map_currencies: HashMap<String, Currency>,
+    pub hash_map_denom_ticker: HashMap<String, String>,
     pub hash_map_pool_currency: HashMap<String, Currency>,
     // Treasury contract - loaded from admin contract's platform query
     pub treasury_contract: String,
@@ -847,6 +856,7 @@ pub fn get_configuration() -> Result<Config, Error> {
         timeout,
         // These will be populated dynamically from the registry in State::new()
         hash_map_currencies: HashMap::new(),
+        hash_map_denom_ticker: HashMap::new(),
         hash_map_pool_currency: HashMap::new(),
         // Treasury contract will be loaded from admin contract's platform query
         treasury_contract: String::new(),
