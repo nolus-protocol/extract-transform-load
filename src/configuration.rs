@@ -290,7 +290,16 @@ impl State {
             };
 
             // Get dex as string for storage
-            let dex_str = protocol_config.dex.as_ref().map(|d| d.to_string());
+            // Extract just the dex name from the JSON value
+            // For simple string like "Osmosis", return the string
+            // For object like {"Astroport": {...}}, return the key name
+            let dex_str = protocol_config.dex.as_ref().map(|d| match d {
+                serde_json::Value::String(s) => s.clone(),
+                serde_json::Value::Object(obj) => {
+                    obj.keys().next().cloned().unwrap_or_else(|| d.to_string())
+                },
+                _ => d.to_string(),
+            });
 
             // Create protocol registry entry
             let registry_entry = ProtocolRegistry {
