@@ -12,7 +12,7 @@ impl Table<CurrencyRegistry> {
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
-            INSERT INTO "currency_registry" 
+            INSERT INTO "currency_registry"
                 ("ticker", "decimal_digits", "is_active", "first_seen_at")
             VALUES ($1, $2, true, NOW())
             ON CONFLICT ("ticker") DO UPDATE SET
@@ -52,7 +52,7 @@ impl Table<CurrencyRegistry> {
     pub async fn get_all(&self) -> Result<Vec<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "decimal_digits", "is_active", 
+            SELECT "ticker", "decimal_digits", "is_active",
                    "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             ORDER BY "is_active" DESC, "ticker"
@@ -67,7 +67,7 @@ impl Table<CurrencyRegistry> {
     pub async fn get_active(&self) -> Result<Vec<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "decimal_digits", "is_active", 
+            SELECT "ticker", "decimal_digits", "is_active",
                    "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             WHERE "is_active" = true
@@ -86,7 +86,7 @@ impl Table<CurrencyRegistry> {
     ) -> Result<Option<CurrencyRegistry>, Error> {
         sqlx::query_as(
             r#"
-            SELECT "ticker", "decimal_digits", "is_active", 
+            SELECT "ticker", "decimal_digits", "is_active",
                    "first_seen_at", "deprecated_at"
             FROM "currency_registry"
             WHERE "ticker" = $1

@@ -65,20 +65,4 @@ impl Table<CurrencyProtocol> {
         .await
     }
 
-    /// Remove all entries for tickers not in the active list
-    pub async fn remove_deprecated(
-        &self,
-        active_tickers: &[String],
-    ) -> Result<u64, Error> {
-        let result = sqlx::query(
-            r#"
-            DELETE FROM "currency_protocol"
-            WHERE "ticker" != ALL($1)
-            "#,
-        )
-        .bind(active_tickers)
-        .execute(&self.pool)
-        .await?;
-        Ok(result.rows_affected())
-    }
 }

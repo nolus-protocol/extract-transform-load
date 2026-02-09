@@ -407,18 +407,6 @@ impl State {
             );
         }
 
-        // Clean up currency_protocol entries for deprecated tickers
-        let removed_protocol_links = database
-            .currency_protocol
-            .remove_deprecated(&active_tickers)
-            .await?;
-        if removed_protocol_links > 0 {
-            tracing::info!(
-                "Removed {} deprecated currency-protocol links",
-                removed_protocol_links
-            );
-        }
-
         // Mark protocols NOT in active set as deprecated
         let active_proto_names: Vec<String> =
             active_protocols.keys().cloned().collect();

@@ -50,9 +50,9 @@ pub struct ProtocolsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CurrencyProtocolInfo {
     pub protocol: String,
-    pub group: Option<String>,
-    pub bank_symbol: Option<String>,
-    pub dex_symbol: Option<String>,
+    pub group: String,
+    pub bank_symbol: String,
+    pub dex_symbol: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -206,9 +206,9 @@ async fn build_protocol_map(
             .or_default()
             .push(CurrencyProtocolInfo {
                 protocol: link.protocol,
-                group: link.group,
-                bank_symbol: link.bank_symbol,
-                dex_symbol: link.dex_symbol,
+                group: link.group.unwrap_or_default(),
+                bank_symbol: link.bank_symbol.unwrap_or_default(),
+                dex_symbol: link.dex_symbol.unwrap_or_default(),
             });
     }
     Ok(map)
@@ -304,9 +304,9 @@ pub async fn get_currency_by_ticker(
                 .into_iter()
                 .map(|l| CurrencyProtocolInfo {
                     protocol: l.protocol,
-                    group: l.group,
-                    bank_symbol: l.bank_symbol,
-                    dex_symbol: l.dex_symbol,
+                    group: l.group.unwrap_or_default(),
+                    bank_symbol: l.bank_symbol.unwrap_or_default(),
+                    dex_symbol: l.dex_symbol.unwrap_or_default(),
                 })
                 .collect();
             let info = CurrencyInfo {
