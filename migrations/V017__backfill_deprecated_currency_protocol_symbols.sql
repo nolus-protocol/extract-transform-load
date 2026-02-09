@@ -1,0 +1,298 @@
+-- Backfill bank_symbol and dex_symbol for deprecated protocol currency_protocol rows.
+-- V016 restored these rows but with empty strings for bank_symbol/dex_symbol because
+-- the oracle contracts for NEUTRON-ASTROPORT-USDC_AXELAR and OSMOSIS-OSMOSIS-ST_ATOM
+-- are NULL and cannot be queried at runtime.
+
+-- =========================================================================
+-- Backfill missing protocol_registry fields for deprecated protocols
+-- =========================================================================
+
+UPDATE "protocol_registry"
+SET "network" = 'Neutron',
+    "dex" = 'Astroport',
+    "leaser_contract" = 'nolus1et45v5gepxs44jxewfxah0hk4wqmw34m8pm4alf44ucxvj895kas5yrxd8',
+    "oracle_contract" = 'nolus1jew4l5nq7m3xhkqzy8j7cc99083m5j8d9w004ayyv8xl3yv4h0dql2dd4e',
+    "profit_contract" = 'nolus1udkxyfeh7kxjnzm0exfaq9hncqzm3rj59gut4qnll0gq2z4yff0sda5aw2',
+    "reserve_contract" = 'nolus10hzky830fafe5ffzt6vqprmpxjsy0fk8gcq5wvnvgr6lt4s6he3s045c4n'
+WHERE "protocol_name" = 'NEUTRON-ASTROPORT-USDC_AXELAR';
+
+UPDATE "protocol_registry"
+SET "network" = 'Osmosis',
+    "dex" = 'Osmosis',
+    "leaser_contract" = 'nolus1xv0erzdcphnpkf8tr76uynldqx6sspw7782zg9wthz8xpemh7rnsv4nske',
+    "oracle_contract" = 'nolus1mtcv0vhpt94s82mcemj5sc3v94pq3k2g62yfa5p82npfnd3xqx8q2w8c5f',
+    "profit_contract" = 'nolus1ee6teu4ald4qqndpw28685atghh4ne37kuqzjrwq2m5xpy6jlp6sfjz838',
+    "reserve_contract" = 'nolus1klawkdk3nup8xruu2u7uex7yynr727tyy0h7sr9nmu4re0p9kl3sz30ykg'
+WHERE "protocol_name" = 'OSMOSIS-OSMOSIS-ST_ATOM';
+
+-- =========================================================================
+-- Section A: Update empty bank_symbol/dex_symbol on existing rows
+-- =========================================================================
+
+-- ATOM on NEUTRON-ASTROPORT-USDC_AXELAR
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'ibc/74329D0B6EAA37AD07FF44EC40D998357D1478C504AB5A9C91C3F42F1078A226',
+    "dex_symbol" = 'ibc/C4CFF46FD6DE35CA4CF4CE031E643C8FDC9BA4B99AE598E9B0ED98FE3A2319F9'
+WHERE "ticker" = 'ATOM' AND "protocol" = 'NEUTRON-ASTROPORT-USDC_AXELAR';
+
+-- DYDX on NEUTRON-ASTROPORT-USDC_AXELAR
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'ibc/6DF8CF5C976851D152E2C7270B0AB25C4F9D64C0A46513A68D6CBB2662A98DF4',
+    "dex_symbol" = 'ibc/2CB87BCE0937B1D1DFCEE79BE4501AAF3C265E923509AEAC410AD85D27F35130'
+WHERE "ticker" = 'DYDX' AND "protocol" = 'NEUTRON-ASTROPORT-USDC_AXELAR';
+
+-- NLS on NEUTRON-ASTROPORT-USDC_AXELAR
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'unls',
+    "dex_symbol" = 'ibc/6C9E6701AC217C0FC7D74B0F7A6265B9B4E3C3CDA6E80AADE5F950A8F52F9972'
+WHERE "ticker" = 'NLS' AND "protocol" = 'NEUTRON-ASTROPORT-USDC_AXELAR';
+
+-- NLS on OSMOSIS-OSMOSIS-ST_ATOM
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'unls',
+    "dex_symbol" = 'ibc/D9AFCECDD361D38302AA66EB3BAC23B95234832C51D12489DC451FA2B7C72782'
+WHERE "ticker" = 'NLS' AND "protocol" = 'OSMOSIS-OSMOSIS-ST_ATOM';
+
+-- NTRN on NEUTRON-ASTROPORT-USDC_AXELAR
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'ibc/3D6BC6E049CAEB905AC97031A42800588C58FB471EBDC7A3530FFCD0C3DC9E09',
+    "dex_symbol" = 'untrn'
+WHERE "ticker" = 'NTRN' AND "protocol" = 'NEUTRON-ASTROPORT-USDC_AXELAR';
+
+-- ST_ATOM on NEUTRON-ASTROPORT-USDC_AXELAR
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'ibc/FFE21A5F04A89CD5E61A616EEE11A646D5DCF0A8DB60523F79C5ED28DA2642FA',
+    "dex_symbol" = 'ibc/B7864B03E1B9FD4F049243E92ABD691586F682137037A9F3FCA5222815620B3C'
+WHERE "ticker" = 'ST_ATOM' AND "protocol" = 'NEUTRON-ASTROPORT-USDC_AXELAR';
+
+-- ST_ATOM on OSMOSIS-OSMOSIS-ST_ATOM
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'ibc/FCFF8B19C61677F3B78E2A5AE3B4A34A8D23858D16905F253B8438B3AFD07FF8',
+    "dex_symbol" = 'ibc/C140AFD542AE77BD7DCC83F13FDD8C5E5BB8C4929785E6EC2F4C636F98F17901'
+WHERE "ticker" = 'ST_ATOM' AND "protocol" = 'OSMOSIS-OSMOSIS-ST_ATOM';
+
+-- STK_ATOM on NEUTRON-ASTROPORT-USDC_AXELAR
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'ibc/DAC47DFAA22682AAFFE28D1B3969BBF6405311F0A3F1228C45519AAE81CD9B9E',
+    "dex_symbol" = 'ibc/3649CE0C8A2C79048D8C6F31FF18FA69C9BC7EB193512E0BD03B733011290445'
+WHERE "ticker" = 'STK_ATOM' AND "protocol" = 'NEUTRON-ASTROPORT-USDC_AXELAR';
+
+-- USDC_AXELAR on NEUTRON-ASTROPORT-USDC_AXELAR
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'ibc/076CF690A9912E0B7A2CCA75B719D68AF7C20E4B0B6460569B333DDEB19BBBA1',
+    "dex_symbol" = 'ibc/F082B65C88E4B6D5EF1DB243CDA1D331D002759E938A0F5CD3FFDC5D53B3E349'
+WHERE "ticker" = 'USDC_AXELAR' AND "protocol" = 'NEUTRON-ASTROPORT-USDC_AXELAR';
+
+-- USDC_NOBLE on OSMOSIS-OSMOSIS-ST_ATOM
+UPDATE "currency_protocol"
+SET "bank_symbol" = 'ibc/F5FABF52B54E65064B57BF6DBD8E5FAD22CEE9F4B8A57ADBB20CCD0173AA72A4',
+    "dex_symbol" = 'ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4'
+WHERE "ticker" = 'USDC_NOBLE' AND "protocol" = 'OSMOSIS-OSMOSIS-ST_ATOM';
+
+-- =========================================================================
+-- Section B: Insert currency_protocol rows for deprecated currencies
+-- that have no protocol rows at all (missed by V016 reconstruction).
+-- =========================================================================
+
+-- DYM on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('DYM', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/9C7F70E92CCBA0F2DC94796B0682955E090676EA7A2F8E0A4611956B79CB4406',
+        'ibc/9A76CDF0CBCEF37923F32518FA15E5DC92B9F56128292BC4D63C4AEA76CBB110')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- EVMOS on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('EVMOS', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/A59A9C955F1AB8B76671B00C1A0482C64A6590352944BB5880E5122358F7E1CE',
+        'ibc/6AE98883D4D5D5FF9E50D7130F1305DA2FFA0C652D1DD9C123657C6B4EB2DF8A')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- JKL on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('JKL', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/28F026607184B151F1F7D7F5D8AE644528550EB05203A28B6233DFA923669876',
+        'ibc/8E697BDABE97ACE8773C6DF7402B2D1D5104DD1EEABE12608E3469B7F64C15BA')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- JUNO on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('JUNO', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/4F3E83AB35529435E4BFEA001F5D935E7250133347C4E1010A9C77149EF0394C',
+        'ibc/46B44899322F3CD854D2D46DEEF881958467CDD4B3B10086DA49296BBED94BED')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- LVN on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('LVN', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/4786BEBBFDD989C467C4552AD73065D8B2578230B8428B3B9275D540EB04C851',
+        'factory/osmo1mlng7pz4pnyxtpq0akfwall37czyk9lukaucsrn30ameplhhshtqdvfm5c/ulvn')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- OM on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('OM', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/B92B80E837E4B1665024B7674D382AF07FE5D8D89797A0FEAF5356C8F173425C',
+        'ibc/164807F6226F91990F358C6467EEE8B162E437BDCD3DADEC3F0CE20693720795')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- PICA on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('PICA', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/7F2DC2A595EDCAEC1C03D607C6DC3C79EDDC029A53D16C0788835C1A9AA06306',
+        'ibc/56D7C03B8F6A07AD322EEE1BEF3AE996E09D1C1E34C27CF37E0D4A0AC5972516')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- QSR on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('QSR', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/FF456FD21AA44251D2122BF19B20C5FE717A1EBD054A59FA1CA4B21742048CA0',
+        'ibc/1B708808D372E959CD4839C594960309283424C775F4A038AAEBE7F83A988477')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- Q_ATOM on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('Q_ATOM', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/317FCA2D7554F55BBCD0019AB36F7FEA18B6D161F462AF5E565068C719A29F20',
+        'ibc/FA602364BEC305A696CBDF987058E99D8B479F0318E47314C49173E8838C5BAC')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- MILK_TIA on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('MILK_TIA', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/16065EE5282C5217685C8F084FC44864C25C706AC37356B0D62811D50B96920F',
+        'factory/osmo1f5vfcph2dvfeqcqkhetwv75fda69z7e5c2dldm3kvgj23crkv6wqcn47a0/umilkTIA')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- STARS on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('STARS', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/11E3CF372E065ACB1A39C531A3C7E7E03F60B5D0653AD2139D31128ACD2772B5',
+        'ibc/987C17B11ABC2B20019178ACE62929FE9840202CE79498E29FE8E5CB02B7C0A4')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- INJ on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('INJ', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/4DE84C92C714009D07AFEA7350AB3EC383536BB0FAAD7AF9C0F1A0BEA169304E',
+        'ibc/64BA6E31FE887D66C6F8F31C7B1A80C7CA179239677B4088BB55F5EA07DBE273')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- CUDOS on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('CUDOS', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/BB9810E7FE8836311126F15BE0B20E7463189751840F8C3FEF3AC8F87D8AB7C8',
+        'ibc/E09ED39F390EC51FA9F3F69BEA08B5BBE6A48B3057B2B1C3467FAAE9E58B021B')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- DYM on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('DYM', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/9C7F70E92CCBA0F2DC94796B0682955E090676EA7A2F8E0A4611956B79CB4406',
+        'ibc/9A76CDF0CBCEF37923F32518FA15E5DC92B9F56128292BC4D63C4AEA76CBB110')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- PICA on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('PICA', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/7F2DC2A595EDCAEC1C03D607C6DC3C79EDDC029A53D16C0788835C1A9AA06306',
+        'ibc/56D7C03B8F6A07AD322EEE1BEF3AE996E09D1C1E34C27CF37E0D4A0AC5972516')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- QSR on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('QSR', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/FF456FD21AA44251D2122BF19B20C5FE717A1EBD054A59FA1CA4B21742048CA0',
+        'ibc/1B708808D372E959CD4839C594960309283424C775F4A038AAEBE7F83A988477')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- LVN on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('LVN', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/4786BEBBFDD989C467C4552AD73065D8B2578230B8428B3B9275D540EB04C851',
+        'factory/osmo1mlng7pz4pnyxtpq0akfwall37czyk9lukaucsrn30ameplhhshtqdvfm5c/ulvn')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- JKL on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('JKL', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/28F026607184B151F1F7D7F5D8AE644528550EB05203A28B6233DFA923669876',
+        'ibc/8E697BDABE97ACE8773C6DF7402B2D1D5104DD1EEABE12608E3469B7F64C15BA')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- EVMOS on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('EVMOS', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/A59A9C955F1AB8B76671B00C1A0482C64A6590352944BB5880E5122358F7E1CE',
+        'ibc/6AE98883D4D5D5FF9E50D7130F1305DA2FFA0C652D1DD9C123657C6B4EB2DF8A')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- JUNO on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('JUNO', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/4F3E83AB35529435E4BFEA001F5D935E7250133347C4E1010A9C77149EF0394C',
+        'ibc/46B44899322F3CD854D2D46DEEF881958467CDD4B3B10086DA49296BBED94BED')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- Q_ATOM on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('Q_ATOM', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/317FCA2D7554F55BBCD0019AB36F7FEA18B6D161F462AF5E565068C719A29F20',
+        'ibc/FA602364BEC305A696CBDF987058E99D8B479F0318E47314C49173E8838C5BAC')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- STRD on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('STRD', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/04CA9067228BB51F1C39A506DA00DF07E1496D8308DD21E8EF66AD6169FA722B',
+        'ibc/A8CA5EE328FA10C9519DF6057DA1F69682D28F7D0F5CCC7ECB72E3DCA2D157A4')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- STARS on OSMOSIS-OSMOSIS-USDC_NOBLE
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('STARS', 'OSMOSIS-OSMOSIS-USDC_NOBLE', 'lease',
+        'ibc/11E3CF372E065ACB1A39C531A3C7E7E03F60B5D0653AD2139D31128ACD2772B5',
+        'ibc/987C17B11ABC2B20019178ACE62929FE9840202CE79498E29FE8E5CB02B7C0A4')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- STK_ATOM on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('STK_ATOM', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/DAAD372DB7DD45BBCFA4DDD40CA9793E9D265D1530083AB41A8A0C53C3EBE865',
+        'ibc/CAA179E40F0266B0B29FB5EAA288FB9212E628822265D4141EBD1C47C3CBFCBC')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- ST_OSMO on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('ST_OSMO', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/AF5559D128329B6C753F15481BEC26E533B847A471074703FA4903E7E6F61BA1',
+        'ibc/D176154B0C63D1F9C6DCFB4F70349EBF2E2B5A87A05902F57A6AE92B863E9AEC')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- ST_TIA on NEUTRON-ASTROPORT-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('ST_TIA', 'NEUTRON-ASTROPORT-USDC_AXELAR', 'lease',
+        'ibc/13B5CDC63B4A997453AF882CFC67BFDF932910C1BF3795C34B89548F2C5B1CD1',
+        'ibc/6569E05DEE32B339D9286A52BE33DFCEFC97267F23EF9CFDE0C055140967A9A5')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- ST_TIA on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('ST_TIA', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/8D4FC51F696E03711B9B37A5787FB89BD2DDBAF788813478B002D552A12F9157',
+        'ibc/698350B8A61D575025F3ED13E9AC9C0F45C89DEFE92F76D5838F1D3C1A7FF7C9')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- TIA on NEUTRON-ASTROPORT-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('TIA', 'NEUTRON-ASTROPORT-USDC_AXELAR', 'lease',
+        'ibc/8970C50B6F78D9AB5D0656E6BBD234BC1132ACBF680B8B6F506BB90CD2A06D81',
+        'ibc/773B4D0A3CD667B2275D5A4A7A2F0909C0BA0F4059C0B9181E680DDF4965DCC7')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;
+
+-- TIA on OSMOSIS-OSMOSIS-USDC_AXELAR
+INSERT INTO "currency_protocol" ("ticker", "protocol", "group", "bank_symbol", "dex_symbol")
+VALUES ('TIA', 'OSMOSIS-OSMOSIS-USDC_AXELAR', 'lease',
+        'ibc/6C349F0EB135C5FA99301758F35B87DB88403D690E5E314AB080401FEE4066E5',
+        'ibc/D79E7D83AB399BFFF93433E54FAA480C191248FC556924A2A8351AE2638B3877')
+ON CONFLICT ("ticker", "protocol") DO NOTHING;

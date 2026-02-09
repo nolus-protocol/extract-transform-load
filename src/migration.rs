@@ -160,8 +160,8 @@ mod tests {
             prev_version = *version;
         }
 
-        // Verify we have all expected migrations (V001 through V016)
-        assert_eq!(sorted_versions.len(), 16, "Expected 16 migrations");
+        // Verify we have all expected migrations (V001 through V017)
+        assert_eq!(sorted_versions.len(), 17, "Expected 17 migrations");
         assert_eq!(
             sorted_versions.first(),
             Some(&1),
@@ -169,8 +169,8 @@ mod tests {
         );
         assert_eq!(
             sorted_versions.last(),
-            Some(&16),
-            "Last migration should be V016"
+            Some(&17),
+            "Last migration should be V017"
         );
     }
 }
