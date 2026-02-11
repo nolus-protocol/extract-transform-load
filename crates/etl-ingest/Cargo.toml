@@ -1,0 +1,52 @@
+[package]
+name = "etl-ingest"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "etl-ingest"
+path = "src/main.rs"
+
+[dependencies]
+etl-core = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+futures = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Cosmos/blockchain
+cosmrs = { workspace = true }
+cosmos-sdk-proto = { workspace = true }
+prost = { workspace = true }
+tendermint-rpc = { workspace = true }
+ibc-proto = { workspace = true }
+
+# gRPC
+tonic = { workspace = true }
+
+# Push notifications
+jsonwebtoken = { workspace = true }
+ece = { workspace = true }
+
+# Data types
+chrono = { workspace = true }
+bigdecimal = { workspace = true }
+
+# HTTP client
+reqwest = { workspace = true }
+
+# Utilities
+url = { workspace = true }
+base64 = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }

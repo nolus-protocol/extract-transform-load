@@ -53,38 +53,16 @@ Key configuration options:
 ```bash
 # Development (with hot reload)
 cargo install cargo-watch
-cargo watch -c -w src -x run
+cargo watch -c -w crates -x 'run -p etl-ingest'
+cargo watch -c -w crates -x 'run -p etl-api'
 
 # Production build
 cargo build --release
-./target/release/etl
+./target/release/etl-ingest
+./target/release/etl-api
 ```
 
-## CLI Commands
-
-The ETL binary supports multiple modes:
-
-```bash
-# Run the server (default)
-./etl
-./etl serve
-
-# Run database migrations only
-./etl migrate
-./etl migrate --status
-
-# Run data backfills
-./etl backfill ls-opening --all --batch-size=1000
-./etl backfill raw-txs --concurrency=20
-
-# Preview without changes
-./etl backfill ls-opening --dry-run
-./etl backfill raw-txs --dry-run
-
-# Help
-./etl --help
-./etl backfill --help
-```
+Database migrations run automatically on startup of either binary.
 
 ## Project Structure
 
@@ -193,7 +171,6 @@ Migrations use [refinery](https://github.com/rust-db/refinery) and run automatic
 
 - Versioned SQL files in `migrations/` directory
 - Migration state tracked in `refinery_schema_history` table
-- Run `./etl migrate --status` to check applied migrations
 
 ## Documentation
 
