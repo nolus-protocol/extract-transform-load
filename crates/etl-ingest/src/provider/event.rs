@@ -89,7 +89,7 @@ impl Event {
         // 1. height_tx is already dropped (moved into produce_heights and dropped on return)
         // 2. Close the WebSocket connection (sends Close frame via driver)
         if let Err(e) = client.close() {
-            error!("Failed to close WebSocket: {}", e);
+            info!("WebSocket close handshake skipped (connection already dropped): {}", e);
         }
         // 3. Wait for driver to finish the Close handshake
         if let Err(e) = driver_handle.await {
