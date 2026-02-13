@@ -71,7 +71,7 @@ async fn run_server() -> Result<(), Error> {
     let app_state = AppState::new(state);
 
     mp_assets::fetch_insert(app_state.clone(), None).await?;
-    let mut event_manager = Event::new(app_state.clone());
+    let event_manager = Event::new(app_state.clone());
 
     let (_, _, _) = tokio::try_join!(
         event_manager.run(),
