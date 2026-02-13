@@ -425,6 +425,7 @@ pub struct LS_Liquidation_Warning_Type {
 ///
 /// Variants:
 /// - `opened`: active lease with full position data
+/// - `closing`: fully repaid but margin not yet withdrawn (renamed from `paid` in v0.8.17)
 /// - `closed`, `liquidated`, `paid`: terminal states (empty array `[]`)
 /// - unknown variants: caught by `#[serde(other)]` to prevent deserialization
 ///   failures when new contract states appear on-chain
@@ -432,6 +433,7 @@ pub struct LS_Liquidation_Warning_Type {
 #[serde(rename_all = "snake_case")]
 pub enum LS_State_Type {
     Opened(Box<Status_Opened>),
+    Closing(serde_json::Value),
     Closed(serde_json::Value),
     Paid(serde_json::Value),
     Liquidated(serde_json::Value),
