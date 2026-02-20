@@ -474,16 +474,18 @@ impl Table<LP_Pool_State> {
             AvgInterestPerPool AS (
                 SELECT
                     o."LS_loan_pool_id",
-                    AVG(
-                        o."LS_interest" / 10.0 - CASE
-                            WHEN pc.protocol IN ('OSMOSIS-OSMOSIS-USDC_NOBLE', 'NEUTRON-ASTROPORT-USDC_NOBLE')
-                                THEN CASE WHEN o."LS_timestamp" >= '2024-12-22' THEN 8.0 ELSE 4.0 END
-                            WHEN pc.lpn_symbol IN ('ALL_BTC', 'ATOM') THEN 2.5
-                            WHEN pc.lpn_symbol = 'ALL_SOL'            THEN 4.0
-                            WHEN pc.lpn_symbol IN ('ST_ATOM', 'AKT')  THEN 2.0
-                            ELSE 4.0
-                        END
-                    ) AS avg_net_interest
+                    SUM(
+                        (
+                            o."LS_interest" / 10.0 - CASE
+                                WHEN pc.protocol IN ('OSMOSIS-OSMOSIS-USDC_NOBLE', 'NEUTRON-ASTROPORT-USDC_NOBLE')
+                                    THEN CASE WHEN o."LS_timestamp" >= '2024-12-22' THEN 8.0 ELSE 4.0 END
+                                WHEN pc.lpn_symbol IN ('ALL_BTC', 'ATOM') THEN 2.5
+                                WHEN pc.lpn_symbol = 'ALL_SOL'            THEN 4.0
+                                WHEN pc.lpn_symbol IN ('ST_ATOM', 'AKT')  THEN 2.0
+                                ELSE 4.0
+                            END
+                        ) * s."LS_principal_stable"
+                    ) / NULLIF(SUM(s."LS_principal_stable"), 0) AS avg_net_interest
                 FROM "LS_State" s
                 CROSS JOIN Latest_LS_Aggregation la
                 INNER JOIN "LS_Opening" o ON s."LS_contract_id" = o."LS_contract_id"
